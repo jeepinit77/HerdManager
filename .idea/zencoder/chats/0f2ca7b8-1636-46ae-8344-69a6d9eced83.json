@@ -1,0 +1,81 @@
+{
+    "checksum": "ad7f82eb58e8cb35412dff829d5551c130b4d8f6612a17aee62d24153f149445",
+    "data": {
+    "id": "0f2ca7b8-1636-46ae-8344-69a6d9eced83",
+    "createdAt": 1756059878654,
+    "updatedAt": 1756061891486,
+    "title": "Generate repo.md file with information from my ...",
+    "messages": [
+        {
+            "id": "bf21dd39-c111-4fd4-b50e-aea5d69749dd",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Generate repo.md file with information from my repo"
+                }
+            ],
+            "context": {
+                "codebaseEnabled": true
+            },
+            "createdAt": 1756059878658,
+            "isInternal": false,
+            "rawContent": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Generate repo.md file with information from my repo"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "autoAppliedRules": []
+        },
+        {
+            "id": "a02c28b0-842f-4132-af6b-43b3d0254184",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "i still have a lot of unresolved refrences"
+                }
+            ],
+            "context": {
+                "codebaseEnabled": true
+            },
+            "createdAt": 1756061891486,
+            "isInternal": false,
+            "rawContent": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "i still have a lot of unresolved refrences"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "autoAppliedRules": []
+        }
+    ],
+    "isAgent": false,
+    "isNameGenerated": true,
+    "isCustomAgent": false,
+    "isUnitTestsAgent": false,
+    "isE2EAgent": false,
+    "isWebDevAgent": false,
+    "isQnaAgent": false,
+    "isRepoInfoAgent": true,
+    "autoApply": true,
+    "model": "default"
+}
+}
