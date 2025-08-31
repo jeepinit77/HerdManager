@@ -1,0 +1,121 @@
+{
+    "checksum": "3c07348b89ee6840fafec261568455ee9a00aa7a143501207d2902852a54454b",
+    "data": {
+    "id": "ef9b301e-a2f0-452d-813c-fde0764753c9",
+    "createdAt": 1756335657175,
+    "updatedAt": 1756336611755,
+    "title": "Explain this: (     entities = [Cow::class, Pas...",
+    "messages": [
+        {
+            "id": "f21ae29e-a964-4fe7-a778-ac5dc8d93ad8",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Explain this:"
+                },
+                {
+                    "type": "codeSnippet",
+                    "text": "(\n    entities = [Cow::class, Pasture::class, Activity::class, Settings::class, Note::class],\n    version = 2,\n    exportSchema = false\n)",
+                    "language": "kotlin"
+                },
+                {
+                    "type": "text",
+                    "text": "Only 'const val' can be used in constant expressions."
+                }
+            ],
+            "context": {
+                "currentFile": {
+                    "path": "C:\\Users\\jeepi\\AndroidStudioProjects\\cows\\app\\src\\main\\java\\com\\jumblemint\\cows\\data\\database\\CattleDatabase.kt",
+                    "fsPath": "C:/Users/jeepi/AndroidStudioProjects/cows/app/src/main/java/com/jumblemint/cows/data/database/CattleDatabase.kt",
+                    "content": "package com.jumblemint.cows.data.database\n\nimport android.content.Context\nimport androidx.room.Database\nimport androidx.room.Room\nimport androidx.room.RoomDatabase\nimport androidx.room.TypeConverters // Keep this import\nimport androidx.room.migration.Migration\nimport androidx.sqlite.db.SupportSQLiteDatabase\nimport com.jumblemint.cows.data.dao.*\nimport com.jumblemint.cows.data.model.*\nimport java.util.concurrent.Executors\n\n@Database(\n    entities = [Cow::class, Pasture::class, Activity::class, Settings::class, Note::class],\n    version = 2,\n    exportSchema = false\n)\n@TypeConverters(Converters::class) // CORRECTED: This now points to your local Converters.kt\nabstract class CattleDatabase : RoomDatabase() {\n\n    abstract fun cowDao(): CowDao\n    abstract fun pastureDao(): PastureDao\n    abstract fun activityDao(): ActivityDao\n    abstract fun settingsDao(): SettingsDao\n    abstract fun noteDao(): NoteDao\n\n    companion object {\n        @Volatile\n        private var INSTANCE: CattleDatabase? = null\n\n        val MIGRATION_1_2 = object : Migration(1, 2) {\n            override fun migrate(db: SupportSQLiteDatabase) {\n                db.execSQL(\"ALTER TABLE cows ADD COLUMN isWatched INTEGER NOT NULL DEFAULT 0\")\n                db.execSQL(\"CREATE TABLE IF NOT EXISTS `notes` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `cowId` TEXT NOT NULL, `text` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, FOREIGN KEY(`cowId`) REFERENCES `cows`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )\")\n                db.execSQL(\"CREATE INDEX IF NOT EXISTS `index_notes_cowId` ON `notes` (`cowId`)\")\n            }\n        }\n\n        fun getDatabase(context: Context): CattleDatabase {\n            return INSTANCE ?: synchronized(this) {\n                val instance = Room.databaseBuilder(\n                    context.applicationContext,\n                    CattleDatabase::class.java,\n                    \"cattle_database\"\n                )\n                .addMigrations(MIGRATION_1_2)\n                .addCallback(DatabaseCallback(context, Executors.newSingleThreadScheduledExecutor()))\n                .build()\n                INSTANCE = instance\n                instance\n            }\n        }\n    }\n}\n",
+                    "language": "kotlin"
+                },
+                "codebaseEnabled": true
+            },
+            "createdAt": 1756335657192,
+            "isInternal": false,
+            "rawContent": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Explain this:"
+                            },
+                            {
+                                "type": "codeBlock",
+                                "attrs": {
+                                    "language": "kotlin"
+                                },
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "(\n    entities = [Cow::class, Pasture::class, Activity::class, Settings::class, Note::class],\n    version = 2,\n    exportSchema = false\n)"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "text",
+                                "text": "Only 'const val' can be used in constant expressions."
+                            }
+                        ]
+                    }
+                ]
+            },
+            "autoAppliedRules": []
+        },
+        {
+            "id": "ac684722-d6db-42f7-9963-70c73a65cd14",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "my project has so many errors, can you fix them"
+                }
+            ],
+            "context": {
+                "currentFile": {
+                    "path": "app/src/main/java/com/jumblemint/cows/data/repository/CattleRepository.kt",
+                    "fsPath": "C:/Users/jeepi/AndroidStudioProjects/cows/app/src/main/java/com/jumblemint/cows/data/repository/CattleRepository.kt",
+                    "sources": [
+                        "opened_tab"
+                    ],
+                    "content": "package com.jumblemint.cows.data.repository\n\nimport com.jumblemint.cows.data.dao.ActivityDao\nimport com.jumblemint.cows.data.dao.CowDao\nimport com.jumblemint.cows.data.dao.PastureDao\nimport com.jumblemint.cows.data.dao.SettingsDao\nimport com.jumblemint.cows.data.dao.NoteDao // Added import\nimport com.jumblemint.cows.data.model.*\nimport kotlinx.coroutines.flow.Flow\nimport kotlinx.coroutines.flow.first\nimport java.time.LocalDate\n\nclass CattleRepository(\n    private val cowDao: CowDao,\n    private val pastureDao: PastureDao,\n    private val activityDao: ActivityDao,\n    private val settingsDao: SettingsDao,\n    private val noteDao: NoteDao // Added noteDao to constructor\n) {\n\n    // Cow operations\n    fun getAllCows(): Flow<List<Cow>> = cowDao.getAllCows()\n    fun getCowsByStatus(status: Status): Flow<List<Cow>> = cowDao.getCowsByStatus(status)\n    fun getCowsByPasture(pastureId: Long): Flow<List<Cow>> = cowDao.getCowsByPasture(pastureId)\n    fun getActiveFemales(): Flow<List<Cow>> = cowDao.getActiveFemales()\n    fun getActiveMales(): Flow<List<Cow>> = cowDao.getActiveMales()\n    fun getCalvesByMother(motherId: Long): Flow<List<Cow>> = cowDao.getCalvesByMother(motherId)\n    fun getCalvesByFather(fatherId: Long): Flow<List<Cow>> = cowDao.getCalvesByFather(fatherId)\n    suspend fun getCowById(id: Long): Cow? = cowDao.getCowById(id)\n    suspend fun getCowByTagNumber(tagNumber: String): Cow? = cowDao.getCowByTagNumber(tagNumber)\n    fun getWatchedCows(): Flow<List<Cow>> = cowDao.getWatchedCows()\n    // fun getCowsWithPastures(): Flow<List<CowWithPasture>> = cowDao.getCowsWithPastures() // Assuming this is still commented out\n\n    suspend fun insertCow(cow: Cow): Long = cowDao.insertCow(cow)\n    suspend fun updateCow(cow: Cow) = cowDao.updateCow(cow)\n    suspend fun deleteCow(cow: Cow) = cowDao.deleteCow(cow)\n    suspend fun updateCowWatchStatus(cowId: Long, isWatched: Boolean) = cowDao.updateCowWatchStatus(cowId, isWatched)\n\n    // Pasture operations\n    fun getAllPastures(): Flow<List<Pasture>> = pastureDao.getAllPastures()\n    suspend fun getPastureById(id: Long): Pasture? = pastureDao.getPastureById(id)\n    suspend fun getCalfPasture(): Pasture? = pastureDao.getCalfPasture()\n\n    suspend fun insertPasture(pasture: Pasture): Long = pastureDao.insertPasture(pasture)\n    suspend fun updatePasture(pasture: Pasture) = pastureDao.updatePasture(pasture)\n    suspend fun deletePasture(pasture: Pasture) = pastureDao.deletePasture(pasture)\n\n    // Activity operations\n    fun getAllActivities(): Flow<List<Activity>> = activityDao.getAllActivities()\n    fun getActivitiesForCow(cowId: Long): Flow<List<Activity>> = activityDao.getActivitiesForCow(cowId)\n    fun getActivitiesByType(activityType: ActivityType): Flow<List<Activity>> = activityDao.getActivitiesByType(activityType)\n\n    suspend fun insertActivity(activity: Activity): Long = activityDao.insertActivity(activity)\n    suspend fun insertActivities(activities: List<Activity>) = activityDao.insertActivities(activities)\n    suspend fun updateActivity(activity: Activity) = activityDao.updateActivity(activity)\n    suspend fun deleteActivity(activity: Activity) = activityDao.deleteActivity(activity)\n\n    // Settings operations\n    fun getAllSettings(): Flow<List<Settings>> = settingsDao.getAllSettings()\n    suspend fun getSettingByKey(key: String): Settings? = settingsDao.getSettingByKey(key)\n    suspend fun insertOrUpdateSetting(setting: Settings) = settingsDao.insertOrUpdateSetting(setting)\n    suspend fun deleteSetting(setting: Settings) = settingsDao.deleteSetting(setting)\n\n    // Note operations\n    fun getNotesForCow(cowId: String): Flow<List<Note>> = noteDao.getNotesForCow(cowId) // Uses noteDao\n    suspend fun saveNote(note: Note) = noteDao.insert(note) // Uses noteDao\n    suspend fun deleteNote(note: Note) = noteDao.delete(note) // Uses noteDao\n\n\n    // Business logic operations\n    suspend fun moveCow(cowId: Long, toPastureId: Long?) {\n        val cow = getCowById(cowId) ?: return\n        val fromPastureId = cow.pastureId\n        \n        cowDao.updateCowPasture(cowId, toPastureId)\n        \n        val moveActivity = Activity(\n            cowId = cowId,\n            date = LocalDate.now(),\n            activityType = ActivityType.MOVED,\n            fromPastureId = fromPastureId,\n            toPastureId = toPastureId\n        )\n        insertActivity(moveActivity)\n    }\n\n    suspend fun castrateCow(cowId: Long, notes: String? = null) {\n        val cow = getCowById(cowId) ?: return\n        \n        if (cow.classification == Classification.BULL) {\n            cowDao.updateCowClassification(cowId, Classification.STEER.name)\n        }\n        \n        val castrationActivity = Activity(\n            cowId = cowId,\n            date = LocalDate.now(),\n            activityType = ActivityType.CASTRATED,\n            notes = notes\n        )\n        insertActivity(castrationActivity)\n    }\n\n    suspend fun recordBirth(\n        motherId: Long,\n        fatherId: Long?,\n        calfName: String?,\n        calfGender: Gender,\n        birthDate: LocalDate = LocalDate.now()\n    ): Long {\n        val calfPasture = getCalfPasture()\n        \n        val calf = Cow(\n            name = calfName,\n            birthDate = birthDate,\n            gender = calfGender,\n            classification = Classification.CALF,\n            motherId = motherId,\n            fatherId = fatherId,\n            pastureId = calfPasture?.id,\n            status = Status.ACTIVE\n        )\n        \n        val calfId = insertCow(calf)\n        \n        return calfId\n    }\n\n    suspend fun createBulkActivity(\n        cowIds: List<Long>,\n        activityType: ActivityType,\n        date: LocalDate = LocalDate.now(),\n        notes: String? = null,\n        toPastureId: Long? = null\n    ) {\n        val activities = cowIds.map { cowId ->\n            Activity(\n                cowId = cowId,\n                date = date,\n                activityType = activityType,\n                notes = notes,\n                toPastureId = toPastureId\n            )\n        }\n        \n        insertActivities(activities)\n        \n        when (activityType) {\n            ActivityType.MOVED -> {\n                toPastureId?.let { pastureId ->\n                    cowIds.forEach { cowId ->\n                        cowDao.updateCowPasture(cowId, pastureId)\n                    }\n                }\n            }\n            ActivityType.CASTRATED -> {\n                cowIds.forEach { cowId ->\n                    val cow = getCowById(cowId)\n                    if (cow?.classification == Classification.BULL) {\n                        cowDao.updateCowClassification(cowId, Classification.STEER.name)\n                    }\n                }\n            }\n            ActivityType.SOLD, ActivityType.DECEASED -> {\n                val newStatus = if (activityType == ActivityType.SOLD) Status.SOLD else Status.DECEASED\n                cowIds.forEach { cowId ->\n                    val cow = getCowById(cowId)\n                    cow?.let {\n                        updateCow(it.copy(status = newStatus, updatedAt = LocalDate.now()))\n                    }\n                }\n            }\n            else -> {\n                // No additional processing needed\n            }\n        }\n    }\n\n    suspend fun weanCalf(calfId: Long, newPastureId: Long? = null) {\n        val calf = getCowById(calfId) ?: return\n        \n        newPastureId?.let { pastureId ->\n            cowDao.updateCowPasture(calfId, pastureId)\n        }\n        \n        calf.birthDate?.let { birthDate ->\n            val age = java.time.Period.between(birthDate, LocalDate.now())\n            if (age.months >= 6) { \n                val newClassification = when (calf.gender) {\n                    Gender.FEMALE -> Classification.HEIFER\n                    Gender.MALE -> Classification.BULL\n                    Gender.TBD -> Classification.CALF \n                }\n                if (newClassification != calf.classification) {\n                    cowDao.updateCowClassification(calfId, newClassification.name)\n                }\n            }\n        }\n        \n        val weaningActivity = Activity(\n            cowId = calfId,\n            date = LocalDate.now(),\n            activityType = ActivityType.WEANED,\n            fromPastureId = calf.pastureId,\n            toPastureId = newPastureId,\n            notes = \"Weaned from mother\"\n        )\n        insertActivity(weaningActivity)\n    }\n\n    suspend fun initializeDefaultData() {\n        if (getCalfPasture() == null) {\n            val calfPasture = Pasture(\n                name = \"Calf Pasture\",\n                isCalfPasture = true\n            )\n            insertPasture(calfPasture)\n        }\n        \n        if (getSettingByKey(SettingsKeys.TAG_COLORS) == null) {\n            insertOrUpdateSetting(\n                Settings(\n                    SettingsKeys.TAG_COLORS,\n                    \"Red,Blue,Green,Yellow,Orange,Purple,Pink,White,Black,Brown\"\n                )\n            )\n        }\n        \n        if (getSettingByKey(SettingsKeys.ACTIVITY_TYPES) == null) {\n            insertOrUpdateSetting(\n                Settings(\n                    SettingsKeys.ACTIVITY_TYPES,\n                    \"MOVED,WEANED,SOLD,DECEASED,WORKED,CASTRATED,BIRTH,OTHER\"\n                )\n            )\n        }\n    }\n}\n",
+                    "language": "kotlin"
+                },
+                "codebaseEnabled": true
+            },
+            "createdAt": 1756336611755,
+            "isInternal": false,
+            "rawContent": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "my project has so many errors, can you fix them"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "autoAppliedRules": []
+        }
+    ],
+    "isAgent": false,
+    "isNameGenerated": true,
+    "isCustomAgent": false,
+    "isUnitTestsAgent": false,
+    "isE2EAgent": false,
+    "isWebDevAgent": false,
+    "isQnaAgent": true,
+    "isRepoInfoAgent": false,
+    "autoApply": true,
+    "model": "default"
+}
+}

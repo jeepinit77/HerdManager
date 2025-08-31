@@ -1,0 +1,86 @@
+package com.jumblemint.cows.ui.viewmodel
+
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.jumblemint.cows.data.database.CattleDatabase
+import com.jumblemint.cows.data.model.Note
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.launch
+import java.util.Date
+
+class NotesViewModel(application: Application) : AndroidViewModel(application) {
+    // Corrected: Single argument for getDatabase and explicit type for database
+    private val database: CattleDatabase = CattleDatabase.getDatabase(application)
+    // This should now resolve if CattleDatabase has noteDao()
+    private val noteDao = database.noteDao() 
+    
+    private val _uiState = MutableStateFlow(NotesUiState())
+    val uiState: StateFlow<NotesUiState> = _uiState.asStateFlow()
+    
+    init {
+        loadNotes()
+    }
+    
+    private fun loadNotes() {
+        viewModelScope.launch {
+            noteDao.getAllNotes()
+                // Corrected: Explicit type for e
+                .catch { e: Throwable -> 
+                    _uiState.value = _uiState.value.copy(error = e.message)
+                }
+                // Corrected: Explicit type for notes
+                .collect { notes: List<Note> -> 
+                    _uiState.value = _uiState.value.copy(
+                        notes = notes,
+                        isLoading = false
+                    )
+                }
+        }
+    }
+    
+    fun addNote(title: String, text: String) {
+        viewModelScope.launch {
+            try {
+                val note = Note(
+                    title = title,
+                    text = text,
+                    timestamp = Date().time
+                )
+                noteDao.insert(note)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+    
+    fun deleteNote(note: Note) {
+        viewModelScope.launch {
+            try {
+                noteDao.delete(note)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+
+    fun restoreNote(note: Note) {
+        viewModelScope.launch {
+            try {
+                // Re-insert the same note (NoteDao.insert uses REPLACE)
+                noteDao.insert(note)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+}
+
+data class NotesUiState(
+    val notes: List<Note> = emptyList(),
+    val isLoading: Boolean = true,
+    val error: String? = null
+)

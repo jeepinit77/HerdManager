@@ -1,0 +1,195 @@
+package com.jumblemint.cows.ui.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.jumblemint.cows.data.model.*
+import com.jumblemint.cows.data.repository.CattleRepository
+import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import java.time.LocalDate
+
+// CowDetailUiState is defined here or imported
+data class CowDetailUiState(
+    val id: Long = 0L,
+    val name: String = "",
+    val tagNumber: String = "",
+    val tagColor: String? = null,
+    val birthDate: LocalDate? = LocalDate.now(),
+    val gender: Gender = Gender.TBD,
+    val classification: Classification = Classification.CALF,
+    val colorMarkings: String = "",
+    val motherId: Long? = null,
+    val fatherId: Long? = null,
+    val motherName: String? = null,
+    val fatherName: String? = null,
+    val status: Status = Status.ACTIVE,
+    val pastureId: String? = null, // This is already String?, which is correct
+    val pastureName: String? = null,
+    val photos: List<String> = emptyList(),
+    val isWatched: Boolean = false,
+    val createdAt: LocalDate? = null,
+    val updatedAt: LocalDate? = null,
+    val availableMothers: List<Cow> = emptyList(),
+    val availableFathers: List<Cow> = emptyList(),
+    val availablePastures: List<Pasture> = emptyList(),
+    val tagColors: List<String> = emptyList(),
+    val isLoading: Boolean = true,
+    val isSaved: Boolean = false,
+    val error: String? = null
+)
+
+class CowDetailViewModel(
+    private val repository: CattleRepository,
+    private val cowId: Long
+) : ViewModel() {
+
+    private val _uiState = MutableStateFlow(CowDetailUiState())
+    val uiState: StateFlow<CowDetailUiState> = _uiState.asStateFlow()
+
+    init {
+        loadInitialData()
+    }
+
+    private fun loadInitialData() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            try {
+                val mothers = repository.getActiveFemales().first()
+                val fathers = repository.getActiveMales().first()
+                val pastures = repository.getAllPastures().first()
+                val tagColorSetting = repository.getSettingByKey(SettingsKeys.TAG_COLORS)?.value
+                val tagColors = tagColorSetting?.split(",") ?: emptyList()
+
+                if (cowId == 0L) { // New cow
+                    _uiState.update {
+                        it.copy(
+                            id = 0L,
+                            availableMothers = mothers,
+                            availableFathers = fathers,
+                            availablePastures = pastures,
+                            tagColors = tagColors,
+                            isLoading = false
+                        )
+                    }
+                } else { // Existing cow
+                    val cow = repository.getCowById(cowId)
+                    if (cow != null) {
+                        val motherName = cow.motherId?.let { repository.getCowById(it)?.name }
+                        val fatherName = cow.fatherId?.let { repository.getCowById(it)?.name }
+                        // MODIFIED: cow.pastureId is now String?, so no .toString() needed
+                        val currentPasture = pastures.find { it.id == cow.pastureId } 
+
+                        _uiState.update {
+                            it.copy(
+                                id = cow.id,
+                                name = cow.name ?: "",
+                                tagNumber = cow.tagNumber ?: "",
+                                tagColor = cow.tagColor,
+                                birthDate = cow.birthDate,
+                                gender = cow.gender,
+                                classification = cow.classification,
+                                colorMarkings = cow.colorMarkings ?: "",
+                                motherId = cow.motherId,
+                                fatherId = cow.fatherId,
+                                motherName = motherName,
+                                fatherName = fatherName,
+                                status = cow.status,
+                                // MODIFIED: cow.pastureId is now String?, assign directly
+                                pastureId = cow.pastureId, 
+                                pastureName = currentPasture?.name,
+                                photos = cow.photos,
+                                isWatched = cow.isWatched,
+                                createdAt = cow.createdAt,
+                                updatedAt = cow.updatedAt,
+                                availableMothers = mothers,
+                                availableFathers = fathers,
+                                availablePastures = pastures,
+                                tagColors = tagColors,
+                                isLoading = false
+                            )
+                        }
+                    } else {
+                        _uiState.update { it.copy(error = "Cow not found", isLoading = false) }
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message, isLoading = false) }
+            }
+        }
+    }
+
+    fun updateName(name: String) { _uiState.update { it.copy(name = name) } }
+    fun updateTagNumber(tagNumber: String) { _uiState.update { it.copy(tagNumber = tagNumber) } }
+    fun updateTagColor(tagColor: String?) { _uiState.update { it.copy(tagColor = tagColor) } }
+    fun updateBirthDate(birthDate: LocalDate?) { _uiState.update { it.copy(birthDate = birthDate) } }
+    fun updateGender(gender: Gender) { _uiState.update { it.copy(gender = gender) } }
+    fun updateClassification(classification: Classification) { _uiState.update { it.copy(classification = classification) } }
+    fun updateColorMarkings(colorMarkings: String) { _uiState.update { it.copy(colorMarkings = colorMarkings) } }
+    fun updateStatus(status: Status) { _uiState.update { it.copy(status = status) } }
+    fun updateIsWatched(isWatched: Boolean) { _uiState.update { it.copy(isWatched = isWatched) } }
+
+    fun updateMother(motherId: Long?) {
+        viewModelScope.launch {
+            val motherName = motherId?.let { repository.getCowById(it)?.name }
+            _uiState.update { it.copy(motherId = motherId, motherName = motherName) }
+        }
+    }
+
+    fun updateFather(fatherId: Long?) {
+        viewModelScope.launch {
+            val fatherName = fatherId?.let { repository.getCowById(it)?.name }
+            _uiState.update { it.copy(fatherId = fatherId, fatherName = fatherName) }
+        }
+    }
+
+    // This method already correctly uses String? for pastureId
+    fun updatePasture(pastureId: String?) {
+        val pasture = _uiState.value.availablePastures.find { it.id == pastureId }
+        _uiState.update { it.copy(pastureId = pastureId, pastureName = pasture?.name) }
+    }
+
+
+    fun saveCow() {
+        viewModelScope.launch {
+            val currentState = _uiState.value
+            if (currentState.tagNumber.isBlank()) {
+                _uiState.update { it.copy(error = "Tag number cannot be empty.") }
+                return@launch
+            }
+
+            // MODIFIED: Remove .toLongOrNull() conversion.
+            // currentState.pastureId is String?, Cow.pastureId is String?
+            val pastureIdForCow: String? = currentState.pastureId
+
+            val cow = Cow(
+                id = currentState.id,
+                name = currentState.name.takeIf { it.isNotBlank() },
+                tagNumber = currentState.tagNumber,
+                tagColor = currentState.tagColor,
+                birthDate = currentState.birthDate,
+                gender = currentState.gender,
+                classification = currentState.classification,
+                colorMarkings = currentState.colorMarkings.takeIf { it.isNotBlank() },
+                motherId = currentState.motherId,
+                fatherId = currentState.fatherId,
+                status = currentState.status,
+                pastureId = pastureIdForCow, // MODIFIED: Assign String? directly
+                photos = currentState.photos,
+                isWatched = currentState.isWatched,
+                createdAt = if (currentState.id == 0L) LocalDate.now() else currentState.createdAt,
+                updatedAt = LocalDate.now()
+            )
+
+            try {
+                if (cow.id == 0L) {
+                    repository.insertCow(cow)
+                } else {
+                    repository.updateCow(cow)
+                }
+                _uiState.update { it.copy(isSaved = true, error = null) }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = e.message, isSaved = false) }
+            }
+        }
+    }
+}
