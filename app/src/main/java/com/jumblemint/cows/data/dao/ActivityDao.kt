@@ -32,4 +32,10 @@ interface ActivityDao {
     
     @Delete
     suspend fun deleteActivity(activity: Activity)
+
+    @Query("SELECT * FROM activities WHERE id = :id LIMIT 1")
+    suspend fun getActivityById(id: Long): Activity?
+    
+    @Query("SELECT * FROM activities WHERE groupId = :groupId ORDER BY date DESC, id DESC")
+    suspend fun getActivitiesByGroupId(groupId: String): List<Activity>
 }

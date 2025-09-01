@@ -33,7 +33,7 @@ import java.time.LocalDate
         )
         */
     ],
-    indices = [Index("cowId")] // , Index("fromPastureId"), Index("toPastureId")
+    indices = [Index("cowId"), Index("groupId")] // Added groupId index
 )
 data class Activity(
     @PrimaryKey(autoGenerate = true)
@@ -44,5 +44,6 @@ data class Activity(
     val notes: String? = null,
     val fromPastureId: String? = null, // MODIFIED: Was Long?
     val toPastureId: String? = null,   // MODIFIED: Was Long?
-    val details: String? = null // For medication, sales info, etc.
+    val details: String? = null, // For medication, sales info, etc.
+    val groupId: String? = null // NEW: Links related activities together
 )

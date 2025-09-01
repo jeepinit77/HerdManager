@@ -2,6 +2,7 @@ package com.jumblemint.cows.ui.screens.activities
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
@@ -26,6 +27,7 @@ import java.time.LocalDate
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddActivityScreen(
+    editId: Long? = null,
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -37,10 +39,31 @@ fun AddActivityScreen(
         database.settingsDao()
     )
     val viewModel: AddActivityViewModel = viewModel(
-        factory = AddActivityViewModelFactory(repository)
+        factory = AddActivityViewModelFactory(repository, editId)
     )
     
     val uiState by viewModel.uiState.collectAsState()
+    
+    // Filter states
+    var showFilters by remember { mutableStateOf(false) }
+    var selectedGender by remember { mutableStateOf<Gender?>(null) }
+    var selectedClassification by remember { mutableStateOf<Classification?>(null) }
+    var selectedPasture by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    
+    // Filter the cows based on selected filters
+    val filteredCows = remember(uiState.availableCows, selectedGender, selectedClassification, selectedPasture, searchQuery) {
+        uiState.availableCows.filter { cow ->
+            val matchesGender = selectedGender == null || cow.gender == selectedGender
+            val matchesClassification = selectedClassification == null || cow.classification == selectedClassification
+            val matchesPasture = selectedPasture == null || cow.pastureId == selectedPasture
+            val matchesSearch = searchQuery.isBlank() || 
+                cow.name?.contains(searchQuery, ignoreCase = true) == true ||
+                cow.tagNumber?.contains(searchQuery, ignoreCase = true) == true
+            
+            matchesGender && matchesClassification && matchesPasture && matchesSearch
+        }
+    }
     
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
@@ -52,7 +75,7 @@ fun AddActivityScreen(
         modifier = Modifier.fillMaxSize()
     ) {
         TopAppBar(
-            title = { Text("Add Activity") },
+            title = { Text(if (editId != null) "Edit Activity" else "Add Activity") },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
                     Icon(Icons.Default.ArrowBack, contentDescription = "Back")
@@ -170,11 +193,27 @@ fun AddActivityScreen(
                             
                             Spacer(modifier = Modifier.height(8.dp))
                             
+                            // Search field
+                            OutlinedTextField(
+                                value = searchQuery,
+                                onValueChange = { searchQuery = it },
+                                label = { Text("Search cows...") },
+                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
                             Row(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Button(
-                                    onClick = { viewModel.selectAllCows() },
+                                    onClick = { 
+                                        // Select all filtered cows
+                                        val filteredCowIds = filteredCows.map { it.id }.toSet()
+                                        filteredCowIds.forEach { viewModel.selectCow(it) }
+                                    },
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text("Select All")
@@ -185,13 +224,122 @@ fun AddActivityScreen(
                                 ) {
                                     Text("Clear All")
                                 }
+                                
+                                FilterChip(
+                                    onClick = { showFilters = !showFilters },
+                                    label = { Text("Filters") },
+                                    selected = selectedGender != null || selectedClassification != null || selectedPasture != null,
+                                    leadingIcon = if (showFilters) {
+                                        { Icon(Icons.Default.ExpandLess, contentDescription = "Collapse") }
+                                    } else {
+                                        { Icon(Icons.Default.ExpandMore, contentDescription = "Expand") }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+                
+                // Collapsible Filters
+                if (showFilters) {
+                    item {
+                        Card {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    text = "Filter Cows",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                
+                                // Gender Filter
+                                Text(
+                                    text = "Gender",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    FilterChip(
+                                        onClick = { selectedGender = if (selectedGender == Gender.MALE) null else Gender.MALE },
+                                        label = { Text("Male") },
+                                        selected = selectedGender == Gender.MALE
+                                    )
+                                    FilterChip(
+                                        onClick = { selectedGender = if (selectedGender == Gender.FEMALE) null else Gender.FEMALE },
+                                        label = { Text("Female") },
+                                        selected = selectedGender == Gender.FEMALE
+                                    )
+                                    FilterChip(
+                                        onClick = { selectedGender = if (selectedGender == Gender.TBD) null else Gender.TBD },
+                                        label = { Text("TBD") },
+                                        selected = selectedGender == Gender.TBD
+                                    )
+                                }
+                                
+                                // Classification Filter
+                                Text(
+                                    text = "Classification",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Classification.values().forEach { classification ->
+                                        FilterChip(
+                                            onClick = { 
+                                                selectedClassification = if (selectedClassification == classification) null else classification 
+                                            },
+                                            label = { Text(classification.name.lowercase().replaceFirstChar { it.uppercase() }) },
+                                            selected = selectedClassification == classification
+                                        )
+                                    }
+                                }
+                                
+                                // Pasture Filter
+                                if (uiState.availablePastures.isNotEmpty()) {
+                                    Text(
+                                        text = "Pasture",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    LazyRow(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        items(uiState.availablePastures) { pasture ->
+                                            FilterChip(
+                                                onClick = { 
+                                                    selectedPasture = if (selectedPasture == pasture.id) null else pasture.id 
+                                                },
+                                                label = { Text(pasture.name) },
+                                                selected = selectedPasture == pasture.id
+                                            )
+                                        }
+                                    }
+                                }
+                                
+                                // Clear all filters button
+                                TextButton(
+                                    onClick = {
+                                        selectedGender = null
+                                        selectedClassification = null
+                                        selectedPasture = null
+                                        searchQuery = ""
+                                    }
+                                ) {
+                                    Text("Clear All Filters")
+                                }
                             }
                         }
                     }
                 }
                 
                 // Cow List
-                items(uiState.availableCows) { cow ->
+                items(filteredCows) { cow ->
                     CowSelectionCard(
                         cow = cow,
                         isSelected = cow.id in uiState.selectedCows,

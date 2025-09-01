@@ -140,11 +140,6 @@ fun CowsScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             FilterChip(
-                                onClick = { viewModel.filterCowsByStatus(null) },
-                                label = { Text("All") },
-                                selected = uiState.selectedStatus == null
-                            )
-                            FilterChip(
                                 onClick = { viewModel.filterCowsByStatus(Status.ACTIVE) },
                                 label = { Text("Active") },
                                 selected = uiState.selectedStatus == Status.ACTIVE

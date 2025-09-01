@@ -19,7 +19,7 @@ class CowsViewModel(
     val uiState: StateFlow<CowsUiState> = _uiState.asStateFlow()
     
     init {
-        loadCows()
+        loadActiveCows() // Load only active cows by default
         initializeDefaultData()
     }
     
@@ -28,6 +28,18 @@ class CowsViewModel(
             repository.getAllCows().collect { cows ->
                 _uiState.value = _uiState.value.copy(
                     cows = cows,
+                    isLoading = false
+                )
+            }
+        }
+    }
+    
+    private fun loadActiveCows() {
+        viewModelScope.launch {
+            repository.getCowsByStatus(Status.ACTIVE).collect { cows ->
+                _uiState.value = _uiState.value.copy(
+                    cows = cows,
+                    selectedStatus = Status.ACTIVE,
                     isLoading = false
                 )
             }
@@ -43,10 +55,11 @@ class CowsViewModel(
     fun filterCowsByStatus(status: Status?) {
         viewModelScope.launch {
             if (status == null) {
-                val cows = repository.getAllCows().first()
+                // When clearing filter, default back to active cows instead of all cows
+                val cows = repository.getCowsByStatus(Status.ACTIVE).first()
                 _uiState.value = _uiState.value.copy(
                     cows = cows,
-                    selectedStatus = null
+                    selectedStatus = Status.ACTIVE
                 )
             } else {
                 val cows = repository.getCowsByStatus(status).first()
@@ -106,7 +119,7 @@ data class CowsUiState(
     val cows: List<Cow> = emptyList(),
     val isLoading: Boolean = true,
     val searchQuery: String = "",
-    val selectedStatus: Status? = null,
+    val selectedStatus: Status? = Status.ACTIVE, // Default to showing active cows
     // MODIFIED: selectedPastureId type changed to String?
     val selectedPastureId: String? = null,
     val error: String? = null

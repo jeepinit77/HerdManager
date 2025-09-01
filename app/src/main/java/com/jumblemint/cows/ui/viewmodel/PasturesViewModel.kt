@@ -14,6 +14,7 @@ import kotlinx.coroutines.launch
 
 data class PasturesUiState(
     val pastures: List<PastureWithCowCount> = emptyList(), // This will now refer to the one in PastureWithCowCount.kt
+    val unassignedCowCount: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null
 )
@@ -34,6 +35,14 @@ class PasturesViewModel(private val cattleRepository: CattleRepository) : ViewMo
             cattleRepository.getPasturesWithCowCount().collect { pastureData: List<PastureWithCowCount> ->
                 _uiState.update { currentState ->
                     currentState.copy(pastures = pastureData, isLoading = false)
+                }
+            }
+        }
+        
+        viewModelScope.launch {
+            cattleRepository.getUnassignedCowCount().collect { unassignedCount ->
+                _uiState.update { currentState ->
+                    currentState.copy(unassignedCowCount = unassignedCount)
                 }
             }
         }

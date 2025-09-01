@@ -3,6 +3,7 @@ package com.jumblemint.cows.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.jumblemint.cows.data.model.Cow
+import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.model.Status
 import java.time.LocalDate
 import java.time.Period
@@ -37,9 +39,23 @@ fun CowCard(
     onToggleWatch: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null
 ) {
+    // Gender-based background colors
+    val cardColors = when (cow.gender) {
+        Gender.FEMALE -> CardDefaults.cardColors(
+            containerColor = Color(0xFFFCE4EC) // Light pink
+        )
+        Gender.MALE -> CardDefaults.cardColors(
+            containerColor = Color(0xFFE3F2FD) // Light blue
+        )
+        Gender.TBD -> CardDefaults.cardColors(
+            containerColor = Color(0xFFF5F5F5) // Light gray
+        )
+    }
+    
     Card(
         onClick = onClick,
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth(),
+        colors = cardColors
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -71,12 +87,12 @@ fun CowCard(
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "${cow.gender.name} • ${cow.classification.name}",
+                                text = cow.classification.name,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        // Watch toggle + Status Badge on the right
+                        // Watch toggle + Delete button on the right (removed status badge)
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -91,7 +107,15 @@ fun CowCard(
                                     )
                                 }
                             }
-                            StatusBadge(status = cow.status)
+                            if (onDelete != null) {
+                                IconButton(onClick = onDelete) {
+                                    Icon(
+                                        imageVector = androidx.compose.material.icons.Icons.Filled.Delete,
+                                        contentDescription = "Delete Cow",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
                         }
                     }
 
@@ -113,15 +137,7 @@ fun CowCard(
                 }
             }
             
-            // Footer row: right-aligned delete control when provided
-            onDelete?.let {
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = it, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-                        Text("Delete")
-                    }
-                }
-            }
+
         }
     }
 }

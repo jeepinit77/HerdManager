@@ -12,7 +12,8 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 class AddActivityViewModel(
-    private val repository: CattleRepository
+    private val repository: CattleRepository,
+    private val editId: Long? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AddActivityUiState())
@@ -30,11 +31,34 @@ class AddActivityViewModel(
                 
                 val activeCows = allCows.filter { it.status == Status.ACTIVE }
                 
-                _uiState.value = _uiState.value.copy(
+                var baseState = _uiState.value.copy(
                     availableCows = activeCows,
                     availablePastures = allPastures,
                     isLoading = false
                 )
+
+                // If editing, prefill from existing activity and load all cows from the same group
+                editId?.let { id ->
+                    repository.getActivityById(id)?.let { act ->
+                        // If the activity has a groupId, load all activities from that group
+                        val selectedCowIds = if (act.groupId != null) {
+                            repository.getActivitiesByGroupId(act.groupId).map { it.cowId }.toSet()
+                        } else {
+                            // Fallback for legacy activities without groupId
+                            setOf(act.cowId)
+                        }
+                        
+                        baseState = baseState.copy(
+                            activityType = act.activityType,
+                            date = act.date,
+                            notes = act.notes ?: "",
+                            toPastureId = act.toPastureId,
+                            selectedCows = selectedCowIds
+                        )
+                    }
+                }
+
+                _uiState.value = baseState
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     error = e.message,
@@ -116,13 +140,44 @@ class AddActivityViewModel(
                     return@launch
                 }
                 
-                repository.createBulkActivity(
-                    cowIds = state.selectedCows.toList(),
-                    activityType = state.activityType,
-                    date = state.date,
-                    notes = state.notes.takeIf { it.isNotBlank() },
-                    toPastureId = state.toPastureId // This will now be String?
-                )
+                if (editId != null) {
+                    // Editing existing activity group
+                    val originalActivity = repository.getActivityById(editId)
+                    if (originalActivity?.groupId != null) {
+                        // Delete all activities in the group
+                        val groupActivities = repository.getActivitiesByGroupId(originalActivity.groupId)
+                        groupActivities.forEach { repository.deleteActivity(it) }
+                        
+                        // Create new activities with the same groupId
+                        repository.createBulkActivityWithGroupId(
+                            cowIds = state.selectedCows.toList(),
+                            activityType = state.activityType,
+                            date = state.date,
+                            notes = state.notes.takeIf { it.isNotBlank() },
+                            toPastureId = state.toPastureId,
+                            groupId = originalActivity.groupId
+                        )
+                    } else if (originalActivity != null) {
+                        // Legacy activity without groupId, just update the single activity
+                        repository.updateActivity(
+                            originalActivity.copy(
+                                activityType = state.activityType,
+                                date = state.date,
+                                notes = state.notes.takeIf { it.isNotBlank() },
+                                toPastureId = state.toPastureId
+                            )
+                        )
+                    }
+                } else {
+                    // Creating new activity
+                    repository.createBulkActivity(
+                        cowIds = state.selectedCows.toList(),
+                        activityType = state.activityType,
+                        date = state.date,
+                        notes = state.notes.takeIf { it.isNotBlank() },
+                        toPastureId = state.toPastureId
+                    )
+                }
                 
                 _uiState.value = state.copy(isSaved = true)
                 

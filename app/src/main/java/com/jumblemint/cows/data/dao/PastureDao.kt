@@ -19,6 +19,9 @@ interface PastureDao {
     @Query("SELECT pasture.id AS p_id, pasture.name AS p_name, pasture.description AS p_description, pasture.sizeAcres AS p_sizeAcres, SUM(CASE WHEN cow.pastureId = pasture.id THEN 1 ELSE 0 END) as cowCount FROM pastures pasture LEFT JOIN cows cow ON pasture.id = cow.pastureId GROUP BY pasture.id ORDER BY p_name ASC")
     fun getAllPasturesWithCowCounts(): Flow<List<PastureWithCowCount>>
 
+    @Query("SELECT COUNT(*) FROM cows WHERE pastureId IS NULL AND status = 'ACTIVE'")
+    fun getUnassignedCowCount(): Flow<Int>
+
 
     @Query("SELECT * FROM pastures WHERE id = :id")
     fun getPastureById(id: String): Flow<Pasture?>

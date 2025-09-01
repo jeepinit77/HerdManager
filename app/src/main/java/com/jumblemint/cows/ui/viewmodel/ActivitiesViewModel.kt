@@ -23,14 +23,25 @@ class ActivitiesViewModel(
     private fun loadActivities() {
         viewModelScope.launch {
             repository.getAllActivities().collect { activities ->
-                // Load cow names for each activity
-                val activitiesWithCows = activities.map { activity ->
-                    val cow = repository.getCowById(activity.cowId)
-                    ActivityWithCow(activity, cow?.name)
+                // Group activities by groupId (or fallback to old grouping for legacy data)
+                val groups = activities.groupBy { act ->
+                    act.groupId ?: "legacy_${act.date}_${act.activityType}_${act.notes}_${act.fromPastureId}_${act.toPastureId}_${act.details}"
+                }
+
+                val grouped = groups.map { (groupId, acts) ->
+                    // representative activity (first) for metadata/id when editing a single instance
+                    val sample = acts.first()
+                    val cowNames = acts.map { it.cowId }.map { id -> repository.getCowById(id)?.name }
+                    ActivityGroup(
+                        groupId = groupId,
+                        sample = sample,
+                        activities = acts,
+                        cowNames = cowNames
+                    )
                 }
                 
                 _uiState.value = _uiState.value.copy(
-                    activities = activitiesWithCows,
+                    activityGroups = grouped.sortedWith(compareByDescending<ActivityGroup> { it.sample.date }.thenByDescending { it.sample.id }),
                     isLoading = false
                 )
             }
@@ -38,23 +49,25 @@ class ActivitiesViewModel(
     }
 
     // Deletion + undo helpers
-    suspend fun deleteActivity(activity: Activity) {
-        repository.deleteActivity(activity)
+    suspend fun deleteActivities(activities: List<Activity>) {
+        activities.forEach { repository.deleteActivity(it) }
     }
 
-    suspend fun undoDeleteActivity(activity: Activity) {
-        repository.insertActivity(activity.copy(id = 0))
+    suspend fun undoDeleteActivities(activities: List<Activity>) {
+        activities.forEach { repository.insertActivity(it.copy(id = 0)) }
         loadActivities()
     }
 }
 
 data class ActivitiesUiState(
-    val activities: List<ActivityWithCow> = emptyList(),
+    val activityGroups: List<ActivityGroup> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null
 )
 
-data class ActivityWithCow(
-    val activity: Activity,
-    val cowName: String?
+data class ActivityGroup(
+    val groupId: String,
+    val sample: Activity,
+    val activities: List<Activity>,
+    val cowNames: List<String?>
 )

@@ -77,6 +77,21 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+    
+    fun updateNote(note: Note, newTitle: String, newText: String) {
+        viewModelScope.launch {
+            try {
+                val updatedNote = note.copy(
+                    title = newTitle,
+                    text = newText,
+                    timestamp = Date().time // Update timestamp when edited
+                )
+                noteDao.insert(updatedNote) // Using insert with REPLACE strategy
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
 }
 
 data class NotesUiState(

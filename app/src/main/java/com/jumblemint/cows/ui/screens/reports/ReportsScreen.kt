@@ -23,7 +23,8 @@ import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportsScreen(
-    onShowList: (type: String, value: String?) -> Unit
+    onShowList: (type: String, value: String?) -> Unit,
+    onNavigateToAddBirth: () -> Unit
 ) {
     val context = LocalContext.current
     val database = CattleDatabase.getDatabase(context)
@@ -31,7 +32,8 @@ fun ReportsScreen(
         database.cowDao(),
         database.pastureDao(),
         database.activityDao(),
-        database.settingsDao()
+        database.settingsDao(),
+        database.noteDao()
     )
     val viewModel: ReportsViewModel = viewModel(
         factory = ReportsViewModelFactory(repository)
@@ -42,41 +44,45 @@ fun ReportsScreen(
     val pastures by pasturesFlow.collectAsState(initial = emptyList())
     val pastureIdByName = remember(pastures) { pastures.associate { it.name to it.id } }
 
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        TopAppBar(
-            title = { Text("Dashboard") }
-        )
-        
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Dashboard") }
+            )
+        }
+    ) { paddingValues ->
         if (uiState.isLoading) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
         } else {
             LazyColumn(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Herd Overview
+                // Herd Overview (with Watching included)
                 item {
                     HerdOverviewCard(
                         totalCows = uiState.totalCows,
                         activeCows = uiState.activeCows,
-                        soldCows = uiState.soldCows,
-                        deceasedCows = uiState.deceasedCows,
-                        onClick = { type -> onShowList("status", type) }
+                        watchedCows = uiState.watchedCowsCount,
+                        onClick = { type -> onShowList("status", type) },
+                        onWatchingClick = { onShowList("watching", null) }
                     )
                 }
 
-                // Watching Card
+                // Tools Section
                 item {
-                    WatchingCard(
-                        watchedCowsCount = uiState.watchedCowsCount,
-                        onClick = { onShowList("watching", null) }
+                    ToolsCard(
+                        onAddCalfClick = onNavigateToAddBirth,
+                        onWorkingListClick = { onShowList("workingList", null) }
                     )
                 }
                 
@@ -128,49 +134,87 @@ fun ReportsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WatchingCard(watchedCowsCount: Int, onClick: () -> Unit) {
-    Card(onClick = onClick) {
+fun ToolsCard(
+    onAddCalfClick: () -> Unit,
+    onWorkingListClick: () -> Unit
+) {
+    Card {
         Column(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalAlignment = Alignment.CenterHorizontally // Center content
+            modifier = Modifier.padding(16.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(), // Allow row to fill width for centering text
-                horizontalArrangement = Arrangement.Center // Center icon and text within the row
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    Icons.Default.Visibility, // Watch icon
-                    contentDescription = "Watching",
+                    Icons.Default.Settings,
+                    contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Watching",
+                    text = "Tools",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
             }
+            
             Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = watchedCowsCount.toString(),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
+            
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                ToolItem(
+                    icon = Icons.Default.Add,
+                    label = "Add Calf",
+                    onClick = onAddCalfClick
+                )
+                ToolItem(
+                    icon = Icons.Default.List,
+                    label = "Working List",
+                    onClick = onWorkingListClick
+                )
+            }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ToolItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Card(onClick = onClick) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HerdOverviewCard(
     totalCows: Int,
     activeCows: Int,
-    soldCows: Int,
-    deceasedCows: Int,
-    onClick: (type: String?) -> Unit
+    watchedCows: Int,
+    onClick: (type: String?) -> Unit,
+    onWatchingClick: () -> Unit
 ) {
     Card {
         Column(
@@ -200,8 +244,7 @@ fun HerdOverviewCard(
             ) {
                 ClickableStatItem("Total", totalCows, MaterialTheme.colorScheme.primary) { onClick(null) }
                 ClickableStatItem("Active", activeCows, MaterialTheme.colorScheme.secondary) { onClick("ACTIVE") }
-                ClickableStatItem("Sold", soldCows, MaterialTheme.colorScheme.tertiary) { onClick("SOLD") }
-                ClickableStatItem("Deceased", deceasedCows, MaterialTheme.colorScheme.error) { onClick("DECEASED") }
+                ClickableStatItem("Watching", watchedCows, MaterialTheme.colorScheme.tertiary) { onWatchingClick() }
             }
         }
     }

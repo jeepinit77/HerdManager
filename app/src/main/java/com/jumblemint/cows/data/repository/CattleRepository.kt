@@ -47,6 +47,7 @@ class CattleRepository(
     suspend fun deletePasture(pasture: Pasture) = pastureDao.delete(pasture)
     // <<< ADDED METHOD
     fun getPasturesWithCowCount(): Flow<List<PastureWithCowCount>> = pastureDao.getAllPasturesWithCowCounts()
+    fun getUnassignedCowCount(): Flow<Int> = pastureDao.getUnassignedCowCount()
 
 
     // Activity operations
@@ -54,6 +55,8 @@ class CattleRepository(
     fun getActivitiesForCow(cowId: Long): Flow<List<Activity>> = activityDao.getActivitiesForCow(cowId)
     fun getActivitiesByType(activityType: ActivityType): Flow<List<Activity>> = activityDao.getActivitiesByType(activityType)
 
+    suspend fun getActivityById(id: Long): Activity? = activityDao.getActivityById(id)
+    suspend fun getActivitiesByGroupId(groupId: String): List<Activity> = activityDao.getActivitiesByGroupId(groupId)
     suspend fun insertActivity(activity: Activity): Long = activityDao.insertActivity(activity)
     suspend fun insertActivities(activities: List<Activity>) = activityDao.insertActivities(activities)
     suspend fun updateActivity(activity: Activity) = activityDao.updateActivity(activity)
@@ -78,7 +81,8 @@ class CattleRepository(
             date = LocalDate.now(),
             activityType = ActivityType.MOVED,
             fromPastureId = fromPastureId, // Correctly String?
-            toPastureId = toPastureId    // Correctly String?
+            toPastureId = toPastureId,    // Correctly String?
+            groupId = UUID.randomUUID().toString() // Individual activity gets its own group
         )
         insertActivity(moveActivity)
     }
@@ -94,7 +98,8 @@ class CattleRepository(
             cowId = cowId,
             date = LocalDate.now(),
             activityType = ActivityType.CASTRATED,
-            notes = notes
+            notes = notes,
+            groupId = UUID.randomUUID().toString() // Individual activity gets its own group
         )
         insertActivity(castrationActivity)
     }
@@ -132,6 +137,9 @@ class CattleRepository(
         notes: String? = null,
         toPastureId: String? = null
     ) {
+        // Generate a unique group ID for this bulk activity
+        val groupId = UUID.randomUUID().toString()
+        
         val activities = cowIds.map { cowId ->
             // For MOVED activities, we\'d need fromPastureId.
             // This might require fetching each cow if their fromPastureId is needed for the Activity record.
@@ -143,7 +151,8 @@ class CattleRepository(
                 date = date,
                 activityType = activityType,
                 notes = notes,
-                toPastureId = if (activityType == ActivityType.MOVED) toPastureId else null
+                toPastureId = if (activityType == ActivityType.MOVED) toPastureId else null,
+                groupId = groupId
             )
         }
         
@@ -168,6 +177,52 @@ class CattleRepository(
                 val cow = getCowById(cowId)
                 cow?.let {
                     updateCow(it.copy(status = newStatus, pastureId = null, updatedAt = LocalDate.now())) // Cows sold/deceased might be removed from pasture
+                }
+            }
+        }
+    }
+
+    // Helper method for editing activities with a specific groupId
+    suspend fun createBulkActivityWithGroupId(
+        cowIds: List<Long>,
+        activityType: ActivityType,
+        date: LocalDate = LocalDate.now(),
+        notes: String? = null,
+        toPastureId: String? = null,
+        groupId: String
+    ) {
+        val activities = cowIds.map { cowId ->
+            Activity(
+                cowId = cowId,
+                date = date,
+                activityType = activityType,
+                notes = notes,
+                toPastureId = if (activityType == ActivityType.MOVED) toPastureId else null,
+                groupId = groupId
+            )
+        }
+        
+        insertActivities(activities)
+        
+        if (activityType == ActivityType.MOVED) {
+            toPastureId?.let { pastureId ->
+                cowIds.forEach { cowId ->
+                    cowDao.updateCowPasture(cowId, pastureId)
+                }
+            }
+        } else if (activityType == ActivityType.CASTRATED) {
+            cowIds.forEach { cowId ->
+                val cow = getCowById(cowId)
+                if (cow?.classification == Classification.BULL) {
+                    cowDao.updateCowClassification(cowId, Classification.STEER.name)
+                }
+            }
+        } else if (activityType == ActivityType.SOLD || activityType == ActivityType.DECEASED) {
+            val newStatus = if (activityType == ActivityType.SOLD) Status.SOLD else Status.DECEASED
+            cowIds.forEach { cowId ->
+                val cow = getCowById(cowId)
+                cow?.let {
+                    updateCow(it.copy(status = newStatus, pastureId = null, updatedAt = LocalDate.now()))
                 }
             }
         }
@@ -203,7 +258,8 @@ class CattleRepository(
             activityType = ActivityType.WEANED,
             fromPastureId = fromPastureId,    // Correctly String?
             toPastureId = newPastureId,      // Correctly String?
-            notes = "Weaned from mother"
+            notes = "Weaned from mother",
+            groupId = UUID.randomUUID().toString() // Individual activity gets its own group
         )
         insertActivity(weaningActivity)
     }

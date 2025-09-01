@@ -40,10 +40,10 @@ fun CattleManagerApp() {
     val currentDestination = navBackStackEntry?.destination
     
     val bottomNavItems = listOf(
-        BottomNavItem(Screen.Dashboard, Icons.Default.Home, "Dashboard"),
-        BottomNavItem(Screen.Cows, Icons.Default.Pets, "Cows"),
-        BottomNavItem(Screen.Pastures, Icons.Default.Landscape, "Pastures"),
-        BottomNavItem(Screen.Activities, Icons.Default.Assignment, "Activities"),
+        BottomNavItem(Screen.Dashboard, Icons.Default.Home, "Home"),
+        BottomNavItem(Screen.Cows, Icons.Default.GroupWork, "Cows"),
+        BottomNavItem(Screen.Pastures, Icons.Default.Landscape, "Fields"),
+        BottomNavItem(Screen.Activities, Icons.Default.Assignment, "Activity"),
         BottomNavItem(Screen.Notes, Icons.Default.Note, "Notes"),
         BottomNavItem(Screen.Settings, Icons.Default.Settings, "Settings")
     )

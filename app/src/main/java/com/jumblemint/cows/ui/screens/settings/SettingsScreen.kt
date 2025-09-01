@@ -20,7 +20,9 @@ import com.jumblemint.cows.ui.viewmodel.SettingsViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen() {
+fun SettingsScreen(
+    onNavigateBack: (() -> Unit)? = null
+) {
     val context = LocalContext.current
     val database = CattleDatabase.getDatabase(context)
     val repository = CattleRepository(
@@ -42,7 +44,14 @@ fun SettingsScreen() {
         modifier = Modifier.fillMaxSize()
     ) {
         TopAppBar(
-            title = { Text("Settings") }
+            title = { Text("Settings") },
+            navigationIcon = {
+                onNavigateBack?.let { callback ->
+                    IconButton(onClick = callback) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                }
+            }
         )
         
         LazyColumn(
