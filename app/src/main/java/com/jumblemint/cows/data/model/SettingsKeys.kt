@@ -9,4 +9,7 @@ object SettingsKeys {
 
     // Choose the correct key you intend to use. I'm assuming it's the one with "_ID".
     const val DEFAULT_CALF_PASTURE_ID = "default_calf_pasture_id"
+    
+    // Sample data tracking
+    const val SAMPLE_DATA_INSTALLED = "sample_data_installed"
 }

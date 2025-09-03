@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.jumblemint.cows.data.model.Classification
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Status
+import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -24,28 +25,40 @@ class WorkingListViewModel(
         repository.getAllPastures(),
         _uiState
     ) { allCows, pastures, state ->
-        val activeCows = allCows.filter { it.status == Status.ACTIVE }
-        
         // Update available pastures
         val pastureNames = pastures.map { it.name } + "Unassigned"
         _uiState.value = state.copy(availablePastures = pastureNames)
         
-        // Apply filters
-        activeCows.filter { cow ->
-            val pastureMatch = state.selectedPasture?.let { selectedPasture ->
-                if (selectedPasture == "Unassigned") {
-                    cow.pastureId == null
-                } else {
-                    val pasture = pastures.find { it.name == selectedPasture }
-                    cow.pastureId == pasture?.id?.toString()
+        // Filter by status first (default to active only)
+        val statusFilteredCows = allCows.filter { cow ->
+            state.selectedStatuses.isEmpty() || state.selectedStatuses.contains(cow.status)
+        }
+        
+        // Apply other filters
+        statusFilteredCows.filter { cow ->
+            // Pasture filter
+            val pastureMatch = if (state.selectedPastures.isEmpty()) {
+                true
+            } else {
+                state.selectedPastures.any { selectedPasture ->
+                    if (selectedPasture == "Unassigned") {
+                        cow.pastureId == null
+                    } else {
+                        val pasture = pastures.find { it.name == selectedPasture }
+                        cow.pastureId == pasture?.id?.toString()
+                    }
                 }
-            } ?: true
+            }
             
-            val classificationMatch = state.selectedClassification?.let { selectedClassification ->
-                cow.classification == selectedClassification
-            } ?: true
+            // Classification filter
+            val classificationMatch = state.selectedClassifications.isEmpty() || 
+                                    state.selectedClassifications.contains(cow.classification)
             
-            pastureMatch && classificationMatch
+            // Gender filter
+            val genderMatch = state.selectedGenders.isEmpty() || 
+                            state.selectedGenders.contains(cow.gender)
+            
+            pastureMatch && classificationMatch && genderMatch
         }
     }.stateIn(
         scope = viewModelScope,
@@ -53,15 +66,59 @@ class WorkingListViewModel(
         initialValue = emptyList()
     )
     
-    fun updatePastureFilter(pasture: String?) {
-        _uiState.value = _uiState.value.copy(selectedPasture = pasture)
-        // Clear checked items when filter changes
+    fun toggleStatusFilter(status: Status) {
+        val currentStatuses = _uiState.value.selectedStatuses.toMutableSet()
+        if (currentStatuses.contains(status)) {
+            currentStatuses.remove(status)
+        } else {
+            currentStatuses.add(status)
+        }
+        // If no statuses selected, default back to active
+        val newStatuses = if (currentStatuses.isEmpty()) setOf(Status.ACTIVE) else currentStatuses
+        _uiState.value = _uiState.value.copy(selectedStatuses = newStatuses)
         _checkedItems.value = emptySet()
     }
     
-    fun updateClassificationFilter(classification: Classification?) {
-        _uiState.value = _uiState.value.copy(selectedClassification = classification)
-        // Clear checked items when filter changes
+    fun togglePastureFilter(pasture: String) {
+        val currentPastures = _uiState.value.selectedPastures.toMutableSet()
+        if (currentPastures.contains(pasture)) {
+            currentPastures.remove(pasture)
+        } else {
+            currentPastures.add(pasture)
+        }
+        _uiState.value = _uiState.value.copy(selectedPastures = currentPastures)
+        _checkedItems.value = emptySet()
+    }
+    
+    fun toggleClassificationFilter(classification: Classification) {
+        val currentClassifications = _uiState.value.selectedClassifications.toMutableSet()
+        if (currentClassifications.contains(classification)) {
+            currentClassifications.remove(classification)
+        } else {
+            currentClassifications.add(classification)
+        }
+        _uiState.value = _uiState.value.copy(selectedClassifications = currentClassifications)
+        _checkedItems.value = emptySet()
+    }
+    
+    fun toggleGenderFilter(gender: Gender) {
+        val currentGenders = _uiState.value.selectedGenders.toMutableSet()
+        if (currentGenders.contains(gender)) {
+            currentGenders.remove(gender)
+        } else {
+            currentGenders.add(gender)
+        }
+        _uiState.value = _uiState.value.copy(selectedGenders = currentGenders)
+        _checkedItems.value = emptySet()
+    }
+    
+    fun clearAllFilters() {
+        _uiState.value = _uiState.value.copy(
+            selectedStatuses = setOf(Status.ACTIVE), // Reset to active only
+            selectedPastures = emptySet(),
+            selectedClassifications = emptySet(),
+            selectedGenders = emptySet()
+        )
         _checkedItems.value = emptySet()
     }
     
@@ -79,8 +136,10 @@ class WorkingListViewModel(
 }
 
 data class WorkingListUiState(
-    val selectedPasture: String? = null,
-    val selectedClassification: Classification? = null,
+    val selectedStatuses: Set<Status> = setOf(Status.ACTIVE), // Default to active only
+    val selectedPastures: Set<String> = emptySet(),
+    val selectedClassifications: Set<Classification> = emptySet(),
+    val selectedGenders: Set<Gender> = emptySet(),
     val availablePastures: List<String> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null

@@ -3,10 +3,13 @@ package com.jumblemint.cows.ui.screens.activities
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,10 +21,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.tooling.preview.Preview
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.Activity
+import com.jumblemint.cows.data.model.ActivityType
+import com.jumblemint.cows.data.model.Status
+import com.jumblemint.cows.data.model.Classification
+import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModel
 import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModelFactory
-// import com.jumblemint.cows.ui.components.SwipeToDeleteContainer // Import removed
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -46,6 +52,7 @@ fun ActivitiesScreen(
     )
 
     val uiState by viewModel.uiState.collectAsState()
+    var showFilters by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -58,7 +65,23 @@ fun ActivitiesScreen(
             }
         },
         topBar = {
-            TopAppBar(title = { Text("Activities") })
+            TopAppBar(
+                title = { Text("Activities") },
+                actions = {
+                    FilterChip(
+                        onClick = { showFilters = !showFilters },
+                        label = { Text("Filters") },
+                        selected = showFilters || hasActiveFilters(uiState),
+                        leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") }
+                    )
+                    
+                    if (hasActiveFilters(uiState)) {
+                        IconButton(onClick = { viewModel.clearAllFilters() }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear Filters")
+                        }
+                    }
+                }
+            )
         }
     ) { paddingValues ->
         if (uiState.isLoading) {
@@ -90,6 +113,73 @@ fun ActivitiesScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Expandable Filter Section
+                if (showFilters) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text(
+                                    text = "Filters",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                
+                                // Status Filters
+                                FilterSection(
+                                    title = "Cattle Status",
+                                    items = Status.values().toList(),
+                                    selectedItems = uiState.selectedStatuses,
+                                    onToggle = { viewModel.toggleStatusFilter(it) },
+                                    itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                                )
+                                
+                                // Classification Filters
+                                FilterSection(
+                                    title = "Animal Type",
+                                    items = Classification.values().toList(),
+                                    selectedItems = uiState.selectedClassifications,
+                                    onToggle = { viewModel.toggleClassificationFilter(it) },
+                                    itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                                )
+                                
+                                // Gender Filters
+                                FilterSection(
+                                    title = "Gender",
+                                    items = Gender.values().toList(),
+                                    selectedItems = uiState.selectedGenders,
+                                    onToggle = { viewModel.toggleGenderFilter(it) },
+                                    itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                                )
+                                
+                                // Pasture Filters
+                                if (uiState.availablePastures.isNotEmpty()) {
+                                    FilterSection(
+                                        title = "Pasture",
+                                        items = uiState.availablePastures,
+                                        selectedItems = uiState.selectedPastures,
+                                        onToggle = { viewModel.togglePastureFilter(it) },
+                                        itemLabel = { it }
+                                    )
+                                }
+                                
+                                // Activity Type Filters
+                                FilterSection(
+                                    title = "Activity Type",
+                                    items = ActivityType.values().toList(),
+                                    selectedItems = uiState.selectedActivityTypes,
+                                    onToggle = { viewModel.toggleActivityTypeFilter(it) },
+                                    itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                                )
+                            }
+                        }
+                    }
+                }
+                
                 items(uiState.activityGroups, key = { it.sample.id }) { group ->
                     ActivityCard(
                         activity = group.sample,
@@ -183,6 +273,45 @@ fun ActivityCard(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// Helper function to check if any filters are active (beyond the default active status)
+private fun hasActiveFilters(uiState: com.jumblemint.cows.ui.viewmodel.ActivitiesUiState): Boolean {
+    return uiState.selectedStatuses != setOf(Status.ACTIVE) ||
+           uiState.selectedClassifications.isNotEmpty() ||
+           uiState.selectedGenders.isNotEmpty() ||
+           uiState.selectedPastures.isNotEmpty() ||
+           uiState.selectedActivityTypes.isNotEmpty()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> FilterSection(
+    title: String,
+    items: List<T>,
+    selectedItems: Set<T>,
+    onToggle: (T) -> Unit,
+    itemLabel: (T) -> String
+) {
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(items) { item ->
+                FilterChip(
+                    onClick = { onToggle(item) },
+                    label = { Text(itemLabel(item)) },
+                    selected = selectedItems.contains(item)
+                )
             }
         }
     }

@@ -39,6 +39,8 @@ fun SettingsScreen(
     var showTagColorsDialog by remember { mutableStateOf(false) }
     var showActivityTypesDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
+    var showSampleDataDialog by remember { mutableStateOf(false) }
+    var showDeleteDataDialog by remember { mutableStateOf(false) }
     
     Column(
         modifier = Modifier.fillMaxSize()
@@ -123,6 +125,24 @@ fun SettingsScreen(
                 )
             }
             
+            item {
+                SettingsCard(
+                    title = if (uiState.isSampleDataInstalled) "Remove Sample Data" else "Add Sample Data",
+                    subtitle = if (uiState.isSampleDataInstalled) "Delete sample cattle and pastures" else "Add sample cattle and pastures for testing",
+                    icon = if (uiState.isSampleDataInstalled) Icons.Default.DeleteSweep else Icons.Default.Add,
+                    onClick = { showSampleDataDialog = true }
+                )
+            }
+            
+            item {
+                SettingsCard(
+                    title = "Delete All Data",
+                    subtitle = "Remove all cattle, pastures, and activities",
+                    icon = Icons.Default.Warning,
+                    onClick = { showDeleteDataDialog = true }
+                )
+            }
+            
             // App Information Section
             item {
                 Text(
@@ -184,6 +204,50 @@ fun SettingsScreen(
                 showExportDialog = false
             }
         )
+    }
+    
+    if (showSampleDataDialog) {
+        SampleDataDialog(
+            isSampleDataInstalled = uiState.isSampleDataInstalled,
+            onDismiss = { showSampleDataDialog = false },
+            onInstall = {
+                viewModel.installSampleData()
+                showSampleDataDialog = false
+            },
+            onRemove = {
+                viewModel.deleteSampleData()
+                showSampleDataDialog = false
+            }
+        )
+    }
+    
+    if (showDeleteDataDialog) {
+        DeleteAllDataDialog(
+            onDismiss = { showDeleteDataDialog = false },
+            onConfirm = {
+                viewModel.deleteAllData()
+                showDeleteDataDialog = false
+            }
+        )
+    }
+    
+    // Show messages and errors
+    uiState.message?.let { message ->
+        LaunchedEffect(message) {
+            // You could show a snackbar here if you have access to it
+            // For now, we'll just clear the message after a delay
+            kotlinx.coroutines.delay(3000)
+            viewModel.clearMessage()
+        }
+    }
+    
+    uiState.error?.let { error ->
+        LaunchedEffect(error) {
+            // You could show an error snackbar here if you have access to it
+            // For now, we'll just clear the error after a delay
+            kotlinx.coroutines.delay(5000)
+            viewModel.clearError()
+        }
     }
 }
 
@@ -357,6 +421,134 @@ fun ExportDataDialog(
             }
         },
         confirmButton = { },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun SampleDataDialog(
+    isSampleDataInstalled: Boolean,
+    onDismiss: () -> Unit,
+    onInstall: () -> Unit,
+    onRemove: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(if (isSampleDataInstalled) "Remove Sample Data" else "Add Sample Data") 
+        },
+        text = {
+            Column {
+                Text(
+                    text = if (isSampleDataInstalled) {
+                        "This will remove all sample cattle, pastures, and activities from your database. This action cannot be undone."
+                    } else {
+                        "This will add sample cattle, pastures, and activities to help you explore the app's features. You can remove this data later."
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                
+                if (!isSampleDataInstalled) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Sample data includes:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "• 10 sample cattle with various ages and genders\n" +
+                               "• 3 pastures with different acreages\n" +
+                               "• Sample activities like births, moves, and sales",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = if (isSampleDataInstalled) onRemove else onInstall,
+                colors = if (isSampleDataInstalled) {
+                    ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                } else {
+                    ButtonDefaults.buttonColors()
+                }
+            ) {
+                Text(if (isSampleDataInstalled) "Remove" else "Install")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
+}
+
+@Composable
+fun DeleteAllDataDialog(
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Text(
+                "Delete All Data",
+                color = MaterialTheme.colorScheme.error
+            ) 
+        },
+        text = {
+            Column {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .align(Alignment.CenterHorizontally)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "This will permanently delete ALL data from your app:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "• All cattle records\n" +
+                           "• All pasture information\n" +
+                           "• All activity history\n" +
+                           "• All custom settings",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "This action cannot be undone!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
+            ) {
+                Text("Delete All")
+            }
+        },
         dismissButton = {
             TextButton(onClick = onDismiss) {
                 Text("Cancel")

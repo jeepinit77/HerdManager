@@ -36,12 +36,13 @@ class SettingsViewModel(
                     "MOVED", "WEANED", "SOLD", "DECEASED", "WORKED", "CASTRATED", "BIRTH", "OTHER"
                 )
                 
-                // REMOVED: val calfPasture = repository.getCalfPasture()
+                // Check if sample data is installed
+                val isSampleDataInstalled = repository.isSampleDataInstalled()
                 
                 _uiState.value = _uiState.value.copy(
                     tagColors = tagColors,
                     activityTypes = activityTypes,
-                    // REMOVED: defaultCalfPasture = calfPasture?.name,
+                    isSampleDataInstalled = isSampleDataInstalled,
                     isLoading = false
                 )
             } catch (e: Exception) {
@@ -111,12 +112,63 @@ class SettingsViewModel(
             message = "JSON export functionality coming soon"
         )
     }
+    
+    fun installSampleData() {
+        viewModelScope.launch {
+            try {
+                repository.installSampleData()
+                _uiState.value = _uiState.value.copy(
+                    isSampleDataInstalled = true,
+                    message = "Sample data installed successfully"
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+    
+    fun deleteSampleData() {
+        viewModelScope.launch {
+            try {
+                repository.deleteSampleData()
+                _uiState.value = _uiState.value.copy(
+                    isSampleDataInstalled = false,
+                    message = "Sample data deleted successfully"
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+    
+    fun deleteAllData() {
+        viewModelScope.launch {
+            try {
+                repository.deleteAllData()
+                _uiState.value = _uiState.value.copy(
+                    isSampleDataInstalled = false,
+                    message = "All data deleted successfully"
+                )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+    
+    fun clearMessage() {
+        _uiState.value = _uiState.value.copy(message = null)
+    }
+    
+    fun clearError() {
+        _uiState.value = _uiState.value.copy(error = null)
+    }
 }
 
 data class SettingsUiState(
     val tagColors: List<String> = emptyList(),
     val activityTypes: List<String> = emptyList(),
     val defaultCalfPasture: String? = null, // This will remain null by default
+    val isSampleDataInstalled: Boolean = false,
     val isLoading: Boolean = true,
     val error: String? = null,
     val message: String? = null

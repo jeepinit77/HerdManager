@@ -13,6 +13,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.model.Pasture
@@ -94,7 +95,7 @@ fun PasturesScreen(
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                                 Text(
-                                    text = "Cows: ${uiState.unassignedCowCount}",
+                                    text = "Total Head: ${uiState.unassignedCowCount}",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
@@ -104,14 +105,14 @@ fun PasturesScreen(
                 }
             }
             
-            items(uiState.pastures, key = { it.pasture.id }) { pastureWithCowCount ->
+            items(uiState.pastures, key = { it.pastureWithCount.pasture.id }) { pastureWithDetails ->
                 PastureCard( // PASTURE_CARD_NOV21_EDIT_BUTTON_ATTEMPT
-                    pastureWithCowCount = pastureWithCowCount,
+                    pastureWithDetails = pastureWithDetails,
                     onClick = {
-                        onNavigateToPastureDetails(pastureWithCowCount.pasture.id)
+                        onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
                     },
                     onEdit = {
-                        onNavigateToPastureDetails(pastureWithCowCount.pasture.id)
+                        onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
                     },
                     onDelete = { pasture ->
                         coroutineScope.launch {
@@ -145,7 +146,7 @@ fun PasturesScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PastureCard(
-    pastureWithCowCount: com.jumblemint.cows.ui.viewmodel.PastureWithCowCount,
+    pastureWithDetails: com.jumblemint.cows.ui.viewmodel.PastureWithDetails,
     onClick: () -> Unit,
     onEdit: () -> Unit,
     onDelete: (Pasture) -> Unit
@@ -161,9 +162,27 @@ fun PastureCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = pastureWithCowCount.pasture.name, style = MaterialTheme.typography.titleMedium)
+                Text(text = pastureWithDetails.pastureWithCount.pasture.name, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(text = "Cows: ${pastureWithCowCount.cowCount}", style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    text = "Total Head: ${pastureWithDetails.pastureWithCount.cowCount}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                
+                // Show classification breakdown if there are cows
+                if (pastureWithDetails.classificationBreakdown.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    val breakdownText = pastureWithDetails.classificationBreakdown
+                        .entries
+                        .sortedByDescending { it.value }
+                        .joinToString(" • ") { "${it.key.name.lowercase().replaceFirstChar { char -> char.uppercase() }}: ${it.value}" }
+                    Text(
+                        text = breakdownText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             Row { 
                 IconButton(
@@ -175,7 +194,7 @@ fun PastureCard(
                     )
                 }
                 IconButton(
-                    onClick = { onDelete(pastureWithCowCount.pasture) }
+                    onClick = { onDelete(pastureWithDetails.pastureWithCount.pasture) }
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Delete,

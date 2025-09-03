@@ -1,9 +1,11 @@
 package com.jumblemint.cows.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -37,18 +39,20 @@ fun CowCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onToggleWatch: (() -> Unit)? = null,
+    onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null
 ) {
-    // Gender-based background colors
+    // Gender-based background colors - more distinct and noticeable, theme-aware
+    val isDarkTheme = isSystemInDarkTheme()
     val cardColors = when (cow.gender) {
         Gender.FEMALE -> CardDefaults.cardColors(
-            containerColor = Color(0xFFFCE4EC) // Light pink
+            containerColor = if (isDarkTheme) Color(0xFF8E2A5B) else Color(0xFFFFB3D9) // Dark pink / Bright pink
         )
         Gender.MALE -> CardDefaults.cardColors(
-            containerColor = Color(0xFFE3F2FD) // Light blue
+            containerColor = if (isDarkTheme) Color(0xFF2A5B8E) else Color(0xFFB3D9FF) // Dark blue / Bright blue
         )
         Gender.TBD -> CardDefaults.cardColors(
-            containerColor = Color(0xFFF5F5F5) // Light gray
+            containerColor = if (isDarkTheme) Color(0xFF4A4A4A) else Color(0xFFE0E0E0) // Dark gray / Medium gray
         )
     }
     
@@ -92,10 +96,10 @@ fun CowCard(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
-                        // Watch toggle + Delete button on the right (removed status badge)
+                        // Watch toggle + Edit + Delete buttons on the right
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             onToggleWatch?.let {
                                 IconButton(onClick = it) {
@@ -107,8 +111,16 @@ fun CowCard(
                                     )
                                 }
                             }
-                            if (onDelete != null) {
-                                IconButton(onClick = onDelete) {
+                            onEdit?.let {
+                                IconButton(onClick = it) {
+                                    Icon(
+                                        imageVector = androidx.compose.material.icons.Icons.Filled.Edit,
+                                        contentDescription = "Edit Cow"
+                                    )
+                                }
+                            }
+                            onDelete?.let {
+                                IconButton(onClick = it) {
                                     Icon(
                                         imageVector = androidx.compose.material.icons.Icons.Filled.Delete,
                                         contentDescription = "Delete Cow",
@@ -251,14 +263,14 @@ fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = M
                 fontWeight = FontWeight.ExtraBold,
                 maxLines = 1,
                 softWrap = false,
-                color = if (bgColor.luminance() < 0.5f) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+                color = if (bgColor.luminance() < 0.5f) Color.White else Color.Black
             )
             tagColor?.let { name ->
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = name.lowercase().replaceFirstChar { it.titlecase() },
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (bgColor.luminance() < 0.5f) MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (bgColor.luminance() < 0.5f) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.7f),
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                 )
             }

@@ -38,4 +38,7 @@ interface ActivityDao {
     
     @Query("SELECT * FROM activities WHERE groupId = :groupId ORDER BY date DESC, id DESC")
     suspend fun getActivitiesByGroupId(groupId: String): List<Activity>
+    
+    @Query("DELETE FROM activities")
+    suspend fun deleteAllActivities()
 }

@@ -1,24 +1,30 @@
 package com.jumblemint.cows.ui.screens.cows
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.database.CattleDatabase
-// import com.jumblemint.cows.data.model.Cow // Not needed if CowCard takes care of its own Cow import
 import com.jumblemint.cows.data.model.Status
+import com.jumblemint.cows.data.model.Classification
+import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.CowCard
-// import com.jumblemint.cows.ui.components.SwipeToDeleteContainer // Import removed
 import com.jumblemint.cows.ui.viewmodel.CowsViewModel
 import com.jumblemint.cows.ui.viewmodel.CowsViewModelFactory
 import kotlinx.coroutines.launch
@@ -29,6 +35,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 fun CowsScreen(
     pastureId: Long? = null,
     onCowClick: (Long) -> Unit,
+    onCowEdit: (Long) -> Unit,
     onAddCowClick: () -> Unit
 ) {
     val context = LocalContext.current
@@ -44,15 +51,7 @@ fun CowsScreen(
     )
 
     val uiState by viewModel.uiState.collectAsState()
-    var searchQuery by remember { mutableStateOf("") }
-    var showStatusFilter by remember { mutableStateOf(false) }
-
-    LaunchedEffect(pastureId) {
-        if (pastureId != null) {
-            // MODIFIED: Convert Long? to String?
-            viewModel.filterCowsByPasture(pastureId.toString())
-        }
-    }
+    var showFilters by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() } // Used by CowCard's onDelete
     val scope = rememberCoroutineScope() // Used by CowCard's onDelete
@@ -73,86 +72,119 @@ fun CowsScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            if (uiState.selectedPastureId != null) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Filtered by pasture",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.weight(1f)
-                        )
-                        TextButton(
-                            onClick = { viewModel.filterCowsByPasture(null) }
-                        ) {
-                            Text("Clear Filter")
-                        }
-                    }
-                }
-            }
-
+            // Search and Filter Controls
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = {
-                        searchQuery = it
-                        viewModel.searchCows(it)
-                    },
+                    value = uiState.searchQuery,
+                    onValueChange = { viewModel.updateSearchQuery(it) },
                     label = { Text("Search cows...") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
                     modifier = Modifier.weight(1f)
                 )
 
                 FilterChip(
-                    onClick = { showStatusFilter = !showStatusFilter },
-                    label = { Text("Filter") },
-                    selected = uiState.selectedStatus != null
+                    onClick = { showFilters = !showFilters },
+                    label = { 
+                        val activeFilterCount = getActiveFilterCount(uiState)
+                        if (activeFilterCount > 0) {
+                            Text("($activeFilterCount)")
+                        } else {
+                            Text("")
+                        }
+                    },
+                    selected = showFilters || hasActiveFilters(uiState),
+                    leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") }
                 )
+                
+                if (hasActiveFilters(uiState)) {
+                    IconButton(onClick = { viewModel.clearAllFilters() }) {
+                        Icon(Icons.Default.Clear, contentDescription = "Clear Filters")
+                    }
+                }
             }
 
-            if (showStatusFilter) {
+            // Expandable Filter Section
+            if (showFilters) {
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp)
+                        .padding(vertical = 8.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text("Filter by Status", style = MaterialTheme.typography.titleSmall)
+                        // Visual indicator for dismissible panel
+                        Box(
+                            modifier = Modifier
+                                .width(40.dp)
+                                .height(4.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                    MaterialTheme.shapes.small
+                                )
+                                .align(Alignment.CenterHorizontally)
+                        )
+                        
                         Spacer(modifier = Modifier.height(8.dp))
-
+                        
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            FilterChip(
-                                onClick = { viewModel.filterCowsByStatus(Status.ACTIVE) },
-                                label = { Text("Active") },
-                                selected = uiState.selectedStatus == Status.ACTIVE
+                            Text(
+                                text = "Filters",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
                             )
-                            FilterChip(
-                                onClick = { viewModel.filterCowsByStatus(Status.SOLD) },
-                                label = { Text("Sold") },
-                                selected = uiState.selectedStatus == Status.SOLD
-                            )
-                            FilterChip(
-                                onClick = { viewModel.filterCowsByStatus(Status.DECEASED) },
-                                label = { Text("Deceased") },
-                                selected = uiState.selectedStatus == Status.DECEASED
+                            TextButton(
+                                onClick = { showFilters = false }
+                            ) {
+                                Text("Done")
+                            }
+                        }
+                        
+                        // Status Filters
+                        FilterSection(
+                            title = "Status",
+                            items = Status.values().toList(),
+                            selectedItems = uiState.selectedStatuses,
+                            onToggle = { viewModel.toggleStatusFilter(it) },
+                            itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                        )
+                        
+                        // Classification Filters
+                        FilterSection(
+                            title = "Animal Type",
+                            items = Classification.values().toList(),
+                            selectedItems = uiState.selectedClassifications,
+                            onToggle = { viewModel.toggleClassificationFilter(it) },
+                            itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                        )
+                        
+                        // Gender Filters
+                        FilterSection(
+                            title = "Gender",
+                            items = Gender.values().toList(),
+                            selectedItems = uiState.selectedGenders,
+                            onToggle = { viewModel.toggleGenderFilter(it) },
+                            itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                        )
+                        
+                        // Pasture Filters
+                        if (uiState.availablePastures.isNotEmpty()) {
+                            FilterSection(
+                                title = "Pasture",
+                                items = uiState.availablePastures,
+                                selectedItems = uiState.selectedPastures,
+                                onToggle = { viewModel.togglePastureFilter(it) },
+                                itemLabel = { it }
                             )
                         }
                     }
@@ -198,6 +230,7 @@ fun CowsScreen(
                             cow = cow,
                             onClick = { onCowClick(cow.id) },
                             onToggleWatch = { viewModel.toggleWatch(cow) },
+                            onEdit = { onCowEdit(cow.id) },
                             onDelete = {
                                 // This onDelete is part of CowCard itself and uses the
                                 // snackbarHostState and scope defined in CowsScreen
@@ -216,6 +249,78 @@ fun CowsScreen(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+
+// Helper function to check if any filters are active (excluding default ACTIVE status)
+private fun hasActiveFilters(uiState: com.jumblemint.cows.ui.viewmodel.CowsUiState): Boolean {
+    val hasNonDefaultStatusFilters = uiState.selectedStatuses != setOf(Status.ACTIVE)
+    return hasNonDefaultStatusFilters ||
+           uiState.selectedClassifications.isNotEmpty() ||
+           uiState.selectedGenders.isNotEmpty() ||
+           uiState.selectedPastures.isNotEmpty() ||
+           uiState.searchQuery.isNotBlank()
+}
+
+// Helper function to count active filters (excluding default ACTIVE status)
+private fun getActiveFilterCount(uiState: com.jumblemint.cows.ui.viewmodel.CowsUiState): Int {
+    var count = 0
+    // Only count status filters if they're different from the default ACTIVE
+    if (uiState.selectedStatuses != setOf(Status.ACTIVE)) count++
+    if (uiState.selectedClassifications.isNotEmpty()) count++
+    if (uiState.selectedGenders.isNotEmpty()) count++
+    if (uiState.selectedPastures.isNotEmpty()) count++
+    if (uiState.searchQuery.isNotBlank()) count++
+    return count
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun <T> FilterSection(
+    title: String,
+    items: List<T>,
+    selectedItems: Set<T>,
+    onToggle: (T) -> Unit,
+    itemLabel: (T) -> String
+) {
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(items) { item ->
+                val isSelected = selectedItems.contains(item)
+                FilterChip(
+                    onClick = { onToggle(item) },
+                    label = { 
+                        Text(
+                            text = itemLabel(item),
+                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
+                        ) 
+                    },
+                    selected = isSelected,
+                    leadingIcon = if (isSelected) {
+                        { 
+                            Icon(
+                                Icons.Default.Check, 
+                                contentDescription = "Selected", 
+                                modifier = Modifier.size(18.dp)
+                            ) 
+                        }
+                    } else null,
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                )
             }
         }
     }

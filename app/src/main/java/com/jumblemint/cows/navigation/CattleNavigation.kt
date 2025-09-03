@@ -16,16 +16,20 @@ import com.jumblemint.cows.ui.screens.activities.ActivitiesScreen
 import com.jumblemint.cows.ui.screens.activities.AddActivityScreen
 import com.jumblemint.cows.ui.screens.activities.AddBirthScreen // Import AddBirthScreen
 import com.jumblemint.cows.ui.screens.cows.CowDetailScreen
+import com.jumblemint.cows.ui.screens.cows.CowInfoScreen
 import com.jumblemint.cows.ui.screens.cows.CowListScreen
 import com.jumblemint.cows.ui.screens.cows.CowsScreen
 import com.jumblemint.cows.ui.screens.notes.NotesScreen
 import com.jumblemint.cows.ui.screens.pastures.AddPastureScreen
 import com.jumblemint.cows.ui.screens.pastures.PasturesScreen
+import com.jumblemint.cows.ui.screens.pastures.PastureDetailScreen
 import com.jumblemint.cows.ui.screens.reports.ReportsScreen
 import com.jumblemint.cows.ui.screens.settings.SettingsScreen
 import com.jumblemint.cows.ui.screens.workinglist.WorkingListScreen
 import com.jumblemint.cows.ui.viewmodel.PasturesViewModel
 import com.jumblemint.cows.ui.viewmodel.PasturesViewModelFactory
+import com.jumblemint.cows.ui.viewmodel.PastureDetailViewModel
+import com.jumblemint.cows.ui.viewmodel.PastureDetailViewModelFactory
 
 @Composable
 fun CattleNavigation(
@@ -42,6 +46,9 @@ fun CattleNavigation(
             CowsScreen(
                 pastureId = pastureId,
                 onCowClick = { cowId ->
+                    navController.navigate("${Screen.CowInfo.route}/$cowId")
+                },
+                onCowEdit = { cowId ->
                     navController.navigate("${Screen.CowDetail.route}/$cowId")
                 },
                 onAddCowClick = {
@@ -54,11 +61,23 @@ fun CattleNavigation(
             CowsScreen(
                 pastureId = null, 
                 onCowClick = { cowId ->
+                    navController.navigate("${Screen.CowInfo.route}/$cowId")
+                },
+                onCowEdit = { cowId ->
                     navController.navigate("${Screen.CowDetail.route}/$cowId")
                 },
                 onAddCowClick = {
                     navController.navigate("${Screen.CowDetail.route}/0") 
                 }
+            )
+        }
+
+        composable("${Screen.CowInfo.route}/{cowId}") { backStackEntry ->
+            val cowId = backStackEntry.arguments?.getString("cowId")?.toLongOrNull() ?: 0L
+            CowInfoScreen(
+                cowId = cowId,
+                onNavigateBack = { navController.popBackStack() },
+                onEditCow = { navController.navigate("${Screen.CowDetail.route}/$cowId") }
             )
         }
 
@@ -137,7 +156,7 @@ fun CattleNavigation(
             CowListScreen(
                 type = type,
                 value = value,
-                onCowClick = { cowId: Long -> navController.navigate("${Screen.CowDetail.route}/$cowId") },
+                onCowClick = { cowId: Long -> navController.navigate("${Screen.CowInfo.route}/$cowId") },
                 onBack = { navController.popBackStack() }
             )
         }
@@ -176,7 +195,20 @@ fun CattleNavigation(
                     onCancel = { navController.popBackStack() }
                 )
             } else {
-                Text("Placeholder for PastureDetailScreen: pastureId = $pastureIdArg. Edit mode TBD.")
+                PastureDetailScreen(
+                    pastureId = pastureIdArg,
+                    onNavigateBack = { navController.popBackStack() },
+                    onCowClick = { cowId ->
+                        navController.navigate("${Screen.CowInfo.route}/$cowId")
+                    },
+                    onCowEdit = { cowId ->
+                        navController.navigate("${Screen.CowDetail.route}/$cowId")
+                    },
+                    onEditPasture = {
+                        // TODO: Navigate to edit pasture screen when implemented
+                        // For now, this will be a no-op
+                    }
+                )
             }
         }
 
@@ -194,6 +226,7 @@ sealed class Screen(val route: String, val title: String) {
     object Dashboard : Screen("dashboard", "Dashboard")
     object CowList : Screen("cow_list", "Cows")
     object Cows : Screen("cows", "Cows")
+    object CowInfo : Screen("cow_info", "Cow Info")
     object CowDetail : Screen("cow_detail", "Cow Details")
     object Pastures : Screen("pastures", "Pastures")
     object PastureDetail : Screen("pasture_detail", "Pasture Details") 

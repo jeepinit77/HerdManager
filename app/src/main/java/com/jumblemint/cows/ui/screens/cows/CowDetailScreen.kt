@@ -4,10 +4,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-//import androidx.compose.material.icons.automirrored.filled.ArrowBack // Updated import
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Visibility // New import
-import androidx.compose.material.icons.filled.VisibilityOff // New import
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,7 +58,7 @@ fun CowDetailScreen(
             title = { Text(if (cowId == 0L) "Add Cow" else "Edit Cow") },
             navigationIcon = {
                 IconButton(onClick = onNavigateBack) {
-//                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") // Updated icon
+                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
                 }
             },
             actions = {
@@ -68,8 +68,9 @@ fun CowDetailScreen(
                         onCheckedChange = { viewModel.updateIsWatched(it) }
                     ) {
                         Icon(
-                            if (uiState.isWatched) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                            contentDescription = if (uiState.isWatched) "Stop Watching" else "Watch"
+                            if (uiState.isWatched) Icons.Filled.Star else Icons.Filled.StarBorder,
+                            contentDescription = if (uiState.isWatched) "Stop Watching" else "Watch",
+                            tint = if (uiState.isWatched) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

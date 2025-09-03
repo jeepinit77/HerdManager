@@ -13,7 +13,7 @@ import kotlinx.coroutines.launch
 // Removed the duplicate PastureWithCowCount data class definition from here
 
 data class PasturesUiState(
-    val pastures: List<PastureWithCowCount> = emptyList(), // This will now refer to the one in PastureWithCowCount.kt
+    val pastures: List<PastureWithDetails> = emptyList(), // Use PastureWithDetails for UI
     val unassignedCowCount: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null
@@ -32,19 +32,30 @@ class PasturesViewModel(private val cattleRepository: CattleRepository) : ViewMo
 
     private fun loadPastures() {
         viewModelScope.launch {
-            cattleRepository.getPasturesWithCowCount().collect { pastureData: List<PastureWithCowCount> ->
-                _uiState.update { currentState ->
-                    currentState.copy(pastures = pastureData, isLoading = false)
+            combine(
+                cattleRepository.getPasturesWithCowCount(),
+                cattleRepository.getCowsByStatus(com.jumblemint.cows.data.model.Status.ACTIVE),
+                cattleRepository.getUnassignedCowCount()
+            ) { pasturesWithCounts: List<PastureWithCowCount>, activeCows: List<com.jumblemint.cows.data.model.Cow>, unassignedCount: Int ->
+                val pasturesWithDetails = pasturesWithCounts.map { pastureWithCount ->
+                    val cowsInPasture = activeCows.filter { it.pastureId == pastureWithCount.pasture.id }
+                    val classificationBreakdown = cowsInPasture.groupBy { it.classification }
+                        .mapValues { it.value.size }
+                    
+                    PastureWithDetails(
+                        pastureWithCount = pastureWithCount,
+                        classificationBreakdown = classificationBreakdown
+                    )
                 }
-            }
-        }
-        
-        viewModelScope.launch {
-            cattleRepository.getUnassignedCowCount().collect { unassignedCount ->
+                
                 _uiState.update { currentState ->
-                    currentState.copy(unassignedCowCount = unassignedCount)
+                    currentState.copy(
+                        pastures = pasturesWithDetails,
+                        unassignedCowCount = unassignedCount,
+                        isLoading = false
+                    )
                 }
-            }
+            }.collect { }
         }
     }
 

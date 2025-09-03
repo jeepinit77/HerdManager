@@ -79,10 +79,18 @@ fun CowListScreen(
                 female.filter { it.id !in mothers }
             }
             "calved" -> {
-                val nineMonthsAgo = LocalDate.now().minusMonths(9)
-                val calvesInPast9 = cows.filter { it.classification == Classification.CALF && it.birthDate?.isAfter(nineMonthsAgo) == true && it.motherId != null }
-                val mothers = calvesInPast9.mapNotNull { it.motherId }.toSet()
-                active.filter { it.id in mothers }
+                // Show active mothers who have active calves (matching dashboard logic)
+                val activeCalves = cows.filter { cow ->
+                    cow.classification == Classification.CALF &&
+                    cow.status == Status.ACTIVE &&
+                    cow.motherId != null
+                }
+                val mothersWithActiveCalves = activeCalves.mapNotNull { it.motherId }.toSet()
+                active.filter { 
+                    it.gender == Gender.FEMALE &&
+                    it.classification in listOf(Classification.COW, Classification.HEIFER) &&
+                    it.id in mothersWithActiveCalves 
+                }
             }
             "age" -> filterByAgeGroup(active, value)
             "watching" -> cows.filter { it.isWatched && it.status == Status.ACTIVE }
@@ -107,9 +115,9 @@ fun CowListScreen(
                 newTitle = value?.let { "Classification: $it" } ?: "Cows by Classification"
             }
             "pasture" -> { // FIX FOR ERROR 2 (around line 112)
-                // value is String? pasture ID. repository.getPastureById() expects String.
+                // value is String? pasture ID. repository.getPastureByIdSuspend() expects String.
                 if (value != null) {
-                    val pasture = repository.getPastureById(value)
+                    val pasture = repository.getPastureByIdSuspend(value)
                     newTitle = pasture?.name?.let { "Pasture: $it" } ?: "Pasture Details"
                 } else {
                     newTitle = "Cows by Pasture"
@@ -126,7 +134,7 @@ fun CowListScreen(
                 newTitle = "Not Calved (9+ Months)"
             }
             "calved" -> {
-                newTitle = "Calved (Past 9 Months)"
+                newTitle = "Cows with Active Calves"
             }
             "age" -> {
                 val ageDesc = when (value) {

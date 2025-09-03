@@ -71,7 +71,6 @@ fun ReportsScreen(
                 item {
                     HerdOverviewCard(
                         totalCows = uiState.totalCows,
-                        activeCows = uiState.activeCows,
                         watchedCows = uiState.watchedCowsCount,
                         onClick = { type -> onShowList("status", type) },
                         onWatchingClick = { onShowList("watching", null) }
@@ -211,7 +210,6 @@ fun ToolItem(
 @Composable
 fun HerdOverviewCard(
     totalCows: Int,
-    activeCows: Int,
     watchedCows: Int,
     onClick: (type: String?) -> Unit,
     onWatchingClick: () -> Unit
@@ -242,8 +240,7 @@ fun HerdOverviewCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                ClickableStatItem("Total", totalCows, MaterialTheme.colorScheme.primary) { onClick(null) }
-                ClickableStatItem("Active", activeCows, MaterialTheme.colorScheme.secondary) { onClick("ACTIVE") }
+                ClickableStatItem("Total Head", totalCows, MaterialTheme.colorScheme.primary) { onClick(null) }
                 ClickableStatItem("Watching", watchedCows, MaterialTheme.colorScheme.tertiary) { onWatchingClick() }
             }
         }
@@ -531,7 +528,7 @@ fun BreedingReportsCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "Calved in past 9 months",
+                    text = "Cows with calves",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(

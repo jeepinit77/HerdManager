@@ -21,6 +21,9 @@ interface CowDao {
 
     @Query("SELECT * FROM cows WHERE id = :id")
     suspend fun getCowById(id: Long): Cow?
+    
+    @Query("SELECT * FROM cows WHERE id = :id")
+    fun getCowByIdFlow(id: Long): Flow<Cow?>
 
     @Query("SELECT * FROM cows WHERE tagNumber = :tagNumber LIMIT 1")
     suspend fun getCowByTagNumber(tagNumber: String): Cow?
@@ -56,6 +59,9 @@ interface CowDao {
 
     @Query("SELECT * FROM cows WHERE isWatched = 1 ORDER BY name ASC")
     fun getWatchedCows(): Flow<List<Cow>>
+
+    @Query("DELETE FROM cows")
+    suspend fun deleteAllCows()
 
     // Add other queries as needed, e.g., for search, filtering by multiple criteria
 }

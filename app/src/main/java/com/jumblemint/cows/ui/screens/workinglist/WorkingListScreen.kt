@@ -3,6 +3,7 @@ package com.jumblemint.cows.ui.screens.workinglist
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -18,6 +19,7 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.Classification
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Status
+import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModel
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModelFactory
@@ -43,7 +45,7 @@ fun WorkingListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val filteredCows by viewModel.filteredCows.collectAsState()
     val checkedItems by viewModel.checkedItems.collectAsState()
-    var isFilterExpanded by remember { mutableStateOf(false) }
+    var showFilters by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -55,14 +57,21 @@ fun WorkingListScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { isFilterExpanded = !isFilterExpanded }) {
-                        Icon(
-                            if (isFilterExpanded) Icons.Default.FilterListOff else Icons.Default.FilterList,
-                            contentDescription = if (isFilterExpanded) "Hide Filters" else "Show Filters"
-                        )
+                    FilterChip(
+                        onClick = { showFilters = !showFilters },
+                        label = { Text("Filters") },
+                        selected = showFilters || hasActiveFilters(uiState),
+                        leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") }
+                    )
+                    
+                    if (hasActiveFilters(uiState)) {
+                        IconButton(onClick = { viewModel.clearAllFilters() }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear Filters")
+                        }
                     }
+                    
                     IconButton(onClick = { viewModel.clearAllChecks() }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear All")
+                        Icon(Icons.Default.ClearAll, contentDescription = "Clear All Checks")
                     }
                 }
             )
@@ -74,16 +83,61 @@ fun WorkingListScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Collapsible Filter Section
-            if (isFilterExpanded) {
+            // Expandable Filter Section
+            if (showFilters) {
                 item {
-                    FilterSection(
-                        selectedPasture = uiState.selectedPasture,
-                        selectedClassification = uiState.selectedClassification,
-                        onPastureChange = { viewModel.updatePastureFilter(it) },
-                        onClassificationChange = { viewModel.updateClassificationFilter(it) },
-                        pastures = uiState.availablePastures
-                    )
+                    Card(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "Filters",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            
+                            // Status Filters
+                            FilterSection(
+                                title = "Status",
+                                items = Status.values().toList(),
+                                selectedItems = uiState.selectedStatuses,
+                                onToggle = { viewModel.toggleStatusFilter(it) },
+                                itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                            )
+                            
+                            // Classification Filters
+                            FilterSection(
+                                title = "Animal Type",
+                                items = Classification.values().toList(),
+                                selectedItems = uiState.selectedClassifications,
+                                onToggle = { viewModel.toggleClassificationFilter(it) },
+                                itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                            )
+                            
+                            // Gender Filters
+                            FilterSection(
+                                title = "Gender",
+                                items = Gender.values().toList(),
+                                selectedItems = uiState.selectedGenders,
+                                onToggle = { viewModel.toggleGenderFilter(it) },
+                                itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                            )
+                            
+                            // Pasture Filters
+                            if (uiState.availablePastures.isNotEmpty()) {
+                                FilterSection(
+                                    title = "Pasture",
+                                    items = uiState.availablePastures,
+                                    selectedItems = uiState.selectedPastures,
+                                    onToggle = { viewModel.togglePastureFilter(it) },
+                                    itemLabel = { it }
+                                )
+                            }
+                        }
+                    }
                 }
             }
             
@@ -124,109 +178,39 @@ fun WorkingListScreen(
     }
 }
 
+// Helper function to check if any filters are active (beyond the default active status)
+private fun hasActiveFilters(uiState: com.jumblemint.cows.ui.viewmodel.WorkingListUiState): Boolean {
+    return uiState.selectedStatuses != setOf(Status.ACTIVE) ||
+           uiState.selectedClassifications.isNotEmpty() ||
+           uiState.selectedGenders.isNotEmpty() ||
+           uiState.selectedPastures.isNotEmpty()
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilterSection(
-    selectedPasture: String?,
-    selectedClassification: Classification?,
-    onPastureChange: (String?) -> Unit,
-    onClassificationChange: (Classification?) -> Unit,
-    pastures: List<String>
+private fun <T> FilterSection(
+    title: String,
+    items: List<T>,
+    selectedItems: Set<T>,
+    onToggle: (T) -> Unit,
+    itemLabel: (T) -> String
 ) {
-    Card {
-        Column(
-            modifier = Modifier.padding(16.dp)
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                text = "Filters",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            
-            Spacer(modifier = Modifier.height(12.dp))
-            
-            // Pasture Filter
-            var pastureExpanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(
-                expanded = pastureExpanded,
-                onExpandedChange = { pastureExpanded = !pastureExpanded }
-            ) {
-                OutlinedTextField(
-                    value = selectedPasture ?: "All Pastures",
-                    onValueChange = { },
-                    readOnly = true,
-                    label = { Text("Pasture") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = pastureExpanded)
-                    },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
+            items(items) { item ->
+                FilterChip(
+                    onClick = { onToggle(item) },
+                    label = { Text(itemLabel(item)) },
+                    selected = selectedItems.contains(item)
                 )
-                ExposedDropdownMenu(
-                    expanded = pastureExpanded,
-                    onDismissRequest = { pastureExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("All Pastures") },
-                        onClick = {
-                            onPastureChange(null)
-                            pastureExpanded = false
-                        }
-                    )
-                    pastures.forEach { pasture ->
-                        DropdownMenuItem(
-                            text = { Text(pasture) },
-                            onClick = {
-                                onPastureChange(pasture)
-                                pastureExpanded = false
-                            }
-                        )
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            // Classification Filter
-            var classificationExpanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(
-                expanded = classificationExpanded,
-                onExpandedChange = { classificationExpanded = !classificationExpanded }
-            ) {
-                OutlinedTextField(
-                    value = selectedClassification?.name?.lowercase()?.replaceFirstChar { it.uppercase() } ?: "All Types",
-                    onValueChange = { },
-                    readOnly = true,
-                    label = { Text("Animal Type") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = classificationExpanded)
-                    },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                )
-                ExposedDropdownMenu(
-                    expanded = classificationExpanded,
-                    onDismissRequest = { classificationExpanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("All Types") },
-                        onClick = {
-                            onClassificationChange(null)
-                            classificationExpanded = false
-                        }
-                    )
-                    Classification.values().forEach { classification ->
-                        DropdownMenuItem(
-                            text = { Text(classification.name.lowercase().replaceFirstChar { it.uppercase() }) },
-                            onClick = {
-                                onClassificationChange(classification)
-                                classificationExpanded = false
-                            }
-                        )
-                    }
-                }
             }
         }
     }
