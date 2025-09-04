@@ -27,6 +27,7 @@ fun ReportsScreen(
     onNavigateToAddBirth: () -> Unit
 ) {
     val context = LocalContext.current
+    val application = context.applicationContext as com.jumblemint.cows.CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val repository = CattleRepository(
         database.cowDao(),
@@ -36,7 +37,7 @@ fun ReportsScreen(
         database.noteDao()
     )
     val viewModel: ReportsViewModel = viewModel(
-        factory = ReportsViewModelFactory(repository)
+        factory = ReportsViewModelFactory(repository, application.authService)
     )
     
     val uiState by viewModel.uiState.collectAsState()

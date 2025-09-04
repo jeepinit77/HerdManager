@@ -22,5 +22,13 @@ data class Cow(
     val photos: List<String> = emptyList(), // List of photo URIs or paths
     val isWatched: Boolean = false,
     val createdAt: LocalDate? = LocalDate.now(),
-    val updatedAt: LocalDate? = LocalDate.now()
+    val updatedAt: LocalDate? = LocalDate.now(),
+    
+    // Multi-user and sync fields
+    val herdId: String? = null, // Which herd this cow belongs to
+    val firestoreId: String? = null, // Firestore document ID for sync
+    val lastSyncAt: Long = 0L, // Last time synced with Firestore
+    val isDeleted: Boolean = false, // Soft delete flag for sync
+    val createdBy: String? = null, // User UID who created this record
+    val updatedBy: String? = null // User UID who last updated this record
 )

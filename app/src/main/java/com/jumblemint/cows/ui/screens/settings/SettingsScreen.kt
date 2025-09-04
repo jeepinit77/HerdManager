@@ -3,27 +3,38 @@ package com.jumblemint.cows.ui.screens.settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.SettingsViewModel
 import com.jumblemint.cows.ui.viewmodel.SettingsViewModelFactory
 
+// Helper data class for quadruple values
+data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateBack: (() -> Unit)? = null
+    onNavigateBack: (() -> Unit)? = null,
+    onNavigateToSignIn: (() -> Unit)? = null,
+    onNavigateToHerds: (() -> Unit)? = null,
+    onNavigateToAccountManagement: (() -> Unit)? = null
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val repository = CattleRepository(
         database.cowDao(),
@@ -34,6 +45,10 @@ fun SettingsScreen(
     val viewModel: SettingsViewModel = viewModel(
         factory = SettingsViewModelFactory(repository)
     )
+    
+    val currentUser by application.authService.currentUser.collectAsState(initial = null)
+    val isSignedIn by application.authService.isSignedIn.collectAsState(initial = false)
+    val syncStatus by application.syncService.syncStatus.collectAsState(initial = com.jumblemint.cows.sync.SyncStatus.IDLE)
     
     val uiState by viewModel.uiState.collectAsState()
     var showTagColorsDialog by remember { mutableStateOf(false) }
@@ -88,13 +103,123 @@ fun SettingsScreen(
                 )
             }
             
+
+            
+            // Account & Sync Section
             item {
-                SettingsCard(
-                    title = "Default Calf Pasture",
-                    subtitle = uiState.defaultCalfPasture ?: "Not set",
-                    icon = Icons.Default.Landscape,
-                    onClick = { /* TODO: Implement pasture selection */ }
+                Text(
+                    text = "Account & Sync",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 8.dp)
                 )
+            }
+            
+            item {
+                val (title, subtitle, icon, onClick: () -> Unit) = when {
+                    currentUser?.isLocalUser == false -> {
+                        val syncStatusText = when (syncStatus) {
+                            com.jumblemint.cows.sync.SyncStatus.SYNCING -> "Syncing..."
+                            com.jumblemint.cows.sync.SyncStatus.SUCCESS -> "Synced"
+                            com.jumblemint.cows.sync.SyncStatus.ERROR -> "Sync error"
+                            else -> "Sync enabled"
+                        }
+                        Quadruple(
+                            "Account: ${currentUser?.displayName ?: "Signed In"}",
+                            "$syncStatusText • Tap to manage account",
+                            when (syncStatus) {
+                                com.jumblemint.cows.sync.SyncStatus.SYNCING -> Icons.Default.CloudSync
+                                com.jumblemint.cows.sync.SyncStatus.ERROR -> Icons.Default.CloudOff
+                                else -> Icons.Default.CloudDone
+                            },
+                            { onNavigateToAccountManagement?.invoke() ?: Unit } // Navigate to account management screen
+                        )
+                    }
+                    currentUser?.isLocalUser == true -> Quadruple(
+                        "Sign In & Sync",
+                        "Currently using local storage only",
+                        Icons.Default.CloudOff,
+                        { onNavigateToSignIn?.invoke() ?: Unit }
+                    )
+                    else -> Quadruple(
+                        "Sign In & Sync",
+                        "Sync data across devices and collaborate",
+                        Icons.Default.CloudSync,
+                        { onNavigateToSignIn?.invoke() ?: Unit }
+                    )
+                }
+                
+                SettingsCard(
+                    title = title,
+                    subtitle = subtitle,
+                    icon = icon,
+                    onClick = onClick
+                )
+            }
+            
+            // Manual sync option for signed-in users
+            if (isSignedIn && currentUser?.isLocalUser == false) {
+                item {
+                    SettingsCard(
+                        title = "Sync Now",
+                        subtitle = when (syncStatus) {
+                            com.jumblemint.cows.sync.SyncStatus.SYNCING -> "Syncing in progress..."
+                            com.jumblemint.cows.sync.SyncStatus.SUCCESS -> "Last sync successful"
+                            com.jumblemint.cows.sync.SyncStatus.ERROR -> "Last sync failed - tap to retry"
+                            else -> "Manually sync your data"
+                        },
+                        icon = when (syncStatus) {
+                            com.jumblemint.cows.sync.SyncStatus.SYNCING -> Icons.Default.CloudSync
+                            com.jumblemint.cows.sync.SyncStatus.ERROR -> Icons.Default.CloudOff
+                            else -> Icons.Default.Refresh
+                        },
+                        onClick = {
+                            if (syncStatus != com.jumblemint.cows.sync.SyncStatus.SYNCING) {
+                                // Trigger manual sync
+                                coroutineScope.launch {
+                                    application.authService.startUserSync(application.syncService)
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+
+            
+            // Debug: Show current user info
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Debug Info:",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                        Text(
+                            text = "User: ${currentUser?.displayName ?: "None"}",
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "User ID: ${currentUser?.uid ?: "None"}",
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "Is Local: ${currentUser?.isLocalUser}",
+                            fontSize = 12.sp
+                        )
+                        Text(
+                            text = "Is Signed In: $isSignedIn",
+                            fontSize = 12.sp
+                        )
+                    }
+                }
             }
             
             // Data Management Section

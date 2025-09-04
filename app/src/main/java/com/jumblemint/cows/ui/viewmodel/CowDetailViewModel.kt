@@ -1,7 +1,8 @@
 package com.jumblemint.cows.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.*
@@ -39,9 +40,10 @@ data class CowDetailUiState(
 )
 
 class CowDetailViewModel(
+    application: CattleApplication,
     private val repository: CattleRepository,
     private val cowId: Long
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(CowDetailUiState())
     val uiState: StateFlow<CowDetailUiState> = _uiState.asStateFlow()
@@ -181,11 +183,22 @@ class CowDetailViewModel(
             )
 
             try {
-                if (cow.id == 0L) {
-                    repository.insertCow(cow)
+                val savedCow = if (cow.id == 0L) {
+                    val newId = repository.insertCow(cow)
+                    cow.copy(id = newId)
                 } else {
                     repository.updateCow(cow)
+                    cow
                 }
+                
+                // Sync the item immediately if user is signed in
+                val application = getApplication<CattleApplication>()
+                application.authService.currentUser.first()?.let { currentUser ->
+                    if (!currentUser.isLocalUser) {
+                        application.syncService.syncItemImmediately(currentUser.uid, savedCow)
+                    }
+                }
+                
                 _uiState.update { it.copy(isSaved = true, error = null) }
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = e.message, isSaved = false) }

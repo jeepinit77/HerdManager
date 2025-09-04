@@ -3,12 +3,10 @@ package com.jumblemint.cows.ui.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.Note
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Date
 
@@ -50,7 +48,16 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                     text = text,
                     timestamp = Date().time
                 )
-                noteDao.insert(note)
+                val noteId = noteDao.insert(note)
+                val savedNote = note.copy(id = noteId)
+                
+                // Sync the note immediately if user is signed in
+                val application = getApplication<CattleApplication>()
+                application.authService.currentUser.first()?.let { currentUser ->
+                    if (!currentUser.isLocalUser) {
+                        application.syncService.syncItemImmediately(currentUser.uid, savedNote)
+                    }
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
@@ -87,6 +94,14 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                     timestamp = Date().time // Update timestamp when edited
                 )
                 noteDao.insert(updatedNote) // Using insert with REPLACE strategy
+                
+                // Sync the updated note immediately if user is signed in
+                val application = getApplication<CattleApplication>()
+                application.authService.currentUser.first()?.let { currentUser ->
+                    if (!currentUser.isLocalUser) {
+                        application.syncService.syncItemImmediately(currentUser.uid, updatedNote)
+                    }
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }

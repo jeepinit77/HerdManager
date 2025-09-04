@@ -1,7 +1,8 @@
 package com.jumblemint.cows.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Pasture
 import com.jumblemint.cows.data.model.Status
@@ -11,12 +12,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class PastureDetailViewModel(
+    application: CattleApplication,
     private val repository: CattleRepository,
     private val pastureId: String
-) : ViewModel() {
+) : AndroidViewModel(application) {
     
     private val _uiState = MutableStateFlow(PastureDetailUiState())
     val uiState: StateFlow<PastureDetailUiState> = _uiState.asStateFlow()
@@ -56,12 +59,49 @@ class PastureDetailViewModel(
     }
     
     suspend fun deleteCow(cow: Cow) {
-        repository.deleteCow(cow)
+        // Soft delete: mark as deleted instead of hard delete
+        val deletedCow = cow.copy(
+            isDeleted = true,
+            lastSyncAt = 0L // Mark for sync
+        )
+        repository.updateCow(deletedCow)
+        
+        // If user is signed in, immediately sync the deletion to cloud
+        viewModelScope.launch {
+            val application = getApplication<CattleApplication>()
+            application.authService.currentUser.first()?.let { user ->
+                if (!user.isLocalUser) {
+                    try {
+                        application.syncService.syncItemImmediately(user.uid, deletedCow)
+                    } catch (e: Exception) {
+                        println("Failed to sync deletion immediately: ${e.message}")
+                    }
+                }
+            }
+        }
     }
     
     suspend fun undoDeleteCow(cow: Cow) {
-        // Simple undo: reinsert the previous item (id may autogenerate)
-        repository.insertCow(cow.copy(id = 0))
+        // Undo soft delete: mark as not deleted
+        val restoredCow = cow.copy(
+            isDeleted = false,
+            lastSyncAt = 0L // Mark for sync
+        )
+        repository.updateCow(restoredCow)
+        
+        // If user is signed in, immediately sync the restoration to cloud
+        viewModelScope.launch {
+            val application = getApplication<CattleApplication>()
+            application.authService.currentUser.first()?.let { user ->
+                if (!user.isLocalUser) {
+                    try {
+                        application.syncService.syncItemImmediately(user.uid, restoredCow)
+                    } catch (e: Exception) {
+                        println("Failed to sync restoration immediately: ${e.message}")
+                    }
+                }
+            }
+        }
     }
 }
 

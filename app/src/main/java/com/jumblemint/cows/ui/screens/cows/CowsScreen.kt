@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.model.Classification
@@ -39,6 +40,7 @@ fun CowsScreen(
     onAddCowClick: () -> Unit
 ) {
     val context = LocalContext.current
+    val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val repository = CattleRepository(
         database.cowDao(),
@@ -47,7 +49,7 @@ fun CowsScreen(
         database.settingsDao()
     )
     val viewModel: CowsViewModel = viewModel(
-        factory = CowsViewModelFactory(repository)
+        factory = CowsViewModelFactory(application, repository)
     )
 
     val uiState by viewModel.uiState.collectAsState()

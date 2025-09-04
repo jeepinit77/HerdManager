@@ -32,13 +32,14 @@ fun CowListScreen(
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val application = context.applicationContext as com.jumblemint.cows.CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val repository = remember {
         CattleRepository(database.cowDao(), database.pastureDao(), database.activityDao(), database.settingsDao())
     }
 
     // ViewModel for all cows, potentially useful for some filter types if needed later
-    val reportsViewModel: ReportsViewModel = viewModel(factory = ReportsViewModelFactory(repository))
+    val reportsViewModel: ReportsViewModel = viewModel(factory = ReportsViewModelFactory(repository, application.authService))
     val allCowsState by reportsViewModel.uiState.collectAsState() // This contains all cows from the db
 
     // Pull full lists from repository for accurate filtering based on allCowsState or direct query

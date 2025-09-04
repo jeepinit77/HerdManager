@@ -16,7 +16,34 @@ interface PastureDao {
     @Delete
     suspend fun delete(pasture: Pasture)
 
-    @Query("SELECT pasture.id AS p_id, pasture.name AS p_name, pasture.description AS p_description, pasture.sizeAcres AS p_sizeAcres, SUM(CASE WHEN cow.pastureId = pasture.id AND cow.status = 'ACTIVE' THEN 1 ELSE 0 END) as cowCount FROM pastures pasture LEFT JOIN cows cow ON pasture.id = cow.pastureId GROUP BY pasture.id ORDER BY p_name ASC")
+    @Query("""
+        SELECT
+            pasture.id AS p_id,
+            pasture.name AS p_name,
+            pasture.description AS p_description,
+            pasture.sizeAcres AS p_sizeAcres,
+            pasture.herdId AS p_herdId,
+            pasture.firestoreId AS p_firestoreId,
+            pasture.lastSyncAt AS p_lastSyncAt,
+            pasture.isDeleted AS p_isDeleted,
+            pasture.createdBy AS p_createdBy,
+            pasture.updatedBy AS p_updatedBy,
+            SUM(CASE WHEN cow.pastureId = pasture.id AND cow.status = 'ACTIVE' THEN 1 ELSE 0 END) as cowCount
+        FROM pastures AS pasture
+        LEFT JOIN cows AS cow ON pasture.id = cow.pastureId
+        GROUP BY
+            pasture.id,
+            pasture.name,
+            pasture.description,
+            pasture.sizeAcres,
+            pasture.herdId,
+            pasture.firestoreId,
+            pasture.lastSyncAt,
+            pasture.isDeleted,
+            pasture.createdBy,
+            pasture.updatedBy
+        ORDER BY p_name ASC
+    """)
     fun getAllPasturesWithCowCounts(): Flow<List<PastureWithCowCount>>
 
     @Query("SELECT COUNT(*) FROM cows WHERE pastureId IS NULL AND status = 'ACTIVE'")

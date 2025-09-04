@@ -1,7 +1,8 @@
 package com.jumblemint.cows.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.model.Pasture // Ensure this import is present if not already
 // It's in the same package, so PastureWithCowCount should be available without an explicit import
 // However, if PastureWithCowCount.kt was in a sub-package, an import would be:
@@ -19,7 +20,10 @@ data class PasturesUiState(
     val error: String? = null
 )
 
-class PasturesViewModel(private val cattleRepository: CattleRepository) : ViewModel() {
+class PasturesViewModel(
+    application: CattleApplication,
+    private val cattleRepository: CattleRepository
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(PasturesUiState(isLoading = true))
     val uiState: StateFlow<PasturesUiState> = _uiState.asStateFlow()
@@ -84,6 +88,14 @@ class PasturesViewModel(private val cattleRepository: CattleRepository) : ViewMo
     fun insertNewPasture(pasture: Pasture) {
         viewModelScope.launch {
             cattleRepository.insertPasture(pasture)
+            
+            // Sync the pasture immediately if user is signed in
+            val application = getApplication<CattleApplication>()
+            application.authService.currentUser.first()?.let { currentUser ->
+                if (!currentUser.isLocalUser) {
+                    application.syncService.syncItemImmediately(currentUser.uid, pasture)
+                }
+            }
         }
     }
 }

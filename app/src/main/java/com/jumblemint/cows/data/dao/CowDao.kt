@@ -16,7 +16,7 @@ interface CowDao {
     @Delete
     suspend fun deleteCow(cow: Cow)
 
-    @Query("SELECT * FROM cows ORDER BY name ASC")
+    @Query("SELECT * FROM cows WHERE isDeleted = 0 ORDER BY name ASC")
     fun getAllCows(): Flow<List<Cow>>
 
     @Query("SELECT * FROM cows WHERE id = :id")
@@ -28,23 +28,23 @@ interface CowDao {
     @Query("SELECT * FROM cows WHERE tagNumber = :tagNumber LIMIT 1")
     suspend fun getCowByTagNumber(tagNumber: String): Cow?
 
-    @Query("SELECT * FROM cows WHERE status = :status ORDER BY name ASC")
+    @Query("SELECT * FROM cows WHERE status = :status AND isDeleted = 0 ORDER BY name ASC")
     fun getCowsByStatus(status: Status): Flow<List<Cow>>
 
     // MODIFIED: pastureId parameter changed from Long to String
-    @Query("SELECT * FROM cows WHERE pastureId = :pastureId ORDER BY name ASC")
+    @Query("SELECT * FROM cows WHERE pastureId = :pastureId AND isDeleted = 0 ORDER BY name ASC")
     fun getCowsByPasture(pastureId: String): Flow<List<Cow>>
 
-    @Query("SELECT * FROM cows WHERE gender = 'FEMALE' AND status = 'ACTIVE' ORDER BY name ASC")
+    @Query("SELECT * FROM cows WHERE gender = 'FEMALE' AND status = 'ACTIVE' AND isDeleted = 0 ORDER BY name ASC")
     fun getActiveFemales(): Flow<List<Cow>>
 
-    @Query("SELECT * FROM cows WHERE gender = 'MALE' AND status = 'ACTIVE' ORDER BY name ASC")
+    @Query("SELECT * FROM cows WHERE gender = 'MALE' AND status = 'ACTIVE' AND isDeleted = 0 ORDER BY name ASC")
     fun getActiveMales(): Flow<List<Cow>>
     
-    @Query("SELECT * FROM cows WHERE motherId = :motherId ORDER BY birthDate DESC")
+    @Query("SELECT * FROM cows WHERE motherId = :motherId AND isDeleted = 0 ORDER BY birthDate DESC")
     fun getCalvesByMother(motherId: Long): Flow<List<Cow>>
 
-    @Query("SELECT * FROM cows WHERE fatherId = :fatherId ORDER BY birthDate DESC")
+    @Query("SELECT * FROM cows WHERE fatherId = :fatherId AND isDeleted = 0 ORDER BY birthDate DESC")
     fun getCalvesByFather(fatherId: Long): Flow<List<Cow>>
 
     // MODIFIED: pastureId parameter changed from Long? to String?
@@ -57,7 +57,7 @@ interface CowDao {
     @Query("UPDATE cows SET isWatched = :isWatched WHERE id = :cowId")
     suspend fun updateCowWatchStatus(cowId: Long, isWatched: Boolean)
 
-    @Query("SELECT * FROM cows WHERE isWatched = 1 ORDER BY name ASC")
+    @Query("SELECT * FROM cows WHERE isWatched = 1 AND isDeleted = 0 ORDER BY name ASC")
     fun getWatchedCows(): Flow<List<Cow>>
 
     @Query("DELETE FROM cows")

@@ -1,0 +1,33 @@
+package com.jumblemint.cows
+
+import android.app.Application
+import com.jumblemint.cows.auth.AuthService
+import com.jumblemint.cows.data.database.CattleDatabase
+import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.sync.SyncService
+
+class CattleApplication : Application() {
+    
+    // Database
+    val database by lazy { CattleDatabase.getDatabase(this) }
+    
+    // Repository
+    val repository by lazy {
+        CattleRepository(
+            cowDao = database.cowDao(),
+            pastureDao = database.pastureDao(),
+            activityDao = database.activityDao(),
+            settingsDao = database.settingsDao(),
+            noteDao = database.noteDao(),
+            userDao = database.userDao(),
+            herdDao = database.herdDao(),
+            herdMemberDao = database.herdMemberDao()
+        )
+    }
+    
+    // Auth Service
+    val authService by lazy { AuthService(this) }
+    
+    // Sync Service
+    val syncService by lazy { SyncService(repository) }
+}

@@ -3,6 +3,9 @@ package com.jumblemint.cows.navigation
 import android.app.Application
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -15,10 +18,14 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.screens.activities.ActivitiesScreen
 import com.jumblemint.cows.ui.screens.activities.AddActivityScreen
 import com.jumblemint.cows.ui.screens.activities.AddBirthScreen // Import AddBirthScreen
+import com.jumblemint.cows.ui.screens.account.AccountManagementScreen
+import com.jumblemint.cows.ui.screens.auth.LoginScreen
+import com.jumblemint.cows.ui.screens.auth.SignInScreen
 import com.jumblemint.cows.ui.screens.cows.CowDetailScreen
 import com.jumblemint.cows.ui.screens.cows.CowInfoScreen
 import com.jumblemint.cows.ui.screens.cows.CowListScreen
 import com.jumblemint.cows.ui.screens.cows.CowsScreen
+
 import com.jumblemint.cows.ui.screens.notes.NotesScreen
 import com.jumblemint.cows.ui.screens.pastures.AddPastureScreen
 import com.jumblemint.cows.ui.screens.pastures.PasturesScreen
@@ -30,17 +37,38 @@ import com.jumblemint.cows.ui.viewmodel.PasturesViewModel
 import com.jumblemint.cows.ui.viewmodel.PasturesViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.PastureDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.PastureDetailViewModelFactory
+import com.jumblemint.cows.ui.viewmodel.AuthViewModel
+import com.jumblemint.cows.ui.viewmodel.AuthViewModelFactory
+
+import com.jumblemint.cows.CattleApplication
 
 @Composable
 fun CattleNavigation(
     navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val application = context.applicationContext as CattleApplication
     NavHost(
         navController = navController,
         startDestination = Screen.Dashboard.route,
         modifier = modifier
     ) {
+        composable(Screen.Login.route) {
+            val authViewModel: AuthViewModel = viewModel(
+                factory = AuthViewModelFactory(application.authService, application.repository)
+            )
+            LoginScreen(
+                authViewModel = authViewModel,
+                onLoginSuccess = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+
         composable("${Screen.Cows.route}?pastureId={pastureId}") { backStackEntry ->
             val pastureId = backStackEntry.arguments?.getString("pastureId")?.toLongOrNull()
             CowsScreen(
@@ -127,6 +155,15 @@ fun CattleNavigation(
         }
 
         composable(Screen.Dashboard.route) {
+            // Start sync for signed-in users - trigger on user changes
+            val currentUser by application.authService.currentUser.collectAsState(initial = null)
+            LaunchedEffect(currentUser) {
+                val user = currentUser
+                if (user != null && !user.isLocalUser) {
+                    application.authService.startUserSync(application.syncService)
+                }
+            }
+            
             ReportsScreen(
                 onShowList = { type, value ->
                     if (type == "workingList") {
@@ -163,7 +200,25 @@ fun CattleNavigation(
 
         composable(Screen.Settings.route) {
             SettingsScreen(
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToSignIn = { navController.navigate(Screen.SignIn.route) },
+                onNavigateToHerds = null, // Removed herd management for now
+                onNavigateToAccountManagement = { navController.navigate(Screen.AccountManagement.route) }
+            )
+        }
+
+        composable(Screen.SignIn.route) {
+            val authViewModel: AuthViewModel = viewModel(
+                factory = AuthViewModelFactory(application.authService, application.repository)
+            )
+            SignInScreen(
+                authViewModel = authViewModel,
+                onNavigateBack = { navController.popBackStack() },
+                onSignInSuccess = {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.SignIn.route) { inclusive = true }
+                    }
+                }
             )
         }
 
@@ -171,7 +226,7 @@ fun CattleNavigation(
             val pastureIdArg = backStackEntry.arguments?.getString("pastureId") ?: "0"
             
             val context = LocalContext.current
-            val application = context.applicationContext as Application 
+            val application = context.applicationContext as CattleApplication 
             val database = CattleDatabase.getDatabase(application) 
             val repository = remember {
                 CattleRepository(
@@ -179,11 +234,14 @@ fun CattleNavigation(
                     pastureDao = database.pastureDao(),
                     activityDao = database.activityDao(),
                     settingsDao = database.settingsDao(),
-                    noteDao = database.noteDao()
+                    noteDao = database.noteDao(),
+                    userDao = database.userDao(),
+                    herdDao = database.herdDao(),
+                    herdMemberDao = database.herdMemberDao()
                 )
             }
             val pasturesViewModel: PasturesViewModel = viewModel(
-                factory = PasturesViewModelFactory(repository)
+                factory = PasturesViewModelFactory(application, repository)
             )
 
             if (pastureIdArg == "0" || pastureIdArg.isEmpty()) { 
@@ -219,10 +277,19 @@ fun CattleNavigation(
         composable(Screen.WorkingList.route) {
             WorkingListScreen(onNavigateBack = { navController.popBackStack() })
         }
+        
+        composable(Screen.AccountManagement.route) {
+            AccountManagementScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
     }
 }
 
 sealed class Screen(val route: String, val title: String) {
+    object Login : Screen("login", "Login")
+    object SignIn : Screen("sign_in", "Sign In")
+
     object Dashboard : Screen("dashboard", "Dashboard")
     object CowList : Screen("cow_list", "Cows")
     object Cows : Screen("cows", "Cows")
@@ -235,5 +302,6 @@ sealed class Screen(val route: String, val title: String) {
     object Settings : Screen("settings", "Settings")
     object Notes : Screen("notes", "Notes")
     object AddBirth : Screen("add_birth", "Add Birth")
-    object WorkingList : Screen("working_list", "Working List") 
+    object WorkingList : Screen("working_list", "Working List")
+    object AccountManagement : Screen("account_management", "Account Management")
 }

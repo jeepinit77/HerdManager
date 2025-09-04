@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "409213885610",
+    "project_id": "herdmanager-8eeb7",
+    "storage_bucket": "herdmanager-8eeb7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:409213885610:android:091aa71493b34e697c04d3",
+        "android_client_info": {
+          "package_name": "com.jumblemint.cows"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "409213885610-6em6nsb0khpipl24ru7kc75lsafjcea3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.jumblemint.cows",
+            "certificate_hash": "b975a2b96908a890821c919b98317d5c92d7c455"
+          }
+        },
+        {
+          "client_id": "409213885610-tj0p2p85d21ogr2tb3l6jands08ubhcl.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBPxHhQ4IffOhsrS9XW0rnobZnUkVEyDtM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "409213885610-tj0p2p85d21ogr2tb3l6jands08ubhcl.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

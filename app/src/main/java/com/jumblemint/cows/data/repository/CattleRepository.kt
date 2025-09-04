@@ -5,9 +5,13 @@ import com.jumblemint.cows.data.dao.CowDao
 import com.jumblemint.cows.data.dao.PastureDao
 import com.jumblemint.cows.data.dao.SettingsDao
 import com.jumblemint.cows.data.dao.NoteDao
+import com.jumblemint.cows.data.dao.UserDao
+import com.jumblemint.cows.data.dao.HerdDao
+import com.jumblemint.cows.data.dao.HerdMemberDao
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.ui.viewmodel.PastureWithCowCount // <<< ADDED IMPORT
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
 import java.util.UUID
@@ -17,7 +21,10 @@ class CattleRepository(
     private val pastureDao: PastureDao,
     private val activityDao: ActivityDao,
     private val settingsDao: SettingsDao,
-    private val noteDao: NoteDao? = null
+    private val noteDao: NoteDao? = null,
+    private val userDao: UserDao? = null,
+    private val herdDao: HerdDao? = null,
+    private val herdMemberDao: HerdMemberDao? = null
 ) {
 
     // Cow operations
@@ -1051,4 +1058,73 @@ class CattleRepository(
         // Reinitialize default data
         initializeDefaultData()
     }
+
+    // User operations
+    suspend fun insertUser(user: User) = userDao?.insertUser(user)
+    suspend fun getUserById(uid: String): User? = userDao?.getUserById(uid)
+    fun getUserByIdFlow(uid: String): Flow<User?> = userDao?.getUserByIdFlow(uid) ?: kotlinx.coroutines.flow.flowOf(null)
+    fun getAllUsers(): Flow<List<User>> = userDao?.getAllUsers() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    suspend fun updateUser(user: User) = userDao?.updateUser(user)
+    suspend fun deleteUser(user: User) = userDao?.deleteUser(user)
+
+    // Herd operations
+    suspend fun insertHerd(herd: Herd) = herdDao?.insertHerd(herd)
+    suspend fun getHerdById(id: String): Herd? = herdDao?.getHerdById(id)
+    fun getHerdByIdFlow(id: String): Flow<Herd?> = herdDao?.getHerdByIdFlow(id) ?: kotlinx.coroutines.flow.flowOf(null)
+    fun getAllActiveHerds(): Flow<List<Herd>> = herdDao?.getAllActiveHerds() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    fun getHerdsByOwner(ownerId: String): Flow<List<Herd>> = herdDao?.getHerdsByOwner(ownerId) ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    suspend fun updateHerd(herd: Herd) = herdDao?.updateHerd(herd)
+    suspend fun deleteHerd(herd: Herd) = herdDao?.deleteHerd(herd)
+
+    // Herd member operations
+    suspend fun insertHerdMember(member: HerdMember) = herdMemberDao?.insertMember(member)
+    fun getMembersByHerd(herdId: String): Flow<List<HerdMember>> = herdMemberDao?.getMembersByHerd(herdId) ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    fun getHerdsByUser(userId: String): Flow<List<HerdMember>> = herdMemberDao?.getHerdsByUser(userId) ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    suspend fun getMembership(herdId: String, userId: String): HerdMember? = herdMemberDao?.getMembership(herdId, userId)
+    suspend fun removeMember(herdId: String, userId: String) = herdMemberDao?.removeMember(herdId, userId)
+
+    // Simplified sync methods for single user
+    suspend fun getAllCowsSync(): List<Cow> {
+        return try {
+            getAllCows().first()
+        } catch (e: Exception) {
+            println("Error getting cows for sync: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    suspend fun getAllActivitiesSync(): List<Activity> {
+        return try {
+            getAllActivities().first()
+        } catch (e: Exception) {
+            println("Error getting activities for sync: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    suspend fun getAllPasturesSync(): List<Pasture> {
+        return try {
+            getAllPastures().first()
+        } catch (e: Exception) {
+            println("Error getting pastures for sync: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+
+    suspend fun getAllNotesSync(): List<Note> {
+        return try {
+            noteDao?.getAllNotes()?.first() ?: emptyList()
+        } catch (e: Exception) {
+            println("Error getting notes for sync: ${e.message}")
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+    
+    suspend fun insertNote(note: Note) = noteDao?.insert(note)
+    // Update methods for sync
+    suspend fun updateNote(note: Note) = noteDao?.update(note)
 }

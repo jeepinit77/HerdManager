@@ -12,4 +12,10 @@ object SettingsKeys {
     
     // Sample data tracking
     const val SAMPLE_DATA_INSTALLED = "sample_data_installed"
+    
+    // Authentication settings
+    const val GOOGLE_AUTH_ENABLED = "google_auth_enabled"
+    const val USE_LOCAL_ACCOUNT = "use_local_account"
+    const val LOCAL_USER_NAME = "local_user_name"
+    const val PREMIUM_FEATURES_ENABLED = "premium_features_enabled"
 }

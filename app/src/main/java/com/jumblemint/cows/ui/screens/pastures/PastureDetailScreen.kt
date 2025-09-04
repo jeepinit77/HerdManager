@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.CowCard
@@ -31,6 +32,7 @@ fun PastureDetailScreen(
     onEditPasture: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val repository = remember {
         CattleRepository(
@@ -43,7 +45,7 @@ fun PastureDetailScreen(
     }
     
     val viewModel: PastureDetailViewModel = viewModel(
-        factory = PastureDetailViewModelFactory(repository, pastureId)
+        factory = PastureDetailViewModelFactory(application, repository, pastureId)
     )
     
     val uiState by viewModel.uiState.collectAsState()

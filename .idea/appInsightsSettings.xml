@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.jumblemint.cows" />
+                  <option name="mobileSdkAppId" value="1:409213885610:android:091aa71493b34e697c04d3" />
+                  <option name="projectId" value="herdmanager-8eeb7" />
+                  <option name="projectNumber" value="409213885610" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

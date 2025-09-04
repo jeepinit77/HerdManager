@@ -2,6 +2,7 @@ package com.jumblemint.cows.ui.screens.pastures
 
 import android.app.Application
 import androidx.compose.foundation.layout.*
+import com.jumblemint.cows.CattleApplication
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -36,18 +37,22 @@ fun PasturesScreen(
 ) {
     // ViewModel setup with Repository
     val context = LocalContext.current
-    val database = CattleDatabase.getDatabase(context.applicationContext as Application)
+    val application = context.applicationContext as CattleApplication
+    val database = CattleDatabase.getDatabase(application)
     val repository = remember {
         CattleRepository(
             cowDao = database.cowDao(),
             pastureDao = database.pastureDao(),
             activityDao = database.activityDao(),
             settingsDao = database.settingsDao(),
-            noteDao = database.noteDao()
+            noteDao = database.noteDao(),
+            userDao = database.userDao(),
+            herdDao = database.herdDao(),
+            herdMemberDao = database.herdMemberDao()
         )
     }
     val pasturesViewModel: PasturesViewModel = viewModel(
-        factory = PasturesViewModelFactory(repository) // Pass repository here
+        factory = PasturesViewModelFactory(application, repository) // Pass application and repository
     )
     // MARKER_VIEWMODEL_REPO_INIT_NOV21
 

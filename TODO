@@ -1,0 +1,12 @@
+Font Size: Extra large fonts don't work well, especially on nav bar
+WIDGET: add widget or app shortcut to add calf
+GENERIC APP: (Idea: allow translating field names to other animals, so it can be used for goats, dogs, etc
+WATCHED FILTER: Allow filters by type (cow/calf, pasture, etc on watched screen
+FLOW FOR ADDING CALF: Select mother first, warn if she cant have new calf due to last calving etc. After selecting mother, go to main add calf screen with mother, prefilled, pasture set to mothers pasture, birthdate prefilled, gender tbd
+TODO LIST: Add todo list to tools. Checkmark to archive and hide, button to show completed, edit and delete buttons, added date shown,
+AUTOMATE ANIMAL TYPE: Change to cow/heifer/steer etc based on age, activity, and gender
+COLLAPSIBLE COWS:Make cow list offer single line view
+HERD MANAGER: There's no back button and herds dont' seem to save.
+USERS: Multiple herds can be a premium feature we add later. Currently, I think it could allow each user to own one herd, but possibly the ability to toggle between multiple herds 'shared wit me'
+REQUIRED FIELDS: Required fields aren't clearly marked and when i click save they don't hihglihgt to show what's missing..
+SIGN IN: It remembers previously used account and doesn't allow you to sign in with different google account

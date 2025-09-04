@@ -13,7 +13,8 @@ import java.time.LocalDate
 import java.time.Period
 
 class ReportsViewModel(
-    private val repository: CattleRepository
+    private val repository: CattleRepository,
+    private val authService: com.jumblemint.cows.auth.AuthService
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(ReportsUiState())
@@ -25,15 +26,25 @@ class ReportsViewModel(
     
     private fun loadReports() {
         viewModelScope.launch {
+            // Simplified: just get all data without herd filtering
             combine(
+                authService.currentUser,
                 repository.getAllCows(),
                 repository.getAllPastures(),
                 repository.getAllActivities(),
-                repository.getWatchedCows() // Added watchedCows flow
-            ) { allCows, pastures, activities, watchedCows ->
-                // Store all data in a custom data class
-                ReportsData(allCows, activities, pastures, watchedCows)
+                repository.getWatchedCows()
+            ) { currentUser, allCows, pastures, activities, watchedCows ->
+                ReportsData(currentUser, allCows, activities, pastures, watchedCows)
             }.collect { data ->
+                val currentUser = data.currentUser
+                if (currentUser == null) {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = "User not authenticated"
+                    )
+                    return@collect
+                }
+                
                 val allCows = data.cows
                 val activities = data.activities
                 val pastures = data.pastures
@@ -122,7 +133,7 @@ class ReportsViewModel(
 }
 
 // Helper data class for combine
-data class ReportsData(val cows: List<Cow>, val activities: List<Activity>, val pastures: List<Pasture>, val watchedCows: List<Cow>)
+data class ReportsData(val currentUser: com.jumblemint.cows.data.model.User?, val cows: List<Cow>, val activities: List<Activity>, val pastures: List<Pasture>, val watchedCows: List<Cow>)
 
 data class ReportsUiState(
     val totalCows: Int = 0,
