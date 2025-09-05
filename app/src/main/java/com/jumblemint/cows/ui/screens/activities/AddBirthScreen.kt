@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jumblemint.cows.CattleApplication // Added import
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.repository.CattleRepository
@@ -28,15 +29,23 @@ fun AddBirthScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    // Get application instance to access services
+    val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
+
+    // Instantiate services
+    val authService = application.authService
+    val syncService = application.syncService
+
     val repository = CattleRepository(
         database.cowDao(),
         database.pastureDao(),
         database.activityDao(),
         database.settingsDao()
     )
+    
     val viewModel: AddBirthViewModel = viewModel(
-        factory = AddBirthViewModelFactory(repository)
+        factory = AddBirthViewModelFactory(repository, authService, syncService) // Updated factory instantiation
     )
     
     val uiState by viewModel.uiState.collectAsState()

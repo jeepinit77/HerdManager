@@ -19,49 +19,73 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.sync.ItemSyncStatus
+import com.jumblemint.cows.sync.SyncStatus
 
 @Composable
 fun SyncIndicator(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showInBottomBar: Boolean = false
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
     val itemSyncStatus by application.syncService.itemSyncStatus.collectAsState(initial = ItemSyncStatus.IDLE)
+    val syncStatus by application.syncService.syncStatus.collectAsState(initial = SyncStatus.IDLE)
     
-    // Only show when syncing, success, or error (not idle)
+    // Determine which status to show (prioritize item sync when active)
+    val displayStatus = if (itemSyncStatus != ItemSyncStatus.IDLE) itemSyncStatus else syncStatus
+    val isVisible = displayStatus != ItemSyncStatus.IDLE && displayStatus != SyncStatus.IDLE
+    
+    // Only show when there's an active sync status
     AnimatedVisibility(
-        visible = itemSyncStatus != ItemSyncStatus.IDLE,
-        enter = slideInVertically(
-            initialOffsetY = { -it },
-            animationSpec = tween(300)
-        ) + fadeIn(animationSpec = tween(300)),
-        exit = slideOutVertically(
-            targetOffsetY = { -it },
-            animationSpec = tween(300)
-        ) + fadeOut(animationSpec = tween(300)),
+        visible = isVisible,
+        enter = if (showInBottomBar) {
+            slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(300)
+            ) + fadeIn(animationSpec = tween(300))
+        } else {
+            slideInVertically(
+                initialOffsetY = { -it },
+                animationSpec = tween(300)
+            ) + fadeIn(animationSpec = tween(300))
+        },
+        exit = if (showInBottomBar) {
+            slideOutHorizontally(
+                targetOffsetX = { it },
+                animationSpec = tween(300)
+            ) + fadeOut(animationSpec = tween(300))
+        } else {
+            slideOutVertically(
+                targetOffsetY = { -it },
+                animationSpec = tween(300)
+            ) + fadeOut(animationSpec = tween(300))
+        },
         modifier = modifier
     ) {
         Card(
             modifier = Modifier
-                .padding(8.dp)
-                .clip(RoundedCornerShape(20.dp)),
+                .padding(if (showInBottomBar) 4.dp else 8.dp)
+                .clip(RoundedCornerShape(if (showInBottomBar) 16.dp else 20.dp)),
             colors = CardDefaults.cardColors(
-                containerColor = when (itemSyncStatus) {
-                    ItemSyncStatus.SYNCING -> MaterialTheme.colorScheme.primaryContainer
-                    ItemSyncStatus.SUCCESS -> MaterialTheme.colorScheme.secondaryContainer
-                    ItemSyncStatus.ERROR -> MaterialTheme.colorScheme.errorContainer
+                containerColor = when (displayStatus) {
+                    ItemSyncStatus.SYNCING, SyncStatus.SYNCING -> MaterialTheme.colorScheme.primaryContainer
+                    ItemSyncStatus.SUCCESS, SyncStatus.SUCCESS -> MaterialTheme.colorScheme.secondaryContainer
+                    ItemSyncStatus.ERROR, SyncStatus.ERROR -> MaterialTheme.colorScheme.errorContainer
                     else -> MaterialTheme.colorScheme.surfaceVariant
                 }
             ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            elevation = CardDefaults.cardElevation(defaultElevation = if (showInBottomBar) 2.dp else 4.dp)
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                modifier = Modifier.padding(
+                    horizontal = if (showInBottomBar) 8.dp else 12.dp,
+                    vertical = if (showInBottomBar) 6.dp else 8.dp
+                ),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                when (itemSyncStatus) {
-                    ItemSyncStatus.SYNCING -> {
+                when (displayStatus) {
+                    ItemSyncStatus.SYNCING, SyncStatus.SYNCING -> {
                         val infiniteTransition = rememberInfiniteTransition(label = "sync_rotation")
                         val rotation by infiniteTransition.animateFloat(
                             initialValue = 0f,
@@ -74,42 +98,42 @@ fun SyncIndicator(
                         )
                         
                         Icon(
-                            imageVector = Icons.Default.Sync,
+                            imageVector = if (displayStatus == ItemSyncStatus.SYNCING) Icons.Default.CloudSync else Icons.Default.Sync,
                             contentDescription = "Syncing",
                             modifier = Modifier
-                                .size(16.dp)
+                                .size(if (showInBottomBar) 14.dp else 16.dp)
                                 .graphicsLayer { rotationZ = rotation },
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            text = "Syncing...",
-                            fontSize = 12.sp,
+                            text = if (displayStatus == ItemSyncStatus.SYNCING) "Uploading..." else "Syncing...",
+                            fontSize = if (showInBottomBar) 11.sp else 12.sp,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
-                    ItemSyncStatus.SUCCESS -> {
+                    ItemSyncStatus.SUCCESS, SyncStatus.SUCCESS -> {
                         Icon(
                             imageVector = Icons.Default.CheckCircle,
                             contentDescription = "Synced",
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(if (showInBottomBar) 14.dp else 16.dp),
                             tint = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                         Text(
-                            text = "Synced",
-                            fontSize = 12.sp,
+                            text = if (displayStatus == ItemSyncStatus.SUCCESS) "Uploaded" else "Synced",
+                            fontSize = if (showInBottomBar) 11.sp else 12.sp,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     }
-                    ItemSyncStatus.ERROR -> {
+                    ItemSyncStatus.ERROR, SyncStatus.ERROR -> {
                         Icon(
                             imageVector = Icons.Default.Error,
                             contentDescription = "Sync failed",
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(if (showInBottomBar) 14.dp else 16.dp),
                             tint = MaterialTheme.colorScheme.onErrorContainer
                         )
                         Text(
                             text = "Sync failed",
-                            fontSize = 12.sp,
+                            fontSize = if (showInBottomBar) 11.sp else 12.sp,
                             color = MaterialTheme.colorScheme.onErrorContainer
                         )
                     }

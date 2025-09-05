@@ -24,7 +24,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.common.api.ApiException
 import com.jumblemint.cows.R
+import com.jumblemint.cows.ui.components.DataMergeDialog
+import com.jumblemint.cows.ui.components.DataMergeOption
 import com.jumblemint.cows.ui.viewmodel.AuthViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,10 +38,14 @@ fun SignInScreen(
 ) {
     val context = LocalContext.current
     val uiState by authViewModel.uiState.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
     
     // Check if user is already signed in with Google
     val isGoogleSignedIn = uiState.currentUser?.isLocalUser == false
     val isLocalUser = uiState.currentUser?.isLocalUser == true
+    
+    // Store the account for data merge dialog
+    var pendingAccount by remember { mutableStateOf<com.google.android.gms.auth.api.signin.GoogleSignInAccount?>(null) }
     
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
@@ -47,7 +54,18 @@ fun SignInScreen(
             val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
             try {
                 val account = task.getResult(ApiException::class.java)
-                authViewModel.signInWithGoogle(account)
+                pendingAccount = account
+                
+                // Check for existing data and show merge dialog
+                coroutineScope.launch {
+                    val (hasLocalData, hasServerData) = authViewModel.checkForExistingData(account.id)
+                    if (hasLocalData || hasServerData) {
+                        authViewModel.showDataMergeDialog(hasLocalData, hasServerData)
+                    } else {
+                        // No data conflict, proceed with normal sign-in
+                        authViewModel.signInWithGoogle(account)
+                    }
+                }
             } catch (e: ApiException) {
                 authViewModel.setError("Google sign-in failed: ${e.statusCode} - ${e.message}")
             }
@@ -436,5 +454,24 @@ fun SignInScreen(
             
             Spacer(modifier = Modifier.height(32.dp))
         }
+    }
+    
+    // Data Merge Dialog
+    if (uiState.showDataMergeDialog) {
+        DataMergeDialog(
+            onDismiss = {
+                authViewModel.hideDataMergeDialog()
+                pendingAccount = null
+            },
+            onOptionSelected = { option ->
+                pendingAccount?.let { account ->
+                    authViewModel.signInWithDataMergeOption(account, option)
+                }
+                authViewModel.hideDataMergeDialog()
+                pendingAccount = null
+            },
+            hasLocalData = uiState.hasLocalData,
+            hasServerData = uiState.hasServerData
+        )
     }
 }

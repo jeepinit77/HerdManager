@@ -65,24 +65,34 @@ fun CattleManagerApp() {
                     (item.screen == Screen.Cows && currentRoute?.startsWith("${Screen.Cows.route}?") == true)
                 }
                 if (shouldShowBottomNav) {
-                    NavigationBar {
-                        bottomNavItems.forEach { item ->
-                            NavigationBarItem(
-                                icon = { Icon(item.icon, contentDescription = item.label) },
-                                label = { Text(item.label) },
-                                selected = currentRoute == item.screen.route || 
-                                          (item.screen == Screen.Cows && currentRoute?.startsWith("${Screen.Cows.route}?") == true),
-                                onClick = {
-                                    navController.navigate(item.screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) {
-                                            saveState = true
+                    Box {
+                        NavigationBar {
+                            bottomNavItems.forEach { item ->
+                                NavigationBarItem(
+                                    icon = { Icon(item.icon, contentDescription = item.label) },
+                                    label = { Text(item.label) },
+                                    selected = currentRoute == item.screen.route || 
+                                              (item.screen == Screen.Cows && currentRoute?.startsWith("${Screen.Cows.route}?") == true),
+                                    onClick = {
+                                        navController.navigate(item.screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
                                         }
-                                        launchSingleTop = true
-                                        restoreState = true
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
+                        
+                        // Sync indicator positioned in bottom navigation area
+                        SyncIndicator(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(end = 8.dp),
+                            showInBottomBar = true
+                        )
                     }
                 }
             }
@@ -92,13 +102,6 @@ fun CattleManagerApp() {
                 modifier = Modifier.padding(innerPadding)
             )
         }
-        
-        // Floating sync indicator at the top
-        SyncIndicator(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 8.dp)
-        )
     }
 }
 

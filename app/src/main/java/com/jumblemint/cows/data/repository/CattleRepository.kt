@@ -1058,6 +1058,12 @@ class CattleRepository(
         // Reinitialize default data
         initializeDefaultData()
     }
+    
+    // Individual delete all methods for data merge operations
+    suspend fun deleteAllCows() = cowDao.deleteAllCows()
+    suspend fun deleteAllPastures() = pastureDao.deleteAllPastures()
+    suspend fun deleteAllActivities() = activityDao.deleteAllActivities()
+    suspend fun deleteAllNotes() = noteDao?.deleteAllNotes()
 
     // User operations
     suspend fun insertUser(user: User) = userDao?.insertUser(user)

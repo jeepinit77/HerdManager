@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface PastureDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(pasture: Pasture): Long // MODIFIED: Added Long return type
+    suspend fun insert(pasture: Pasture): Long
 
     @Update
     suspend fun update(pasture: Pasture)
@@ -31,6 +31,7 @@ interface PastureDao {
             SUM(CASE WHEN cow.pastureId = pasture.id AND cow.status = 'ACTIVE' THEN 1 ELSE 0 END) as cowCount
         FROM pastures AS pasture
         LEFT JOIN cows AS cow ON pasture.id = cow.pastureId
+        WHERE pasture.isDeleted = 0
         GROUP BY
             pasture.id,
             pasture.name,
@@ -50,10 +51,10 @@ interface PastureDao {
     fun getUnassignedCowCount(): Flow<Int>
 
 
-    @Query("SELECT * FROM pastures WHERE id = :id")
+    @Query("SELECT * FROM pastures WHERE id = :id AND isDeleted = 0")
     fun getPastureById(id: String): Flow<Pasture?>
 
-    @Query("SELECT * FROM pastures ORDER BY name ASC")
+    @Query("SELECT * FROM pastures WHERE isDeleted = 0 ORDER BY name ASC")
     fun getAllPastures(): Flow<List<Pasture>>
 
     @Query("DELETE FROM pastures")

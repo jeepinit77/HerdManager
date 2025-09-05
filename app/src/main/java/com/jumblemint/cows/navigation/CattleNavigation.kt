@@ -56,7 +56,7 @@ fun CattleNavigation(
     ) {
         composable(Screen.Login.route) {
             val authViewModel: AuthViewModel = viewModel(
-                factory = AuthViewModelFactory(application.authService, application.repository)
+                factory = AuthViewModelFactory(application.authService, application.repository, application.syncService)
             )
             LoginScreen(
                 authViewModel = authViewModel,
@@ -209,7 +209,7 @@ fun CattleNavigation(
 
         composable(Screen.SignIn.route) {
             val authViewModel: AuthViewModel = viewModel(
-                factory = AuthViewModelFactory(application.authService, application.repository)
+                factory = AuthViewModelFactory(application.authService, application.repository, application.syncService)
             )
             SignInScreen(
                 authViewModel = authViewModel,

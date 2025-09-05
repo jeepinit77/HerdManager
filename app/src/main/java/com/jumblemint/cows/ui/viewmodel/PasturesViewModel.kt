@@ -3,18 +3,14 @@ package com.jumblemint.cows.ui.viewmodel
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jumblemint.cows.CattleApplication
-import com.jumblemint.cows.data.model.Pasture // Ensure this import is present if not already
-// It's in the same package, so PastureWithCowCount should be available without an explicit import
-// However, if PastureWithCowCount.kt was in a sub-package, an import would be:
-// import com.jumblemint.cows.ui.viewmodel.pasture.PastureWithCowCount 
+import com.jumblemint.cows.data.model.Pasture
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-
-// Removed the duplicate PastureWithCowCount data class definition from here
+import java.util.UUID // Added for UUID generation
 
 data class PasturesUiState(
-    val pastures: List<PastureWithDetails> = emptyList(), // Use PastureWithDetails for UI
+    val pastures: List<PastureWithDetails> = emptyList(),
     val unassignedCowCount: Int = 0,
     val isLoading: Boolean = false,
     val error: String? = null
@@ -28,7 +24,8 @@ class PasturesViewModel(
     private val _uiState = MutableStateFlow(PasturesUiState(isLoading = true))
     val uiState: StateFlow<PasturesUiState> = _uiState.asStateFlow()
 
-    private var recentlyDeletedPasture: Pasture? = null
+    // Store the pasture as it was *before* marking for deletion, for undo.
+    private var pastureStateBeforeDelete: Pasture? = null
 
     init {
         loadPastures()
@@ -63,38 +60,99 @@ class PasturesViewModel(
         }
     }
 
-    fun deletePasture(pastureToDelete: Pasture): Result<Unit> {
-        return try {
-            viewModelScope.launch {
-                recentlyDeletedPasture = pastureToDelete
-                cattleRepository.deletePasture(pastureToDelete)
+    fun deletePasture(pastureToDelete: Pasture) { // Removed Result<Unit> as it's async now
+        viewModelScope.launch {
+            pastureStateBeforeDelete = pastureToDelete // Save original state for potential undo
+
+            val pastureToMarkAsDeleted = pastureToDelete.copy(
+                isDeleted = true,
+                lastSyncAt = 0L // Mark for sync
+            )
+
+            try {
+                cattleRepository.updatePasture(pastureToMarkAsDeleted) // Use update for soft delete
+
+                // Sync the deletion to Firestore
+                val application = getApplication<CattleApplication>()
+                application.authService.currentUser.first()?.let { user ->
+                    if (!user.isLocalUser) {
+                        application.syncService.syncItemImmediately(user.uid, pastureToMarkAsDeleted)
+                            .onFailure {
+                                println("PasturesViewModel: Error immediately syncing pasture deletion: ${it.message}")
+                                // Optionally update UI with sync error for this specific item
+                            }
+                    }
+                }
+            } catch (e: Exception) {
+                // Handle local update error
+                 _uiState.update { it.copy(error = "Error deleting pasture locally: ${e.message}") }
+                // Restore original state if local update failed, so undo can work with original
+                pastureStateBeforeDelete = null 
             }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
     fun undoDeletePasture() {
-        recentlyDeletedPasture?.let { pastureToRestore ->
+        pastureStateBeforeDelete?.let { pastureToRestore ->
             viewModelScope.launch {
-                cattleRepository.insertPasture(pastureToRestore) 
-                recentlyDeletedPasture = null
+                // For undo, we want to restore its non-deleted state and mark for sync
+                val pastureToUnDelete = pastureToRestore.copy(
+                    isDeleted = false,
+                    lastSyncAt = 0L // Mark for sync as it's a change of state
+                )
+                try {
+                    cattleRepository.updatePasture(pastureToUnDelete) // Update to un-delete
+                    pastureStateBeforeDelete = null // Clear the state after successful undo
+
+                    // Sync the un-deletion to Firestore
+                    val application = getApplication<CattleApplication>()
+                    application.authService.currentUser.first()?.let { user ->
+                        if (!user.isLocalUser) {
+                            application.syncService.syncItemImmediately(user.uid, pastureToUnDelete)
+                                .onFailure {
+                                    println("PasturesViewModel: Error immediately syncing pasture un-deletion: ${it.message}")
+                                }
+                        }
+                    }
+                } catch (e: Exception) {
+                     _uiState.update { it.copy(error = "Error undoing pasture deletion: ${e.message}") }
+                }
             }
         }
     }
 
-    // MARKER_FOR_PASTURE_INSERT_METHOD
-    fun insertNewPasture(pasture: Pasture) {
+    fun insertNewPasture(pastureFromUi: Pasture) {
         viewModelScope.launch {
-            cattleRepository.insertPasture(pasture)
-            
-            // Sync the pasture immediately if user is signed in
             val application = getApplication<CattleApplication>()
-            application.authService.currentUser.first()?.let { currentUser ->
-                if (!currentUser.isLocalUser) {
-                    application.syncService.syncItemImmediately(currentUser.uid, pasture)
+            val currentUser = application.authService.currentUser.first()
+            
+            if (currentUser != null) {
+                val currentUserId = currentUser.uid
+                val newUniqueId = UUID.randomUUID().toString()
+
+                val pastureToSave = pastureFromUi.copy(
+                    id = newUniqueId,
+                    firestoreId = newUniqueId,
+                    isDeleted = false,
+                    createdBy = currentUserId,
+                    updatedBy = currentUserId,
+                    lastSyncAt = 0L
+                )
+
+                try {
+                    cattleRepository.insertPasture(pastureToSave)
+
+                    if (!currentUser.isLocalUser) {
+                        application.syncService.syncItemImmediately(currentUserId, pastureToSave)
+                            .onFailure {
+                                println("PasturesViewModel: Error immediately syncing new pasture: ${it.message}")
+                            }
+                    }
+                } catch (e: Exception) {
+                    _uiState.update { it.copy(error = "Error inserting new pasture: ${e.message}") }
                 }
+            } else {
+                _uiState.update { it.copy(error = "No authenticated user. Cannot save pasture.") } 
             }
         }
     }

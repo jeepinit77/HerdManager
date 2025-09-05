@@ -4,15 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.auth.AuthService // Corrected import
+import com.jumblemint.cows.sync.SyncService // Correct import
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.util.UUID // Added import
 
 class AddBirthViewModel(
-    private val repository: CattleRepository
+    private val repository: CattleRepository,
+    private val authService: AuthService,      // Added dependency
+    private val syncService: SyncService       // Added dependency
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(AddBirthUiState())
@@ -25,13 +30,11 @@ class AddBirthViewModel(
     private fun loadData() {
         viewModelScope.launch {
             try {
-                // Load tag colors from settings
                 val tagColorsSetting = repository.getSettingByKey(SettingsKeys.TAG_COLORS)
                 val tagColors = tagColorsSetting?.value?.split(",")?.map { it.trim() } ?: listOf(
                     "Red", "Blue", "Green", "Yellow", "Orange", "Purple", "Pink", "White", "Black", "Brown"
                 )
                 
-                // Get the current values from the flows
                 val mothers = repository.getActiveFemales().first()
                 val fathers = repository.getActiveMales().first()
                 
@@ -92,47 +95,70 @@ class AddBirthViewModel(
     
     fun recordBirth() {
         viewModelScope.launch {
+            val state = _uiState.value
+            val currentUser = authService.currentUser.first()
+
+            if (currentUser == null) {
+                _uiState.value = state.copy(error = "No authenticated user. Cannot record birth.")
+                return@launch
+            }
+            val currentUserId = currentUser.uid
+
+            // Validation
+            if (state.motherId == null) {
+                _uiState.value = state.copy(error = "Please select a mother")
+                return@launch
+            }
+            if (state.birthDate == null) {
+                _uiState.value = state.copy(error = "Please select a birth date")
+                return@launch
+            }
+
             try {
-                val state = _uiState.value
-                
-                // Validation
-                if (state.motherId == null) {
-                    _uiState.value = state.copy(error = "Please select a mother")
-                    return@launch
-                }
-                
-                if (state.birthDate == null) {
-                    _uiState.value = state.copy(error = "Please select a birth date")
-                    return@launch
-                }
-                
-                // Create the calf with all provided details
-                val calfId = repository.recordBirth(
+                val newFirestoreId = UUID.randomUUID().toString()
+                val selectedMother = state.availableMothers.find { it.id == state.motherId }
+
+                val newCalf = Cow(
+                    id = 0L, // Room will auto-generate this
+                    name = state.calfName.takeIf { it.isNotBlank() },
+                    tagNumber = state.calfTagNumber.takeIf { it.isNotBlank() },
+                    tagColor = state.calfTagColor.takeIf { it.isNotBlank() },
+                    birthDate = state.birthDate,
+                    gender = state.calfGender,
+                    classification = Classification.CALF,
+                    colorMarkings = state.calfColorMarkings.takeIf { it.isNotBlank() },
                     motherId = state.motherId,
                     fatherId = state.fatherId,
-                    calfName = state.calfName.takeIf { it.isNotBlank() },
-                    calfGender = state.calfGender,
-                    birthDate = state.birthDate
+                    status = Status.ACTIVE,
+                    pastureId = selectedMother?.pastureId, // Calf starts in mother's pasture, or null
+                    photos = emptyList(),
+                    isWatched = false,
+                    createdAt = LocalDate.now(),
+                    updatedAt = LocalDate.now(),
+                    herdId = selectedMother?.herdId, // Calf belongs to mother's herd
+                    firestoreId = newFirestoreId,
+                    lastSyncAt = 0L,
+                    isDeleted = false,
+                    createdBy = currentUserId,
+                    updatedBy = currentUserId
                 )
-                
-                // Update the calf with additional details if provided
-                if (state.calfTagNumber.isNotBlank() || state.calfTagColor.isNotBlank() || state.calfColorMarkings.isNotBlank()) {
-                    val calf = repository.getCowById(calfId)
-                    calf?.let { existingCalf ->
-                        val updatedCalf = existingCalf.copy(
-                            tagNumber = state.calfTagNumber.takeIf { it.isNotBlank() },
-                            tagColor = state.calfTagColor.takeIf { it.isNotBlank() },
-                            colorMarkings = state.calfColorMarkings.takeIf { it.isNotBlank() },
-                            updatedAt = LocalDate.now()
-                        )
-                        repository.updateCow(updatedCalf)
-                    }
+
+                repository.insertCow(newCalf)
+
+                if (!currentUser.isLocalUser) {
+                    // Pass the newCalf itself, which already has the firestoreId set
+                    syncService.syncItemImmediately(currentUserId, newCalf) 
+                        .onFailure {
+                             _uiState.value = state.copy(error = "Failed to sync new calf: ${it.message}")
+                             println("Error immediately syncing new calf: ${it.message}")
+                        }
                 }
                 
-                _uiState.value = state.copy(isSaved = true)
+                _uiState.value = state.copy(isSaved = true, error = null)
                 
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
+                _uiState.value = state.copy(error = "Error recording birth: ${e.message}", isSaved = false)
+                e.printStackTrace()
             }
         }
     }

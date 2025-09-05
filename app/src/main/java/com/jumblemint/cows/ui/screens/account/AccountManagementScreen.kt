@@ -15,6 +15,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.sync.SyncStatus
+// Consider adding a proper date/time formatting utility if more detailed time is needed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +30,14 @@ fun AccountManagementScreen(
     val syncStatus by application.syncService.syncStatus.collectAsState(initial = SyncStatus.IDLE)
     
     var showSignOutDialog by remember { mutableStateOf(false) }
+
+    val lastSyncTimeText = remember(currentUser?.lastSyncAt, currentUser?.isLocalUser) {
+        when {
+            currentUser?.isLocalUser == true -> "N/A for local account"
+            currentUser?.lastSyncAt == 0L || currentUser?.lastSyncAt == null -> "Never"
+            else -> "Recently" // Placeholder - enhance with actual date formatting for better UX
+        }
+    }
     
     Column(
         modifier = Modifier.fillMaxSize()
@@ -81,7 +90,7 @@ fun AccountManagementScreen(
                                 )
                                 if (currentUser?.isLocalUser == false) {
                                     Text(
-                                        text = "Google Account",
+                                        text = "Cloud Account", // Changed from Google Account
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
                                     )
@@ -92,7 +101,7 @@ fun AccountManagementScreen(
                 }
             }
             
-            // Sync Status Section
+            // Sync & Data Section
             if (currentUser?.isLocalUser == false) {
                 item {
                     Text(
@@ -104,37 +113,24 @@ fun AccountManagementScreen(
                 
                 item {
                     AccountManagementCard(
-                        title = "Sync Status",
+                        title = "Cloud Sync",
                         subtitle = when (syncStatus) {
                             SyncStatus.SYNCING -> "Syncing your data..."
-                            SyncStatus.SUCCESS -> "All data is up to date"
-                            SyncStatus.ERROR -> "Sync failed - tap to retry"
-                            else -> "Ready to sync"
+                            SyncStatus.SUCCESS -> "Data is up to date. (Last synced: $lastSyncTimeText)"
+                            SyncStatus.ERROR -> "Sync error - tap to retry"
+                            else -> "Tap to sync with Cloud. (Last synced: $lastSyncTimeText)" // IDLE state
                         },
                         icon = when (syncStatus) {
                             SyncStatus.SYNCING -> Icons.Default.CloudSync
                             SyncStatus.SUCCESS -> Icons.Default.CloudDone
                             SyncStatus.ERROR -> Icons.Default.CloudOff
-                            else -> Icons.Default.Cloud
+                            else -> Icons.Default.Refresh 
                         },
                         onClick = {
                             if (syncStatus != SyncStatus.SYNCING) {
                                 coroutineScope.launch {
                                     application.authService.startUserSync(application.syncService)
                                 }
-                            }
-                        }
-                    )
-                }
-                
-                item {
-                    AccountManagementCard(
-                        title = "Manual Sync",
-                        subtitle = "Force sync all your data now",
-                        icon = Icons.Default.Refresh,
-                        onClick = {
-                            coroutineScope.launch {
-                                application.authService.startUserSync(application.syncService)
                             }
                         }
                     )
@@ -150,27 +146,11 @@ fun AccountManagementScreen(
                 )
             }
             
-            if (currentUser?.isLocalUser == false) {
-                item {
-                    AccountManagementCard(
-                        title = "Switch to Local Account",
-                        subtitle = "Use app without Google account sync",
-                        icon = Icons.Default.PersonOff,
-                        onClick = {
-                            coroutineScope.launch {
-                                application.authService.signOut()
-                                onNavigateBack()
-                            }
-                        }
-                    )
-                }
-            }
-            
             item {
                 AccountManagementCard(
-                    title = if (currentUser?.isLocalUser == false) "Sign Out" else "Reset Local Account",
+                    title = if (currentUser?.isLocalUser == false) "Disconnect Account" else "Reset Local Account",
                     subtitle = if (currentUser?.isLocalUser == false) 
-                        "Sign out and switch to local account" 
+                        "Disconnect Cloud. Data stays on device, sync stops." // Changed from Google
                     else 
                         "Clear local user data and create new local account",
                     icon = Icons.Default.Logout,
@@ -198,10 +178,10 @@ fun AccountManagementScreen(
                         modifier = Modifier.padding(16.dp)
                     ) {
                         AccountInfoRow("User ID", currentUser?.uid ?: "Unknown")
-                        AccountInfoRow("Account Type", if (currentUser?.isLocalUser == true) "Local" else "Google")
-                        AccountInfoRow("Created", "Recently") // You could format the createdAt timestamp
+                        AccountInfoRow("Account Type", if (currentUser?.isLocalUser == true) "Local" else "Cloud") // Changed from Google
+                        AccountInfoRow("Created", "Recently") 
                         if (currentUser?.isLocalUser == false) {
-                            AccountInfoRow("Last Sync", if (currentUser?.lastSyncAt != 0L) "Recently" else "Never")
+                            AccountInfoRow("Last Sync", lastSyncTimeText)
                         }
                     }
                 }
@@ -209,19 +189,19 @@ fun AccountManagementScreen(
         }
     }
     
-    // Sign Out Confirmation Dialog
+    // Sign Out/Disconnect Confirmation Dialog
     if (showSignOutDialog) {
         AlertDialog(
             onDismissRequest = { showSignOutDialog = false },
             title = { 
                 Text(
-                    if (currentUser?.isLocalUser == false) "Sign Out?" else "Reset Local Account?"
+                    if (currentUser?.isLocalUser == false) "Disconnect Account?" else "Reset Local Account?"
                 ) 
             },
             text = { 
                 Text(
                     if (currentUser?.isLocalUser == false)
-                        "You will be signed out and switched to a local account. Your data will remain synced to your Google account."
+                        "Your Cloud account will be disconnected from this app. Your app data will remain on this device for offline use but will no longer sync with the Cloud unless you connect your account again." // Changed from Google
                     else
                         "This will clear your local user data and create a new local account. Your cattle data will remain."
                 )
@@ -230,7 +210,7 @@ fun AccountManagementScreen(
                 TextButton(
                     onClick = {
                         coroutineScope.launch {
-                            application.authService.signOut()
+                            application.authService.signOut() // This handles both disconnect and reset local logic
                             showSignOutDialog = false
                             onNavigateBack()
                         }

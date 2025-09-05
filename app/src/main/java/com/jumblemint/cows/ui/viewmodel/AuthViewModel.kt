@@ -8,6 +8,8 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.jumblemint.cows.auth.AuthService
 import com.jumblemint.cows.data.model.User
 import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.sync.SyncService
+import com.jumblemint.cows.ui.components.DataMergeOption
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,7 +17,8 @@ import kotlinx.coroutines.launch
 
 class AuthViewModel(
     private val authService: AuthService,
-    private val repository: CattleRepository
+    private val repository: CattleRepository,
+    private val syncService: SyncService
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(AuthUiState())
@@ -103,11 +106,104 @@ class AuthViewModel(
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
+    
+    fun showDataMergeDialog(hasLocalData: Boolean, hasServerData: Boolean) {
+        _uiState.value = _uiState.value.copy(
+            showDataMergeDialog = true,
+            hasLocalData = hasLocalData,
+            hasServerData = hasServerData
+        )
+    }
+    
+    fun hideDataMergeDialog() {
+        _uiState.value = _uiState.value.copy(showDataMergeDialog = false)
+    }
+    
+    suspend fun checkForExistingData(userId: String? = null): Pair<Boolean, Boolean> {
+        // Check if there's local data
+        val hasLocalData = try {
+            val cows = repository.getAllCowsSync()
+            val pastures = repository.getAllPasturesSync()
+            val activities = repository.getAllActivitiesSync()
+            val notes = repository.getAllNotesSync()
+            cows.isNotEmpty() || pastures.isNotEmpty() || activities.isNotEmpty() || notes.isNotEmpty()
+        } catch (e: Exception) {
+            false
+        }
+        
+        // Check if there's server data
+        val hasServerData = if (userId != null) {
+            try {
+                syncService.checkServerDataExists(userId)
+            } catch (e: Exception) {
+                true // Assume data exists to be safe
+            }
+        } else {
+            true // Assume there might be server data if we don't have userId yet
+        }
+        
+        return Pair(hasLocalData, hasServerData)
+    }
+    
+    fun signInWithDataMergeOption(account: GoogleSignInAccount, mergeOption: DataMergeOption) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            
+            val result = authService.signInWithGoogle(account)
+            result.fold(
+                onSuccess = { user ->
+                    // Handle data merge based on selected option
+                    handleDataMerge(user.uid, mergeOption)
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = null
+                    )
+                },
+                onFailure = { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = exception.message ?: "Sign-in failed"
+                    )
+                }
+            )
+        }
+    }
+    
+    private suspend fun handleDataMerge(userId: String, mergeOption: DataMergeOption) {
+        try {
+            when (mergeOption) {
+                DataMergeOption.MERGE_WITH_SERVER -> {
+                    // Trigger a normal sync that merges data
+                    syncService.syncUserData(userId)
+                }
+                DataMergeOption.REPLACE_SERVER_WITH_DEVICE -> {
+                    // Clear server data and upload all local data
+                    syncService.clearServerData(userId)
+                    syncService.forceUploadAllData(userId)
+                }
+                DataMergeOption.REPLACE_DEVICE_WITH_SERVER -> {
+                    // Clear local data and download all server data
+                    repository.deleteAllCows()
+                    repository.deleteAllPastures()
+                    repository.deleteAllActivities()
+                    repository.deleteAllNotes()
+                    syncService.syncUserData(userId)
+                }
+            }
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(
+                error = "Data merge failed: ${e.message}"
+            )
+        }
+    }
 }
 
 data class AuthUiState(
     val currentUser: User? = null,
     val isSignedIn: Boolean = false,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val showDataMergeDialog: Boolean = false,
+    val hasLocalData: Boolean = false,
+    val hasServerData: Boolean = false
 )

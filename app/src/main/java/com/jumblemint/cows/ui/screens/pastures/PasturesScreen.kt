@@ -28,14 +28,10 @@ import com.jumblemint.cows.data.repository.CattleRepository
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PasturesScreen(
-    // pasturesViewModel: PasturesViewModel = viewModel( // Old way
-    //     factory = PasturesViewModelFactory(LocalContext.current.applicationContext as Application)
-    // ),
     onNavigateToAddPasture: () -> Unit,
     onNavigateToPastureDetails: (String) -> Unit,
     onNavigateBack: () -> Unit
 ) {
-    // ViewModel setup with Repository
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(application)
@@ -52,13 +48,23 @@ fun PasturesScreen(
         )
     }
     val pasturesViewModel: PasturesViewModel = viewModel(
-        factory = PasturesViewModelFactory(application, repository) // Pass application and repository
+        factory = PasturesViewModelFactory(application, repository)
     )
-    // MARKER_VIEWMODEL_REPO_INIT_NOV21
 
     val uiState by pasturesViewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
+
+    // Handle errors from the ViewModel
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let {
+            snackbarHostState.showSnackbar(
+                message = it,
+                duration = SnackbarDuration.Long
+            )
+            // Consider adding: pasturesViewModel.onErrorShown() to clear the error in ViewModel
+        }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -78,7 +84,6 @@ fun PasturesScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Unassigned cows banner
             if (uiState.unassignedCowCount > 0) {
                 item {
                     Card(
@@ -111,7 +116,7 @@ fun PasturesScreen(
             }
             
             items(uiState.pastures, key = { it.pastureWithCount.pasture.id }) { pastureWithDetails ->
-                PastureCard( // PASTURE_CARD_NOV21_EDIT_BUTTON_ATTEMPT
+                PastureCard(
                     pastureWithDetails = pastureWithDetails,
                     onClick = {
                         onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
@@ -121,25 +126,15 @@ fun PasturesScreen(
                     },
                     onDelete = { pasture ->
                         coroutineScope.launch {
-                            val deleteResult = pasturesViewModel.deletePasture(pasture)
-                            deleteResult.fold(
-                                onSuccess = {
-                                    val snackbarResult = snackbarHostState.showSnackbar(
-                                        message = "${pasture.name} deleted",
-                                        actionLabel = "UNDO",
-                                        duration = SnackbarDuration.Long
-                                    )
-                                    if (snackbarResult == SnackbarResult.ActionPerformed) {
-                                        pasturesViewModel.undoDeletePasture()
-                                    }
-                                },
-                                onFailure = { exception ->
-                                    snackbarHostState.showSnackbar(
-                                        message = "Error deleting pasture: ${exception.message}",
-                                        duration = SnackbarDuration.Short
-                                    )
-                                }
+                            pasturesViewModel.deletePasture(pasture) // Call ViewModel method
+                            val snackbarResult = snackbarHostState.showSnackbar(
+                                message = "${pasture.name} deleted",
+                                actionLabel = "UNDO",
+                                duration = SnackbarDuration.Long
                             )
+                            if (snackbarResult == SnackbarResult.ActionPerformed) {
+                                pasturesViewModel.undoDeletePasture()
+                            }
                         }
                     }
                 )
@@ -175,7 +170,6 @@ fun PastureCard(
                     fontWeight = FontWeight.Medium
                 )
                 
-                // Show classification breakdown if there are cows
                 if (pastureWithDetails.classificationBreakdown.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     val breakdownText = pastureWithDetails.classificationBreakdown
