@@ -23,7 +23,7 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE id = :id")
     fun getNoteById(id: Long): Flow<Note>
 
-    @Query("SELECT * FROM notes ORDER BY timestamp DESC")
+    @Query("SELECT * FROM notes WHERE isDeleted = 0 ORDER BY timestamp DESC")
     fun getAllNotes(): Flow<List<Note>>
     
     @Query("DELETE FROM notes")

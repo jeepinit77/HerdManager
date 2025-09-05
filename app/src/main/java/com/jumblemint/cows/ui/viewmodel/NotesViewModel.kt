@@ -67,7 +67,20 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteNote(note: Note) {
         viewModelScope.launch {
             try {
-                noteDao.delete(note)
+                // Soft delete: mark as deleted instead of physically removing
+                val deletedNote = note.copy(
+                    isDeleted = true,
+                    timestamp = System.currentTimeMillis() // Update timestamp for sync
+                )
+                noteDao.insert(deletedNote) // Using insert with REPLACE strategy
+                
+                // Sync the deletion immediately if user is signed in
+                val application = getApplication<CattleApplication>()
+                application.authService.currentUser.first()?.let { currentUser ->
+                    if (!currentUser.isLocalUser) {
+                        application.syncService.syncItemImmediately(currentUser.uid, deletedNote)
+                    }
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }

@@ -1,10 +1,12 @@
 package com.jumblemint.cows.ui.viewmodel
 
+import android.app.Application
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import com.jumblemint.cows.data.repository.CattleRepository
 
 class AddActivityViewModelFactory(
+    private val application: Application,
     private val repository: CattleRepository,
     private val editId: Long? = null
 ) : ViewModelProvider.Factory {
@@ -12,7 +14,7 @@ class AddActivityViewModelFactory(
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(AddActivityViewModel::class.java)) {
-            return AddActivityViewModel(repository, editId) as T
+            return AddActivityViewModel(application, repository, editId) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

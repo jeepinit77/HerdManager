@@ -1,7 +1,9 @@
 package com.jumblemint.cows.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.model.Activity
 import com.jumblemint.cows.data.model.ActivityType
 import com.jumblemint.cows.data.model.Status
@@ -12,11 +14,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class ActivitiesViewModel(
+    application: Application,
     private val repository: CattleRepository
-) : ViewModel() {
+) : AndroidViewModel(application) {
     
     private val _uiState = MutableStateFlow(ActivitiesUiState())
     val uiState: StateFlow<ActivitiesUiState> = _uiState.asStateFlow()
@@ -164,11 +168,39 @@ class ActivitiesViewModel(
 
     // Deletion + undo helpers
     suspend fun deleteActivities(activities: List<Activity>) {
-        activities.forEach { repository.deleteActivity(it) }
+        activities.forEach { 
+            val deletedActivity = it.copy(
+                isDeleted = true,
+                lastSyncAt = System.currentTimeMillis() // Update timestamp for sync
+            )
+            repository.updateActivity(deletedActivity)
+            
+            // Sync the deletion immediately if user is signed in
+            val application = getApplication<CattleApplication>()
+            application.authService.currentUser.first()?.let { currentUser ->
+                if (!currentUser.isLocalUser) {
+                    application.syncService.syncItemImmediately(currentUser.uid, deletedActivity)
+                }
+            }
+        }
     }
 
     suspend fun undoDeleteActivities(activities: List<Activity>) {
-        activities.forEach { repository.insertActivity(it.copy(id = 0)) }
+        activities.forEach { 
+            val restoredActivity = it.copy(
+                isDeleted = false,
+                lastSyncAt = System.currentTimeMillis() // Update timestamp for sync
+            )
+            repository.updateActivity(restoredActivity)
+            
+            // Sync the restoration immediately if user is signed in
+            val application = getApplication<CattleApplication>()
+            application.authService.currentUser.first()?.let { currentUser ->
+                if (!currentUser.isLocalUser) {
+                    application.syncService.syncItemImmediately(currentUser.uid, restoredActivity)
+                }
+            }
+        }
     }
 }
 

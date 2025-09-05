@@ -1,5 +1,6 @@
 package com.jumblemint.cows.ui.screens.activities
 
+import android.app.Application
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -48,7 +49,7 @@ fun ActivitiesScreen(
         database.settingsDao()
     )
     val viewModel: ActivitiesViewModel = viewModel(
-        factory = ActivitiesViewModelFactory(repository)
+        factory = ActivitiesViewModelFactory(context.applicationContext as Application, repository)
     )
 
     val uiState by viewModel.uiState.collectAsState()

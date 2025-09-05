@@ -1,7 +1,9 @@
 package com.jumblemint.cows.ui.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,9 +14,10 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 class AddActivityViewModel(
+    application: Application,
     private val repository: CattleRepository,
     private val editId: Long? = null
-) : ViewModel() {
+) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(AddActivityUiState())
     val uiState: StateFlow<AddActivityUiState> = _uiState.asStateFlow()
@@ -144,9 +147,23 @@ class AddActivityViewModel(
                     // Editing existing activity group
                     val originalActivity = repository.getActivityById(editId)
                     if (originalActivity?.groupId != null) {
-                        // Delete all activities in the group
+                        // Soft delete all activities in the group
                         val groupActivities = repository.getActivitiesByGroupId(originalActivity.groupId)
-                        groupActivities.forEach { repository.deleteActivity(it) }
+                        groupActivities.forEach { 
+                            val deletedActivity = it.copy(
+                                isDeleted = true,
+                                lastSyncAt = System.currentTimeMillis()
+                            )
+                            repository.updateActivity(deletedActivity)
+                            
+                            // Sync the deletion immediately if user is signed in
+                            val application = getApplication<CattleApplication>()
+                            application.authService.currentUser.first()?.let { currentUser ->
+                                if (!currentUser.isLocalUser) {
+                                    application.syncService.syncItemImmediately(currentUser.uid, deletedActivity)
+                                }
+                            }
+                        }
                         
                         // Create new activities with the same groupId
                         repository.createBulkActivityWithGroupId(

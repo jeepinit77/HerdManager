@@ -9,16 +9,16 @@ import java.time.LocalDate
 @Dao
 interface ActivityDao {
     
-    @Query("SELECT * FROM activities ORDER BY date DESC, id DESC")
+    @Query("SELECT * FROM activities WHERE isDeleted = 0 ORDER BY date DESC, id DESC")
     fun getAllActivities(): Flow<List<Activity>>
     
-    @Query("SELECT * FROM activities WHERE cowId = :cowId ORDER BY date DESC, id DESC")
+    @Query("SELECT * FROM activities WHERE cowId = :cowId AND isDeleted = 0 ORDER BY date DESC, id DESC")
     fun getActivitiesForCow(cowId: Long): Flow<List<Activity>>
     
-    @Query("SELECT * FROM activities WHERE activityType = :activityType ORDER BY date DESC, id DESC")
+    @Query("SELECT * FROM activities WHERE activityType = :activityType AND isDeleted = 0 ORDER BY date DESC, id DESC")
     fun getActivitiesByType(activityType: ActivityType): Flow<List<Activity>>
     
-    @Query("SELECT * FROM activities WHERE date BETWEEN :startDate AND :endDate ORDER BY date DESC, id DESC")
+    @Query("SELECT * FROM activities WHERE date BETWEEN :startDate AND :endDate AND isDeleted = 0 ORDER BY date DESC, id DESC")
     fun getActivitiesByDateRange(startDate: LocalDate, endDate: LocalDate): Flow<List<Activity>>
     
     @Insert
@@ -36,7 +36,7 @@ interface ActivityDao {
     @Query("SELECT * FROM activities WHERE id = :id LIMIT 1")
     suspend fun getActivityById(id: Long): Activity?
     
-    @Query("SELECT * FROM activities WHERE groupId = :groupId ORDER BY date DESC, id DESC")
+    @Query("SELECT * FROM activities WHERE groupId = :groupId AND isDeleted = 0 ORDER BY date DESC, id DESC")
     suspend fun getActivitiesByGroupId(groupId: String): List<Activity>
     
     @Query("DELETE FROM activities")
