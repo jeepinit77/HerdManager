@@ -123,7 +123,7 @@ class SyncService(
             println("Found ${localActivities.size} local activities to force upload.")
             for (activity in localActivities) {
                 val firestoreId = activity.firestoreId ?: UUID.randomUUID().toString()
-                val activityData = activity.toFirestoreMap(userId)
+                val activityData = activity.toFirestoreMap(userId, repository)
                 val updatedTimestamp = activityData["updatedAt"] as? Long ?: System.currentTimeMillis()
                 firestore.collection("users").document(userId).collection("activities").document(firestoreId).set(activityData).await()
                 repository.updateActivity(activity.copy(
@@ -301,7 +301,7 @@ class SyncService(
                 }
                 is Activity -> {
                     val firestoreId = item.firestoreId ?: UUID.randomUUID().toString()
-                    val activityData = item.toFirestoreMap(userId)
+                    val activityData = item.toFirestoreMap(userId, repository)
                     firestore.collection("users").document(userId).collection("activities").document(firestoreId).set(activityData).await()
                     repository.updateActivity(item.copy(
                         firestoreId = firestoreId,
@@ -426,7 +426,7 @@ class SyncService(
 
             localCows.forEach { cow ->
                 try {
-                    val firestoreId = cow.firestoreId ?: cow.id.toString() // Assuming cow.id is Long, needs conversion
+                    val firestoreId = cow.firestoreId ?: UUID.randomUUID().toString() // Use UUID for consistency
                     val remoteData = remoteCowsMap[firestoreId]
                     val cowData = cow.toFirestoreMap(userId)
                     val localUpdatedAt = cowData["updatedAt"] as? Long ?: cow.lastSyncAt
@@ -507,11 +507,15 @@ class SyncService(
             val remoteSnapshot = firestore.collection("users").document(userId).collection("activities").get().await()
             val remoteActivitiesMap = remoteSnapshot.documents.associate { it.id to (it.data ?: emptyMap<String, Any>()) }
 
+            // Create a mapping from firestoreId to local cow for proper cow reference resolution
+            val localCows = repository.getAllCowsSync()
+            val firestoreIdToLocalCow = localCows.associateBy { it.firestoreId }
+
             localActivities.forEach { activity ->
                 try {
-                    val firestoreId = activity.firestoreId ?: activity.id.toString() // Assuming activity.id is Long
+                    val firestoreId = activity.firestoreId ?: UUID.randomUUID().toString() // Use UUID for consistency
                     val remoteData = remoteActivitiesMap[firestoreId]
-                    val activityData = activity.toFirestoreMap(userId)
+                    val activityData = activity.toFirestoreMap(userId, repository)
                     val localUpdatedAt = activityData["updatedAt"] as? Long ?: activity.lastSyncAt
 
                     val shouldUpload = when {
@@ -551,26 +555,42 @@ class SyncService(
                     }
 
                     if (shouldProcess && !isRemoteDeleted) {
-                        val remoteActivity = Activity(
-                            id = localActivity?.id ?: 0L, // Keep local Long ID
-                            cowId = (data["cowId"] as? Number)?.toLong() ?: 0L,
-                            date = (data["date"] as? String)?.let { try { java.time.LocalDate.parse(it) } catch (e: Exception) { java.time.LocalDate.now() } } ?: java.time.LocalDate.now(),
-                            activityType = try { ActivityType.valueOf(data["activityType"] as? String ?: ActivityType.OTHER.name) } catch (e: Exception) { ActivityType.OTHER },
-                            notes = data["notes"] as? String,
-                            fromPastureId = data["fromPastureId"] as? String,
-                            toPastureId = data["toPastureId"] as? String,
-                            details = data["details"] as? String,
-                            groupId = data["groupId"] as? String,
-                            herdId = data["herdId"] as? String,
-                            firestoreId = firestoreId,
-                            lastSyncAt = remoteUpdatedAt,
-                            isDeleted = false,
-                            createdBy = data["createdBy"] as? String,
-                            updatedBy = data["updatedBy"] as? String
-                        )
-                        if (localActivity == null) repository.insertActivity(remoteActivity)
-                        else repository.updateActivity(remoteActivity.copy(id = localActivity.id))
-                        println("Downloaded activity: ${remoteActivity.activityType}")
+                        // Try to resolve cow reference using cowFirestoreId first, then fallback to cowId
+                        val cowFirestoreId = data["cowFirestoreId"] as? String
+                        val localCow = if (cowFirestoreId != null) {
+                            firestoreIdToLocalCow[cowFirestoreId]
+                        } else {
+                            // Fallback: try to find by the stored cowId (might work if IDs happen to match)
+                            val remoteCowId = (data["cowId"] as? Number)?.toLong() ?: 0L
+                            repository.getCowById(remoteCowId)
+                        }
+
+                        if (localCow != null) {
+                            val remoteActivity = Activity(
+                                id = localActivity?.id ?: 0L, // Keep local Long ID
+                                cowId = localCow.id, // Use local cow ID
+                                date = (data["date"] as? String)?.let { try { java.time.LocalDate.parse(it) } catch (e: Exception) { java.time.LocalDate.now() } } ?: java.time.LocalDate.now(),
+                                activityType = try { ActivityType.valueOf(data["activityType"] as? String ?: ActivityType.OTHER.name) } catch (e: Exception) { ActivityType.OTHER },
+                                notes = data["notes"] as? String,
+                                fromPastureId = data["fromPastureId"] as? String,
+                                toPastureId = data["toPastureId"] as? String,
+                                details = data["details"] as? String,
+                                groupId = data["groupId"] as? String,
+                                herdId = data["herdId"] as? String,
+                                firestoreId = firestoreId,
+                                lastSyncAt = remoteUpdatedAt,
+                                isDeleted = false,
+                                createdBy = data["createdBy"] as? String,
+                                updatedBy = data["updatedBy"] as? String
+                            )
+                            
+                            if (localActivity == null) repository.insertActivity(remoteActivity)
+                            else repository.updateActivity(remoteActivity.copy(id = localActivity.id))
+                            println("Downloaded activity: ${remoteActivity.activityType} for cow ${localCow.name} (ID: ${localCow.id})")
+                        } else {
+                            val remoteCowId = (data["cowId"] as? Number)?.toLong() ?: 0L
+                            println("Skipping activity ${data["activityType"]} - referenced cow not found locally (cowFirestoreId: $cowFirestoreId, cowId: $remoteCowId)")
+                        }
                     }
                 } catch (e: Exception) { println("Error downloading activity $firestoreId: ${e.message}") }
             }
@@ -586,7 +606,7 @@ class SyncService(
 
             localNotes.forEach { note ->
                 try {
-                    val firestoreId = note.firestoreId ?: note.id.toString() // Assuming note.id is Long
+                    val firestoreId = note.firestoreId ?: UUID.randomUUID().toString() // Use UUID for consistency
                     val remoteData = remoteNotesMap[firestoreId]
                     val noteData = note.toFirestoreMap(userId)
                     val localUpdatedAt = noteData["updatedAt"] as? Long ?: note.lastSyncAt
@@ -830,9 +850,26 @@ class SyncService(
             }
             val firestoreId = doc.id
             
+            // Try to resolve cow reference using cowFirestoreId first, then fallback to cowId
+            val cowFirestoreId = data["cowFirestoreId"] as? String
+            val localCows = repository.getAllCowsSync()
+            val localCow = if (cowFirestoreId != null) {
+                localCows.find { it.firestoreId == cowFirestoreId }
+            } else {
+                // Fallback: try to find by the stored cowId (might work if IDs happen to match)
+                val remoteCowId = (data["cowId"] as? Number)?.toLong() ?: 0L
+                repository.getCowById(remoteCowId)
+            }
+
+            if (localCow == null) {
+                val remoteCowId = (data["cowId"] as? Number)?.toLong() ?: 0L
+                println("Real-time ${change.type} for activity '${data["activityType"]}' (FS ID: $firestoreId): Skipping - referenced cow not found locally (cowFirestoreId: $cowFirestoreId, cowId: $remoteCowId). Will sync during full sync.")
+                return
+            }
+            
             val remoteActivity = Activity(
                 id = 0L, 
-                cowId = (data["cowId"] as? Number)?.toLong() ?: 0L,
+                cowId = localCow.id, // Use local cow ID
                 date = (data["date"] as? String)?.let { try { java.time.LocalDate.parse(it) } catch (e: Exception) { java.time.LocalDate.now() } } ?: java.time.LocalDate.now(),
                 activityType = try { ActivityType.valueOf(data["activityType"] as? String ?: ActivityType.OTHER.name) } catch (e: Exception) { ActivityType.OTHER },
                 notes = data["notes"] as? String,
@@ -855,12 +892,12 @@ class SyncService(
                     val existingLocalActivity = repository.getAllActivitiesSync().find { it.firestoreId == firestoreId }
                      if (existingLocalActivity == null) {
                         if (!remoteActivity.isDeleted) {
-                            println("Real-time ADDED (local copy missing): Inserting activity '${remoteActivity.activityType}'.")
+                            println("Real-time ADDED (local copy missing): Inserting activity '${remoteActivity.activityType}' for cow ${localCow.name}.")
                             repository.insertActivity(remoteActivity.copy(id = 0L))
                         }
                     } else {
                         if (existingLocalActivity.lastSyncAt < remoteActivity.lastSyncAt || remoteActivity.isDeleted != existingLocalActivity.isDeleted) {
-                            println("Real-time ADDED (conflict): Updating activity '${remoteActivity.activityType}'.")
+                            println("Real-time ADDED (conflict): Updating activity '${remoteActivity.activityType}' for cow ${localCow.name}.")
                             repository.updateActivity(remoteActivity.copy(id = existingLocalActivity.id))
                         }
                     }
@@ -869,12 +906,12 @@ class SyncService(
                     val existingLocalActivity = repository.getAllActivitiesSync().find { it.firestoreId == firestoreId }
                     if (existingLocalActivity == null) {
                         if (!remoteActivity.isDeleted) {
-                            println("Real-time MODIFIED: Activity '${remoteActivity.activityType}' not local. Inserting.")
+                            println("Real-time MODIFIED: Activity '${remoteActivity.activityType}' not local. Inserting for cow ${localCow.name}.")
                             repository.insertActivity(remoteActivity.copy(id = 0L))
                         }
                     } else {
                         if (existingLocalActivity.lastSyncAt < remoteActivity.lastSyncAt || remoteActivity.isDeleted != existingLocalActivity.isDeleted) {
-                            println("Real-time MODIFIED: Updating activity '${remoteActivity.activityType}'.")
+                            println("Real-time MODIFIED: Updating activity '${remoteActivity.activityType}' for cow ${localCow.name}.")
                             repository.updateActivity(remoteActivity.copy(id = existingLocalActivity.id))
                         }
                     }
@@ -998,9 +1035,14 @@ private fun Cow.toFirestoreMap(userId: String): Map<String, Any?> {
     )
 }
 
-private fun Activity.toFirestoreMap(userId: String): Map<String, Any?> {
+private suspend fun Activity.toFirestoreMap(userId: String, repository: CattleRepository): Map<String, Any?> {
+    // Get the cow's firestoreId for proper cross-device referencing
+    val cow = repository.getCowById(cowId)
+    val cowFirestoreId = cow?.firestoreId
+    
     return mapOf(
-        "cowId" to cowId,
+        "cowId" to cowId, // Keep for backward compatibility
+        "cowFirestoreId" to cowFirestoreId, // Use this for cross-device cow referencing
         "date" to date.toString(),
         "activityType" to activityType.name,
         "notes" to notes,

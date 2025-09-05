@@ -145,7 +145,7 @@ class CattleRepository(
         date: LocalDate = LocalDate.now(),
         notes: String? = null,
         toPastureId: String? = null
-    ) {
+    ): List<Activity> {
         // Generate a unique group ID for this bulk activity
         val groupId = UUID.randomUUID().toString()
         
@@ -165,7 +165,12 @@ class CattleRepository(
             )
         }
         
-        insertActivities(activities)
+        // Insert activities and get the created activities with their IDs
+        val createdActivities = mutableListOf<Activity>()
+        activities.forEach { activity ->
+            val insertedId = insertActivity(activity)
+            createdActivities.add(activity.copy(id = insertedId))
+        }
         
         if (activityType == ActivityType.MOVED) {
             toPastureId?.let { pastureId -> // pastureId here is String
@@ -189,6 +194,8 @@ class CattleRepository(
                 }
             }
         }
+        
+        return createdActivities
     }
 
     // Helper method for editing activities with a specific groupId
@@ -199,7 +206,7 @@ class CattleRepository(
         notes: String? = null,
         toPastureId: String? = null,
         groupId: String
-    ) {
+    ): List<Activity> {
         val activities = cowIds.map { cowId ->
             Activity(
                 cowId = cowId,
@@ -211,7 +218,12 @@ class CattleRepository(
             )
         }
         
-        insertActivities(activities)
+        // Insert activities and get the created activities with their IDs
+        val createdActivities = mutableListOf<Activity>()
+        activities.forEach { activity ->
+            val insertedId = insertActivity(activity)
+            createdActivities.add(activity.copy(id = insertedId))
+        }
         
         if (activityType == ActivityType.MOVED) {
             toPastureId?.let { pastureId ->
@@ -235,6 +247,8 @@ class CattleRepository(
                 }
             }
         }
+        
+        return createdActivities
     }
 
     // MODIFIED: newPastureId parameter changed from Long? to String?

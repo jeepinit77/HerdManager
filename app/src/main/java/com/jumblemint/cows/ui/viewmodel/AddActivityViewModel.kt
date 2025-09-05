@@ -166,7 +166,7 @@ class AddActivityViewModel(
                         }
                         
                         // Create new activities with the same groupId
-                        repository.createBulkActivityWithGroupId(
+                        val createdActivities = repository.createBulkActivityWithGroupId(
                             cowIds = state.selectedCows.toList(),
                             activityType = state.activityType,
                             date = state.date,
@@ -174,26 +174,53 @@ class AddActivityViewModel(
                             toPastureId = state.toPastureId,
                             groupId = originalActivity.groupId
                         )
+                        
+                        // Sync the newly created activities immediately if user is signed in
+                        val application = getApplication<CattleApplication>()
+                        application.authService.currentUser.first()?.let { currentUser ->
+                            if (!currentUser.isLocalUser) {
+                                createdActivities.forEach { activity ->
+                                    application.syncService.syncItemImmediately(currentUser.uid, activity)
+                                }
+                            }
+                        }
                     } else if (originalActivity != null) {
                         // Legacy activity without groupId, just update the single activity
-                        repository.updateActivity(
-                            originalActivity.copy(
-                                activityType = state.activityType,
-                                date = state.date,
-                                notes = state.notes.takeIf { it.isNotBlank() },
-                                toPastureId = state.toPastureId
-                            )
+                        val updatedActivity = originalActivity.copy(
+                            activityType = state.activityType,
+                            date = state.date,
+                            notes = state.notes.takeIf { it.isNotBlank() },
+                            toPastureId = state.toPastureId
                         )
+                        repository.updateActivity(updatedActivity)
+                        
+                        // Sync the updated activity immediately if user is signed in
+                        val application = getApplication<CattleApplication>()
+                        application.authService.currentUser.first()?.let { currentUser ->
+                            if (!currentUser.isLocalUser) {
+                                application.syncService.syncItemImmediately(currentUser.uid, updatedActivity)
+                            }
+                        }
                     }
                 } else {
                     // Creating new activity
-                    repository.createBulkActivity(
+                    val createdActivities = repository.createBulkActivity(
                         cowIds = state.selectedCows.toList(),
                         activityType = state.activityType,
                         date = state.date,
                         notes = state.notes.takeIf { it.isNotBlank() },
                         toPastureId = state.toPastureId
                     )
+                    
+                    // Sync the newly created activities immediately if user is signed in
+                    val application = getApplication<CattleApplication>()
+                    application.authService.currentUser.first()?.let { currentUser ->
+                        if (!currentUser.isLocalUser) {
+                            createdActivities.forEach { activity ->
+                                application.syncService.syncItemImmediately(currentUser.uid, activity)
+                            }
+                        }
+                    }
                 }
                 
                 _uiState.value = state.copy(isSaved = true)
