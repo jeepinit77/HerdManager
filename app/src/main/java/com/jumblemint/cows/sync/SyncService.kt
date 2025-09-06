@@ -91,7 +91,7 @@ class SyncService(
             println("Found ${localCows.size} local cows to force upload.")
             for (cow in localCows) {
                 val firestoreId = cow.firestoreId ?: UUID.randomUUID().toString()
-                val cowData = cow.toFirestoreMap(userId) 
+                val cowData = cow.toFirestoreMap(userId, repository) 
                 val updatedTimestamp = cowData["updatedAt"] as? Long ?: System.currentTimeMillis()
                 firestore.collection("users").document(userId).collection("cows").document(firestoreId).set(cowData).await()
                 repository.updateCow(cow.copy(
@@ -277,7 +277,7 @@ class SyncService(
             when (item) {
                 is Cow -> {
                     val firestoreId = item.firestoreId ?: UUID.randomUUID().toString()
-                    val cowData = item.toFirestoreMap(userId)
+                    val cowData = item.toFirestoreMap(userId, repository)
                     val updatedTimestamp = cowData.get("updatedAt") as? Long ?: System.currentTimeMillis()
                     
                     // Update local item with firestoreId BEFORE writing to Firestore
@@ -444,7 +444,7 @@ class SyncService(
                 try {
                     val firestoreId = cow.firestoreId ?: UUID.randomUUID().toString() // Use UUID for consistency
                     val remoteData = remoteCowsMap[firestoreId]
-                    val cowData = cow.toFirestoreMap(userId)
+                    val cowData = cow.toFirestoreMap(userId, repository)
                     val localUpdatedAt = cowData["updatedAt"] as? Long ?: cow.lastSyncAt
                     
                     val shouldUpload = when {
@@ -485,6 +485,12 @@ class SyncService(
                     }
 
                     if (shouldProcess && !isRemoteDeleted) {
+                        // Resolve mother and father references using firestoreIds
+                        val motherFirestoreId = data["motherFirestoreId"] as? String
+                        val fatherFirestoreId = data["fatherFirestoreId"] as? String
+                        val localMotherCow = motherFirestoreId?.let { currentLocalCows[it] }
+                        val localFatherCow = fatherFirestoreId?.let { currentLocalCows[it] }
+                        
                         val remoteCow = Cow(
                             id = localCow?.id ?: 0L, // Keep local Long ID if exists, else 0 for new insert
                             name = data["name"] as? String,
@@ -494,8 +500,8 @@ class SyncService(
                             gender = try { Gender.valueOf(data["gender"] as? String ?: Gender.TBD.name) } catch (e: Exception) { Gender.TBD },
                             classification = try { Classification.valueOf(data["classification"] as? String ?: Classification.CALF.name) } catch (e: Exception) { Classification.CALF },
                             colorMarkings = data["colorMarkings"] as? String,
-                            motherId = (data["motherId"] as? Number)?.toLong(),
-                            fatherId = (data["fatherId"] as? Number)?.toLong(),
+                            motherId = localMotherCow?.id ?: (data["motherId"] as? Number)?.toLong(), // Use local mother ID if found, fallback to stored ID
+                            fatherId = localFatherCow?.id ?: (data["fatherId"] as? Number)?.toLong(), // Use local father ID if found, fallback to stored ID
                             status = try { Status.valueOf(data["status"] as? String ?: Status.ACTIVE.name) } catch (e: Exception) { Status.ACTIVE },
                             pastureId = data["pastureId"] as? String,
                             photos = (data["photos"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
@@ -696,6 +702,13 @@ class SyncService(
             }
             val firestoreId = doc.id
             
+            // Resolve mother and father references using firestoreIds
+            val motherFirestoreId = data["motherFirestoreId"] as? String
+            val fatherFirestoreId = data["fatherFirestoreId"] as? String
+            val localCows = repository.getAllCowsSync()
+            val localMotherCow = motherFirestoreId?.let { fsId -> localCows.find { it.firestoreId == fsId } }
+            val localFatherCow = fatherFirestoreId?.let { fsId -> localCows.find { it.firestoreId == fsId } }
+            
             val remoteCow = Cow(
                 id = 0L, 
                 name = data["name"] as? String,
@@ -705,8 +718,8 @@ class SyncService(
                 gender = try { Gender.valueOf(data["gender"] as? String ?: Gender.TBD.name) } catch (e: Exception) { Gender.TBD },
                 classification = try { Classification.valueOf(data["classification"] as? String ?: Classification.CALF.name) } catch (e: Exception) { Classification.CALF },
                 colorMarkings = data["colorMarkings"] as? String,
-                motherId = (data["motherId"] as? Number)?.toLong(),
-                fatherId = (data["fatherId"] as? Number)?.toLong(),
+                motherId = localMotherCow?.id ?: (data["motherId"] as? Number)?.toLong(), // Use local mother ID if found, fallback to stored ID
+                fatherId = localFatherCow?.id ?: (data["fatherId"] as? Number)?.toLong(), // Use local father ID if found, fallback to stored ID
                 status = try { Status.valueOf(data["status"] as? String ?: Status.ACTIVE.name) } catch (e: Exception) { Status.ACTIVE },
                 pastureId = data["pastureId"] as? String,
                 photos = (data["photos"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
@@ -1030,7 +1043,11 @@ enum class ItemSyncStatus {
     IDLE, SYNCING, SUCCESS, ERROR
 }
 
-private fun Cow.toFirestoreMap(userId: String): Map<String, Any?> {
+private suspend fun Cow.toFirestoreMap(userId: String, repository: CattleRepository): Map<String, Any?> {
+    // Get mother and father firestoreIds for proper cross-device referencing
+    val motherCow = motherId?.let { repository.getCowById(it) }
+    val fatherCow = fatherId?.let { repository.getCowById(it) }
+    
     return mapOf(
         "name" to name,
         "tagNumber" to tagNumber,
@@ -1039,10 +1056,12 @@ private fun Cow.toFirestoreMap(userId: String): Map<String, Any?> {
         "gender" to gender.name,
         "classification" to classification.name,
         "colorMarkings" to colorMarkings,
-        "motherId" to motherId,
-        "fatherId" to fatherId,
+        "motherId" to motherId, // Keep for backward compatibility
+        "motherFirestoreId" to motherCow?.firestoreId, // Use this for cross-device mother referencing
+        "fatherId" to fatherId, // Keep for backward compatibility
+        "fatherFirestoreId" to fatherCow?.firestoreId, // Use this for cross-device father referencing
         "status" to status.name,
-        "pastureId" to pastureId,
+        "pastureId" to pastureId, // This is already a String (firestoreId)
         "photos" to photos,
         "isWatched" to isWatched,
         "herdId" to herdId,
