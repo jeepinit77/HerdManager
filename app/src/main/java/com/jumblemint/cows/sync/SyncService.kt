@@ -278,47 +278,63 @@ class SyncService(
                 is Cow -> {
                     val firestoreId = item.firestoreId ?: UUID.randomUUID().toString()
                     val cowData = item.toFirestoreMap(userId)
-                    firestore.collection("users").document(userId).collection("cows").document(firestoreId).set(cowData).await()
+                    val updatedTimestamp = cowData.get("updatedAt") as? Long ?: System.currentTimeMillis()
+                    
+                    // Update local item with firestoreId BEFORE writing to Firestore
                     repository.updateCow(item.copy(
                         firestoreId = firestoreId,
-                        // id = firestoreId, // Corrected: Removed this line - Cow ID is Long, firestoreId is String
-                        lastSyncAt = cowData.get("updatedAt") as? Long ?: System.currentTimeMillis(),
+                        lastSyncAt = updatedTimestamp,
                         updatedBy = userId
                     ))
+                    
+                    firestore.collection("users").document(userId).collection("cows").document(firestoreId).set(cowData).await()
                     println("Immediately synced cow: ${item.name} with FS ID: $firestoreId")
                 }
                 is Pasture -> {
                     val firestoreId = item.firestoreId ?: UUID.randomUUID().toString() 
                     val pastureData = item.toFirestoreMap(userId)
-                    firestore.collection("users").document(userId).collection("pastures").document(firestoreId).set(pastureData).await()
+                    val updatedTimestamp = pastureData.get("updatedAt") as? Long ?: System.currentTimeMillis()
+                    
+                    // Update local item with firestoreId BEFORE writing to Firestore
                     repository.updatePasture(item.copy(
                         firestoreId = firestoreId,
                         id = firestoreId, // Ensure local PK is also the firestoreId
-                        lastSyncAt = pastureData.get("updatedAt") as? Long ?: System.currentTimeMillis(),
+                        lastSyncAt = updatedTimestamp,
                         updatedBy = userId
                     ))
+                    
+                    firestore.collection("users").document(userId).collection("pastures").document(firestoreId).set(pastureData).await()
                     println("Immediately synced pasture: ${item.name} with FS ID: $firestoreId")
                 }
                 is Activity -> {
                     val firestoreId = item.firestoreId ?: UUID.randomUUID().toString()
                     val activityData = item.toFirestoreMap(userId, repository)
-                    firestore.collection("users").document(userId).collection("activities").document(firestoreId).set(activityData).await()
+                    val updatedTimestamp = activityData.get("updatedAt") as? Long ?: System.currentTimeMillis()
+                    
+                    // Update local item with firestoreId BEFORE writing to Firestore
+                    // This prevents real-time listener from creating duplicates
                     repository.updateActivity(item.copy(
                         firestoreId = firestoreId,
-                        lastSyncAt = activityData.get("updatedAt") as? Long ?: System.currentTimeMillis(),
+                        lastSyncAt = updatedTimestamp,
                         updatedBy = userId
                     ))
+                    
+                    firestore.collection("users").document(userId).collection("activities").document(firestoreId).set(activityData).await()
                     println("Immediately synced activity: ${item.activityType} with FS ID: $firestoreId")
                 }
                 is Note -> {
                     val firestoreId = item.firestoreId ?: UUID.randomUUID().toString()
                     val noteData = item.toFirestoreMap(userId)
-                    firestore.collection("users").document(userId).collection("notes").document(firestoreId).set(noteData).await()
+                    val updatedTimestamp = noteData.get("updatedAt") as? Long ?: System.currentTimeMillis()
+                    
+                    // Update local item with firestoreId BEFORE writing to Firestore
                     repository.updateNote(item.copy(
                         firestoreId = firestoreId,
-                        lastSyncAt = noteData.get("updatedAt") as? Long ?: System.currentTimeMillis(),
+                        lastSyncAt = updatedTimestamp,
                         updatedBy = userId
                     ))
+                    
+                    firestore.collection("users").document(userId).collection("notes").document(firestoreId).set(noteData).await()
                     println("Immediately synced note: ${item.title} with FS ID: $firestoreId")
                 }
             }
@@ -890,7 +906,7 @@ class SyncService(
             when (change.type) {
                 DocumentChange.Type.ADDED -> {
                     val existingLocalActivity = repository.getAllActivitiesSync().find { it.firestoreId == firestoreId }
-                     if (existingLocalActivity == null) {
+                    if (existingLocalActivity == null) {
                         if (!remoteActivity.isDeleted) {
                             println("Real-time ADDED (local copy missing): Inserting activity '${remoteActivity.activityType}' for cow ${localCow.name}.")
                             repository.insertActivity(remoteActivity.copy(id = 0L))
@@ -899,6 +915,8 @@ class SyncService(
                         if (existingLocalActivity.lastSyncAt < remoteActivity.lastSyncAt || remoteActivity.isDeleted != existingLocalActivity.isDeleted) {
                             println("Real-time ADDED (conflict): Updating activity '${remoteActivity.activityType}' for cow ${localCow.name}.")
                             repository.updateActivity(remoteActivity.copy(id = existingLocalActivity.id))
+                        } else {
+                            println("Real-time ADDED (already up-to-date): Skipping activity '${remoteActivity.activityType}' for cow ${localCow.name}.")
                         }
                     }
                 }
