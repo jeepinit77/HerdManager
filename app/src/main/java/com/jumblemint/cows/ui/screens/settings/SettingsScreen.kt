@@ -267,8 +267,8 @@ fun SettingsScreen(
             
             item {
                 SettingsCard(
-                    title = "Delete All Data",
-                    subtitle = "Remove all cattle, pastures, and activities",
+                    title = "Delete Data",
+                    subtitle = "Select which data groups to delete",
                     icon = Icons.Default.Warning,
                     onClick = { showDeleteDataDialog = true }
                 )
@@ -321,20 +321,64 @@ fun SettingsScreen(
             onDismiss = { showSampleDataDialog = false },
             onInstall = {
                 viewModel.installSampleData()
+                // Trigger sync after installing sample data if signed in
+                if (isSignedIn && currentUser?.isLocalUser == false) {
+                    coroutineScope.launch { application.authService.startUserSync(application.syncService) }
+                }
                 showSampleDataDialog = false
             },
             onRemove = {
                 viewModel.deleteSampleData()
+                // Trigger sync after deleting sample data if signed in
+                if (isSignedIn && currentUser?.isLocalUser == false) {
+                    coroutineScope.launch { application.authService.startUserSync(application.syncService) }
+                }
                 showSampleDataDialog = false
             }
         )
     }
     
     if (showDeleteDataDialog) {
-        DeleteAllDataDialog(
+        DeleteDataSelectiveDialog(
             onDismiss = { showDeleteDataDialog = false },
-            onConfirm = {
-                viewModel.deleteAllData()
+            onConfirm = { selection ->
+                if (isSignedIn && currentUser?.isLocalUser == false) {
+                    // When signed in, clear corresponding server collections first and pause realtime
+                    val uid = currentUser?.uid
+                    if (uid != null) {
+                        coroutineScope.launch {
+                            try {
+                                // Stop realtime to avoid re-downloading while wiping
+                                application.syncService.stopRealtimeSync(uid)
+                                val collections = mutableListOf<String>().apply {
+                                    if (selection.cows) add("cows")
+                                    if (selection.pastures) add("pastures")
+                                    if (selection.activities) add("activities")
+                                    if (selection.notes) add("notes")
+                                    if (selection.tagColors) add("tagColors")
+                                    if (selection.activityTypes) add("activityTypes")
+                                    if (selection.settings) add("settings")
+                                }
+                                if (collections.isNotEmpty()) {
+                                    application.syncService.clearServerCollections(uid, collections)
+                                }
+                            } catch (e: Exception) {
+                                // Log and continue with local deletion to avoid being stuck
+                                println("Failed to clear some server collections before local delete: ${e.message}")
+                            } finally {
+                                // Perform local deletion and then restart sync (which will see empty server state)
+                                viewModel.deleteSelectedData(selection)
+                                application.authService.startUserSync(application.syncService)
+                            }
+                        }
+                    } else {
+                        // Fallback: just delete locally
+                        viewModel.deleteSelectedData(selection)
+                    }
+                } else {
+                    // Not signed in: just delete locally
+                    viewModel.deleteSelectedData(selection)
+                }
                 showDeleteDataDialog = false
             }
         )
@@ -480,9 +524,9 @@ fun SampleDataDialog(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "• 10 sample cattle with various ages and genders\n" +
-                               "• 3 pastures with different acreages\n" +
-                               "• Sample activities like births, moves, and sales",
+                        text = "• Multiple sample cattle across ages and genders with family relationships (mothers, fathers, siblings, calves)\n" +
+                               "• 4 pastures with different acreages\n" +
+                               "• Rich activities (births, moves, sales, work) and helpful notes to explore app features",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -512,60 +556,96 @@ fun SampleDataDialog(
 }
 
 @Composable
-fun DeleteAllDataDialog(
+fun DeleteDataSelectiveDialog(
     onDismiss: () -> Unit,
-    onConfirm: () -> Unit
+    onConfirm: (com.jumblemint.cows.ui.viewmodel.SettingsViewModel.DeleteSelection) -> Unit
 ) {
+    var cows by remember { mutableStateOf(false) }
+    var pastures by remember { mutableStateOf(false) }
+    var activities by remember { mutableStateOf(false) }
+    var notes by remember { mutableStateOf(false) }
+    var tagColors by remember { mutableStateOf(false) }
+    var activityTypes by remember { mutableStateOf(false) }
+    var settings by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { 
             Text(
-                "Delete All Data",
+                "Delete Data",
                 color = MaterialTheme.colorScheme.error
             ) 
         },
         text = {
-            Column {
-                Icon(
-                    imageVector = Icons.Default.Warning,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .align(Alignment.CenterHorizontally)
-                )
-                Spacer(modifier = Modifier.height(16.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    text = "This will permanently delete ALL data from your app:",
+                    text = "Select the types of data to delete:",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium
                 )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = cows, onCheckedChange = { cows = it })
+                    Text("Cows")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = pastures, onCheckedChange = { pastures = it })
+                    Text("Pastures")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = activities, onCheckedChange = { activities = it })
+                    Text("Activities")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = notes, onCheckedChange = { notes = it })
+                    Text("Notes")
+                }
+                Divider()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = tagColors, onCheckedChange = { tagColors = it })
+                    Text("Tag Color Settings")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = activityTypes, onCheckedChange = { activityTypes = it })
+                    Text("Activity Type Settings")
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = settings, onCheckedChange = { settings = it })
+                    Text("Other Settings (app preferences only)")
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "• All cattle records\n" +
-                           "• All pasture information\n" +
-                           "• All activity history\n" +
-                           "• All custom settings",
+                    text = "Details:\n• Tag Color Settings: deletes all custom tag colors, then restores the default set.\n• Activity Type Settings: deletes all custom activity types, then restores the default set.\n• Other Settings: deletes only app preferences (like sample data flag, default calf pasture preference, filters). Your cows, pastures, activities, notes remain untouched.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "This action cannot be undone!",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold,
+                    text = "Warning: This action cannot be undone.",
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
             }
         },
         confirmButton = {
             Button(
-                onClick = onConfirm,
+                onClick = {
+                    onConfirm(
+                        com.jumblemint.cows.ui.viewmodel.SettingsViewModel.DeleteSelection(
+                            cows = cows,
+                            pastures = pastures,
+                            activities = activities,
+                            notes = notes,
+                            tagColors = tagColors,
+                            activityTypes = activityTypes,
+                            settings = settings
+                        )
+                    )
+                },
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error
                 )
             ) {
-                Text("Delete All")
+                Text("Delete Selected")
             }
         },
         dismissButton = {

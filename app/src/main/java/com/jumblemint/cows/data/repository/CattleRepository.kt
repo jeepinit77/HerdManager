@@ -1099,6 +1099,21 @@ class CattleRepository(
     suspend fun deleteAllPastures() = pastureDao.deleteAllPastures()
     suspend fun deleteAllActivities() = activityDao.deleteAllActivities()
     suspend fun deleteAllNotes() = noteDao?.deleteAllNotes()
+    suspend fun deleteAllTagColors() {
+        tagColorDao?.let { dao ->
+            val all = dao.getAllTagColorsSync()
+            for (tc in all) dao.deleteById(tc.id)
+        }
+    }
+    suspend fun deleteAllActivityTypeConfigs() {
+        activityTypeConfigDao?.deleteAllActivityTypes()
+    }
+    suspend fun deleteAllSettings() {
+        settingsDao?.let { dao ->
+            val settings = dao.getAllSettings().first()
+            for (s in settings) dao.deleteSetting(s)
+        }
+    }
 
     // User operations
     suspend fun insertUser(user: User) = userDao?.insertUser(user)

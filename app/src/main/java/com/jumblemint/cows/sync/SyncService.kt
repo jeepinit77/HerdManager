@@ -62,9 +62,20 @@ class SyncService(
         println("Clearing all server data for user ID: $userId")
         try {
             val collectionsToDelete = listOf("cows", "pastures", "activities", "notes", "settings", "tagColors", "activityTypes")
-            for (collectionName in collectionsToDelete) {
+            clearServerCollections(userId, collectionsToDelete)
+            println("Successfully cleared all specified server data for user $userId.")
+        } catch (e: Exception) {
+            println("Error clearing server data for user $userId: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
+    }
+
+    suspend fun clearServerCollections(userId: String, collections: List<String>) {
+        try {
+            for (collectionName in collections) {
                 val collectionRef = firestore.collection("users").document(userId).collection(collectionName)
-                val snapshot = collectionRef.get().await() 
+                val snapshot = collectionRef.get().await()
                 if (snapshot.isEmpty) {
                     println("No documents found in '$collectionName' for user $userId to delete.")
                     continue
@@ -76,9 +87,8 @@ class SyncService(
                 batch.commit().await()
                 println("Successfully deleted all documents from '$collectionName' for user $userId.")
             }
-            println("Successfully cleared all specified server data for user $userId.")
         } catch (e: Exception) {
-            println("Error clearing server data for user $userId: ${e.message}")
+            println("Error clearing some collections for user $userId: ${e.message}")
             e.printStackTrace()
             throw e
         }

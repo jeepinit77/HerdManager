@@ -183,10 +183,15 @@ class AuthViewModel(
                 }
                 DataMergeOption.REPLACE_DEVICE_WITH_SERVER -> {
                     // Clear local data and download all server data
-                    repository.deleteAllCows()
-                    repository.deleteAllPastures()
+                    // Clear everything locally so device is fully replaced by cloud data
                     repository.deleteAllActivities()
                     repository.deleteAllNotes()
+                    repository.deleteAllCows()
+                    repository.deleteAllPastures()
+                    repository.deleteAllTagColors()
+                    repository.deleteAllActivityTypeConfigs()
+                    repository.deleteAllSettings()
+                    // Now download from server
                     syncService.syncUserData(userId)
                 }
             }

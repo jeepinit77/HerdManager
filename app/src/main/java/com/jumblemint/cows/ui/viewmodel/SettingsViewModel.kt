@@ -49,7 +49,15 @@ class SettingsViewModel(
         }
     }
     
-
+    data class DeleteSelection(
+        val cows: Boolean = false,
+        val pastures: Boolean = false,
+        val activities: Boolean = false,
+        val notes: Boolean = false,
+        val tagColors: Boolean = false,
+        val activityTypes: Boolean = false,
+        val settings: Boolean = false
+    )
     
     fun exportData(format: String) {
         viewModelScope.launch {
@@ -114,6 +122,29 @@ class SettingsViewModel(
                     isSampleDataInstalled = false,
                     message = "All data deleted successfully"
                 )
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+    
+    fun deleteSelectedData(selection: DeleteSelection) {
+        viewModelScope.launch {
+            try {
+                if (selection.activities) repository.deleteAllActivities()
+                if (selection.cows) repository.deleteAllCows()
+                if (selection.pastures) repository.deleteAllPastures()
+                if (selection.notes) repository.deleteAllNotes()
+                if (selection.tagColors) {
+                    repository.deleteAllTagColors()
+                    repository.ensureDefaultTagColorsExist()
+                }
+                if (selection.activityTypes) {
+                    repository.deleteAllActivityTypeConfigs()
+                    repository.ensureDefaultActivityTypesExist()
+                }
+                if (selection.settings) repository.deleteAllSettings()
+                _uiState.value = _uiState.value.copy(message = "Selected data deleted successfully")
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(error = e.message)
             }
