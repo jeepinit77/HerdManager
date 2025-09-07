@@ -18,6 +18,8 @@ import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.CowCard
+import com.jumblemint.cows.ui.components.rememberTagColorMap
+import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.PastureDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.PastureDetailViewModelFactory
 import kotlinx.coroutines.launch
@@ -40,7 +42,12 @@ fun PastureDetailScreen(
             pastureDao = database.pastureDao(),
             activityDao = database.activityDao(),
             settingsDao = database.settingsDao(),
-            noteDao = database.noteDao()
+            noteDao = database.noteDao(),
+            userDao = database.userDao(),
+            herdDao = database.herdDao(),
+            herdMemberDao = database.herdMemberDao(),
+            tagColorDao = database.tagColorDao(),
+            activityTypeConfigDao = database.activityTypeConfigDao()
         )
     }
     
@@ -49,6 +56,10 @@ fun PastureDetailScreen(
     )
     
     val uiState by viewModel.uiState.collectAsState()
+    
+    // Get tag color map for resolving tag colors
+    val tagColorMap = rememberTagColorMap(repository)
+    
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -244,7 +255,8 @@ fun PastureDetailScreen(
                                         viewModel.undoDeleteCow(cow)
                                     }
                                 }
-                            }
+                            },
+                            resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap)
                         )
                     }
                 }

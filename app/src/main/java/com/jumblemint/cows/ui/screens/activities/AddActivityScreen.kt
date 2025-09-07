@@ -37,7 +37,13 @@ fun AddActivityScreen(
         database.cowDao(),
         database.pastureDao(),
         database.activityDao(),
-        database.settingsDao()
+        database.settingsDao(),
+        database.noteDao(),
+        database.userDao(),
+        database.herdDao(),
+        database.herdMemberDao(),
+        database.tagColorDao(),
+        database.activityTypeConfigDao()
     )
     val viewModel: AddActivityViewModel = viewModel(
         factory = AddActivityViewModelFactory(context.applicationContext as Application, repository, editId)

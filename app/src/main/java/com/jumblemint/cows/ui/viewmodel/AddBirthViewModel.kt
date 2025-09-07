@@ -30,11 +30,8 @@ class AddBirthViewModel(
     private fun loadData() {
         viewModelScope.launch {
             try {
-                val tagColorsSetting = repository.getSettingByKey(SettingsKeys.TAG_COLORS)
-                val tagColors = tagColorsSetting?.value?.split(",")?.map { it.trim() } ?: listOf(
-                    "Red", "Blue", "Green", "Yellow", "Orange", "Purple", "Pink", "White", "Black", "Brown"
-                )
-                
+                val tagColors = repository.getAllTagColors().first().map { it.name }
+
                 val mothers = repository.getActiveFemales().first()
                 val fathers = repository.getActiveMales().first()
                 

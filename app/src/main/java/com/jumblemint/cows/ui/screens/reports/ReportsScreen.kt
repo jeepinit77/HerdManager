@@ -34,7 +34,12 @@ fun ReportsScreen(
         database.pastureDao(),
         database.activityDao(),
         database.settingsDao(),
-        database.noteDao()
+        database.noteDao(),
+        database.userDao(),
+        database.herdDao(),
+        database.herdMemberDao(),
+        database.tagColorDao(),
+        database.activityTypeConfigDao()
     )
     val viewModel: ReportsViewModel = viewModel(
         factory = ReportsViewModelFactory(repository, application.authService)

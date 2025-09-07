@@ -8,6 +8,8 @@ import com.jumblemint.cows.data.dao.NoteDao
 import com.jumblemint.cows.data.dao.UserDao
 import com.jumblemint.cows.data.dao.HerdDao
 import com.jumblemint.cows.data.dao.HerdMemberDao
+import com.jumblemint.cows.data.dao.TagColorDao
+import com.jumblemint.cows.data.dao.ActivityTypeConfigDao
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.ui.viewmodel.PastureWithCowCount // <<< ADDED IMPORT
 import kotlinx.coroutines.flow.Flow
@@ -24,7 +26,9 @@ class CattleRepository(
     private val noteDao: NoteDao? = null,
     private val userDao: UserDao? = null,
     private val herdDao: HerdDao? = null,
-    private val herdMemberDao: HerdMemberDao? = null
+    private val herdMemberDao: HerdMemberDao? = null,
+    private val tagColorDao: TagColorDao? = null,
+    private val activityTypeConfigDao: ActivityTypeConfigDao? = null
 ) {
 
     // Cow operations
@@ -288,22 +292,39 @@ class CattleRepository(
     }
 
     suspend fun initializeDefaultData() {
-        val existingCalfPasture = pastureDao.getAllPastures().firstOrNull()?.find { it.name == "Calf Pasture" }
-        if (existingCalfPasture == null) {
-            val calfPasture = Pasture(
-                id = UUID.randomUUID().toString(), // ID is String, this is good
-                name = "Calf Pasture",
-                description = "Default pasture for calves",
-                sizeAcres = 0.0
-            )
-            insertPasture(calfPasture)
+//        val existingCalfPasture = pastureDao.getAllPastures().firstOrNull()?.find { it.name == "Calf Pasture" }
+//        if (existingCalfPasture == null) {
+//            val calfPasture = Pasture(
+//                id = UUID.randomUUID().toString(), // ID is String, this is good
+//                name = "Calf Pasture",
+//                description = "Default pasture for calves",
+//                sizeAcres = 0.0
+//            )
+//            insertPasture(calfPasture)
+//        }
+        
+        // Initialize default tag colors if none exist
+        if (tagColorDao != null && getAllTagColors().first().isEmpty()) {
+            val defaultColors = com.jumblemint.cows.data.model.TagColor.getDefaultColors()
+            defaultColors.forEach { tagColor ->
+                insertTagColor(tagColor)
+            }
         }
         
+        // Initialize default activity types if none exist
+        if (activityTypeConfigDao != null && getAllActivityTypes().first().isEmpty()) {
+            val defaultActivityTypes = com.jumblemint.cows.data.model.ActivityTypeConfig.getDefaultActivityTypes()
+            defaultActivityTypes.forEach { activityType ->
+                insertActivityType(activityType)
+            }
+        }
+        
+        // Keep old settings initialization for backward compatibility (can be removed later)
         if (getSettingByKey(SettingsKeys.TAG_COLORS) == null) {
             insertOrUpdateSetting(
                 Settings(
                     SettingsKeys.TAG_COLORS,
-                    "Red,Blue,Green,Yellow,Orange,Purple,Pink,White,Black,Brown"
+                    "Red,Blue,Green,Yellow,Orange,White"
                 )
             )
         }
@@ -1147,4 +1168,59 @@ class CattleRepository(
     suspend fun insertNote(note: Note) = noteDao?.insert(note)
     // Update methods for sync
     suspend fun updateNote(note: Note) = noteDao?.update(note)
+    
+    // Tag Color operations
+    fun getAllTagColors(): Flow<List<TagColor>> = tagColorDao?.getAllTagColors() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    fun getAllActiveTagColors(): Flow<List<TagColor>> = tagColorDao?.getAllActiveTagColors() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    suspend fun getAllTagColorsSync(): List<TagColor> = tagColorDao?.getAllTagColorsSync() ?: emptyList()
+    suspend fun getTagColorById(id: String): TagColor? = tagColorDao?.getTagColorById(id)
+    suspend fun getTagColorByName(name: String): TagColor? = tagColorDao?.getTagColorByName(name)
+    suspend fun insertTagColor(tagColor: TagColor): Long = tagColorDao?.insertTagColor(tagColor) ?: -1
+    suspend fun insertTagColors(tagColors: List<TagColor>) = tagColorDao?.insertTagColors(tagColors)
+    suspend fun upsertTagColor(tagColor: TagColor) = tagColorDao?.upsert(tagColor)
+    suspend fun upsertTagColors(tagColors: List<TagColor>) = tagColorDao?.upsertAll(tagColors)
+    suspend fun updateTagColor(tagColor: TagColor) = tagColorDao?.updateTagColor(tagColor)
+    suspend fun deleteTagColor(tagColor: TagColor) = tagColorDao?.deleteTagColor(tagColor)
+    suspend fun updateTagColorActiveStatus(id: String, isActive: Boolean) = tagColorDao?.updateTagColorActiveStatus(id, isActive)
+    suspend fun ensureDefaultTagColorsExist() {
+        // Ensure every default color exists; re-insert any missing defaults by name (case-insensitive)
+        val existing = tagColorDao?.getAllTagColorsSync() ?: emptyList()
+        val existingNames = existing.map { it.name.lowercase() }.toSet()
+        val defaults = TagColor.getDefaultColors()
+        val missing = defaults.filter { it.name.lowercase() !in existingNames }
+        if (missing.isNotEmpty()) {
+            insertTagColors(missing)
+        }
+    }
+    
+    // Activity Type Config operations
+    fun getAllActivityTypes(): Flow<List<ActivityTypeConfig>> = activityTypeConfigDao?.getAllActivityTypes() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    fun getAllActiveActivityTypes(): Flow<List<ActivityTypeConfig>> = activityTypeConfigDao?.getAllActiveActivityTypes() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    suspend fun getAllActivityTypesSync(): List<ActivityTypeConfig> = activityTypeConfigDao?.getAllActivityTypesSync() ?: emptyList()
+    suspend fun getActivityTypeById(id: String): ActivityTypeConfig? = activityTypeConfigDao?.getActivityTypeById(id)
+    suspend fun getActivityTypeByName(name: String): ActivityTypeConfig? = activityTypeConfigDao?.getActivityTypeByName(name)
+    suspend fun insertActivityType(activityType: ActivityTypeConfig): Long = activityTypeConfigDao?.insertActivityType(activityType) ?: -1
+    suspend fun insertActivityTypes(activityTypes: List<ActivityTypeConfig>) = activityTypeConfigDao?.insertActivityTypes(activityTypes)
+    suspend fun upsertActivityType(activityType: ActivityTypeConfig) = activityTypeConfigDao?.upsert(activityType)
+    suspend fun upsertActivityTypes(activityTypes: List<ActivityTypeConfig>) = activityTypeConfigDao?.upsertAll(activityTypes)
+    suspend fun updateActivityType(activityType: ActivityTypeConfig) = activityTypeConfigDao?.updateActivityType(activityType)
+    suspend fun deleteActivityType(activityType: ActivityTypeConfig) = activityTypeConfigDao?.deleteActivityType(activityType)
+    suspend fun updateActivityTypeActiveStatus(id: String, isActive: Boolean) = activityTypeConfigDao?.updateActivityTypeActiveStatus(id, isActive)
+    suspend fun ensureDefaultActivityTypesExist() {
+        // Ensure every default activity type exists; re-insert any missing defaults by name (case-insensitive)
+        val existing = activityTypeConfigDao?.getAllActivityTypesSync() ?: emptyList()
+        val existingNames = existing.map { it.name.lowercase() }.toSet()
+        val defaults = ActivityTypeConfig.getDefaultActivityTypes()
+        val missing = defaults.filter { it.name.lowercase() !in existingNames }
+        if (missing.isNotEmpty()) {
+            insertActivityTypes(missing)
+        }
+    }
+    
+    suspend fun restoreDefaultActivityTypes() {
+        // Delete all existing activity types (both custom and default)
+        activityTypeConfigDao?.deleteAllActivityTypes()
+        // Insert the default activity types
+        insertActivityTypes(ActivityTypeConfig.getDefaultActivityTypes())
+    }
 }

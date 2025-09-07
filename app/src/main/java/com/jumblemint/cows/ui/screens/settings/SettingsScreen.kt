@@ -30,7 +30,9 @@ fun SettingsScreen(
     onNavigateBack: (() -> Unit)? = null,
     onNavigateToSignIn: (() -> Unit)? = null,
     onNavigateToHerds: (() -> Unit)? = null,
-    onNavigateToAccountManagement: (() -> Unit)? = null
+    onNavigateToAccountManagement: (() -> Unit)? = null,
+    onNavigateToTagColors: (() -> Unit)? = null,
+    onNavigateToActivityTypes: (() -> Unit)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -40,7 +42,13 @@ fun SettingsScreen(
         database.cowDao(),
         database.pastureDao(),
         database.activityDao(),
-        database.settingsDao()
+        database.settingsDao(),
+        database.noteDao(),
+        database.userDao(),
+        database.herdDao(),
+        database.herdMemberDao(),
+        database.tagColorDao(),
+        database.activityTypeConfigDao()
     )
     val viewModel: SettingsViewModel = viewModel(
         factory = SettingsViewModelFactory(repository)
@@ -51,8 +59,6 @@ fun SettingsScreen(
     val syncStatus by application.syncService.syncStatus.collectAsState(initial = com.jumblemint.cows.sync.SyncStatus.IDLE)
     
     val uiState by viewModel.uiState.collectAsState()
-    var showTagColorsDialog by remember { mutableStateOf(false) }
-    var showActivityTypesDialog by remember { mutableStateOf(false) }
     var showExportDialog by remember { mutableStateOf(false) }
     var showSampleDataDialog by remember { mutableStateOf(false) }
     var showDeleteDataDialog by remember { mutableStateOf(false) }
@@ -90,7 +96,7 @@ fun SettingsScreen(
                     title = "Tag Colors",
                     subtitle = "Manage available tag colors",
                     icon = Icons.Default.ColorLens,
-                    onClick = { showTagColorsDialog = true }
+                    onClick = { onNavigateToTagColors?.invoke() }
                 )
             }
             
@@ -99,7 +105,7 @@ fun SettingsScreen(
                     title = "Activity Types",
                     subtitle = "Manage activity types",
                     icon = Icons.Default.Assignment,
-                    onClick = { showActivityTypesDialog = true }
+                    onClick = { onNavigateToActivityTypes?.invoke() }
                 )
             }
             
@@ -186,41 +192,41 @@ fun SettingsScreen(
             }
 
             
-            // Debug: Show current user info
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Debug Info:",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                        Text(
-                            text = "User: ${currentUser?.displayName ?: "None"}",
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = "User ID: ${currentUser?.uid ?: "None"}",
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = "Is Local: ${currentUser?.isLocalUser}",
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = "Is Signed In: $isSignedIn",
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            }
+//            // Debug: Show current user info
+//            item {
+//                Card(
+//                    modifier = Modifier.fillMaxWidth(),
+//                    colors = CardDefaults.cardColors(
+//                        containerColor = MaterialTheme.colorScheme.surfaceVariant
+//                    )
+//                ) {
+//                    Column(
+//                        modifier = Modifier.padding(16.dp)
+//                    ) {
+//                        Text(
+//                            text = "Debug Info:",
+//                            fontWeight = FontWeight.Bold,
+//                            fontSize = 14.sp
+//                        )
+//                        Text(
+//                            text = "User: ${currentUser?.displayName ?: "None"}",
+//                            fontSize = 12.sp
+//                        )
+//                        Text(
+//                            text = "User ID: ${currentUser?.uid ?: "None"}",
+//                            fontSize = 12.sp
+//                        )
+//                        Text(
+//                            text = "Is Local: ${currentUser?.isLocalUser}",
+//                            fontSize = 12.sp
+//                        )
+//                        Text(
+//                            text = "Is Signed In: $isSignedIn",
+//                            fontSize = 12.sp
+//                        )
+//                    }
+//                }
+//            }
             
             // Data Management Section
             item {
@@ -299,28 +305,6 @@ fun SettingsScreen(
     }
     
     // Dialogs
-    if (showTagColorsDialog) {
-        TagColorsDialog(
-            currentColors = uiState.tagColors,
-            onDismiss = { showTagColorsDialog = false },
-            onSave = { colors ->
-                viewModel.updateTagColors(colors)
-                showTagColorsDialog = false
-            }
-        )
-    }
-    
-    if (showActivityTypesDialog) {
-        ActivityTypesDialog(
-            currentTypes = uiState.activityTypes,
-            onDismiss = { showActivityTypesDialog = false },
-            onSave = { types ->
-                viewModel.updateActivityTypes(types)
-                showActivityTypesDialog = false
-            }
-        )
-    }
-    
     if (showExportDialog) {
         ExportDataDialog(
             onDismiss = { showExportDialog = false },
@@ -419,97 +403,7 @@ fun SettingsCard(
     }
 }
 
-@Composable
-fun TagColorsDialog(
-    currentColors: List<String>,
-    onDismiss: () -> Unit,
-    onSave: (List<String>) -> Unit
-) {
-    var colors by remember { mutableStateOf(currentColors.joinToString(", ")) }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Tag Colors") },
-        text = {
-            Column {
-                Text(
-                    text = "Enter tag colors separated by commas:",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = colors,
-                    onValueChange = { colors = it },
-                    label = { Text("Colors") },
-                    placeholder = { Text("Red, Blue, Green, Yellow...") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val colorList = colors.split(",").map { it.trim() }.filter { it.isNotBlank() }
-                    onSave(colorList)
-                }
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
 
-@Composable
-fun ActivityTypesDialog(
-    currentTypes: List<String>,
-    onDismiss: () -> Unit,
-    onSave: (List<String>) -> Unit
-) {
-    var types by remember { mutableStateOf(currentTypes.joinToString(", ")) }
-    
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Activity Types") },
-        text = {
-            Column {
-                Text(
-                    text = "Enter activity types separated by commas:",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = types,
-                    onValueChange = { types = it },
-                    label = { Text("Activity Types") },
-                    placeholder = { Text("MOVED, WEANED, SOLD, DECEASED...") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 3
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val typeList = types.split(",").map { it.trim().uppercase() }.filter { it.isNotBlank() }
-                    onSave(typeList)
-                }
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
 
 @Composable
 fun ExportDataDialog(

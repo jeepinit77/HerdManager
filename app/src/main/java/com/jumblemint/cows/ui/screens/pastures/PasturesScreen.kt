@@ -44,7 +44,9 @@ fun PasturesScreen(
             noteDao = database.noteDao(),
             userDao = database.userDao(),
             herdDao = database.herdDao(),
-            herdMemberDao = database.herdMemberDao()
+            herdMemberDao = database.herdMemberDao(),
+            tagColorDao = database.tagColorDao(),
+            activityTypeConfigDao = database.activityTypeConfigDao()
         )
     }
     val pasturesViewModel: PasturesViewModel = viewModel(

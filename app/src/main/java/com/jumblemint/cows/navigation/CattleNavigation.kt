@@ -32,6 +32,8 @@ import com.jumblemint.cows.ui.screens.pastures.PasturesScreen
 import com.jumblemint.cows.ui.screens.pastures.PastureDetailScreen
 import com.jumblemint.cows.ui.screens.reports.ReportsScreen
 import com.jumblemint.cows.ui.screens.settings.SettingsScreen
+import com.jumblemint.cows.ui.screens.settings.TagColorsManagementScreen
+import com.jumblemint.cows.ui.screens.settings.ActivityTypesManagementScreen
 import com.jumblemint.cows.ui.screens.workinglist.WorkingListScreen
 import com.jumblemint.cows.ui.viewmodel.PasturesViewModel
 import com.jumblemint.cows.ui.viewmodel.PasturesViewModelFactory
@@ -203,7 +205,9 @@ fun CattleNavigation(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToSignIn = { navController.navigate(Screen.SignIn.route) },
                 onNavigateToHerds = null, // Removed herd management for now
-                onNavigateToAccountManagement = { navController.navigate(Screen.AccountManagement.route) }
+                onNavigateToAccountManagement = { navController.navigate(Screen.AccountManagement.route) },
+                onNavigateToTagColors = { navController.navigate(Screen.TagColorsManagement.route) },
+                onNavigateToActivityTypes = { navController.navigate(Screen.ActivityTypesManagement.route) }
             )
         }
 
@@ -237,7 +241,9 @@ fun CattleNavigation(
                     noteDao = database.noteDao(),
                     userDao = database.userDao(),
                     herdDao = database.herdDao(),
-                    herdMemberDao = database.herdMemberDao()
+                    herdMemberDao = database.herdMemberDao(),
+                    tagColorDao = database.tagColorDao(),
+                    activityTypeConfigDao = database.activityTypeConfigDao()
                 )
             }
             val pasturesViewModel: PasturesViewModel = viewModel(
@@ -283,6 +289,18 @@ fun CattleNavigation(
                 onNavigateBack = { navController.popBackStack() }
             )
         }
+        
+        composable(Screen.TagColorsManagement.route) {
+            TagColorsManagementScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        
+        composable(Screen.ActivityTypesManagement.route) {
+            ActivityTypesManagementScreen(
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
     }
 }
 
@@ -304,4 +322,6 @@ sealed class Screen(val route: String, val title: String) {
     object AddBirth : Screen("add_birth", "Add Birth")
     object WorkingList : Screen("working_list", "Working List")
     object AccountManagement : Screen("account_management", "Account Management")
+    object TagColorsManagement : Screen("tag_colors_management", "Tag Colors Management")
+    object ActivityTypesManagement : Screen("activity_types_management", "Activity Types Management")
 }

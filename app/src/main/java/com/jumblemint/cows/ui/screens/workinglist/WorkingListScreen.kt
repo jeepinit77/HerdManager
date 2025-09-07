@@ -21,6 +21,8 @@ import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.ui.components.rememberTagColorMap
+import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModel
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModelFactory
 
@@ -32,11 +34,16 @@ fun WorkingListScreen(
     val context = LocalContext.current
     val database = CattleDatabase.getDatabase(context)
     val repository = CattleRepository(
-        database.cowDao(),
-        database.pastureDao(),
-        database.activityDao(),
-        database.settingsDao(),
-        database.noteDao()
+        cowDao = database.cowDao(),
+        pastureDao = database.pastureDao(),
+        activityDao = database.activityDao(),
+        settingsDao = database.settingsDao(),
+        noteDao = database.noteDao(),
+        userDao = database.userDao(),
+        herdDao = database.herdDao(),
+        herdMemberDao = database.herdMemberDao(),
+        tagColorDao = database.tagColorDao(),
+        activityTypeConfigDao = database.activityTypeConfigDao()
     )
     val viewModel: WorkingListViewModel = viewModel(
         factory = WorkingListViewModelFactory(repository)
@@ -46,6 +53,9 @@ fun WorkingListScreen(
     val filteredCows by viewModel.filteredCows.collectAsState()
     val checkedItems by viewModel.checkedItems.collectAsState()
     var showFilters by remember { mutableStateOf(false) }
+    
+    // Get tag color map for resolving tag colors
+    val tagColorMap = rememberTagColorMap(repository)
 
     Scaffold(
         topBar = {
@@ -120,8 +130,7 @@ fun WorkingListScreen(
                             // Gender Filters
                             FilterSection(
                                 title = "Gender",
-                                items = Gender.values().toList(),
-                                selectedItems = uiState.selectedGenders,
+                                items = Gender.values().toList(),selectedItems = uiState.selectedGenders,
                                 onToggle = { viewModel.toggleGenderFilter(it) },
                                 itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                             )
@@ -171,7 +180,8 @@ fun WorkingListScreen(
                         } else {
                             viewModel.uncheckItem(cow.id)
                         }
-                    }
+                    },
+                    resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap)
                 )
             }
         }
@@ -221,7 +231,8 @@ private fun <T> FilterSection(
 fun WorkingListItem(
     cow: Cow,
     isChecked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    resolvedTagColor: androidx.compose.ui.graphics.Color? = null
 ) {
     Card(
         modifier = Modifier.fillMaxWidth()

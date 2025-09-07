@@ -5,8 +5,15 @@ import com.jumblemint.cows.auth.AuthService
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.sync.SyncService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class CattleApplication : Application() {
+    
+    // Application scope for one-time initialization
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     // Database
     val database by lazy { CattleDatabase.getDatabase(this) }
@@ -21,7 +28,9 @@ class CattleApplication : Application() {
             noteDao = database.noteDao(),
             userDao = database.userDao(),
             herdDao = database.herdDao(),
-            herdMemberDao = database.herdMemberDao()
+            herdMemberDao = database.herdMemberDao(),
+            tagColorDao = database.tagColorDao(),
+            activityTypeConfigDao = database.activityTypeConfigDao()
         )
     }
     
@@ -30,4 +39,13 @@ class CattleApplication : Application() {
     
     // Sync Service
     val syncService by lazy { SyncService(repository) }
+    
+    override fun onCreate() {
+        super.onCreate()
+        
+        // Initialize default data once when the app starts
+        applicationScope.launch {
+            repository.initializeDefaultData()
+        }
+    }
 }

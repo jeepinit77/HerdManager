@@ -22,6 +22,8 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.CattleTagBadge
+import com.jumblemint.cows.ui.components.rememberTagColorMap
+import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.CowInfoViewModel
 import com.jumblemint.cows.ui.viewmodel.CowInfoViewModelFactory
 import java.time.LocalDate
@@ -38,17 +40,25 @@ fun CowInfoScreen(
     val context = LocalContext.current
     val database = CattleDatabase.getDatabase(context)
     val repository = CattleRepository(
-        database.cowDao(),
-        database.pastureDao(),
-        database.activityDao(),
-        database.settingsDao(),
-        database.noteDao()
+        cowDao = database.cowDao(),
+        pastureDao = database.pastureDao(),
+        activityDao = database.activityDao(),
+        settingsDao = database.settingsDao(),
+        noteDao = database.noteDao(),
+        userDao = database.userDao(),
+        herdDao = database.herdDao(),
+        herdMemberDao = database.herdMemberDao(),
+        tagColorDao = database.tagColorDao(),
+        activityTypeConfigDao = database.activityTypeConfigDao()
     )
     val viewModel: CowInfoViewModel = viewModel(
         factory = CowInfoViewModelFactory(repository, cowId)
     )
     
     val uiState by viewModel.uiState.collectAsState()
+    
+    // Get tag color map for resolving tag colors
+    val tagColorMap = rememberTagColorMap(repository)
     
     Column(
         modifier = Modifier.fillMaxSize()
@@ -107,7 +117,8 @@ fun CowInfoScreen(
                                 CattleTagBadge(
                                     tagNumber = cow.tagNumber,
                                     tagColor = cow.tagColor,
-                                    modifier = Modifier.height(80.dp)
+                                    modifier = Modifier.height(80.dp),
+                                    backgroundColor = resolveTagColor(cow.tagColor, tagColorMap)
                                 )
                             }
                             

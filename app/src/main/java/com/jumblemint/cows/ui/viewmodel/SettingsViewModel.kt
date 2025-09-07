@@ -8,6 +8,7 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class SettingsViewModel(
@@ -24,17 +25,11 @@ class SettingsViewModel(
     private fun loadSettings() {
         viewModelScope.launch {
             try {
-                // Load tag colors
-                val tagColorsSetting = repository.getSettingByKey(SettingsKeys.TAG_COLORS)
-                val tagColors = tagColorsSetting?.value?.split(",")?.map { it.trim() } ?: listOf(
-                    "Red", "Blue", "Green", "Yellow", "Orange", "Purple", "Pink", "White", "Black", "Brown"
-                )
+                // Load tag colors from the new TagColor table
+                val tagColors = repository.getAllTagColors().first().map { it.name }
                 
-                // Load activity types
-                val activityTypesSetting = repository.getSettingByKey(SettingsKeys.ACTIVITY_TYPES)
-                val activityTypes = activityTypesSetting?.value?.split(",")?.map { it.trim() } ?: listOf(
-                    "MOVED", "WEANED", "SOLD", "DECEASED", "WORKED", "CASTRATED", "BIRTH", "OTHER"
-                )
+                // Load activity types from the new ActivityTypeConfig table
+                val activityTypes = repository.getAllActivityTypes().first().map { it.displayName }
                 
                 // Check if sample data is installed
                 val isSampleDataInstalled = repository.isSampleDataInstalled()
@@ -54,37 +49,7 @@ class SettingsViewModel(
         }
     }
     
-    fun updateTagColors(colors: List<String>) {
-        viewModelScope.launch {
-            try {
-                val setting = Settings(
-                    key = SettingsKeys.TAG_COLORS,
-                    value = colors.joinToString(",")
-                )
-                repository.insertOrUpdateSetting(setting)
-                
-                _uiState.value = _uiState.value.copy(tagColors = colors)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
-        }
-    }
-    
-    fun updateActivityTypes(types: List<String>) {
-        viewModelScope.launch {
-            try {
-                val setting = Settings(
-                    key = SettingsKeys.ACTIVITY_TYPES,
-                    value = types.joinToString(",")
-                )
-                repository.insertOrUpdateSetting(setting)
-                
-                _uiState.value = _uiState.value.copy(activityTypes = types)
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.message)
-            }
-        }
-    }
+
     
     fun exportData(format: String) {
         viewModelScope.launch {

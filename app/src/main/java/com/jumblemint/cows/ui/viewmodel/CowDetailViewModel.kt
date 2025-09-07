@@ -61,8 +61,7 @@ class CowDetailViewModel(
                 val mothers = repository.getActiveFemales().first()
                 val fathers = repository.getActiveMales().first()
                 val pastures = repository.getAllPastures().first()
-                val tagColorSetting = repository.getSettingByKey(SettingsKeys.TAG_COLORS)?.value
-                val tagColors = tagColorSetting?.split(",")?.map { it.trim() } ?: emptyList()
+                val tagColors = repository.getAllTagColors().first().map { it.name }
 
                 if (cowId == 0L) { // New cow
                     _uiState.update {
@@ -153,8 +152,9 @@ class CowDetailViewModel(
     fun saveCow() {
         viewModelScope.launch { 
             val currentState = _uiState.value
-            if (currentState.tagNumber.isBlank()) {
-                _uiState.update { it.copy(error = "Tag number cannot be empty.") }
+            // Validation: Either name OR tag number is required
+            if (currentState.name.isBlank() && currentState.tagNumber.isBlank()) {
+                _uiState.update { it.copy(error = "Please enter a Name or a Tag Number.") }
                 return@launch
             }
 

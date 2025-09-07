@@ -15,10 +15,12 @@ import com.jumblemint.cows.data.dao.SettingsDao
 import com.jumblemint.cows.data.dao.UserDao
 import com.jumblemint.cows.data.dao.HerdDao
 import com.jumblemint.cows.data.dao.HerdMemberDao
+import com.jumblemint.cows.data.dao.TagColorDao
+import com.jumblemint.cows.data.dao.ActivityTypeConfigDao
 import com.jumblemint.cows.data.model.* // Assuming all models are here
 
 // Modified the @Database annotation to include exportSchema = false
-@Database(entities = [Cow::class, Pasture::class, Activity::class, Settings::class, Note::class, User::class, Herd::class, HerdMember::class], version = 3, exportSchema = false)
+@Database(entities = [Cow::class, Pasture::class, Activity::class, Settings::class, Note::class, User::class, Herd::class, HerdMember::class, TagColor::class, ActivityTypeConfig::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class CattleDatabase : RoomDatabase() {
     abstract fun cowDao(): CowDao
@@ -29,6 +31,8 @@ abstract class CattleDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun herdDao(): HerdDao
     abstract fun herdMemberDao(): HerdMemberDao
+    abstract fun tagColorDao(): TagColorDao
+    abstract fun activityTypeConfigDao(): ActivityTypeConfigDao
 
     companion object {
         @Volatile
@@ -121,6 +125,49 @@ abstract class CattleDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create tag_colors table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS tag_colors (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        colorValue INTEGER NOT NULL,
+                        isActive INTEGER NOT NULL DEFAULT 1,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        firestoreId TEXT,
+                        lastSyncAt INTEGER,
+                        updatedBy TEXT
+                    )
+                """)
+
+                // Create activity_type_configs table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS activity_type_configs (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        displayName TEXT NOT NULL,
+                        description TEXT,
+                        isActive INTEGER NOT NULL DEFAULT 1,
+                        isDefault INTEGER NOT NULL DEFAULT 0,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        firestoreId TEXT,
+                        lastSyncAt INTEGER,
+                        updatedBy TEXT
+                    )
+                """)
+
+                // Add sync fields to settings table
+                database.execSQL("ALTER TABLE settings ADD COLUMN createdAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE settings ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE settings ADD COLUMN firestoreId TEXT")
+                database.execSQL("ALTER TABLE settings ADD COLUMN lastSyncAt INTEGER")
+                database.execSQL("ALTER TABLE settings ADD COLUMN updatedBy TEXT")
+            }
+        }
+
         fun getDatabase(context: Context): CattleDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -128,7 +175,7 @@ abstract class CattleDatabase : RoomDatabase() {
                     CattleDatabase::class.java,
                     "cattle_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                     .build()
                 INSTANCE = instance
                 instance

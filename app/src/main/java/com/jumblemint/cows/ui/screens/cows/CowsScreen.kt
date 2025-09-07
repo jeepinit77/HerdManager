@@ -26,6 +26,8 @@ import com.jumblemint.cows.data.model.Classification
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.CowCard
+import com.jumblemint.cows.ui.components.rememberTagColorMap
+import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.CowsViewModel
 import com.jumblemint.cows.ui.viewmodel.CowsViewModelFactory
 import kotlinx.coroutines.launch
@@ -43,10 +45,16 @@ fun CowsScreen(
     val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val repository = CattleRepository(
-        database.cowDao(),
-        database.pastureDao(),
-        database.activityDao(),
-        database.settingsDao()
+        cowDao = database.cowDao(),
+        pastureDao = database.pastureDao(),
+        activityDao = database.activityDao(),
+        settingsDao = database.settingsDao(),
+        noteDao = database.noteDao(),
+        userDao = database.userDao(),
+        herdDao = database.herdDao(),
+        herdMemberDao = database.herdMemberDao(),
+        tagColorDao = database.tagColorDao(),
+        activityTypeConfigDao = database.activityTypeConfigDao()
     )
     val viewModel: CowsViewModel = viewModel(
         factory = CowsViewModelFactory(application, repository)
@@ -54,6 +62,9 @@ fun CowsScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     var showFilters by remember { mutableStateOf(false) }
+
+    // Get tag color map for resolving tag colors
+    val tagColorMap = rememberTagColorMap(repository)
 
     val snackbarHostState = remember { SnackbarHostState() } // Used by CowCard's onDelete
     val scope = rememberCoroutineScope() // Used by CowCard's onDelete
@@ -247,7 +258,8 @@ fun CowsScreen(
                                         viewModel.undoDeleteCow(cow)
                                     }
                                 }
-                            }
+                            },
+                            resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap)
                         )
                     }
                 }

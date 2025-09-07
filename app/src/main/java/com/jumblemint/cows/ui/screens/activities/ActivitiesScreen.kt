@@ -46,7 +46,13 @@ fun ActivitiesScreen(
         database.cowDao(),
         database.pastureDao(),
         database.activityDao(),
-        database.settingsDao()
+        database.settingsDao(),
+        database.noteDao(),
+        database.userDao(),
+        database.herdDao(),
+        database.herdMemberDao(),
+        database.tagColorDao(),
+        database.activityTypeConfigDao()
     )
     val viewModel: ActivitiesViewModel = viewModel(
         factory = ActivitiesViewModelFactory(context.applicationContext as Application, repository)

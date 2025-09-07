@@ -101,89 +101,25 @@ fun SignInScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
+//            Spacer(modifier = Modifier.height(32.dp))
             
             // App Logo/Icon
-            Image(
-                painter = painterResource(id = R.drawable.ic_launcher_foreground),
-                contentDescription = "Cattle Manager Logo",
-                modifier = Modifier.size(100.dp)
-            )
+//            Image(
+//                painter = painterResource(id = R.drawable.ic_launcher_foreground),
+//                contentDescription = "Cattle Manager Logo",
+//                modifier = Modifier.size(100.dp)
+//            )
             
             // Title
-            Text(
-                text = if (isGoogleSignedIn) "Account & Sync" else "Sign In & Sync",
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center
-            )
+//            Text(
+//                text = if (isGoogleSignedIn) "Account & Sync" else "Sign In & Sync",
+//                fontSize = 28.sp,
+//                fontWeight = FontWeight.Bold,
+//                color = MaterialTheme.colorScheme.primary,
+//                textAlign = TextAlign.Center
+//            )
             
-            // Debug Info Card (temporary)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = "Debug Info:",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                    Text(
-                        text = "Current User: ${uiState.currentUser?.displayName ?: "None"}",
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = "Is Local User: ${uiState.currentUser?.isLocalUser}",
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = "Is Signed In: ${uiState.isSignedIn}",
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = "Is Loading: ${uiState.isLoading}",
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = "Error: ${uiState.error ?: "None"}",
-                        fontSize = 12.sp
-                    )
-                }
-            }
-            
-            // Premium Notice Card
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp)
-                ) {
-                    Text(
-                        text = "📢 Future Premium Feature",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Sign-in and sync features are currently free, but may become premium features in future updates. Enjoy them while they're available to everyone!",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp
-                    )
-                }
-            }
-            
-            // Conditional content based on sign-in status
+            // Sign-in section (first)
             if (isGoogleSignedIn) {
                 // Already signed in with Google
                 Card(
@@ -208,30 +144,6 @@ fun SignInScreen(
                             color = MaterialTheme.colorScheme.onSecondaryContainer,
                             fontSize = 14.sp,
                             textAlign = TextAlign.Center
-                        )
-                    }
-                }
-                
-                // Sync status card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp)
-                    ) {
-                        Text(
-                            text = "Data Sync Status",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Your cattle data is automatically synced across all your devices. Any changes you make will be available on your other devices within minutes.",
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp
                         )
                     }
                 }
@@ -371,39 +283,33 @@ fun SignInScreen(
                 }
             }
             
-            // Back button (always available)
-            OutlinedButton(
-                onClick = onNavigateBack,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(28.dp)
-            ) {
-                Text(
-                    text = if (isGoogleSignedIn) "Back to Settings" else "Continue without signing in",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
+            // Premium Notice Card (second)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
-            }
-            
-            // Error message
-            uiState.error?.let { errorMessage ->
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
+            ) {
+                Column(
+                    modifier = Modifier.padding(20.dp)
                 ) {
                     Text(
-                        text = errorMessage,
-                        modifier = Modifier.padding(16.dp),
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        textAlign = TextAlign.Center
+                        text = "📢 Future Premium Feature",
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Sign-in and sync features are currently free, but may become premium features in future updates. Enjoy them while they're available to everyone!",
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
                     )
                 }
             }
             
-            // Features list
+            // Sync Features list (third)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -414,7 +320,7 @@ fun SignInScreen(
                     modifier = Modifier.padding(20.dp)
                 ) {
                     Text(
-                        text = "Sync Features:",
+                        text = "What Gets Synced:",
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontSize = 16.sp
@@ -422,11 +328,13 @@ fun SignInScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     
                     val features = listOf(
-                        "Sync data across all your devices",
-                        "Share herds with team members",
-                        "Real-time collaboration",
+                        "Sync cattle records across devices",
+                        "Sync activities and health records",
+                        "Sync pasture and location data",
+                        "Sync notes and observations",
                         "Automatic cloud backup",
-                        "Access from anywhere"
+                        "Share herds with team members",
+                        "Access your data from anywhere"
                     )
                     
                     features.forEach { feature ->
@@ -450,6 +358,38 @@ fun SignInScreen(
                         }
                     }
                 }
+            }
+            
+            // Error message
+            uiState.error?.let { errorMessage ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Text(
+                        text = errorMessage,
+                        modifier = Modifier.padding(16.dp),
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            
+            // Back button (always available)
+            OutlinedButton(
+                onClick = onNavigateBack,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(28.dp)
+            ) {
+                Text(
+                    text = if (isGoogleSignedIn) "Back to Settings" else "Continue without signing in",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium
+                )
             }
             
             Spacer(modifier = Modifier.height(32.dp))

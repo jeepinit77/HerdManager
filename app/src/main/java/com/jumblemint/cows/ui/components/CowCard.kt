@@ -40,7 +40,8 @@ fun CowCard(
     modifier: Modifier = Modifier,
     onToggleWatch: (() -> Unit)? = null,
     onEdit: (() -> Unit)? = null,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    resolvedTagColor: Color? = null
 ) {
     // Gender-based background colors - more distinct and noticeable, theme-aware
     val isDarkTheme = isSystemInDarkTheme()
@@ -74,7 +75,8 @@ fun CowCard(
                     CattleTagBadge(
                         tagNumber = cow.tagNumber,
                         tagColor = cow.tagColor,
-                        modifier = Modifier.height(64.dp)
+                        modifier = Modifier.height(64.dp),
+                        backgroundColor = resolvedTagColor
                     )
                 }
 
@@ -228,9 +230,9 @@ class CattleTagShape(
 }
 
 @Composable
-fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = Modifier) {
-    // Fallbacks
-    val bgColor = when (tagColor?.lowercase()) {
+fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = Modifier, backgroundColor: Color? = null) {
+    // Use provided backgroundColor if available, otherwise fall back to predefined colors, then to default
+    val bgColor = backgroundColor ?: when (tagColor?.lowercase()) {
         "red" -> androidx.compose.ui.graphics.Color.Red
         "blue" -> androidx.compose.ui.graphics.Color.Blue
         "green" -> androidx.compose.ui.graphics.Color.Green

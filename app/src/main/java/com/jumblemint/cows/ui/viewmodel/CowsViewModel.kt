@@ -25,7 +25,8 @@ class CowsViewModel(
     
     init {
         loadCowsWithFilters()
-        initializeDefaultData()
+        // Note: Removed initializeDefaultData() call from ViewModel init
+        // Initialization should happen at app startup, not in ViewModels
     }
     
     private fun loadCowsWithFilters() {
@@ -85,11 +86,8 @@ class CowsViewModel(
         }
     }
     
-    private fun initializeDefaultData() {
-        viewModelScope.launch {
-            repository.initializeDefaultData()
-        }
-    }
+    // Note: initializeDefaultData() moved to CattleApplication.onCreate()
+    // to ensure it only runs once when the app starts, not every time a ViewModel is created
     
     fun toggleStatusFilter(status: Status) {
         val currentStatuses = _uiState.value.selectedStatuses.toMutableSet()

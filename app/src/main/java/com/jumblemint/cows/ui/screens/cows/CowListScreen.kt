@@ -11,11 +11,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.CowCard
+import com.jumblemint.cows.ui.components.rememberTagColorMap
+import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModel // Keep for now, might be useful for other filters
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
 import kotlinx.coroutines.flow.firstOrNull
@@ -35,7 +38,18 @@ fun CowListScreen(
     val application = context.applicationContext as com.jumblemint.cows.CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val repository = remember {
-        CattleRepository(database.cowDao(), database.pastureDao(), database.activityDao(), database.settingsDao())
+        CattleRepository(
+            cowDao = database.cowDao(),
+            pastureDao = database.pastureDao(),
+            activityDao = database.activityDao(),
+            settingsDao = database.settingsDao(),
+            noteDao = database.noteDao(),
+            userDao = database.userDao(),
+            herdDao = database.herdDao(),
+            herdMemberDao = database.herdMemberDao(),
+            tagColorDao = database.tagColorDao(),
+            activityTypeConfigDao = database.activityTypeConfigDao()
+        )
     }
 
     // ViewModel for all cows, potentially useful for some filter types if needed later
@@ -45,6 +59,9 @@ fun CowListScreen(
     // Pull full lists from repository for accurate filtering based on allCowsState or direct query
     val cowsFlow by remember { mutableStateOf(repository.getAllCows()) } // Or use allCowsState.cows if appropriate
     val cows by cowsFlow.collectAsState(initial = emptyList())
+
+    // Get tag color map for resolving tag colors
+    val tagColorMap = rememberTagColorMap(repository)
 
     // Build filtered list based on type/value
     val list: List<Cow> = remember(cows, type, value) {
@@ -177,7 +194,11 @@ fun CowListScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(list, key = { it.id }) { cow ->
-                    CowCard(cow = cow, onClick = { onCowClick(cow.id) })
+                    CowCard(
+                        cow = cow,
+                        onClick = { onCowClick(cow.id) },
+                        resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap)
+                    )
                 }
             }
         }

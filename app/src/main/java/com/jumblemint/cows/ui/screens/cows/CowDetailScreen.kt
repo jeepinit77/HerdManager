@@ -21,6 +21,8 @@ import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.DatePickerField
 import com.jumblemint.cows.ui.components.DropdownField
+import com.jumblemint.cows.ui.components.rememberTagColorMap
+import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import java.time.LocalDate
@@ -38,13 +40,34 @@ fun CowDetailScreen(
         database.cowDao(),
         database.pastureDao(),
         database.activityDao(),
-        database.settingsDao()
+        database.settingsDao(),
+        database.noteDao(),
+        database.userDao(),
+        database.herdDao(),
+        database.herdMemberDao(),
+        database.tagColorDao(),
+        database.activityTypeConfigDao()
     )
     val viewModel: CowDetailViewModel = viewModel(
         factory = CowDetailViewModelFactory(application, repository, cowId)
     )
     
     val uiState by viewModel.uiState.collectAsState()
+
+    // Get tag color map for resolving tag colors
+    val tagColorMap = rememberTagColorMap(repository)
+
+    // UI state for validation feedback and visibility
+    val scrollState = rememberScrollState()
+    var saveAttempted by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState.error) {
+        if (uiState.error != null) {
+            // Ensure the user sees the error
+            saveAttempted = true
+            scrollState.animateScrollTo(0)
+        }
+    }
     
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
@@ -77,7 +100,7 @@ fun CowDetailScreen(
                     }
                 }
                 IconButton(
-                    onClick = { viewModel.saveCow() },
+                    onClick = { saveAttempted = true; viewModel.saveCow() },
                     enabled = !uiState.isLoading
                 ) {
                     Icon(Icons.Default.Save, contentDescription = "Save")
@@ -96,10 +119,25 @@ fun CowDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Error message (visible at top)
+                uiState.error?.let { error ->
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Text(
+                            text = error,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+
                 // Basic Information
                 Card {
                     Column(
@@ -111,26 +149,41 @@ fun CowDetailScreen(
                             style = MaterialTheme.typography.titleMedium
                         )
                         
+                        // Validation: highlight when both fields are blank after save attempt
+                        val fieldsBlank = saveAttempted && uiState.name.isBlank() && uiState.tagNumber.isBlank()
                         OutlinedTextField(
                             value = uiState.name,
                             onValueChange = viewModel::updateName,
                             label = { Text("Name (Optional)") },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = fieldsBlank,
+                            colors = if (fieldsBlank) OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
+                                unfocusedContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+                            ) else OutlinedTextFieldDefaults.colors()
                         )
                         
                         OutlinedTextField(
                             value = uiState.tagNumber,
                             onValueChange = viewModel::updateTagNumber,
-                            label = { Text("Tag Number") },
-                            modifier = Modifier.fillMaxWidth()
+                            label = { Text("Tag Number (Optional)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            isError = fieldsBlank,
+                            colors = if (fieldsBlank) OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f),
+                                unfocusedContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.25f)
+                            ) else OutlinedTextFieldDefaults.colors()
                         )
                         
                         DropdownField(
-                            value = uiState.tagColor ?: "", // THIS IS LINE 126 - MODIFIED
+                            value = uiState.tagColor ?: "",
                             onValueChange = viewModel::updateTagColor,
                             label = "Tag Color",
                             options = uiState.tagColors,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            valueBackgroundColor = { name ->
+                                resolveTagColor(name, tagColorMap)
+                            }
                         )
                         
                         DatePickerField(
@@ -246,22 +299,6 @@ fun CowDetailScreen(
                     }
                 }
                 
-                // Error message
-                uiState.error?.let { error ->
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
-                    ) {
-                        Text(
-                            text = error,
-                            color = MaterialTheme.colorScheme.onErrorContainer,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }

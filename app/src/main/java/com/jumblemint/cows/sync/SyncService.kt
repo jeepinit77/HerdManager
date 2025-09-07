@@ -13,7 +13,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.*
-import kotlinx.coroutines.delay 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 class SyncService(
     private val repository: CattleRepository,
@@ -60,7 +61,7 @@ class SyncService(
     suspend fun clearServerData(userId: String) {
         println("Clearing all server data for user ID: $userId")
         try {
-            val collectionsToDelete = listOf("cows", "pastures", "activities", "notes")
+            val collectionsToDelete = listOf("cows", "pastures", "activities", "notes", "settings", "tagColors", "activityTypes")
             for (collectionName in collectionsToDelete) {
                 val collectionRef = firestore.collection("users").document(userId).collection(collectionName)
                 val snapshot = collectionRef.get().await() 
@@ -149,6 +150,54 @@ class SyncService(
                 println("Force uploaded note: ${note.title} (FS ID: $firestoreId)")
             }
 
+            // Force upload settings
+            val localSettings = repository.getAllSettings().first()
+            println("Found ${localSettings.size} local settings to force upload.")
+            for (setting in localSettings) {
+                val firestoreId = setting.firestoreId ?: setting.key
+                val settingData = setting.toFirestoreMap(userId)
+                val updatedTimestamp = settingData["updatedAt"] as? Long ?: System.currentTimeMillis()
+                firestore.collection("users").document(userId).collection("settings").document(firestoreId).set(settingData).await()
+                repository.insertOrUpdateSetting(setting.copy(
+                    firestoreId = firestoreId,
+                    lastSyncAt = updatedTimestamp,
+                    updatedBy = userId
+                ))
+                println("Force uploaded setting: ${setting.key} (FS ID: $firestoreId)")
+            }
+
+            // Force upload tag colors
+            val localTagColors = repository.getAllTagColorsSync()
+            println("Found ${localTagColors.size} local tag colors to force upload.")
+            for (tagColor in localTagColors) {
+                val firestoreId = tagColor.firestoreId ?: tagColor.id
+                val tagColorData = tagColor.toFirestoreMap(userId)
+                val updatedTimestamp = tagColorData["updatedAt"] as? Long ?: System.currentTimeMillis()
+                firestore.collection("users").document(userId).collection("tagColors").document(firestoreId).set(tagColorData).await()
+                repository.updateTagColor(tagColor.copy(
+                    firestoreId = firestoreId,
+                    lastSyncAt = updatedTimestamp,
+                    updatedBy = userId
+                ))
+                println("Force uploaded tag color: ${tagColor.name} (FS ID: $firestoreId)")
+            }
+
+            // Force upload activity types
+            val localActivityTypes = repository.getAllActivityTypesSync()
+            println("Found ${localActivityTypes.size} local activity types to force upload.")
+            for (activityType in localActivityTypes) {
+                val firestoreId = activityType.firestoreId ?: activityType.id
+                val activityTypeData = activityType.toFirestoreMap(userId)
+                val updatedTimestamp = activityTypeData["updatedAt"] as? Long ?: System.currentTimeMillis()
+                firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).set(activityTypeData).await()
+                repository.updateActivityType(activityType.copy(
+                    firestoreId = firestoreId,
+                    lastSyncAt = updatedTimestamp,
+                    updatedBy = userId
+                ))
+                println("Force uploaded activity type: ${activityType.name} (FS ID: $firestoreId)")
+            }
+
             println("Force upload of all local data completed for user ID: $userId")
             _syncStatus.value = SyncStatus.SUCCESS
         } catch (e: Exception) {
@@ -173,6 +222,12 @@ class SyncService(
             println("Starting sync for user: $userId")
             _syncStatus.value = SyncStatus.SYNCING
             
+            println("Syncing settings...")
+            syncUserSettings(userId)
+            println("Syncing tag colors...")
+            syncUserTagColors(userId)
+            println("Syncing activity types...")
+            syncUserActivityTypes(userId)
             println("Syncing pastures...")
             syncUserPastures(userId)
             println("Syncing cows...")
@@ -253,12 +308,51 @@ class SyncService(
                 }
             }
         activeListeners["$userId-notes"] = noteListener
+
+        val settingsListener = firestore.collection("users").document(userId)
+            .collection("settings")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    println("Real-time sync error for settings: ${error.message}")
+                    return@addSnapshotListener
+                }
+                snapshot?.documentChanges?.forEach { change ->
+                    CoroutineScope(Dispatchers.IO).launch { handleRealtimeSettingsChange(change, userId) }
+                }
+            }
+        activeListeners["$userId-settings"] = settingsListener
+
+        val tagColorsListener = firestore.collection("users").document(userId)
+            .collection("tagColors")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    println("Real-time sync error for tag colors: ${error.message}")
+                    return@addSnapshotListener
+                }
+                snapshot?.documentChanges?.forEach { change ->
+                    CoroutineScope(Dispatchers.IO).launch { handleRealtimeTagColorChange(change, userId) }
+                }
+            }
+        activeListeners["$userId-tagColors"] = tagColorsListener
+
+        val activityTypesListener = firestore.collection("users").document(userId)
+            .collection("activityTypes")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    println("Real-time sync error for activity types: ${error.message}")
+                    return@addSnapshotListener
+                }
+                snapshot?.documentChanges?.forEach { change ->
+                    CoroutineScope(Dispatchers.IO).launch { handleRealtimeActivityTypeChange(change, userId) }
+                }
+            }
+        activeListeners["$userId-activityTypes"] = activityTypesListener
         
         println("Real-time sync listeners established for user: $userId for all collections")
     }
     
     fun stopRealtimeSync(userId: String) {
-        listOf("cows", "pastures", "activities", "notes").forEach { collection ->
+        listOf("cows", "pastures", "activities", "notes", "settings", "tagColors", "activityTypes").forEach { collection ->
             activeListeners["$userId-$collection"]?.remove()
             activeListeners.remove("$userId-$collection")
         }
@@ -275,6 +369,50 @@ class SyncService(
         return try {
             _itemSyncStatus.value = ItemSyncStatus.SYNCING
             when (item) {
+                is TagColor -> {
+                    val firestoreId = item.firestoreId ?: item.id
+                    val tagColorData = item.toFirestoreMap(userId)
+                    val updatedTimestamp = tagColorData["updatedAt"] as? Long ?: System.currentTimeMillis()
+
+                    // Update local item with firestoreId BEFORE writing to Firestore
+                    repository.updateTagColor(item.copy(
+                        firestoreId = firestoreId,
+                        lastSyncAt = updatedTimestamp,
+                        updatedBy = userId
+                    ))
+
+                    if (item.isDeleted) {
+                        // Delete from server if item is marked as deleted
+                        firestore.collection("users").document(userId).collection("tagColors").document(firestoreId).delete().await()
+                        println("Immediately deleted tag color: ${item.name} with FS ID: $firestoreId")
+                    } else {
+                        // Otherwise upload the data
+                        firestore.collection("users").document(userId).collection("tagColors").document(firestoreId).set(tagColorData).await()
+                        println("Immediately synced tag color: ${item.name} with FS ID: $firestoreId")
+                    }
+                }
+                is ActivityTypeConfig -> {
+                    val firestoreId = item.firestoreId ?: item.id
+                    val activityTypeData = item.toFirestoreMap(userId)
+                    val updatedTimestamp = activityTypeData["updatedAt"] as? Long ?: System.currentTimeMillis()
+
+                    // Update local item with firestoreId BEFORE writing to Firestore
+                    repository.updateActivityType(item.copy(
+                        firestoreId = firestoreId,
+                        lastSyncAt = updatedTimestamp,
+                        updatedBy = userId
+                    ))
+
+                    if (item.isDeleted) {
+                        // Delete from server if item is marked as deleted
+                        firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).delete().await()
+                        println("Immediately deleted activity type: ${item.name} with FS ID: $firestoreId")
+                    } else {
+                        // Otherwise upload the data
+                        firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).set(activityTypeData).await()
+                        println("Immediately synced activity type: ${item.name} with FS ID: $firestoreId")
+                    }
+                }
                 is Cow -> {
                     val firestoreId = item.firestoreId ?: UUID.randomUUID().toString()
                     val cowData = item.toFirestoreMap(userId, repository)
@@ -692,6 +830,231 @@ class SyncService(
         } catch (e: Exception) { println("Error in syncUserNotes: ${e.message}"); throw e }
     }
     
+    private suspend fun syncUserSettings(userId: String) {
+        try {
+            val localSettings = repository.getAllSettings().first()
+            val remoteSnapshot = firestore.collection("users").document(userId).collection("settings").get().await()
+            val remoteSettingsMap = remoteSnapshot.documents.associate { it.id to (it.data ?: emptyMap<String, Any>()) }
+
+            localSettings.forEach { setting ->
+                try {
+                    val firestoreId = setting.firestoreId ?: setting.key
+                    val remoteData = remoteSettingsMap[firestoreId]
+                    val settingData = setting.toFirestoreMap(userId)
+                    val localUpdatedAt = settingData["updatedAt"] as? Long ?: (setting.updatedAt ?: System.currentTimeMillis())
+
+                    val shouldUpload = when {
+                        setting.firestoreId == null -> true
+                        remoteData == null -> true
+                        else -> {
+                            val remoteUpdatedAt = remoteData["updatedAt"] as? Long ?: 0L
+                            localUpdatedAt > remoteUpdatedAt
+                        }
+                    }
+                    if (shouldUpload) {
+                        firestore.collection("users").document(userId).collection("settings").document(firestoreId).set(settingData).await()
+                        repository.insertOrUpdateSetting(setting.copy(
+                            firestoreId = firestoreId,
+                            lastSyncAt = localUpdatedAt,
+                            updatedBy = userId
+                        ))
+                        println("Uploaded setting: ${setting.key}")
+                    }
+                } catch (e: Exception) { println("Error uploading setting ${setting.key}: ${e.message}") }
+            }
+
+            remoteSettingsMap.forEach { (firestoreId, data) ->
+                try {
+                    val localSetting = localSettings.find { it.firestoreId == firestoreId || it.key == firestoreId }
+                    val remoteUpdatedAt = data["updatedAt"] as? Long ?: 0L
+
+                    val shouldProcess = when {
+                        localSetting == null -> true
+                        else -> remoteUpdatedAt > (localSetting.lastSyncAt ?: 0L)
+                    }
+
+                    if (shouldProcess) {
+                        val remoteSetting = Settings(
+                            key = data["key"] as? String ?: firestoreId,
+                            value = data["value"] as? String ?: "",
+                            createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
+                            updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                            firestoreId = firestoreId,
+                            lastSyncAt = remoteUpdatedAt,
+                            updatedBy = data["updatedBy"] as? String
+                        )
+                        repository.insertOrUpdateSetting(remoteSetting)
+                        println("Downloaded setting: ${remoteSetting.key}")
+                    }
+                } catch (e: Exception) { println("Error downloading setting $firestoreId: ${e.message}") }
+            }
+            println("Settings sync completed")
+        } catch (e: Exception) { println("Error in syncUserSettings: ${e.message}"); throw e }
+    }
+    
+    private suspend fun syncUserTagColors(userId: String) {
+        try {
+            val localTagColors = repository.getAllTagColorsSync()
+            val remoteSnapshot = firestore.collection("users").document(userId).collection("tagColors").get().await()
+            val remoteTagColorsMap = remoteSnapshot.documents.associate { it.id to (it.data ?: emptyMap<String, Any>()) }
+
+            localTagColors.forEach { tagColor ->
+                try {
+                    val firestoreId = tagColor.firestoreId ?: tagColor.id
+                    val remoteData = remoteTagColorsMap[firestoreId]
+                    val tagColorData = tagColor.toFirestoreMap(userId)
+                    val localUpdatedAt = tagColorData["updatedAt"] as? Long ?: tagColor.updatedAt
+
+                    val shouldUpload = when {
+                        tagColor.firestoreId == null -> true
+                        remoteData == null -> true
+                        else -> {
+                            val remoteUpdatedAt = remoteData["updatedAt"] as? Long ?: 0L
+                            localUpdatedAt > remoteUpdatedAt
+                        }
+                    }
+                    if (shouldUpload) {
+                        if (tagColor.isDeleted) {
+                            // If local is deleted, delete from server
+                            firestore.collection("users").document(userId).collection("tagColors").document(firestoreId).delete().await()
+                        } else {
+                            // Otherwise upload the data
+                            firestore.collection("users").document(userId).collection("tagColors").document(firestoreId).set(tagColorData).await()
+                        }
+                        repository.updateTagColor(tagColor.copy(
+                            firestoreId = firestoreId,
+                            lastSyncAt = localUpdatedAt,
+                            updatedBy = userId
+                        ))
+                        println("Uploaded tag color: ${tagColor.name}${if (tagColor.isDeleted) " (deleted)" else ""}")
+                    }
+                } catch (e: Exception) { println("Error uploading tag color ${tagColor.name}: ${e.message}") }
+            }
+
+            remoteTagColorsMap.forEach { (firestoreId, data) ->
+                try {
+                    val localTagColor = localTagColors.find { it.firestoreId == firestoreId || it.id == firestoreId }
+                    val remoteUpdatedAt = data["updatedAt"] as? Long ?: 0L
+
+                    val shouldProcess = when {
+                        localTagColor == null -> true
+                        else -> remoteUpdatedAt > (localTagColor.lastSyncAt ?: 0L)
+                    }
+
+                    if (shouldProcess) {
+                        val remoteTagColor = TagColor(
+                            id = localTagColor?.id ?: firestoreId,
+                            name = data["name"] as? String ?: "",
+                            colorValue = (data["colorValue"] as? Number)?.toInt() ?: 0,
+                            isActive = data["isActive"] as? Boolean ?: true,
+                            createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
+                            updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                            firestoreId = firestoreId,
+                            lastSyncAt = remoteUpdatedAt,
+                            updatedBy = data["updatedBy"] as? String,
+                            isDeleted = data["isDeleted"] as? Boolean ?: false,
+                            isDefault = data["isDefault"] as? Boolean ?: false
+                        )
+                        if (localTagColor == null) repository.insertTagColor(remoteTagColor)
+                        else repository.updateTagColor(remoteTagColor)
+                        println("Downloaded tag color: ${remoteTagColor.name}")
+                    }
+                } catch (e: Exception) { println("Error downloading tag color $firestoreId: ${e.message}") }
+            }
+            
+            // Ensure defaults exist only if we have no tag colors at all (local or remote)
+            val finalLocalTagColors = repository.getAllTagColorsSync()
+            if (finalLocalTagColors.isEmpty()) {
+                repository.ensureDefaultTagColorsExist()
+                println("No tag colors found after sync, inserted defaults")
+            }
+            
+            println("Tag colors sync completed")
+        } catch (e: Exception) { println("Error in syncUserTagColors: ${e.message}"); throw e }
+    }
+    
+    private suspend fun syncUserActivityTypes(userId: String) {
+        try {
+            val localActivityTypes = repository.getAllActivityTypesSync()
+            val remoteSnapshot = firestore.collection("users").document(userId).collection("activityTypes").get().await()
+            val remoteActivityTypesMap = remoteSnapshot.documents.associate { it.id to (it.data ?: emptyMap<String, Any>()) }
+
+            localActivityTypes.forEach { activityType ->
+                try {
+                    val firestoreId = activityType.firestoreId ?: activityType.id
+                    val remoteData = remoteActivityTypesMap[firestoreId]
+                    val activityTypeData = activityType.toFirestoreMap(userId)
+                    val localUpdatedAt = activityTypeData["updatedAt"] as? Long ?: activityType.updatedAt
+
+                    val shouldUpload = when {
+                        activityType.firestoreId == null -> true
+                        remoteData == null -> true
+                        else -> {
+                            val remoteUpdatedAt = remoteData["updatedAt"] as? Long ?: 0L
+                            localUpdatedAt > remoteUpdatedAt
+                        }
+                    }
+                    if (shouldUpload) {
+                        if (activityType.isDeleted) {
+                            // If local is deleted, delete from server
+                            firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).delete().await()
+                        } else {
+                            // Otherwise upload the data
+                            firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).set(activityTypeData).await()
+                        }
+                        repository.updateActivityType(activityType.copy(
+                            firestoreId = firestoreId,
+                            lastSyncAt = localUpdatedAt,
+                            updatedBy = userId
+                        ))
+                        println("Uploaded activity type: ${activityType.name}${if (activityType.isDeleted) " (deleted)" else ""}")
+                    }
+                } catch (e: Exception) { println("Error uploading activity type ${activityType.name}: ${e.message}") }
+            }
+
+            remoteActivityTypesMap.forEach { (firestoreId, data) ->
+                try {
+                    val localActivityType = localActivityTypes.find { it.firestoreId == firestoreId || it.id == firestoreId }
+                    val remoteUpdatedAt = data["updatedAt"] as? Long ?: 0L
+
+                    val shouldProcess = when {
+                        localActivityType == null -> true
+                        else -> remoteUpdatedAt > (localActivityType.lastSyncAt ?: 0L)
+                    }
+
+                    if (shouldProcess) {
+                        val remoteActivityType = ActivityTypeConfig(
+                            id = localActivityType?.id ?: firestoreId,
+                            name = data["name"] as? String ?: "",
+                            displayName = data["displayName"] as? String ?: "",
+                            description = data["description"] as? String,
+                            isActive = data["isActive"] as? Boolean ?: true,
+                            isDefault = data["isDefault"] as? Boolean ?: false,
+                            createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
+                            updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                            firestoreId = firestoreId,
+                            lastSyncAt = remoteUpdatedAt,
+                            updatedBy = data["updatedBy"] as? String,
+                            isDeleted = data["isDeleted"] as? Boolean ?: false
+                        )
+                        if (localActivityType == null) repository.insertActivityType(remoteActivityType)
+                        else repository.updateActivityType(remoteActivityType)
+                        println("Downloaded activity type: ${remoteActivityType.name}")
+                    }
+                } catch (e: Exception) { println("Error downloading activity type $firestoreId: ${e.message}") }
+            }
+            
+            // Ensure defaults exist only if we have no activity types at all (local or remote)
+            val finalLocalActivityTypes = repository.getAllActivityTypesSync()
+            if (finalLocalActivityTypes.isEmpty()) {
+                repository.ensureDefaultActivityTypesExist()
+                println("No activity types found after sync, inserted defaults")
+            }
+            
+            println("Activity types sync completed")
+        } catch (e: Exception) { println("Error in syncUserActivityTypes: ${e.message}"); throw e }
+    }
+    
     private suspend fun handleRealtimeCowChange(change: DocumentChange, userId: String) {
         try {
             val doc = change.document
@@ -1033,6 +1396,178 @@ class SyncService(
         }
     }
 
+    private suspend fun handleRealtimeSettingsChange(change: DocumentChange, userId: String) {
+        try {
+            val doc = change.document
+            val data = doc.data 
+            if (data == null) {
+                println("Real-time settings change: data is null for doc ${doc.id}")
+                return
+            }
+            val firestoreId = doc.id
+            
+            val remoteSetting = Settings(
+                key = data["key"] as? String ?: firestoreId,
+                value = data["value"] as? String ?: "",
+                createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
+                updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                firestoreId = firestoreId,
+                lastSyncAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                updatedBy = data["updatedBy"] as? String
+            )
+            
+            println("Real-time ${change.type} for setting '${remoteSetting.key}' (FS ID: $firestoreId)")
+
+            when (change.type) {
+                DocumentChange.Type.ADDED, DocumentChange.Type.MODIFIED -> {
+                    val existingLocalSetting = repository.getAllSettings().first().find { it.firestoreId == firestoreId || it.key == firestoreId }
+                    if (existingLocalSetting == null || (existingLocalSetting.lastSyncAt ?: 0L) < (remoteSetting.lastSyncAt ?: 0L)) {
+                        repository.insertOrUpdateSetting(remoteSetting)
+                        println("Real-time ${change.type}: Updated setting '${remoteSetting.key}'")
+                    }
+                }
+                DocumentChange.Type.REMOVED -> {
+                    // Settings are typically not deleted, but we could handle it if needed
+                    println("Real-time REMOVED: Setting '${remoteSetting.key}' removed from server")
+                }
+            }
+        } catch (e: Exception) {
+            println("Error handling real-time settings change for doc ${change.document.id}: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    private suspend fun handleRealtimeTagColorChange(change: DocumentChange, userId: String) {
+        try {
+            val doc = change.document
+            val data = doc.data 
+            if (data == null) {
+                println("Real-time tag color change: data is null for doc ${doc.id}")
+                return
+            }
+            val firestoreId = doc.id
+            
+            val remoteTagColor = TagColor(
+                id = firestoreId,
+                name = data["name"] as? String ?: "",
+                colorValue = (data["colorValue"] as? Number)?.toInt() ?: 0,
+                isActive = data["isActive"] as? Boolean ?: true,
+                createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
+                updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                firestoreId = firestoreId,
+                lastSyncAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                updatedBy = data["updatedBy"] as? String,
+                isDeleted = data["isDeleted"] as? Boolean ?: false,
+                isDefault = data["isDefault"] as? Boolean ?: false
+            )
+            
+            println("Real-time ${change.type} for tag color '${remoteTagColor.name}' (FS ID: $firestoreId)")
+
+            when (change.type) {
+                DocumentChange.Type.ADDED, DocumentChange.Type.MODIFIED -> {
+                    val existingLocalTagColor = repository.getAllTagColorsSync().find { it.firestoreId == firestoreId || it.id == firestoreId }
+                    
+                    if (remoteTagColor.isDeleted) {
+                        // Handle soft deletion from remote
+                        existingLocalTagColor?.let {
+                            repository.deleteTagColor(it)
+                            println("Real-time ${change.type}: Deleted tag color '${it.name}' (marked as deleted remotely)")
+                        }
+                    } else {
+                        // Handle normal add/update
+                        if (existingLocalTagColor == null) {
+                            repository.insertTagColor(remoteTagColor)
+                            println("Real-time ${change.type}: Inserted tag color '${remoteTagColor.name}'")
+                        } else if ((existingLocalTagColor.lastSyncAt ?: 0L) < (remoteTagColor.lastSyncAt ?: 0L)) {
+                            repository.updateTagColor(remoteTagColor.copy(id = existingLocalTagColor.id))
+                            println("Real-time ${change.type}: Updated tag color '${remoteTagColor.name}'")
+                        }
+                    }
+                }
+                DocumentChange.Type.REMOVED -> {
+                    val existingLocalTagColor = repository.getAllTagColorsSync().find { it.firestoreId == firestoreId }
+                    existingLocalTagColor?.let {
+                        repository.deleteTagColor(it)
+                        println("Real-time REMOVED: Deleted tag color '${it.name}'")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            println("Error handling real-time tag color change for doc ${change.document.id}: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
+    private suspend fun handleRealtimeActivityTypeChange(change: DocumentChange, userId: String) {
+        try {
+            val doc = change.document
+            val data = doc.data 
+            if (data == null) {
+                println("Real-time activity type change: data is null for doc ${doc.id}")
+                return
+            }
+            val firestoreId = doc.id
+            
+            val remoteActivityType = ActivityTypeConfig(
+                id = firestoreId,
+                name = data["name"] as? String ?: "",
+                displayName = data["displayName"] as? String ?: "",
+                description = data["description"] as? String,
+                isActive = data["isActive"] as? Boolean ?: true,
+                isDefault = data["isDefault"] as? Boolean ?: false,
+                createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
+                updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                firestoreId = firestoreId,
+                lastSyncAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                updatedBy = data["updatedBy"] as? String,
+                isDeleted = data["isDeleted"] as? Boolean ?: false
+            )
+            
+            println("Real-time ${change.type} for activity type '${remoteActivityType.name}' (FS ID: $firestoreId)")
+
+            when (change.type) {
+                DocumentChange.Type.ADDED, DocumentChange.Type.MODIFIED -> {
+                    val existingLocalActivityType = repository.getAllActivityTypesSync().find { it.firestoreId == firestoreId || it.id == firestoreId }
+                    
+                    if (remoteActivityType.isDeleted) {
+                        // Handle soft deletion from remote
+                        existingLocalActivityType?.let {
+                            if (!it.isDefault) { // Don't delete default activity types
+                                repository.deleteActivityType(it)
+                                println("Real-time ${change.type}: Deleted activity type '${it.name}' (marked as deleted remotely)")
+                            } else {
+                                println("Real-time ${change.type}: Skipped deletion of default activity type '${it.name}'")
+                            }
+                        }
+                    } else {
+                        // Handle normal add/update
+                        if (existingLocalActivityType == null) {
+                            repository.insertActivityType(remoteActivityType)
+                            println("Real-time ${change.type}: Inserted activity type '${remoteActivityType.name}'")
+                        } else if ((existingLocalActivityType.lastSyncAt ?: 0L) < (remoteActivityType.lastSyncAt ?: 0L)) {
+                            repository.updateActivityType(remoteActivityType.copy(id = existingLocalActivityType.id))
+                            println("Real-time ${change.type}: Updated activity type '${remoteActivityType.name}'")
+                        }
+                    }
+                }
+                DocumentChange.Type.REMOVED -> {
+                    val existingLocalActivityType = repository.getAllActivityTypesSync().find { it.firestoreId == firestoreId }
+                    existingLocalActivityType?.let {
+                        if (!it.isDefault) { // Don't delete default activity types
+                            repository.deleteActivityType(it)
+                            println("Real-time REMOVED: Deleted activity type '${it.name}'")
+                        } else {
+                            println("Real-time REMOVED: Skipped deletion of default activity type '${it.name}'")
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            println("Error handling real-time activity type change for doc ${change.document.id}: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
 }
 
 enum class SyncStatus {
@@ -1120,5 +1655,43 @@ private fun Note.toFirestoreMap(userId: String): Map<String, Any?> {
         "createdBy" to (createdBy ?: userId),
         "updatedBy" to userId,
         "updatedAt" to System.currentTimeMillis()
+    )
+}
+
+private fun Settings.toFirestoreMap(userId: String): Map<String, Any?> {
+    return mapOf(
+        "key" to key,
+        "value" to value,
+        "createdBy" to userId,
+        "updatedBy" to userId,
+        "createdAt" to (createdAt ?: System.currentTimeMillis()),
+        "updatedAt" to System.currentTimeMillis()
+    )
+}
+
+private fun TagColor.toFirestoreMap(userId: String): Map<String, Any?> {
+    return mapOf(
+        "name" to name,
+        "colorValue" to colorValue,
+        "isActive" to isActive,
+        "isDefault" to isDefault,
+        "createdAt" to createdAt,
+        "updatedBy" to userId,
+        "updatedAt" to System.currentTimeMillis(),
+        "isDeleted" to isDeleted
+    )
+}
+
+private fun ActivityTypeConfig.toFirestoreMap(userId: String): Map<String, Any?> {
+    return mapOf(
+        "name" to name,
+        "displayName" to displayName,
+        "description" to description,
+        "isActive" to isActive,
+        "isDefault" to isDefault,
+        "createdAt" to createdAt,
+        "updatedBy" to userId,
+        "updatedAt" to System.currentTimeMillis(),
+        "isDeleted" to isDeleted
     )
 }
