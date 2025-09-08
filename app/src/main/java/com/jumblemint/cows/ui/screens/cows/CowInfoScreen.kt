@@ -8,6 +8,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
@@ -31,17 +33,17 @@ import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CowInfoScreen(
     cowId: Long,
     onNavigateBack: () -> Unit,
     onEditCow: () -> Unit,
-    onNavigateToCow: (Long) -> Unit, // Added for navigation to other cows
-    modifier: Modifier = Modifier
+    onNavigateToCow: (Long) -> Unit,
+    onCloseFlow: () -> Unit, // Changed from onNavigateToDashboard
+    modifier: Modifier = Modifier // This modifier is for the Navigation component to use
 ) {
     val context = LocalContext.current
-    // Assuming CowInfoViewModelFactory takes Repository, and cowId
-    // val application = context.applicationContext as CattleApplication // Not needed for factory if it doesn't take Application
     val database = CattleDatabase.getDatabase(context)
     val repository = remember { // Create repository once
         CattleRepository(
@@ -58,177 +60,204 @@ fun CowInfoScreen(
         )
     }
     val viewModel: CowInfoViewModel = viewModel(
-        factory = CowInfoViewModelFactory(repository, cowId) // CORRECTED
+        factory = CowInfoViewModelFactory(repository, cowId)
     )
 
     val uiState by viewModel.uiState.collectAsState()
     val tagColorMap = rememberTagColorMap(repository)
 
-    Column(
-        modifier = modifier.fillMaxSize() // Apply the modifier which includes padding from parent
-    ) {
-        if (uiState.isLoading) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            uiState.cow?.let { cow ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(), 
+        topBar = {
+            TopAppBar(
+                title = { Text(uiState.cow?.name ?: "Cow Information") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onCloseFlow) { // Changed to onCloseFlow
+                        Icon(Icons.Filled.Close, contentDescription = "Close Flow") // Updated content description
+                    }
+                }
+            )
+        }
+    ) { paddingValues -> 
+        Column(
+            modifier = Modifier 
+                .fillMaxSize()
+                .padding(paddingValues) 
+        ) {
+            if (uiState.isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    // Header Card
-                    Card {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (cow.tagNumber != null || cow.tagColor != null) {
-                                CattleTagBadge(
-                                    tagNumber = cow.tagNumber,
-                                    tagColor = cow.tagColor,
-                                    modifier = Modifier.height(80.dp).widthIn(min = 60.dp),
-                                    backgroundColor = resolveTagColor(cow.tagColor, tagColorMap)
-                                )
-                            }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = cow.name ?: "Unnamed Cow",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "${cow.classification.name} • ${cow.gender.name}",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                cow.birthDate?.let {
+                    CircularProgressIndicator()
+                }
+            } else {
+                uiState.cow?.let { cow ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(16.dp), 
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Header Card
+                        Card {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (cow.tagNumber != null || cow.tagColor != null) {
+                                    CattleTagBadge(
+                                        tagNumber = cow.tagNumber,
+                                        tagColor = cow.tagColor,
+                                        modifier = Modifier.height(80.dp).widthIn(min = 60.dp),
+                                        backgroundColor = resolveTagColor(cow.tagColor, tagColorMap)
+                                    )
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "Age: ${calculateAgeString(it)}",
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        text = cow.name ?: "Unnamed Cow",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "${cow.classification.name} • ${cow.gender.name}",
+                                        style = MaterialTheme.typography.titleMedium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                    cow.birthDate?.let {
+                                        Text(
+                                            text = "Age: ${calculateAgeString(it)}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    // Basic Information Card
-                    Card {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            SectionTitle("Basic Information")
-                            cow.birthDate?.let {
-                                InfoRow("Birth Date", it.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")))
-                            }
-                            InfoRow("Status", cow.status.name.lowercase().replaceFirstChar { it.uppercase() })
-                            uiState.pastureName?.let { InfoRow("Pasture", it) }
-                            cow.colorMarkings?.takeIf { it.isNotBlank() }?.let { InfoRow("Color/Markings", it) }
-                        }
-                    }
-
-                    // Parentage Card
-                    if (uiState.mother != null || uiState.father != null) {
+                        // Basic Information Card
                         Card {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                SectionTitle("Parentage")
-                                uiState.mother?.let { mother ->
-                                    RelatedCowRow(label = "Mother", cow = mother, onNavigateToCow = onNavigateToCow)
+                                SectionTitle("Basic Information")
+                                cow.birthDate?.let {
+                                    InfoRow("Birth Date", it.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")))
                                 }
-                                uiState.father?.let { father ->
-                                    RelatedCowRow(label = "Father", cow = father, onNavigateToCow = onNavigateToCow)
+                                InfoRow("Status", cow.status.name.lowercase().replaceFirstChar { it.uppercase() })
+                                uiState.pastureName?.let { InfoRow("Pasture", it) }
+                                cow.colorMarkings?.takeIf { it.isNotBlank() }?.let { InfoRow("Color/Markings", it) }
+                            }
+                        }
+
+                        // Parentage Card
+                        if (uiState.mother != null || uiState.father != null) {
+                            Card {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    SectionTitle("Parentage")
+                                    uiState.mother?.let { mother ->
+                                        RelatedCowRow(label = "Mother", cow = mother, onNavigateToCow = onNavigateToCow)
+                                    }
+                                    uiState.father?.let { father ->
+                                        RelatedCowRow(label = "Father", cow = father, onNavigateToCow = onNavigateToCow)
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    // Children Card
-                    if (uiState.children.isNotEmpty()) {
-                        CollapsibleLazyColumnCard(
-                            title = "Children (${uiState.children.size})",
-                            items = uiState.children,
-                            onNavigateToCow = onNavigateToCow,
-                            initiallyExpanded = uiState.children.size <= 3
-                        )
-                    }
-
-                    // Maternal Siblings Card
-                    if (uiState.maternalSiblings.isNotEmpty()) {
-                        Card {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                SectionTitle("Maternal Siblings (${uiState.maternalSiblings.size})")
-                                uiState.maternalSiblings.forEach { sibling ->
-                                    RelatedCowRow(cow = sibling, onNavigateToCow = onNavigateToCow)
-                                }
-                            }
-                        }
-                    }
-
-                    // Paternal Siblings Card
-                    if (uiState.paternalSiblings.isNotEmpty()) {
-                        CollapsibleLazyColumnCard(
-                            title = "Paternal Siblings (${uiState.paternalSiblings.size})",
-                            items = uiState.paternalSiblings,
-                            onNavigateToCow = onNavigateToCow,
-                            initiallyExpanded = false
-                        )
-                    }
-                    // Activities Card
-                    if (uiState.activities.isNotEmpty()) {
-                        Card {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                SectionTitle("Recent Activities (${uiState.activities.size})")
-                                uiState.activities.take(5).forEach { activity ->
-                                    val dateStr = activity.date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
-                                    InfoRow(activity.activityType.name, "$dateStr - ${activity.notes ?: "No notes"}")
-                                }
-                                if (uiState.activities.size > 5) {
-                                    Text(
-                                        text = "... and ${uiState.activities.size - 5} more",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    // Error Message Card
-                    uiState.error?.let { error ->
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            )
-                        ) {
-                            Text(
-                                text = error,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(16.dp)
+                        // Children Card
+                        if (uiState.children.isNotEmpty()) {
+                            CollapsibleLazyColumnCard(
+                                title = "Children (${uiState.children.size})",
+                                items = uiState.children,
+                                onNavigateToCow = onNavigateToCow,
+                                initiallyExpanded = uiState.children.size <= 3
                             )
                         }
+
+                        // Maternal Siblings Card
+                        if (uiState.maternalSiblings.isNotEmpty()) {
+                            Card {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    SectionTitle("Maternal Siblings (${uiState.maternalSiblings.size})")
+                                    uiState.maternalSiblings.forEach { sibling ->
+                                        RelatedCowRow(cow = sibling, onNavigateToCow = onNavigateToCow)
+                                    }
+                                }
+                            }
+                        }
+
+                        // Paternal Siblings Card
+                        if (uiState.paternalSiblings.isNotEmpty()) {
+                            CollapsibleLazyColumnCard(
+                                title = "Paternal Siblings (${uiState.paternalSiblings.size})",
+                                items = uiState.paternalSiblings,
+                                onNavigateToCow = onNavigateToCow,
+                                initiallyExpanded = false
+                            )
+                        }
+                        // Activities Card
+                        if (uiState.activities.isNotEmpty()) {
+                            Card {
+                                Column(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    SectionTitle("Recent Activities (${uiState.activities.size})")
+                                    uiState.activities.take(5).forEach { activity ->
+                                        val dateStr = activity.date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
+                                        InfoRow(activity.activityType.name, "$dateStr - ${activity.notes ?: "No notes"}")
+                                    }
+                                    if (uiState.activities.size > 5) {
+                                        Text(
+                                            text = "... and ${uiState.activities.size - 5} more",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        // Error Message Card
+                        uiState.error?.let { error ->
+                            Card(
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                )
+                            ) {
+                                Text(
+                                    text = error,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(16.dp)) // Bottom spacer
                     }
-                    Spacer(modifier = Modifier.height(16.dp)) // Bottom spacer
+                } ?: run {
+                    if (!uiState.isLoading) {
+                        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+                            Text("Cow not found or an error occurred.", style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
                 }
             }
         }

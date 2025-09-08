@@ -7,12 +7,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack // Added for TopAppBar
+import androidx.compose.material.icons.filled.Close // Added for TopAppBar
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier // Ensure Modifier is imported
+import androidx.compose.ui.Modifier 
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,7 +33,8 @@ fun PasturesScreen(
     onNavigateToAddPasture: () -> Unit,
     onNavigateToPastureDetails: (String) -> Unit,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
+    onNavigateToDashboard: () -> Unit, // Added new parameter
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -64,32 +67,47 @@ fun PasturesScreen(
                 message = it,
                 duration = SnackbarDuration.Long
             )
-            // pasturesViewModel.onErrorShown() // To clear the error in ViewModel after showing
+            // pasturesViewModel.onErrorShown() 
         }
     }
 
     Scaffold(
-        modifier = modifier, // <<< APPLIED MODIFIER HERE
+        modifier = modifier, 
+        topBar = { // Added TopAppBar
+            TopAppBar(
+                title = { Text("Pastures") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateToDashboard) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close to Dashboard")
+                    }
+                }
+            )
+        },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAddPasture) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Pasture")
             }
         },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0) // <<< UNCOMMENTED THIS LINE
-    ) { paddingValues -> // This paddingValues is from THIS screen's Scaffold
+        contentWindowInsets = WindowInsets(0, 0, 0, 0) 
+    ) { paddingValues -> 
         if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues), // Use this Scaffold's padding
+                    .padding(paddingValues), 
                 contentAlignment = Alignment.Center
             ) { CircularProgressIndicator() }
         } else if (uiState.pastures.isEmpty() && uiState.unassignedCowCount == 0) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues), // Use this Scaffold's padding
+                    .padding(paddingValues), 
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -101,9 +119,9 @@ fun PasturesScreen(
         } else {
             LazyColumn(
                 modifier = Modifier
-                    .padding(paddingValues) // Use this Scaffold's padding for content below potential TopAppBar (if this Scaffold had one)
+                    .padding(paddingValues) 
                     .fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), // Added vertical padding too for consistency
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), 
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (uiState.unassignedCowCount > 0) {
@@ -143,7 +161,7 @@ fun PasturesScreen(
                         onClick = {
                             onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
                         },
-                        onEdit = { // Assuming edit navigates to the same detail screen
+                        onEdit = { 
                             onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
                         },
                         onDelete = { pasture ->
@@ -181,7 +199,7 @@ fun PastureCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp), // Reduced padding slightly for a tighter card
+                .padding(horizontal = 8.dp, vertical = 8.dp), 
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -190,7 +208,7 @@ fun PastureCard(
                 Text(
                     text = "Total Head: ${pastureWithDetails.pastureWithCount.cowCount}",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium // Changed from null
+                    fontWeight = FontWeight.Medium 
                 )
 
                 if (pastureWithDetails.classificationBreakdown.isNotEmpty()) {
@@ -206,7 +224,7 @@ fun PastureCard(
                     )
                 }
             }
-            Row { // Kept Edit and Delete IconButtons as they are part of the card content
+            Row { 
                 IconButton(
                     onClick = onEdit
                 ) {

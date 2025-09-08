@@ -63,6 +63,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
     implementation("com.github.skydoves:colorpicker-compose:1.1.2")
+    implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.20")
     
     // Firebase
     implementation(platform(libs.firebase.bom))

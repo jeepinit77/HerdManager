@@ -5,7 +5,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding // Import for creating screenModifierWithPadding
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -15,6 +15,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -74,29 +75,33 @@ fun CattleNavigation(
         }
 
         composable("${Screen.Cows.route}?pastureId={pastureId}") { backStackEntry ->
-            val pastureId = backStackEntry.arguments?.getString("pastureId")?.toLongOrNull()
+            val pastureIdString = backStackEntry.arguments?.getString("pastureId")
+            val pastureId = pastureIdString?.toLongOrNull() 
             CowsScreen(
                 modifier = screenModifierWithPadding,
-                pastureId = pastureId,
-                onCowClick = { cowId -> navController.navigate("${Screen.CowInfo.route}/$cowId") },
-                onCowEdit = { cowId -> navController.navigate("${Screen.CowDetail.route}/$cowId") },
-                onAddCowClick = { navController.navigate("${Screen.CowDetail.route}/0") }
+                pastureId = pastureId, 
+                onCowClick = { cowId -> navController.navigate("${Screen.CowInfo.route}/$cowId?returnToRoute=${Screen.Cows.route}") }, 
+                onCowEdit = { cowId -> navController.navigate("${Screen.CowDetail.route}/$cowId") }, 
+                onAddCowClick = { navController.navigate("${Screen.CowDetail.route}/0") } 
             )
         }
 
         composable(Screen.Cows.route) {
             CowsScreen(
                 modifier = screenModifierWithPadding,
-                pastureId = null,
-                onCowClick = { cowId -> navController.navigate("${Screen.CowInfo.route}/$cowId") },
-                onCowEdit = { cowId -> navController.navigate("${Screen.CowDetail.route}/$cowId") },
-                onAddCowClick = { navController.navigate("${Screen.CowDetail.route}/0") }
+                pastureId = null, 
+                onCowClick = { cowId -> navController.navigate("${Screen.CowInfo.route}/$cowId?returnToRoute=${Screen.Cows.route}") }, 
+                onCowEdit = { cowId -> navController.navigate("${Screen.CowDetail.route}/$cowId") }, 
+                onAddCowClick = { navController.navigate("${Screen.CowDetail.route}/0") } 
             )
         }
 
         composable(
-            route = "${Screen.CowInfo.route}/{cowId}",
-            arguments = listOf(navArgument("cowId") { type = NavType.LongType }),
+            route = "${Screen.CowInfo.route}/{cowId}?returnToRoute={returnToRoute}",
+            arguments = listOf(
+                navArgument("cowId") { type = NavType.LongType }, 
+                navArgument("returnToRoute") { type = NavType.StringType; nullable = true; defaultValue = null }
+            ),
             enterTransition = {
                 slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth })
             },
@@ -110,58 +115,91 @@ fun CattleNavigation(
                 slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth })
             }
         ) { backStackEntry ->
-            val cowId = backStackEntry.arguments?.getLong("cowId") ?: 0L // Use getLong
+            val cowId = backStackEntry.arguments?.getLong("cowId") ?: 0L 
+            val returnToRouteArg = backStackEntry.arguments?.getString("returnToRoute")
+            
             CowInfoScreen(
-                modifier = screenModifierWithPadding,
+                modifier = screenModifierNoPadding, 
                 cowId = cowId,
                 onNavigateBack = { navController.popBackStack() },
-                onEditCow = { navController.navigate("${Screen.CowDetail.route}/$cowId") },
-                onNavigateToCow = { selectedCowId ->
-                    if (cowId != selectedCowId) { // Prevent navigating to the same cowId again
-                        navController.navigate("${Screen.CowInfo.route}/$selectedCowId")
+                onEditCow = { navController.navigate("${Screen.CowDetail.route}/$cowId") }, 
+                onNavigateToCow = { selectedCowId -> 
+                    if (cowId != selectedCowId) { 
+                        val routePrefix = "${Screen.CowInfo.route}/$selectedCowId"
+                        val finalRoute = if (!returnToRouteArg.isNullOrEmpty()) {
+                            "$routePrefix?returnToRoute=$returnToRouteArg"
+                        } else {
+                            routePrefix
+                        }
+                        navController.navigate(finalRoute)
+                    }
+                },
+                onCloseFlow = {
+                    if (!returnToRouteArg.isNullOrEmpty()) {
+                        val success = navController.popBackStack(returnToRouteArg, inclusive = false)
+                        if (!success) {
+                            navController.navigate(returnToRouteArg) {
+                                popUpTo(navController.graph.findStartDestination().id)
+                                launchSingleTop = true
+                            }
+                        }
+                    } else {
+                        navController.navigate(Screen.Dashboard.route) {
+                            popUpTo(navController.graph.findStartDestination().id)
+                            launchSingleTop = true
+                        }
                     }
                 }
             )
         }
 
         composable("${Screen.CowDetail.route}/{cowId}") { backStackEntry ->
-            val cowId = backStackEntry.arguments?.getString("cowId")?.toLongOrNull() ?: 0L
-            CowDetailScreen( // You confirmed this screen accepts a modifier
+            val cowIdString = backStackEntry.arguments?.getString("cowId")
+            val cowId = cowIdString?.toLongOrNull() ?: 0L 
+            CowDetailScreen( 
                 modifier = screenModifierNoPadding,
-                cowId = cowId,
+                cowId = cowId, 
                 onNavigateBack = { navController.popBackStack() }
             )
         }
 
         composable(Screen.Pastures.route) {
             PasturesScreen(
-                modifier = screenModifierWithPadding,
-                onNavigateToAddPasture = { navController.navigate("${Screen.PastureDetail.route}/0") },
-                onNavigateToPastureDetails = { pastureId -> navController.navigate("${Screen.PastureDetail.route}/$pastureId") },
-                onNavigateBack = { navController.popBackStack() }
+                modifier = screenModifierNoPadding, 
+                onNavigateToAddPasture = { navController.navigate("${Screen.PastureDetail.route}/0") }, 
+                onNavigateToPastureDetails = { pastureId -> navController.navigate("${Screen.PastureDetail.route}/$pastureId") }, 
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDashboard = { 
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(navController.graph.findStartDestination().id)
+                        launchSingleTop = true
+                    }
+                }
             )
         }
 
         composable(Screen.Activities.route) {
             ActivitiesScreen(
                 modifier = screenModifierWithPadding,
-                onAddActivityClick = { navController.navigate(Screen.AddActivity.route) },
-                onEditActivityClick = { activity -> navController.navigate("${Screen.AddActivity.route}/${activity.id}") }
+                onAddActivityClick = { navController.navigate(Screen.AddActivity.route) }, 
+                onEditActivityClick = { activity -> navController.navigate("${Screen.AddActivity.route}/${activity.id}") } 
             )
         }
 
-        composable(Screen.AddActivity.route) {
+        composable(Screen.AddActivity.route) { 
             AddActivityScreen(
-                modifier = screenModifierNoPadding, // Assumes own Scaffold
+                modifier = screenModifierNoPadding, 
+                editId = null, 
                 onNavigateBack = { navController.popBackStack() }
             )
         }
 
-        composable("${Screen.AddActivity.route}/{activityId}") { backStackEntry ->
-            val activityId = backStackEntry.arguments?.getString("activityId")?.toLongOrNull()
+        composable("${Screen.AddActivity.route}/{activityId}") { backStackEntry -> 
+            val activityIdString = backStackEntry.arguments?.getString("activityId")
+            val activityId = activityIdString?.toLongOrNull() 
             AddActivityScreen(
-                modifier = screenModifierNoPadding, // Assumes own Scaffold
-                editId = activityId,
+                modifier = screenModifierNoPadding, 
+                editId = activityId, 
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -171,9 +209,14 @@ fun CattleNavigation(
             LaunchedEffect(currentUser) { if (currentUser != null && !currentUser!!.isLocalUser) { application.authService.startUserSync(application.syncService) } }
             ReportsScreen(
                 modifier = screenModifierWithPadding,
-                onShowList = { type, value ->
-                    if (type == "workingList") { navController.navigate(Screen.WorkingList.route) }
-                    else { navController.navigate(if (value != null) "${Screen.CowList.route}?type=$type&value=$value" else "${Screen.CowList.route}?type=$type") }
+                onShowList = { type, value -> // value here is Int?
+                    if (type == "workingList") { 
+                        navController.navigate(Screen.WorkingList.route) 
+                    } else { 
+                        // ERROR FIX: Ensure 'value' (Int?) is converted to String for the route parameter
+                        val valueQueryParam = if (value != null) "&value=${value.toString()}" else "" 
+                        navController.navigate("${Screen.CowList.route}?type=$type$valueQueryParam")
+                    }
                 },
                 onNavigateToAddBirth = { navController.navigate(Screen.AddBirth.route) }
             )
@@ -188,11 +231,12 @@ fun CattleNavigation(
 
         composable("${Screen.CowList.route}?type={type}&value={value}") { backStackEntry ->
             val type = backStackEntry.arguments?.getString("type")
-            val value = backStackEntry.arguments?.getString("value")
+            val valueString = backStackEntry.arguments?.getString("value")
             CowListScreen(
                 modifier = screenModifierWithPadding,
-                type = type, value = value,
-                onCowClick = { cowId: Long -> navController.navigate("${Screen.CowInfo.route}/$cowId") },
+                type = type, 
+                value = valueString, 
+                onCowClick = { cowId -> navController.navigate("${Screen.CowInfo.route}/$cowId?returnToRoute=${Screen.CowList.route}") }, 
                 onBack = { navController.popBackStack() }
             )
         }
@@ -220,9 +264,11 @@ fun CattleNavigation(
         }
 
         composable("${Screen.PastureDetail.route}/{pastureId}") { backStackEntry ->
-            val pastureIdArg = backStackEntry.arguments?.getString("pastureId") ?: "0"
-            val contextL = LocalContext.current // Renamed to avoid conflict
-            val applicationL = contextL.applicationContext as CattleApplication // Renamed
+            val pastureIdString = backStackEntry.arguments?.getString("pastureId") 
+            val pastureIdArg = pastureIdString ?: "0"
+            
+            val contextL = LocalContext.current 
+            val applicationL = contextL.applicationContext as CattleApplication 
             val database = CattleDatabase.getDatabase(applicationL)
             val repository = remember {
                 CattleRepository(
@@ -235,18 +281,18 @@ fun CattleNavigation(
             }
             val pasturesViewModel: PasturesViewModel = viewModel(factory = PasturesViewModelFactory(applicationL, repository))
 
-            if (pastureIdArg == "0" || pastureIdArg.isEmpty()) { // AddPasture
+            if (pastureIdArg == "0") { 
                 AddPastureScreen(
-                    modifier = screenModifierNoPadding, // Assumes own Scaffold
+                    modifier = screenModifierNoPadding, 
                     onAddPasture = { newPasture -> pasturesViewModel.insertNewPasture(newPasture); navController.popBackStack() },
                     onCancel = { navController.popBackStack() }
                 )
-            } else { // PastureDetail (viewing existing)
+            } else { 
                 PastureDetailScreen(
                     modifier = screenModifierWithPadding,
-                    pastureId = pastureIdArg,
+                    pastureId = pastureIdArg, 
                     onNavigateBack = { navController.popBackStack() },
-                    onCowClick = { cowId -> navController.navigate("${Screen.CowInfo.route}/$cowId") },
+                    onCowClick = { cowId -> navController.navigate("${Screen.CowInfo.route}/$cowId?returnToRoute=${Screen.PastureDetail.route}/$pastureIdArg") }, 
                     onCowEdit = { cowId -> navController.navigate("${Screen.CowDetail.route}/$cowId") },
                     onEditPasture = { /* No-op */ }
                 )
@@ -255,7 +301,7 @@ fun CattleNavigation(
 
         composable(Screen.AddBirth.route) {
             AddBirthScreen(
-                modifier = screenModifierNoPadding, // Assumes own Scaffold
+                modifier = screenModifierNoPadding, 
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -269,7 +315,7 @@ fun CattleNavigation(
 
         composable(Screen.Sync.route) {
             SyncDetailsScreen(
-                modifier = screenModifierNoPadding, // Assumes own Scaffold
+                modifier = screenModifierNoPadding, 
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToSignIn = { navController.navigate(Screen.SignIn.route) }
             )
@@ -277,44 +323,58 @@ fun CattleNavigation(
 
         composable(Screen.AccountManagement.route) {
             AccountManagementScreen(
-                modifier = screenModifierNoPadding, // Assumes own Scaffold
+                modifier = screenModifierNoPadding, 
                 onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(Screen.TagColorsManagement.route) {
             TagColorsManagementScreen(
-                modifier = screenModifierNoPadding, // Assumes own Scaffold
+                modifier = screenModifierNoPadding, 
                 onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(Screen.ActivityTypesManagement.route) {
             ActivityTypesManagementScreen(
-                modifier = screenModifierNoPadding, // Assumes own Scaffold
+                modifier = screenModifierNoPadding, 
                 onNavigateBack = { navController.popBackStack() }
             )
         }
     }
 }
 
-// Sealed class Screen definition remains 
-sealed class Screen(val route: String, val title: String) {
-    object Login : Screen("login", "Login")
-    object SignIn : Screen("sign_in", "Sign In")
+sealed class Screen(val route: String, val title: String, val hasOwnTopAppBar: Boolean = false) {
+    object Login : Screen("login", "Login", true)
+    object SignIn : Screen("sign_in", "Sign In", true)
     object Dashboard : Screen("dashboard", "Dashboard")
     object CowList : Screen("cow_list", "Cows") 
-    object Cows : Screen("cows", "Cows")
-    object CowInfo : Screen("cow_info", "Cow Info")
-    object CowDetail : Screen("cow_detail", "Cow Details") 
-    object Pastures : Screen("pastures", "Pastures")
-    object PastureDetail : Screen("pasture_detail", "Pasture Details") 
+    object Cows : Screen("cows", "Cows") 
+    object CowInfo : Screen("cow_info", "Cow Info", true) 
+    object CowDetail : Screen("cow_detail", "Cow Details", true) 
+    object Pastures : Screen("pastures", "Pastures", true) 
+    object PastureDetail : Screen("pasture_detail", "Pasture Details", false) 
     object Activities : Screen("activities", "Activities")
-    object AddActivity : Screen("add_activity", "Add Activity")
+    object AddActivity : Screen("add_activity", "Add Activity", true) 
     object Settings : Screen("settings", "Settings")
     object Notes : Screen("notes", "Notes")
-    object AddBirth : Screen("add_birth", "Add Birth")
+    object AddBirth : Screen("add_birth", "Add Birth", true)
     object WorkingList : Screen("working_list", "Working List")
-    object AccountManagement : Screen("account_management", "Account Management")
-    object TagColorsManagement : Screen("tag_colors_management", "Tag Colors Management")
-    object ActivityTypesManagement : Screen("activity_types_management", "Activity Types Management")
-    object Sync : Screen("sync", "Sync Details")
+    object AccountManagement : Screen("account_management", "Account Management", true)
+    object TagColorsManagement : Screen("tag_colors_management", "Tag Colors Management", true)
+    object ActivityTypesManagement : Screen("activity_types_management", "Activity Types Management", true)
+    object Sync : Screen("sync", "Sync Details", true)
+
+    companion object {
+        val allScreens: List<Screen> by lazy {
+            Screen::class.sealedSubclasses.mapNotNull { it.objectInstance }
+        }
+
+        fun fromRoute(routePattern: String?): Screen? {
+            if (routePattern == null) return null
+            return allScreens.find { screen ->
+                val baseScreenRoute = screen.route.substringBefore("/").substringBefore("?")
+                val patternBaseRoute = routePattern.substringBefore("/").substringBefore("?")
+                baseScreenRoute == patternBaseRoute
+            }
+        }
+    }
 }
