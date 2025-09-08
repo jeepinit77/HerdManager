@@ -75,8 +75,8 @@ fun PasturesScreen(
             FloatingActionButton(onClick = onNavigateToAddPasture) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Pasture")
             }
-        }
-        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out to let the modifier handle insets
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0) // <<< UNCOMMENTED THIS LINE
     ) { paddingValues -> // This paddingValues is from THIS screen's Scaffold
         if (uiState.isLoading) {
             Box(

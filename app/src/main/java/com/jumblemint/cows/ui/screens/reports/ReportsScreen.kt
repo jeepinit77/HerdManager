@@ -56,7 +56,7 @@ fun ReportsScreen(
 
     Scaffold(
         modifier = modifier, // <<< APPLIED MODIFIER HERE
-        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out
+         contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out
     ) { paddingValues -> // This paddingValues is from THIS Scaffold (if it had its own app bar/bottom bar)
                          // The `modifier` above already includes padding from MainActivity's Scaffold.
 

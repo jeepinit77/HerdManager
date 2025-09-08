@@ -75,8 +75,8 @@ fun ActivitiesScreen(
             FloatingActionButton(onClick = onAddActivityClick) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Activity")
             }
-        }
-        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0) // <<< UNCOMMENTED THIS LINE
     ) { paddingValues -> // This paddingValues is from THIS screen's Scaffold
                          // It will be used by the LazyColumn to position itself correctly
                          // relative to THIS Scaffold's FAB, if any.

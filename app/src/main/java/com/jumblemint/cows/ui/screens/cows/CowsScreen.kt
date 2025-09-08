@@ -88,11 +88,7 @@ fun CowsScreen(
                 Icon(Icons.Default.Add, contentDescription = "Add Cow")
             }
         },
-        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // This might be overridden by the modifier from CattleNavigation
-                                                        // It's generally safer to let the modifier handle all padding.
-                                                        // If mainScaffoldPadding is correctly applied by the modifier,
-                                                        // this specific contentWindowInsets might not be needed or could conflict.
-                                                        // Let's keep it commented for now and see the effect.
+        contentWindowInsets = WindowInsets(0, 0, 0, 0) // <<< UNCOMMENTED THIS LINE
     ) { paddingValues -> // This paddingValues is from THIS screen's Scaffold
         Column(
             modifier = Modifier

@@ -62,8 +62,8 @@ fun NotesScreen(
                 Icon(Icons.Default.Add, contentDescription = "Add Note")
             }
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Already commented out, good.
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0) // <<< UNCOMMENTED THIS LINE
     ) { localScaffoldPadding -> // Renamed from 'padding' to 'localScaffoldPadding' for clarity
                                // This padding is from THIS screen's Scaffold (for FAB, etc.)
 
