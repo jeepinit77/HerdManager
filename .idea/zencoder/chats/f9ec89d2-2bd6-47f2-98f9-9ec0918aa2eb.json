@@ -1,0 +1,116 @@
+{
+    "checksum": "551549d9ba3799553d220545361a4e3e1d18f0a0dc87fa49bc8af821887a4e32",
+    "data": {
+    "id": "f9ec89d2-2bd6-47f2-98f9-9ec0918aa2eb",
+    "createdAt": 1757278634465,
+    "updatedAt": 1757278635827,
+    "title": "Fix this:   Expecting '}'",
+    "messages": [
+        {
+            "id": "b1cca3d2-1a68-4be1-9b16-735d62724815",
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Fix this:"
+                },
+                {
+                    "type": "codeSnippet",
+                    "text": "\n",
+                    "language": "kotlin"
+                },
+                {
+                    "type": "text",
+                    "text": "Expecting '}'"
+                }
+            ],
+            "context": {
+                "currentFile": {
+                    "path": "C:\\Users\\jeepi\\AndroidStudioProjects\\cows\\app\\src\\main\\java\\com\\jumblemint\\cows\\ui\\screens\\pastures\\PasturesScreen.kt",
+                    "fsPath": "C:/Users/jeepi/AndroidStudioProjects/cows/app/src/main/java/com/jumblemint/cows/ui/screens/pastures/PasturesScreen.kt",
+                    "content": "package com.jumblemint.cows.ui.screens.pastures\n\nimport android.app.Application\nimport androidx.compose.foundation.layout.*\nimport com.jumblemint.cows.CattleApplication\nimport androidx.compose.foundation.lazy.LazyColumn\nimport androidx.compose.foundation.lazy.items\nimport androidx.compose.material.icons.Icons\nimport androidx.compose.material.icons.filled.Add\nimport androidx.compose.material.icons.filled.Delete\nimport androidx.compose.material.icons.filled.Edit\nimport androidx.compose.material3.*\nimport androidx.compose.runtime.*\nimport androidx.compose.ui.Alignment\nimport androidx.compose.ui.Modifier\nimport androidx.compose.ui.platform.LocalContext\nimport androidx.compose.ui.text.font.FontWeight\nimport androidx.compose.ui.unit.dp\nimport androidx.lifecycle.viewmodel.compose.viewModel\nimport com.jumblemint.cows.data.model.Pasture\nimport com.jumblemint.cows.ui.viewmodel.PasturesViewModel\nimport com.jumblemint.cows.ui.viewmodel.PasturesViewModelFactory\nimport kotlinx.coroutines.launch\nimport androidx.compose.runtime.remember\nimport com.jumblemint.cows.data.database.CattleDatabase\nimport com.jumblemint.cows.data.repository.CattleRepository\n\n@OptIn(ExperimentalMaterial3Api::class)\n@Composable\nfun PasturesScreen(\n    onNavigateToAddPasture: () -> Unit,\n    onNavigateToPastureDetails: (String) -> Unit,\n    onNavigateBack: () -> Unit\n) {\n    val context = LocalContext.current\n    val application = context.applicationContext as CattleApplication\n    val database = CattleDatabase.getDatabase(application)\n    val repository = remember {\n        CattleRepository(\n            cowDao = database.cowDao(),\n            pastureDao = database.pastureDao(),\n            activityDao = database.activityDao(),\n            settingsDao = database.settingsDao(),\n            noteDao = database.noteDao(),\n            userDao = database.userDao(),\n            herdDao = database.herdDao(),\n            herdMemberDao = database.herdMemberDao(),\n            tagColorDao = database.tagColorDao(),\n            activityTypeConfigDao = database.activityTypeConfigDao()\n        )\n    }\n    val pasturesViewModel: PasturesViewModel = viewModel(\n        factory = PasturesViewModelFactory(application, repository)\n    )\n\n    val uiState by pasturesViewModel.uiState.collectAsState()\n    val snackbarHostState = remember { SnackbarHostState() }\n    val coroutineScope = rememberCoroutineScope()\n\n    // Handle errors from the ViewModel\n    LaunchedEffect(uiState.error) {\n        uiState.error?.let {\n            snackbarHostState.showSnackbar(\n                message = it,\n                duration = SnackbarDuration.Long\n            )\n            // Consider adding: pasturesViewModel.onErrorShown() to clear the error in ViewModel\n        }\n    }\n\n    Scaffold(\n        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },\n        floatingActionButton = {\n            FloatingActionButton(onClick = onNavigateToAddPasture) {\n                Icon(Icons.Filled.Add, contentDescription = \"Add Pasture\")\n            }\n        },\n    ) { paddingValues ->\n        if (uiState.isLoading) {\n            Box(\n                modifier = Modifier\n                    .fillMaxSize()\n                    .padding(paddingValues),\n                contentAlignment = Alignment.Center\n            ) { CircularProgressIndicator() }\n        } else if (uiState.pastures.isEmpty() && uiState.unassignedCowCount == 0) {\n            Box(\n                modifier = Modifier\n                    .fillMaxSize()\n                    .padding(paddingValues),\n                contentAlignment = Alignment.Center\n            ) {\n                Column(horizontalAlignment = Alignment.CenterHorizontally) {\n                    Text(text = \"Nothing here yet\", style = MaterialTheme.typography.headlineSmall)\n                    Spacer(modifier = Modifier.height(8.dp))\n                    Text(text = \"Add fields using the + button to get started\", style = MaterialTheme.typography.bodyMedium)\n                }\n            }\n        } else {\n            LazyColumn(\n                modifier = Modifier\n                    .padding(paddingValues)\n                    .fillMaxSize(),\n                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),\n                verticalArrangement = Arrangement.spacedBy(8.dp)\n            ) {\n            if (uiState.unassignedCowCount > 0) {\n                item {\n                    Card(\n                        modifier = Modifier.fillMaxWidth(),\n                        colors = CardDefaults.cardColors(\n                            containerColor = MaterialTheme.colorScheme.secondaryContainer\n                        )\n                    ) {\n                        Row(\n                            modifier = Modifier\n                                .fillMaxWidth()\n                                .padding(horizontal = 16.dp, vertical = 12.dp),\n                            verticalAlignment = Alignment.CenterVertically\n                        ) {\n                            Column(modifier = Modifier.weight(1f)) {\n                                Text(\n                                    text = \"Unassigned\",\n                                    style = MaterialTheme.typography.titleMedium,\n                                    color = MaterialTheme.colorScheme.onSecondaryContainer\n                                )\n                                Text(\n                                    text = \"Total Head: ${uiState.unassignedCowCount}\",\n                                    style = MaterialTheme.typography.bodyMedium,\n                                    color = MaterialTheme.colorScheme.onSecondaryContainer\n                                )\n                            }\n                        }\n                    }\n                }\n            }\n            \n            items(uiState.pastures, key = { it.pastureWithCount.pasture.id }) { pastureWithDetails ->\n                PastureCard(\n                    pastureWithDetails = pastureWithDetails,\n                    onClick = {\n                        onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)\n                    },\n                    onEdit = {\n                        onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)\n                    },\n                    onDelete = { pasture ->\n                        coroutineScope.launch {\n                            pasturesViewModel.deletePasture(pasture) // Call ViewModel method\n                            val snackbarResult = snackbarHostState.showSnackbar(\n                                message = \"${pasture.name} deleted\",\n                                actionLabel = \"UNDO\",\n                                duration = SnackbarDuration.Long\n                            )\n                            if (snackbarResult == SnackbarResult.ActionPerformed) {\n                                pasturesViewModel.undoDeletePasture()\n                            }\n                        }\n                    }\n                )\n            }\n        }\n    }\n}\n\n@OptIn(ExperimentalMaterial3Api::class)\n@Composable\nfun PastureCard(\n    pastureWithDetails: com.jumblemint.cows.ui.viewmodel.PastureWithDetails,\n    onClick: () -> Unit,\n    onEdit: () -> Unit,\n    onDelete: (Pasture) -> Unit\n) {\n    Card(\n        onClick = onClick,\n        modifier = Modifier.fillMaxWidth()\n    ) {\n        Row(\n            modifier = Modifier\n                .fillMaxWidth()\n                .padding(horizontal = 8.dp, vertical = 8.dp),\n            verticalAlignment = Alignment.CenterVertically\n        ) {\n            Column(modifier = Modifier.weight(1f)) {\n                Text(text = pastureWithDetails.pastureWithCount.pasture.name, style = MaterialTheme.typography.titleMedium)\n                Spacer(modifier = Modifier.height(4.dp))\n                Text(\n                    text = \"Total Head: ${pastureWithDetails.pastureWithCount.cowCount}\",\n                    style = MaterialTheme.typography.bodyMedium,\n                    fontWeight = FontWeight.Medium\n                )\n\n                if (pastureWithDetails.classificationBreakdown.isNotEmpty()) {\n                    Spacer(modifier = Modifier.height(2.dp))\n                    val breakdownText = pastureWithDetails.classificationBreakdown\n                        .entries\n                        .sortedByDescending { it.value }\n                        .joinToString(\" • \") { \"${it.key.name.lowercase().replaceFirstChar { char -> char.uppercase() }}: ${it.value}\" }\n                    Text(\n                        text = breakdownText,\n                        style = MaterialTheme.typography.bodySmall,\n                        color = MaterialTheme.colorScheme.onSurfaceVariant\n                    )\n                }\n            }\n            Row {\n                IconButton(\n                    onClick = onEdit\n                ) {\n                    Icon(\n                        imageVector = Icons.Filled.Edit,\n                        contentDescription = \"Edit Pasture\"\n                    )\n                }\n                IconButton(\n                    onClick = { onDelete(pastureWithDetails.pastureWithCount.pasture) }\n                ) {\n                    Icon(\n                        imageVector = Icons.Filled.Delete,\n                        contentDescription = \"Delete Pasture\",\n                        tint = MaterialTheme.colorScheme.error\n                    )\n                }\n            }\n        }\n    }\n}\n",
+                    "language": "kotlin"
+                },
+                "codebaseEnabled": true,
+                "usedRules": [
+                    "zen-rules://repo/.zencoder/rules/repo.md"
+                ]
+            },
+            "createdAt": 1757278634495,
+            "isInternal": false,
+            "rawContent": {
+                "type": "doc",
+                "content": [
+                    {
+                        "type": "paragraph",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Fix this:"
+                            },
+                            {
+                                "type": "codeBlock",
+                                "attrs": {
+                                    "language": "kotlin"
+                                },
+                                "content": [
+                                    {
+                                        "type": "text",
+                                        "text": "\n"
+                                    }
+                                ]
+                            },
+                            {
+                                "type": "text",
+                                "text": "Expecting '}'"
+                            }
+                        ]
+                    }
+                ]
+            },
+            "autoAppliedRules": [
+                {
+                    "name": "Repository Information Overview",
+                    "description": "Repository Information Overview",
+                    "uri": "zen-rules://repo/.zencoder/rules/repo.md",
+                    "mimeType": "text/markdown",
+                    "content": "# Cattle Manager App Information\n\n## Summary\nA comprehensive Android application for managing cattle records, built with Jetpack Compose and Room database. The app allows tracking of cattle, pastures, and activities with a modern Material 3 UI.\n\n## Structure\n- **app/**: Main application module\n  - **src/main/java/com/jumblemint/cows/**: Source code\n    - **data/**: Data layer (models, DAOs, database)\n    - **ui/**: UI components and screens\n    - **navigation/**: Navigation configuration\n  - **src/androidTest/**: Instrumentation tests\n  - **src/test/**: Unit tests\n\n## Language & Runtime\n**Language**: Kotlin\n**Version**: 2.0.21\n**Build System**: Gradle (Kotlin DSL)\n**Package Manager**: Gradle\n**JVM Target**: Java 11\n**Android SDK**: \n- **Compile SDK**: 36\n- **Target SDK**: 36\n- **Min SDK**: 30\n\n## Dependencies\n**Main Dependencies**:\n- Jetpack Compose (2024.09.00)\n- Room Database (2.6.1)\n- Navigation Compose (2.8.5)\n- Lifecycle ViewModel (2.9.2)\n- Material 3\n- Kotlin Coroutines\n\n**Development Dependencies**:\n- JUnit (4.13.2)\n- Espresso (3.7.0)\n- Compose UI Testing\n\n## Build & Installation\n```bash\n./gradlew assembleDebug\n```\nInstallation:\n```bash\n./gradlew installDebug\n```\n\n## Testing\n**Frameworks**: \n- JUnit for unit tests\n- AndroidX Test for instrumentation tests\n- Espresso for UI testing\n\n**Test Location**: \n- Unit tests: `app/src/test/`\n- Instrumentation tests: `app/src/androidTest/`\n\n**Run Command**:\n```bash\n./gradlew test           # Unit tests\n./gradlew connectedCheck # Instrumentation tests\n```\n\n## Database Schema\n**Database Engine**: Room (SQLite)\n**Version**: 2\n**Entities**:\n- Cows: Animal records with tag numbers, birth dates, gender, etc.\n- Pastures: Land management with acreage and assigned animals\n- Activities: Events like moves, births, sales with dates and notes\n- Settings: Application configuration storage\n\n**Features**:\n- Type converters for complex data types\n- Migration support\n- Foreign key relationships\n- DAO pattern for data access",
+                    "alwaysApply": true
+                }
+            ]
+        },
+        {
+            "id": "3cc9ffa1-28d0-4e98-b09b-c593d0f6cb2a",
+            "role": "system",
+            "content": [
+                {
+                    "type": "errorText",
+                    "text": "",
+                    "title": "You?ve hit your plan usage limits",
+                    "actions": [
+                        {
+                            "type": "upgradePlan",
+                            "title": "Upgrade plan",
+                            "waitSeconds": 19057
+                        },
+                        {
+                            "type": "externalAction",
+                            "title": "Try Again",
+                            "action": "regenerateLastAnswer"
+                        }
+                    ]
+                }
+            ],
+            "createdAt": 1757278635826,
+            "isInternal": false
+        }
+    ],
+    "isAgent": true,
+    "isCustomAgent": false,
+    "isUnitTestsAgent": false,
+    "isE2EAgent": false,
+    "isWebDevAgent": false,
+    "isQnaAgent": false,
+    "isRepoInfoAgent": false
+}
+}

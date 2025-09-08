@@ -9,8 +9,8 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color // Added for WatchingCard
+import androidx.compose.ui.Modifier // Ensure Modifier is imported
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,44 +24,47 @@ import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
 @Composable
 fun ReportsScreen(
     onShowList: (type: String, value: String?) -> Unit,
-    onNavigateToAddBirth: () -> Unit
+    onNavigateToAddBirth: () -> Unit,
+    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as com.jumblemint.cows.CattleApplication
     val database = CattleDatabase.getDatabase(context)
-    val repository = CattleRepository(
-        database.cowDao(),
-        database.pastureDao(),
-        database.activityDao(),
-        database.settingsDao(),
-        database.noteDao(),
-        database.userDao(),
-        database.herdDao(),
-        database.herdMemberDao(),
-        database.tagColorDao(),
-        database.activityTypeConfigDao()
-    )
+    // Encapsulate repository creation in remember
+    val repository = remember {
+        CattleRepository(
+            database.cowDao(),
+            database.pastureDao(),
+            database.activityDao(),
+            database.settingsDao(),
+            database.noteDao(),
+            database.userDao(),
+            database.herdDao(),
+            database.herdMemberDao(),
+            database.tagColorDao(),
+            database.activityTypeConfigDao()
+        )
+    }
     val viewModel: ReportsViewModel = viewModel(
         factory = ReportsViewModelFactory(repository, application.authService)
     )
-    
+
     val uiState by viewModel.uiState.collectAsState()
     val pasturesFlow = remember { repository.getAllPastures() }
     val pastures by pasturesFlow.collectAsState(initial = emptyList())
     val pastureIdByName = remember(pastures) { pastures.associate { it.name to it.id } }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Dashboard") }
-            )
-        }
-    ) { paddingValues ->
+        modifier = modifier, // <<< APPLIED MODIFIER HERE
+        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out
+    ) { paddingValues -> // This paddingValues is from THIS Scaffold (if it had its own app bar/bottom bar)
+                         // The `modifier` above already includes padding from MainActivity's Scaffold.
+
         if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(paddingValues), // Apply this Scaffold's paddingValues
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
@@ -69,9 +72,10 @@ fun ReportsScreen(
         } else {
             LazyColumn(
                 modifier = Modifier
-                    .padding(paddingValues)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                    .fillMaxSize() // LazyColumn fills the space given by Scaffold
+                    .padding(paddingValues) // Apply this Scaffold's paddingValues
+                    .padding(horizontal = 16.dp, vertical = 8.dp), // Add specific content padding
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 // Herd Overview (with Watching included)
                 item {
@@ -90,7 +94,7 @@ fun ReportsScreen(
                         onWorkingListClick = { onShowList("workingList", null) }
                     )
                 }
-                
+
                 // Classification Breakdown
                 item {
                     ClassificationBreakdownCard(
@@ -100,7 +104,7 @@ fun ReportsScreen(
                         }
                     )
                 }
-                
+
                 // Pasture Breakdown
                 item {
                     PastureBreakdownCard(
@@ -111,7 +115,7 @@ fun ReportsScreen(
                         }
                     )
                 }
-                
+
                 // Age-based Reports
                 item {
                     AgeBasedReportsCard(
@@ -122,14 +126,14 @@ fun ReportsScreen(
                         onRowClick = { rangeKey -> onShowList("age", rangeKey) }
                     )
                 }
-                
+
                 // Breeding Reports
                 item {
                     BreedingReportsCard(
                         cowsNotCalvedIn9Months = uiState.cowsNotCalvedIn9Months,
-                        cowsCalvedIn9Months = uiState.cowsCalvedInPast9Months, // Corrected name, uncommented
-                        onNotCalvedClick = { onShowList("notCalved", null) },   // Uncommented
-                        onCalvedClick = { onShowList("calved", null) }          // Uncommented
+                        cowsCalvedIn9Months = uiState.cowsCalvedInPast9Months,
+                        onNotCalvedClick = { onShowList("notCalved", null) },
+                        onCalvedClick = { onShowList("calved", null) }
                     )
                 }
             }
@@ -162,9 +166,9 @@ fun ToolsCard(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -191,21 +195,22 @@ fun ToolItem(
     label: String,
     onClick: () -> Unit
 ) {
-    Card(onClick = onClick) {
+    Card(onClick = onClick) { // Making the whole card clickable
         Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier.padding(12.dp), // Adjusted padding
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center // Center content
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = label,
                 tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(32.dp)
+                modifier = Modifier.size(28.dp) // Slightly smaller icon
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp)) // Adjusted spacer
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyMedium, // Adjusted style
                 fontWeight = FontWeight.Medium
             )
         }
@@ -239,14 +244,14 @@ fun HerdOverviewCard(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
-                ClickableStatItem("Total Head", totalCows, MaterialTheme.colorScheme.primary) { onClick(null) }
+                ClickableStatItem("Total Head", totalCows, MaterialTheme.colorScheme.primary) { onClick(null) } // null for "all"
                 ClickableStatItem("Watching", watchedCows, MaterialTheme.colorScheme.tertiary) { onWatchingClick() }
             }
         }
@@ -282,15 +287,16 @@ fun ClickableStatItem(
 ) {
     Card(onClick = onClick) {
         Column(
-            modifier = Modifier.padding(8.dp),
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp), // Adjusted padding
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = count.toString(),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleLarge, // Adjusted style
                 color = color,
                 fontWeight = FontWeight.Bold
             )
+            Spacer(modifier = Modifier.height(2.dp)) // Smaller spacer
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodySmall,
@@ -325,15 +331,17 @@ fun ClassificationBreakdownCard(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             classifications.forEach { (classification, count) ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onRowClick(classification) },
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .clickable { onRowClick(classification) }
+                        .padding(vertical = 4.dp), // Add padding for touch target and spacing
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = classification,
@@ -345,7 +353,7 @@ fun ClassificationBreakdownCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+                // Spacer(modifier = Modifier.height(4.dp)) // Removed, using padding on Row instead
             }
         }
     }
@@ -376,9 +384,9 @@ fun PastureBreakdownCard(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             if (pastures.isEmpty()) {
                 Text(
                     text = "No pastures assigned",
@@ -390,8 +398,10 @@ fun PastureBreakdownCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onRowClick(pasture) },
-                        horizontalArrangement = Arrangement.SpaceBetween
+                            .clickable { onRowClick(pasture) }
+                            .padding(vertical = 4.dp), // Add padding for touch target and spacing
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
                             text = pasture,
@@ -403,7 +413,7 @@ fun PastureBreakdownCard(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Spacer(modifier = Modifier.height(4.dp))
+                    // Spacer(modifier = Modifier.height(4.dp)) // Removed
                 }
             }
         }
@@ -438,16 +448,16 @@ fun AgeBasedReportsCard(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             val ageGroups = listOf(
                 "Under 1 year" to under1Year,
                 "1-5 years" to between1And5Years,
                 "5-10 years" to between5And10Years,
                 "Over 10 years" to over10Years
             )
-            
+
             ageGroups.forEach { (ageGroup, count) ->
                 val key = when (ageGroup) {
                     "Under 1 year" -> "UNDER_1"
@@ -458,8 +468,10 @@ fun AgeBasedReportsCard(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable { onRowClick(key) },
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .clickable { onRowClick(key) }
+                        .padding(vertical = 4.dp), // Add padding
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = ageGroup,
@@ -471,7 +483,7 @@ fun AgeBasedReportsCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                Spacer(modifier = Modifier.height(4.dp))
+                // Spacer(modifier = Modifier.height(4.dp)) // Removed
             }
         }
     }
@@ -493,7 +505,7 @@ fun BreedingReportsCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    Icons.Default.Group,
+                    Icons.Default.PregnantWoman, // Changed Icon for breeding
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary
                 )
@@ -504,14 +516,16 @@ fun BreedingReportsCard(
                     fontWeight = FontWeight.Bold
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onNotCalvedClick() },
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .clickable { onNotCalvedClick() }
+                    .padding(vertical = 4.dp), // Add padding
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = "Cows not calved in 9+ months",
@@ -525,16 +539,18 @@ fun BreedingReportsCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(8.dp)) // Keep spacer between these two specific rows
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { onCalvedClick() },
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .clickable { onCalvedClick() }
+                    .padding(vertical = 4.dp), // Add padding
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Cows with calves",
+                    text = "Cows with calves (last 9m)", // Clarified label
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(

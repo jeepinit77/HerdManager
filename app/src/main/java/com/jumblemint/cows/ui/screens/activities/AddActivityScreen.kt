@@ -23,96 +23,103 @@ import com.jumblemint.cows.ui.components.DatePickerField
 import com.jumblemint.cows.ui.components.DropdownField
 import com.jumblemint.cows.ui.viewmodel.AddActivityViewModel
 import com.jumblemint.cows.ui.viewmodel.AddActivityViewModelFactory
-import java.time.LocalDate
+// import java.time.LocalDate // <<< REMOVED UNUSED IMPORT
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddActivityScreen(
+    modifier: Modifier = Modifier, // <<< MOVED MODIFIER PARAMETER
     editId: Long? = null,
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val application = context.applicationContext as Application
     val database = CattleDatabase.getDatabase(context)
-    val repository = CattleRepository(
-        database.cowDao(),
-        database.pastureDao(),
-        database.activityDao(),
-        database.settingsDao(),
-        database.noteDao(),
-        database.userDao(),
-        database.herdDao(),
-        database.herdMemberDao(),
-        database.tagColorDao(),
-        database.activityTypeConfigDao()
-    )
+    val repository = remember {
+        CattleRepository(
+            database.cowDao(),
+            database.pastureDao(),
+            database.activityDao(),
+            database.settingsDao(),
+            database.noteDao(),
+            database.userDao(),
+            database.herdDao(),
+            database.herdMemberDao(),
+            database.tagColorDao(),
+            database.activityTypeConfigDao()
+        )
+    }
     val viewModel: AddActivityViewModel = viewModel(
-        factory = AddActivityViewModelFactory(context.applicationContext as Application, repository, editId)
+        factory = AddActivityViewModelFactory(application, repository, editId)
     )
-    
+
     val uiState by viewModel.uiState.collectAsState()
-    
-    // Filter states
+
     var showFilters by remember { mutableStateOf(false) }
     var selectedGender by remember { mutableStateOf<Gender?>(null) }
     var selectedClassification by remember { mutableStateOf<Classification?>(null) }
-    var selectedPasture by remember { mutableStateOf<String?>(null) }
+    var selectedPastureId by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
-    
-    // Filter the cows based on selected filters
-    val filteredCows = remember(uiState.availableCows, selectedGender, selectedClassification, selectedPasture, searchQuery) {
+
+    val filteredCows = remember(uiState.availableCows, selectedGender, selectedClassification, selectedPastureId, searchQuery) {
         uiState.availableCows.filter { cow ->
             val matchesGender = selectedGender == null || cow.gender == selectedGender
             val matchesClassification = selectedClassification == null || cow.classification == selectedClassification
-            val matchesPasture = selectedPasture == null || cow.pastureId == selectedPasture
-            val matchesSearch = searchQuery.isBlank() || 
+            val matchesPasture = selectedPastureId == null || cow.pastureId == selectedPastureId
+            val matchesSearch = searchQuery.isBlank() ||
                 cow.name?.contains(searchQuery, ignoreCase = true) == true ||
                 cow.tagNumber?.contains(searchQuery, ignoreCase = true) == true
-            
             matchesGender && matchesClassification && matchesPasture && matchesSearch
         }
     }
-    
+
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
             onNavigateBack()
         }
     }
-    
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        TopAppBar(
-            title = { Text(if (editId != null) "Edit Activity" else "Add Activity") },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text(if (editId != null) "Edit Activity" else "Add Activity") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = { viewModel.saveActivity() },
+                        enabled = !uiState.isLoading && uiState.selectedCows.isNotEmpty() && (uiState.activityType != ActivityType.WORKED || uiState.notes.isNotBlank())
+                    ) {
+                        Icon(Icons.Default.Save, contentDescription = "Save Activity")
+                    }
                 }
-            },
-            actions = {
-                IconButton(
-                    onClick = { viewModel.saveActivity() },
-                    enabled = !uiState.isLoading && uiState.selectedCows.isNotEmpty()
-                ) {
-                    Icon(Icons.Default.Save, contentDescription = "Save")
-                }
-            }
-        )
-        
-        if (uiState.isLoading) {
+            )
+        }
+    ) { scaffoldPadding ->
+        if (uiState.isLoading && editId != null) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(scaffoldPadding),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
         } else {
             LazyColumn(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(scaffoldPadding)
+                    .padding(horizontal = 16.dp),
+                contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Activity Details
                 item {
-                    Card {
+                    Card(modifier = Modifier.fillMaxWidth()) {
                         Column(
                             modifier = Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -122,26 +129,36 @@ fun AddActivityScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            
+
                             DropdownField(
                                 value = uiState.activityType?.name ?: "",
                                 onValueChange = { typeName ->
-                                    val type = ActivityType.values().find { it.name == typeName }
+                                    val type = ActivityType.entries.find { it.name == typeName }
                                     viewModel.updateActivityType(type)
                                 },
                                 label = "Activity Type",
-                                options = ActivityType.values().map { it.name },
-                                modifier = Modifier.fillMaxWidth()
+                                options = ActivityType.entries.map { it.name },
+                                modifier = Modifier.fillMaxWidth(),
+                                isError = uiState.error?.contains("Activity Type") == true // <<< USING isError
                             )
-                            
+                            // Supporting text for DropdownField can be added if needed,
+                            // or rely on the DropdownField's internal isError visual cue.
+                            if (uiState.error?.contains("Activity Type") == true && uiState.activityType == null) {
+                                Text(
+                                    "Activity Type is required.",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+                                )
+                            }
+
                             DatePickerField(
                                 value = uiState.date,
                                 onValueChange = viewModel::updateDate,
                                 label = "Date",
                                 modifier = Modifier.fillMaxWidth()
                             )
-                            
-                            // Show pasture selection for MOVED activity
+
                             if (uiState.activityType == ActivityType.MOVED) {
                                 DropdownField(
                                     value = uiState.toPastureName ?: "",
@@ -150,35 +167,51 @@ fun AddActivityScreen(
                                         viewModel.updateToPasture(pasture?.id)
                                     },
                                     label = "Move to Pasture",
-                                    options = uiState.availablePastures.map { it.name },
-                                    modifier = Modifier.fillMaxWidth()
+                                    options = listOf("") + uiState.availablePastures.map { it.name },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    isError = uiState.error?.contains("Pasture") == true // <<< USING isError
                                 )
+                                if (uiState.error?.contains("Pasture") == true && uiState.toPastureId == null) {
+                                     Text(
+                                        "Pasture selection is required for MOVED activity.",
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(start = 16.dp, top = 2.dp)
+                                    )
+                                }
                             }
-                            
+
                             OutlinedTextField(
                                 value = uiState.notes,
                                 onValueChange = viewModel::updateNotes,
                                 label = { Text("Notes") },
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 2,
-                                placeholder = { 
+                                maxLines = 5,
+                                placeholder = {
                                     Text(
-                                        if (uiState.activityType in listOf(ActivityType.WORKED, ActivityType.OTHER)) 
-                                            "Notes required for this activity type" 
-                                        else 
+                                        if (uiState.activityType in listOf(ActivityType.WORKED, ActivityType.OTHER))
+                                            "Notes required for this activity type"
+                                        else
                                             "Optional notes"
-                                    ) 
-                                }
+                                    )
+                                },
+                                isError = (uiState.activityType in listOf(ActivityType.WORKED, ActivityType.OTHER) && uiState.notes.isBlank()) || uiState.error?.contains("Notes") == true,
+                                supportingText = if (uiState.activityType in listOf(ActivityType.WORKED, ActivityType.OTHER) && uiState.notes.isBlank()) {
+                                    { Text("Notes are required for ${uiState.activityType?.name?.lowercase()} activity.")}
+                                } else if (uiState.error?.contains("Notes") == true && uiState.notes.isBlank()) { // Be more specific for general notes error
+                                     { Text("Notes field has an error.") } // Or uiState.error specific to notes
+                                } else null
                             )
                         }
                     }
                 }
-                
-                // Cow Selection
+
                 item {
-                    Card {
+                    Card(modifier = Modifier.fillMaxWidth()) {
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -190,124 +223,128 @@ fun AddActivityScreen(
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
-                                
                                 Text(
                                     text = "${uiState.selectedCows.size} selected",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            // Search field
+
                             OutlinedTextField(
                                 value = searchQuery,
                                 onValueChange = { searchQuery = it },
-                                label = { Text("Search cows...") },
+                                label = { Text("Search by name or tag") },
                                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                                modifier = Modifier.fillMaxWidth()
+                                trailingIcon = if (searchQuery.isNotEmpty()) {
+                                    { IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, contentDescription = "Clear search") } }
+                                } else null,
+                                modifier = Modifier.fillMaxWidth(),
+                                singleLine = true
                             )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
+
                             Row(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Button(
-                                    onClick = { 
-                                        // Select all filtered cows
+                                    onClick = {
                                         val filteredCowIds = filteredCows.map { it.id }.toSet()
                                         filteredCowIds.forEach { viewModel.selectCow(it) }
                                     },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    enabled = filteredCows.isNotEmpty()
                                 ) {
-                                    Text("Select All")
+                                    Text("Select All Filtered")
                                 }
                                 Button(
                                     onClick = { viewModel.clearSelection() },
-                                    modifier = Modifier.weight(1f)
+                                    modifier = Modifier.weight(1f),
+                                    enabled = uiState.selectedCows.isNotEmpty()
                                 ) {
-                                    Text("Clear All")
+                                    Text("Clear Selection")
                                 }
-                                
                                 FilterChip(
                                     onClick = { showFilters = !showFilters },
                                     label = { Text("Filters") },
-                                    selected = selectedGender != null || selectedClassification != null || selectedPasture != null,
-                                    leadingIcon = if (showFilters) {
-                                        { Icon(Icons.Default.ExpandLess, contentDescription = "Collapse") }
-                                    } else {
-                                        { Icon(Icons.Default.ExpandMore, contentDescription = "Expand") }
-                                    }
+                                    selected = showFilters || selectedGender != null || selectedClassification != null || selectedPastureId != null,
+                                    leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Toggle Filters") }
+                                )
+                            }
+                             if (uiState.error?.contains("cows") == true && uiState.selectedCows.isEmpty()) {
+                                Text(
+                                    text = "At least one cow must be selected.",
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
                         }
                     }
                 }
-                
-                // Collapsible Filters
+
                 if (showFilters) {
                     item {
-                        Card {
+                        Card(modifier = Modifier.fillMaxWidth()) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                Text(
-                                    text = "Filter Cows",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                
-                                // Gender Filter
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Filter Cows",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    TextButton(onClick = {
+                                        selectedGender = null
+                                        selectedClassification = null
+                                        selectedPastureId = null
+                                    }) {
+                                        Text("Clear Filters")
+                                    }
+                                }
+
                                 Text(
                                     text = "Gender",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
                                 )
                                 Row(
+                                    modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    FilterChip(
-                                        onClick = { selectedGender = if (selectedGender == Gender.MALE) null else Gender.MALE },
-                                        label = { Text("Male") },
-                                        selected = selectedGender == Gender.MALE
-                                    )
-                                    FilterChip(
-                                        onClick = { selectedGender = if (selectedGender == Gender.FEMALE) null else Gender.FEMALE },
-                                        label = { Text("Female") },
-                                        selected = selectedGender == Gender.FEMALE
-                                    )
-                                    FilterChip(
-                                        onClick = { selectedGender = if (selectedGender == Gender.TBD) null else Gender.TBD },
-                                        label = { Text("TBD") },
-                                        selected = selectedGender == Gender.TBD
-                                    )
+                                    Gender.entries.forEach { gender ->
+                                        FilterChip(
+                                            onClick = { selectedGender = if (selectedGender == gender) null else gender },
+                                            label = { Text(gender.name) },
+                                            selected = selectedGender == gender
+                                        )
+                                    }
                                 }
-                                
-                                // Classification Filter
+
                                 Text(
                                     text = "Classification",
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Medium
                                 )
-                                Row(
+                                LazyRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Classification.values().forEach { classification ->
+                                    items(Classification.entries) { classification ->
                                         FilterChip(
-                                            onClick = { 
-                                                selectedClassification = if (selectedClassification == classification) null else classification 
+                                            onClick = {
+                                                selectedClassification = if (selectedClassification == classification) null else classification
                                             },
                                             label = { Text(classification.name.lowercase().replaceFirstChar { it.uppercase() }) },
                                             selected = selectedClassification == classification
                                         )
                                     }
                                 }
-                                
-                                // Pasture Filter
+
                                 if (uiState.availablePastures.isNotEmpty()) {
                                     Text(
                                         text = "Pasture",
@@ -317,62 +354,61 @@ fun AddActivityScreen(
                                     LazyRow(
                                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        items(uiState.availablePastures) { pasture ->
+                                        // <<< CORRECTED Pasture constructor
+                                        items(listOf(Pasture(id = "", name = "Unassigned", description = null, sizeAcres = null, herdId = null, firestoreId = null, createdBy = null, updatedBy = null)) + uiState.availablePastures) { pasture ->
                                             FilterChip(
-                                                onClick = { 
-                                                    selectedPasture = if (selectedPasture == pasture.id) null else pasture.id 
+                                                onClick = {
+                                                    selectedPastureId = if (selectedPastureId == pasture.id) null else pasture.id
                                                 },
                                                 label = { Text(pasture.name) },
-                                                selected = selectedPasture == pasture.id
+                                                selected = selectedPastureId == pasture.id
                                             )
                                         }
                                     }
-                                }
-                                
-                                // Clear all filters button
-                                TextButton(
-                                    onClick = {
-                                        selectedGender = null
-                                        selectedClassification = null
-                                        selectedPasture = null
-                                        searchQuery = ""
-                                    }
-                                ) {
-                                    Text("Clear All Filters")
                                 }
                             }
                         }
                     }
                 }
-                
-                // Cow List
-                items(filteredCows) { cow ->
-                    CowSelectionCard(
-                        cow = cow,
-                        isSelected = cow.id in uiState.selectedCows,
-                        onSelectionChanged = { isSelected ->
-                            if (isSelected) {
-                                viewModel.selectCow(cow.id)
-                            } else {
-                                viewModel.deselectCow(cow.id)
-                            }
-                        }
-                    )
-                }
-                
-                // Error message
-                uiState.error?.let { error ->
+
+                if (filteredCows.isEmpty() && !uiState.isLoading) {
                     item {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            )
-                        ) {
-                            Text(
-                                text = error,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(16.dp)
-                            )
+                        Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                            Text("No cows match current filters.")
+                        }
+                    }
+                } else {
+                    items(filteredCows, key = { it.id }) { cow ->
+                        CowSelectionCard(
+                            cow = cow,
+                            isSelected = cow.id in uiState.selectedCows,
+                            onSelectionChanged = { isSelected ->
+                                if (isSelected) {
+                                    viewModel.selectCow(cow.id)
+                                } else {
+                                    viewModel.deselectCow(cow.id)
+                                }
+                            }
+                        )
+                    }
+                }
+
+                uiState.error?.let { error ->
+                    // Display general errors not caught by specific field error handling
+                    if (!error.contains("cows") && !error.contains("Activity Type") && !error.contains("Pasture") && !error.contains("Notes")) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                )
+                            ) {
+                                Text(
+                                    text = error,
+                                    color = MaterialTheme.colorScheme.onErrorContainer,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
                         }
                     }
                 }
@@ -396,43 +432,39 @@ fun CowSelectionCard(
                 onClick = { onSelectionChanged(!isSelected) }
             ),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
-                MaterialTheme.colorScheme.surface
+            containerColor = if (isSelected)
+                MaterialTheme.colorScheme.primaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Row(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
                 checked = isSelected,
-                onCheckedChange = onSelectionChanged
+                onCheckedChange = onSelectionChanged,
+                modifier = Modifier.size(24.dp)
             )
-            
-            Spacer(modifier = Modifier.width(12.dp))
-            
+            Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = cow.name ?: "Unnamed Cow",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Medium
+                    text = cow.name ?: cow.tagNumber ?: "Unnamed Cow",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+                Spacer(modifier = Modifier.height(2.dp))
+                val details = mutableListOf<String>()
+                details.add(cow.gender.name.lowercase().replaceFirstChar { it.uppercase() })
+                details.add(cow.classification.name.lowercase().replaceFirstChar { it.uppercase() })
+                if (cow.tagNumber != null && cow.tagNumber != cow.name) details.add("Tag: ${cow.tagNumber}")
                 Text(
-                    text = "${cow.gender.name} • ${cow.classification.name}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = details.joinToString(" • "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = (if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.8f)
                 )
-                
-                cow.tagNumber?.let { tagNumber ->
-                    Text(
-                        text = "Tag: $tagNumber",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
         }
     }

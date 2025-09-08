@@ -9,7 +9,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.Modifier // Ensure Modifier is imported
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -26,11 +26,12 @@ import com.jumblemint.cows.ui.viewmodel.AuthViewModel
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
 ) {
     val context = LocalContext.current
     val uiState by authViewModel.uiState.collectAsState()
-    
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -44,18 +45,17 @@ fun LoginScreen(
             }
         }
     }
-    
+
     // Navigate on successful login
     LaunchedEffect(uiState.isSignedIn) {
         if (uiState.isSignedIn) {
             onLoginSuccess()
         }
     }
-    
+
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
+        modifier = modifier // <<< APPLIED MODIFIER HERE
+            .padding(24.dp), // Existing padding is preserved relative to the passed modifier
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
@@ -65,9 +65,9 @@ fun LoginScreen(
             contentDescription = "Cattle Manager Logo",
             modifier = Modifier.size(120.dp)
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         // App Title
         Text(
             text = "Cattle Manager",
@@ -75,18 +75,18 @@ fun LoginScreen(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         Text(
             text = "Manage your herd with your partners",
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
         )
-        
+
         Spacer(modifier = Modifier.height(48.dp))
-        
+
         // Google Sign-In Button
         Button(
             onClick = {
@@ -110,7 +110,7 @@ fun LoginScreen(
                     horizontalArrangement = Arrangement.Center
                 ) {
                     Icon(
-                        painter = painterResource(id = android.R.drawable.ic_menu_gallery), // Placeholder - you'd want a Google icon
+                        painter = painterResource(id = android.R.drawable.ic_menu_gallery), // Placeholder
                         contentDescription = "Google",
                         modifier = Modifier.size(24.dp)
                     )
@@ -123,9 +123,9 @@ fun LoginScreen(
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         // Error message
         uiState.error?.let { errorMessage ->
             Card(
@@ -142,9 +142,9 @@ fun LoginScreen(
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         // Features list
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -161,7 +161,7 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(8.dp))
-                
+
                 val features = listOf(
                     "Track your cattle and activities",
                     "Share herds with partners",
@@ -169,7 +169,7 @@ fun LoginScreen(
                     "Offline support",
                     "Detailed reports and analytics"
                 )
-                
+
                 features.forEach { feature ->
                     Row(
                         modifier = Modifier.padding(vertical = 2.dp),

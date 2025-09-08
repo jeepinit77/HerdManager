@@ -39,6 +39,9 @@ class CattleApplication : Application() {
     
     // Sync Service
     val syncService by lazy { SyncService(repository) }
+
+    // Sync Orchestrator (lifecycle-aware binder for screens)
+    val syncOrchestrator by lazy { com.jumblemint.cows.sync.SyncOrchestrator(syncService, authService) }
     
     override fun onCreate() {
         super.onCreate()

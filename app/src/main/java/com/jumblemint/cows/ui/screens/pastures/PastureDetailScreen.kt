@@ -3,13 +3,13 @@ package com.jumblemint.cows.ui.screens.pastures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Edit
+// import androidx.compose.material.icons.Icons // Not needed here if TopAppBar is removed
+// import androidx.compose.material.icons.filled.ArrowBack // Not needed here
+// import androidx.compose.material.icons.filled.Edit // Not needed here
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.Modifier // Ensure Modifier is imported
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,7 +31,8 @@ fun PastureDetailScreen(
     onNavigateBack: () -> Unit,
     onCowClick: (Long) -> Unit,
     onCowEdit: (Long) -> Unit,
-    onEditPasture: () -> Unit = {}
+    onEditPasture: () -> Unit = {},
+    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -50,46 +51,36 @@ fun PastureDetailScreen(
             activityTypeConfigDao = database.activityTypeConfigDao()
         )
     }
-    
+
     val viewModel: PastureDetailViewModel = viewModel(
         factory = PastureDetailViewModelFactory(application, repository, pastureId)
     )
-    
+
     val uiState by viewModel.uiState.collectAsState()
-    
-    // Get tag color map for resolving tag colors
     val tagColorMap = rememberTagColorMap(repository)
-    
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // TODO: Communicate pasture name (uiState.pasture?.name) to MainActivity's TopAppBar.
+    // This could be done via a callback to update a shared state or ViewModel.
+    // Example: LaunchedEffect(uiState.pasture?.name) { newName -> /* update MainActivity's title */ }
+
+    // TODO: Ensure MainActivity's TopAppBar shows an Edit icon that calls `onEditPasture`
+    // when this screen is active and uiState.pasture is not null.
+
     Scaffold(
+        modifier = modifier, // <<< APPLIED MODIFIER HERE
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { 
-                    Text(uiState.pasture?.name ?: "Loading...") 
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (uiState.pasture != null) {
-                        IconButton(onClick = onEditPasture) {
-                            Icon(Icons.Filled.Edit, contentDescription = "Edit Pasture")
-                        }
-                    }
-                }
-            )
-        }
-    ) { paddingValues ->
+        // topBar = { ... } // TopAppBar REMOVED
+        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out
+    ) { localScaffoldPadding -> // This padding is from THIS Scaffold (if it had a FAB, BottomBar, etc.)
+                                // The `modifier` applied above already contains padding from MainActivity.
+
         if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(localScaffoldPadding), // Apply this Scaffold's padding
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
@@ -98,17 +89,20 @@ fun PastureDetailScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
+                    .padding(localScaffoldPadding), // Apply this Scaffold's padding
                 contentAlignment = Alignment.Center
             ) {
                 Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
                         text = "Pasture not found",
-                        style = MaterialTheme.typography.headlineSmall
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.error
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
                     Button(onClick = onNavigateBack) {
                         Text("Go Back")
                     }
@@ -118,8 +112,8 @@ fun PastureDetailScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
+                    .padding(localScaffoldPadding), // Apply this Scaffold's padding
+                contentPadding = PaddingValues(all = 16.dp), // Overall padding for the content list
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Pasture Information Card
@@ -128,72 +122,73 @@ fun PastureDetailScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(
-                            modifier = Modifier.padding(16.dp)
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = uiState.pasture!!.name,
-                                style = MaterialTheme.typography.headlineSmall,
+                                text = uiState.pasture!!.name, // Title is now part of the content
+                                style = MaterialTheme.typography.headlineMedium, // Emphasize title more
                                 fontWeight = FontWeight.Bold
                             )
-                            
+
                             if (!uiState.pasture!!.description.isNullOrBlank()) {
-                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = uiState.pasture!!.description!!,
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    style = MaterialTheme.typography.bodyLarge, // Slightly larger for description
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            
-                            Spacer(modifier = Modifier.height(12.dp))
-                            
+
+                            Spacer(modifier = Modifier.height(8.dp)) // Additional space before stats
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Bottom // Align stats nicely
                             ) {
                                 Column {
                                     Text(
                                         text = "Total Head",
-                                        style = MaterialTheme.typography.labelMedium,
+                                        style = MaterialTheme.typography.labelLarge, // Slightly larger label
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
                                         text = "${uiState.activeCows.size}",
-                                        style = MaterialTheme.typography.titleLarge,
+                                        style = MaterialTheme.typography.headlineSmall, // Emphasize count
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
-                                
+
                                 if (uiState.pasture!!.sizeAcres != null) {
-                                    Column {
+                                    Column(horizontalAlignment = Alignment.End) { // Align to end
                                         Text(
                                             text = "Size",
-                                            style = MaterialTheme.typography.labelMedium,
+                                            style = MaterialTheme.typography.labelLarge,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                         Text(
                                             text = "${uiState.pasture!!.sizeAcres} acres",
-                                            style = MaterialTheme.typography.titleMedium,
+                                            style = MaterialTheme.typography.titleLarge, // Match Total Head style better
                                             fontWeight = FontWeight.Medium
                                         )
                                     }
                                 }
                             }
-                            
-                            // Classification breakdown
+
                             if (uiState.classificationBreakdown.isNotEmpty()) {
                                 Spacer(modifier = Modifier.height(12.dp))
                                 Text(
                                     text = "Animal Types",
-                                    style = MaterialTheme.typography.labelMedium,
+                                    style = MaterialTheme.typography.titleSmall, // Consistent small title for subsections
+                                    fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 val breakdownText = uiState.classificationBreakdown
                                     .entries
                                     .sortedByDescending { it.value }
-                                    .joinToString(" • ") { 
-                                        "${it.key.name.lowercase().replaceFirstChar { char -> char.uppercase() }}: ${it.value}" 
+                                    .joinToString(" • ") {
+                                        "${it.key.name.lowercase().replaceFirstChar { char -> char.uppercase() }}: ${it.value}"
                                     }
                                 Text(
                                     text = breakdownText,
@@ -203,34 +198,37 @@ fun PastureDetailScreen(
                         }
                     }
                 }
-                
+
                 // Animals Section Header
-                item {
-                    Text(
-                        text = "Animals in this Pasture",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                if (uiState.activeCows.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = "Animals in this Pasture",
+                            style = MaterialTheme.typography.titleLarge, // More prominent header
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(top = 8.dp) // Add some space above this header
+                        )
+                    }
                 }
-                
+
                 // Animals List
                 if (uiState.activeCows.isEmpty()) {
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) // More subtle
                             )
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(32.dp),
+                                    .padding(vertical = 32.dp, horizontal = 16.dp), // Adjust padding
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "No active animals in this pasture",
-                                    style = MaterialTheme.typography.bodyMedium,
+                                    text = "No active animals in this pasture.", // Slightly friendlier message
+                                    style = MaterialTheme.typography.bodyLarge,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -245,14 +243,14 @@ fun PastureDetailScreen(
                             onEdit = { onCowEdit(cow.id) },
                             onDelete = {
                                 scope.launch {
-                                    viewModel.deleteCow(cow)
+                                    viewModel.deleteCow(cow) // Assumes ViewModel handles this
                                     val result = snackbarHostState.showSnackbar(
-                                        message = "Cow deleted",
+                                        message = "${cow.name ?: cow.tagNumber ?: "Cow"} deleted",
                                         actionLabel = "UNDO",
                                         duration = SnackbarDuration.Long
                                     )
                                     if (result == SnackbarResult.ActionPerformed) {
-                                        viewModel.undoDeleteCow(cow)
+                                        viewModel.undoDeleteCow(cow) // Assumes ViewModel handles this
                                     }
                                 }
                             },

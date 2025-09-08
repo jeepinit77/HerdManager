@@ -10,10 +10,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircleOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.Modifier // Ensure Modifier is imported
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -22,10 +23,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.common.api.ApiException
 import com.jumblemint.cows.R
 import com.jumblemint.cows.ui.components.DataMergeDialog
-import com.jumblemint.cows.ui.components.DataMergeOption
+// import com.jumblemint.cows.ui.components.DataMergeOption // Not directly used in this file if AuthViewModel handles it
 import com.jumblemint.cows.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
 
@@ -34,19 +36,18 @@ import kotlinx.coroutines.launch
 fun SignInScreen(
     onNavigateBack: () -> Unit,
     onSignInSuccess: () -> Unit,
-    authViewModel: AuthViewModel = viewModel()
+    authViewModel: AuthViewModel = viewModel(),
+    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
 ) {
     val context = LocalContext.current
     val uiState by authViewModel.uiState.collectAsState()
     val coroutineScope = rememberCoroutineScope()
-    
-    // Check if user is already signed in with Google
+
     val isGoogleSignedIn = uiState.currentUser?.isLocalUser == false
-    val isLocalUser = uiState.currentUser?.isLocalUser == true
-    
-    // Store the account for data merge dialog
-    var pendingAccount by remember { mutableStateOf<com.google.android.gms.auth.api.signin.GoogleSignInAccount?>(null) }
-    
+    // val isLocalUser = uiState.currentUser?.isLocalUser == true // Not directly used, can be inferred
+
+    var pendingAccount by remember { mutableStateOf<GoogleSignInAccount?>(null) }
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -55,131 +56,99 @@ fun SignInScreen(
             try {
                 val account = task.getResult(ApiException::class.java)
                 pendingAccount = account
-                
-                // Check for existing data and show merge dialog
+                // Defer data check to ViewModel or a more controlled flow if needed
                 coroutineScope.launch {
                     val (hasLocalData, hasServerData) = authViewModel.checkForExistingData(account.id)
                     if (hasLocalData || hasServerData) {
                         authViewModel.showDataMergeDialog(hasLocalData, hasServerData)
                     } else {
-                        // No data conflict, proceed with normal sign-in
                         authViewModel.signInWithGoogle(account)
                     }
                 }
             } catch (e: ApiException) {
                 authViewModel.setError("Google sign-in failed: ${e.statusCode} - ${e.message}")
             }
-        } else {
-            authViewModel.setError("Sign-in was cancelled")
+        } else if (result.resultCode != Activity.RESULT_CANCELED) { // Avoid error if user simply cancels
+            authViewModel.setError("Sign-in attempt failed.")
         }
     }
-    
-    // Navigate on successful login
+
     LaunchedEffect(uiState.isSignedIn, uiState.currentUser) {
         if (uiState.isSignedIn && uiState.currentUser?.isLocalUser == false) {
             onSignInSuccess()
+            authViewModel.clearError() // Clear any residual error on success
         }
     }
-    
-    Column(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        TopAppBar(
-            title = { Text("Sign In & Sync") },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+
+    Scaffold( // <<< CHANGED Column to Scaffold
+        modifier = modifier, // <<< APPLIED MODIFIER HERE
+        topBar = {
+            TopAppBar(
+                title = { Text("Sign In & Sync") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
                 }
-            }
-        )
-        
+            )
+        }
+    ) { scaffoldPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(24.dp)
+                .padding(scaffoldPadding) // Apply padding from Scaffold
+                .padding(horizontal = 24.dp, vertical = 16.dp) // Content padding
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+            verticalArrangement = Arrangement.spacedBy(20.dp) // Consistent spacing
         ) {
-//            Spacer(modifier = Modifier.height(32.dp))
-            
-            // App Logo/Icon
-//            Image(
-//                painter = painterResource(id = R.drawable.ic_launcher_foreground),
-//                contentDescription = "Cattle Manager Logo",
-//                modifier = Modifier.size(100.dp)
-//            )
-            
-            // Title
-//            Text(
-//                text = if (isGoogleSignedIn) "Account & Sync" else "Sign In & Sync",
-//                fontSize = 28.sp,
-//                fontWeight = FontWeight.Bold,
-//                color = MaterialTheme.colorScheme.primary,
-//                textAlign = TextAlign.Center
-//            )
-            
-            // Sign-in section (first)
+
             if (isGoogleSignedIn) {
-                // Already signed in with Google
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
                 ) {
                     Column(
                         modifier = Modifier.padding(20.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = "✓ Signed in as ${uiState.currentUser?.displayName ?: "User"}",
+                            text = "✓ Signed in as ${uiState.currentUser?.displayName ?: uiState.currentUser?.email ?: "User"}",
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            fontSize = 16.sp
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            fontSize = 16.sp,
+                            textAlign = TextAlign.Center
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "Your data is syncing across devices",
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            text = "Your data is set to sync across devices.",
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
                             fontSize = 14.sp,
                             textAlign = TextAlign.Center
                         )
+                         Button(
+                            onClick = { authViewModel.signOut() },
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text("Sign Out")
+                        }
                     }
                 }
-                
-                // Sign out button
-                OutlinedButton(
-                    onClick = {
-                        authViewModel.signOut()
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                    shape = RoundedCornerShape(28.dp)
-                ) {
-                    Text(
-                        text = "Sign Out",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-                
             } else {
-                // Not signed in with Google (local user or no user)
                 Text(
-                    text = "Sign in to sync your cattle data across devices and collaborate with your team.",
-                    fontSize = 16.sp,
+                    text = "Sign in with your Google account to sync your cattle data across devices and enable collaboration features.",
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
-                    lineHeight = 22.sp
+                    lineHeight = 24.sp
                 )
-                
-                // Check if Firebase is properly configured
-                val isFirebaseConfigured = context.getString(R.string.default_web_client_id) != "YOUR_WEB_CLIENT_ID_HERE"
-                
+
+                val isFirebaseConfigured = remember {
+                    context.getString(R.string.default_web_client_id) != "YOUR_WEB_CLIENT_ID_HERE" &&
+                    context.getString(R.string.default_web_client_id).isNotBlank()
+                }
+
                 if (isFirebaseConfigured) {
-                    // Google Sign-In Button
                     Button(
                         onClick = {
                             val signInIntent = authViewModel.getGoogleSignInIntent(context)
@@ -191,224 +160,126 @@ fun SignInScreen(
                         shape = RoundedCornerShape(28.dp),
                         enabled = !uiState.isLoading
                     ) {
-                        if (uiState.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colorScheme.onPrimary
-                            )
+                        if (uiState.isLoading && pendingAccount != null) { // Show loading only during Google sign-in process
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
                         } else {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = android.R.drawable.ic_menu_gallery), // Placeholder - you'd want a Google icon
-                                    contentDescription = "Google",
-                                    modifier = Modifier.size(24.dp)
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                // Consider using a Google logo if available in your resources
+                                Icon(painter = painterResource(id = com.google.android.gms.base.R.drawable.googleg_standard_color_18), contentDescription = "Google logo", modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = "Continue with Google",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                                Text("Continue with Google", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
                 } else {
-                    // Firebase not configured - show demo button
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.errorContainer
-                        )
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
+                        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Text(
-                                text = "⚠️ Firebase Configuration Required",
+                                "⚠️ Firebase Configuration Required",
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onErrorContainer,
-                                fontSize = 16.sp
+                                style = MaterialTheme.typography.titleSmall
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Google Sign-In requires proper Firebase configuration. The google-services.json file needs to include OAuth client configuration for Google Sign-In to work.",
+                                "Google Sign-In requires proper Firebase setup. Please ensure your `google-services.json` is correctly configured with an OAuth client ID for Google Sign-In.",
                                 color = MaterialTheme.colorScheme.onErrorContainer,
-                                fontSize = 14.sp,
+                                style = MaterialTheme.typography.bodyMedium,
                                 lineHeight = 20.sp
                             )
                         }
                     }
-                    
-                    // Demo button that simulates sign-in
-                    Button(
-                        onClick = {
-                            authViewModel.signInAsDemoGoogleUser()
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
+                    Button( // Demo Button
+                        onClick = { authViewModel.signInAsDemoGoogleUser() },
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(28.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.secondary
-                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary),
                         enabled = !uiState.isLoading
                     ) {
-                        if (uiState.isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = MaterialTheme.colorScheme.onSecondary
-                            )
+                         if (uiState.isLoading) { // Generic loading for demo
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onSecondary)
                         } else {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = android.R.drawable.ic_menu_gallery),
-                                    contentDescription = "Google",
-                                    modifier = Modifier.size(24.dp)
-                                )
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                                Icon(painter = painterResource(id = com.google.android.gms.base.R.drawable.googleg_standard_color_18), contentDescription = "Google logo", modifier = Modifier.size(24.dp))
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text(
-                                    text = "Demo: Sign in with Google",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
+                                Text("Demo: Sign in with Google", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                             }
                         }
                     }
                 }
             }
-            
-            // Premium Notice Card (second)
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer
-                )
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp)
-                ) {
+                Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "📢 Future Premium Feature",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontSize = 16.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Sign-in and sync features are currently free, but may become premium features in future updates. Enjoy them while they're available to everyone!",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp
-                    )
-                }
-            }
-            
-            // Sync Features list (third)
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            ) {
-                Column(
-                    modifier = Modifier.padding(20.dp)
-                ) {
-                    Text(
-                        text = "What Gets Synced:",
+                        "What Gets Synced:",
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 16.sp
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    
-                    val features = listOf(
-                        "Sync cattle records across devices",
-                        "Sync activities and health records",
-                        "Sync pasture and location data",
-                        "Sync notes and observations",
+                    val syncFeatures = listOf(
+                        "Cattle records & details",
+                        "Activities & health records",
+                        "Pasture data & assignments",
+                        "Notes & observations",
+                        "Tag color configurations",
+                        "Custom activity types",
                         "Automatic cloud backup",
-                        "Share herds with team members",
-                        "Access your data from anywhere"
+                        "Real-time herd sharing (with other signed-in users)"
                     )
-                    
-                    features.forEach { feature ->
-                        Row(
-                            modifier = Modifier.padding(vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "✓",
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 16.sp
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                text = feature,
-                                fontSize = 14.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                lineHeight = 20.sp
-                            )
+                    syncFeatures.forEach { feature ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.CheckCircleOutline, contentDescription = "Synced", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(feature, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, lineHeight = 20.sp)
                         }
                     }
                 }
             }
             
-            // Error message
             uiState.error?.let { errorMessage ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                 ) {
                     Text(
                         text = errorMessage,
                         modifier = Modifier.padding(16.dp),
                         color = MaterialTheme.colorScheme.onErrorContainer,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
-            
-            // Back button (always available)
-            OutlinedButton(
-                onClick = onNavigateBack,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(28.dp)
-            ) {
-                Text(
-                    text = if (isGoogleSignedIn) "Back to Settings" else "Continue without signing in",
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Medium
-                )
+
+            if (!isGoogleSignedIn) { // Show "Continue without signing in" only if not signed in
+                OutlinedButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(28.dp)
+                ) {
+                    Text("Continue without signing in", fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                }
             }
-            
-            Spacer(modifier = Modifier.height(32.dp))
+             Spacer(modifier = Modifier.height(16.dp)) // Added spacer at the bottom
         }
     }
-    
-    // Data Merge Dialog
+
     if (uiState.showDataMergeDialog) {
         DataMergeDialog(
             onDismiss = {
                 authViewModel.hideDataMergeDialog()
-                pendingAccount = null
+                pendingAccount = null // Clear pending account if dialog is dismissed
             },
             onOptionSelected = { option ->
                 pendingAccount?.let { account ->
                     authViewModel.signInWithDataMergeOption(account, option)
                 }
-                authViewModel.hideDataMergeDialog()
-                pendingAccount = null
+                // ViewModel should hide dialog and clear pending account on successful merge/signin
             },
             hasLocalData = uiState.hasLocalData,
             hasServerData = uiState.hasServerData

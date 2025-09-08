@@ -65,6 +65,9 @@ class CattleRepository(
 
     // Activity operations
     fun getAllActivities(): Flow<List<Activity>> = activityDao.getAllActivities()
+
+    // Notes operations (Flow for UI observers)
+    fun getAllNotes(): Flow<List<Note>> = noteDao?.getAllNotes() ?: kotlinx.coroutines.flow.flowOf(emptyList())
     fun getActivitiesForCow(cowId: Long): Flow<List<Activity>> = activityDao.getActivitiesForCow(cowId)
     fun getActivitiesByType(activityType: ActivityType): Flow<List<Activity>> = activityDao.getActivitiesByType(activityType)
 

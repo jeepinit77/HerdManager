@@ -3,15 +3,15 @@ package com.jumblemint.cows.ui.screens.cows
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+// import androidx.compose.material.icons.Icons // Not needed if TopAppBar is removed
+// import androidx.compose.material.icons.filled.ArrowBack // Not needed if TopAppBar is removed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.Modifier // Ensure Modifier is imported
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
+// import androidx.compose.ui.graphics.Color // Not directly used in this file anymore
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.*
@@ -19,20 +19,21 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.CowCard
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
-import com.jumblemint.cows.ui.viewmodel.ReportsViewModel // Keep for now, might be useful for other filters
+import com.jumblemint.cows.ui.viewmodel.ReportsViewModel
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
 import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
 import java.time.Period
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+// @OptIn(ExperimentalMaterial3Api::class) // Not strictly needed if TopAppBar is removed
 @Composable
 fun CowListScreen(
     type: String?,
     value: String?,
     onCowClick: (Long) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit, // Still needed for MainActivity's TopAppBar
+    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as com.jumblemint.cows.CattleApplication
@@ -52,24 +53,19 @@ fun CowListScreen(
         )
     }
 
-    // ViewModel for all cows, potentially useful for some filter types if needed later
     val reportsViewModel: ReportsViewModel = viewModel(factory = ReportsViewModelFactory(repository, application.authService))
-    val allCowsState by reportsViewModel.uiState.collectAsState() // This contains all cows from the db
+    val allCowsState by reportsViewModel.uiState.collectAsState()
 
-    // Pull full lists from repository for accurate filtering based on allCowsState or direct query
-    val cowsFlow by remember { mutableStateOf(repository.getAllCows()) } // Or use allCowsState.cows if appropriate
+    val cowsFlow by remember { mutableStateOf(repository.getAllCows()) }
     val cows by cowsFlow.collectAsState(initial = emptyList())
-
-    // Get tag color map for resolving tag colors
     val tagColorMap = rememberTagColorMap(repository)
 
-    // Build filtered list based on type/value
     val list: List<Cow> = remember(cows, type, value) {
         val active = cows.filter { it.status == Status.ACTIVE }
         when (type) {
             "status" -> {
                 when (value) {
-                    null -> cows // Show all cows if no specific status is requested
+                    null -> cows
                     "ACTIVE" -> active
                     "SOLD" -> cows.filter { it.status == Status.SOLD }
                     "DECEASED" -> cows.filter { it.status == Status.DECEASED }
@@ -77,37 +73,32 @@ fun CowListScreen(
                 }
             }
             "classification" -> active.filter { it.classification.name == value }
-            "pasture" -> { // FIX FOR ERROR 1 (around line 64)
-                // it.pastureId is String?, value is String?
-                active.filter { it.pastureId == value }
-            }
+            "pasture" -> active.filter { it.pastureId == value }
             "pastureName" -> {
                 if (value == "Unassigned") {
                     active.filter { it.pastureId == null }
-                } else {
-                    active
+                } else { // Assuming if pastureName is not "Unassigned", it's a specific (though currently unfilterable by name) pasture
+                    active // This case might need refinement if direct name filtering is desired without ID
                 }
             }
             "notCalved" -> {
                 val nineMonthsAgo = LocalDate.now().minusMonths(9)
                 val female = active.filter { it.gender == Gender.FEMALE && it.classification in listOf(Classification.COW, Classification.HEIFER) }
-                // Consider if 'cows' (all statuses) or 'active' (active only) is correct for finding recent calves
                 val calvesInPast9 = cows.filter { it.classification == Classification.CALF && it.birthDate?.isAfter(nineMonthsAgo) == true && it.motherId != null }
                 val mothers = calvesInPast9.mapNotNull { it.motherId }.toSet()
                 female.filter { it.id !in mothers }
             }
             "calved" -> {
-                // Show active mothers who have active calves (matching dashboard logic)
                 val activeCalves = cows.filter { cow ->
                     cow.classification == Classification.CALF &&
                     cow.status == Status.ACTIVE &&
                     cow.motherId != null
                 }
                 val mothersWithActiveCalves = activeCalves.mapNotNull { it.motherId }.toSet()
-                active.filter { 
+                active.filter {
                     it.gender == Gender.FEMALE &&
                     it.classification in listOf(Classification.COW, Classification.HEIFER) &&
-                    it.id in mothersWithActiveCalves 
+                    it.id in mothersWithActiveCalves
                 }
             }
             "age" -> filterByAgeGroup(active, value)
@@ -118,6 +109,8 @@ fun CowListScreen(
 
     var screenTitle by remember { mutableStateOf("Cows") }
 
+    // This LaunchedEffect sets the screenTitle.
+    // MainActivity's TopAppBarWithMenu would need to observe this or a similar state.
     LaunchedEffect(type, value, repository) {
         var newTitle = "Cows"
         when (type) {
@@ -132,28 +125,23 @@ fun CowListScreen(
             "classification" -> {
                 newTitle = value?.let { "Classification: $it" } ?: "Cows by Classification"
             }
-            "pasture" -> { // FIX FOR ERROR 2 (around line 112)
-                // value is String? pasture ID. repository.getPastureByIdSuspend() expects String.
+            "pasture" -> {
                 if (value != null) {
-                    val pasture = repository.getPastureByIdSuspend(value)
+                    val pasture = repository.getPastureByIdSuspend(value) // Assumes value is pasture ID
                     newTitle = pasture?.name?.let { "Pasture: $it" } ?: "Pasture Details"
                 } else {
                     newTitle = "Cows by Pasture"
                 }
             }
-            "pastureName" -> {
+            "pastureName" -> { // This case might need a lookup if 'value' is a name that needs to resolve to an ID for filtering
                 newTitle = if (value == "Unassigned") {
                     "Unassigned Cows"
                 } else {
                     value?.let { "Pasture: $it" } ?: "Cows by Pasture"
                 }
             }
-            "notCalved" -> {
-                newTitle = "Not Calved (9+ Months)"
-            }
-            "calved" -> {
-                newTitle = "Cows with Active Calves"
-            }
+            "notCalved" -> newTitle = "Not Calved (9+ Months)"
+            "calved" -> newTitle = "Cows with Active Calves"
             "age" -> {
                 val ageDesc = when (value) {
                     "UNDER_1" -> "Under 1 Year"
@@ -164,32 +152,43 @@ fun CowListScreen(
                 }
                 newTitle = "Age: $ageDesc"
             }
-            "watching" -> {
-                newTitle = "Watched Cows"
-            }
+            "watching" -> newTitle = "Watched Cows"
         }
         screenTitle = newTitle
+        // TODO: Update MainActivity's TopAppBar title state here or via a shared ViewModel / callback
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(screenTitle) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { 
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back") 
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        if (allCowsState.isLoading && list.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+        modifier = modifier, // <<< APPLIED MODIFIER HERE
+        // topBar = { ... } // TopAppBar is REMOVED. Title and Nav handled by MainActivity.
+        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out
+    ) { paddingValues -> // This paddingValues is from THIS Scaffold (if it had its own FAB, etc.)
+                         // The `modifier` above already includes padding from MainActivity's Scaffold.
+        if (allCowsState.isLoading && list.isEmpty()) { // Show loading only if list is empty due to loading
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues), // Apply this Scaffold's padding
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator()
             }
-        } else {
+        } else if (list.isEmpty()){
+             Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues), // Apply this Scaffold's padding
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No cows match the criteria.", style = MaterialTheme.typography.bodyLarge)
+            }
+        }
+        else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues) // Apply this Scaffold's padding
+                    .padding(horizontal = 16.dp), // Specific content padding
                 contentPadding = PaddingValues(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
@@ -212,11 +211,11 @@ private fun filterByAgeGroup(active: List<Cow>, value: String?): List<Cow> {
             val years = Period.between(bd, today).years
             when (value) {
                 "UNDER_1" -> years < 1
-                "1_5" -> years in 1..4
-                "5_10" -> years in 5..9
+                "1_5" -> years in 1..4 // Corrected range to 1-4 for "1-5 years" assuming 5 is exclusive upper bound of a category
+                "5_10" -> years in 5..9 // Corrected range to 5-9
                 "10_PLUS" -> years >= 10
-                else -> true
+                else -> true // Should not happen if value is one of the defined keys
             }
-        } ?: false
+        } ?: false // Cows without a birthdate are excluded from age filters
     }
 }

@@ -14,7 +14,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.Modifier // Ensure Modifier is imported
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,6 +32,7 @@ import com.jumblemint.cows.ui.viewmodel.CowsViewModel
 import com.jumblemint.cows.ui.viewmodel.CowsViewModelFactory
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +40,8 @@ fun CowsScreen(
     pastureId: Long? = null,
     onCowClick: (Long) -> Unit,
     onCowEdit: (Long) -> Unit,
-    onAddCowClick: () -> Unit
+    onAddCowClick: () -> Unit,
+    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -66,10 +68,18 @@ fun CowsScreen(
     // Get tag color map for resolving tag colors
     val tagColorMap = rememberTagColorMap(repository)
 
-    val snackbarHostState = remember { SnackbarHostState() } // Used by CowCard's onDelete
-    val scope = rememberCoroutineScope() // Used by CowCard's onDelete
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "Cows",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     Scaffold(
+        modifier = modifier, // <<< APPLIED MODIFIER HERE
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
@@ -77,13 +87,18 @@ fun CowsScreen(
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Cow")
             }
-        }
-    ) { paddingValues ->
+        },
+        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // This might be overridden by the modifier from CattleNavigation
+                                                        // It's generally safer to let the modifier handle all padding.
+                                                        // If mainScaffoldPadding is correctly applied by the modifier,
+                                                        // this specific contentWindowInsets might not be needed or could conflict.
+                                                        // Let's keep it commented for now and see the effect.
+    ) { paddingValues -> // This paddingValues is from THIS screen's Scaffold
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
+                .padding(paddingValues) // Apply padding from THIS Scaffold
+                .padding(horizontal = 16.dp) // Keep additional horizontal padding for content
         ) {
             // Search and Filter Controls
             Row(
@@ -101,7 +116,7 @@ fun CowsScreen(
 
                 FilterChip(
                     onClick = { showFilters = !showFilters },
-                    label = { 
+                    label = {
                         val activeFilterCount = getActiveFilterCount(uiState)
                         if (activeFilterCount > 0) {
                             Text("($activeFilterCount)")
@@ -112,7 +127,7 @@ fun CowsScreen(
                     selected = showFilters || hasActiveFilters(uiState),
                     leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") }
                 )
-                
+
                 if (hasActiveFilters(uiState)) {
                     IconButton(onClick = { viewModel.clearAllFilters() }) {
                         Icon(Icons.Default.Clear, contentDescription = "Clear Filters")
@@ -143,9 +158,9 @@ fun CowsScreen(
                                 )
                                 .align(Alignment.CenterHorizontally)
                         )
-                        
+
                         Spacer(modifier = Modifier.height(8.dp))
-                        
+
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
@@ -162,7 +177,7 @@ fun CowsScreen(
                                 Text("Done")
                             }
                         }
-                        
+
                         // Status Filters
                         FilterSection(
                             title = "Status",
@@ -171,7 +186,7 @@ fun CowsScreen(
                             onToggle = { viewModel.toggleStatusFilter(it) },
                             itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                         )
-                        
+
                         // Classification Filters
                         FilterSection(
                             title = "Animal Type",
@@ -180,7 +195,7 @@ fun CowsScreen(
                             onToggle = { viewModel.toggleClassificationFilter(it) },
                             itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                         )
-                        
+
                         // Gender Filters
                         FilterSection(
                             title = "Gender",
@@ -189,7 +204,7 @@ fun CowsScreen(
                             onToggle = { viewModel.toggleGenderFilter(it) },
                             itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                         )
-                        
+
                         // Pasture Filters
                         if (uiState.availablePastures.isNotEmpty()) {
                             FilterSection(
@@ -204,7 +219,7 @@ fun CowsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
             if (uiState.isLoading) {
                 Box(
@@ -221,15 +236,9 @@ fun CowsScreen(
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(text = "No cows found", style = MaterialTheme.typography.headlineSmall)
+                        Text(text = "Nothing here yet", style = MaterialTheme.typography.headlineSmall)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = "Add your first cow to get started", style = MaterialTheme.typography.bodyMedium)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = onAddCowClick) {
-                            Icon(Icons.Default.Add, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Add Cow")
-                        }
+                        Text(text = "Add cows using the + button to get started", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             } else {
@@ -237,16 +246,12 @@ fun CowsScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(uiState.cows, key = { it.id }) { cow ->
-                        // SwipeToDeleteContainer has been removed.
-                        // CowCard is now a direct child of items.
                         CowCard(
                             cow = cow,
                             onClick = { onCowClick(cow.id) },
                             onToggleWatch = { viewModel.toggleWatch(cow) },
                             onEdit = { onCowEdit(cow.id) },
                             onDelete = {
-                                // This onDelete is part of CowCard itself and uses the
-                                // snackbarHostState and scope defined in CowsScreen
                                 scope.launch {
                                     viewModel.deleteCow(cow)
                                     val res = snackbarHostState.showSnackbar(
@@ -281,7 +286,6 @@ private fun hasActiveFilters(uiState: com.jumblemint.cows.ui.viewmodel.CowsUiSta
 // Helper function to count active filters (excluding default ACTIVE status)
 private fun getActiveFilterCount(uiState: com.jumblemint.cows.ui.viewmodel.CowsUiState): Int {
     var count = 0
-    // Only count status filters if they're different from the default ACTIVE
     if (uiState.selectedStatuses != setOf(Status.ACTIVE)) count++
     if (uiState.selectedClassifications.isNotEmpty()) count++
     if (uiState.selectedGenders.isNotEmpty()) count++
@@ -313,20 +317,20 @@ private fun <T> FilterSection(
                 val isSelected = selectedItems.contains(item)
                 FilterChip(
                     onClick = { onToggle(item) },
-                    label = { 
+                    label = {
                         Text(
                             text = itemLabel(item),
                             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal
-                        ) 
+                        )
                     },
                     selected = isSelected,
                     leadingIcon = if (isSelected) {
-                        { 
+                        {
                             Icon(
-                                Icons.Default.Check, 
-                                contentDescription = "Selected", 
+                                Icons.Default.Check,
+                                contentDescription = "Selected",
                                 modifier = Modifier.size(18.dp)
-                            ) 
+                            )
                         }
                     } else null,
                     colors = FilterChipDefaults.filterChipColors(

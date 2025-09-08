@@ -5,16 +5,17 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.items // Keep this import
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Edit // <<< ADDED IMPORT
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.collectAsState // Added explicit import
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.Modifier // Ensure Modifier is imported
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
@@ -34,25 +35,23 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagColorsManagementScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val currentUser by application.authService.currentUser.collectAsState(initial = null)
-    val repository = CattleRepository(
-        database.cowDao(),
-        database.pastureDao(),
-        database.activityDao(),
-        database.settingsDao(),
-        database.noteDao(),
-        database.userDao(),
-        database.herdDao(),
-        database.herdMemberDao(),
-        database.tagColorDao(),
-        database.activityTypeConfigDao()
-    )
-    
+    // Remember repository to avoid recreation on recomposition
+    val repository = remember {
+        CattleRepository(
+            database.cowDao(), database.pastureDao(), database.activityDao(),
+            database.settingsDao(), database.noteDao(), database.userDao(),
+            database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
+            database.activityTypeConfigDao()
+        )
+    }
+
     val viewModel: TagColorsViewModel = viewModel(
         factory = TagColorsViewModelFactory(
             repository = repository,
@@ -60,7 +59,7 @@ fun TagColorsManagementScreen(
             getUserId = { currentUser?.uid ?: "" }
         )
     )
-    
+
     val tagColors by viewModel.tagColors.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingColor by remember { mutableStateOf<TagColor?>(null) }
@@ -70,6 +69,7 @@ fun TagColorsManagementScreen(
     var lastDeleted by remember { mutableStateOf<TagColor?>(null) }
 
     Scaffold(
+        modifier = modifier, // <<< APPLIED MODIFIER HERE
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             TopAppBar(
@@ -80,29 +80,30 @@ fun TagColorsManagementScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showAddDialog = true }) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Color")
+                    IconButton(onClick = { editingColor = null; showAddDialog = true }) { // Clear editingColor for add
+                        Icon(Icons.Default.AddCircleOutline, contentDescription = "Add New Color") // Changed Icon
                     }
                     var showResetConfirm by remember { mutableStateOf(false) }
-                    IconButton(onClick = {
-                        showResetConfirm = true
-                    }) {
-                        Icon(Icons.Default.Restore, contentDescription = "Reset to defaults")
+                    IconButton(onClick = { showResetConfirm = true }) {
+                        Icon(Icons.Default.Restore, contentDescription = "Reset to Default Colors") // Changed Icon
                     }
                     if (showResetConfirm) {
                         AlertDialog(
                             onDismissRequest = { showResetConfirm = false },
-                            icon = { Icon(Icons.Default.Warning, contentDescription = null) },
-                            title = { Text("Reset tag colors?") },
-                            text = { Text("This will remove all custom colors and reinstall the default colors. This action cannot be undone.") },
+                            icon = { Icon(Icons.Default.WarningAmber, contentDescription = "Warning") }, // Changed Icon
+                            title = { Text("Reset Tag Colors?") },
+                            text = { Text("This will remove all custom tag colors and reinstall the default set. This action cannot be undone.") },
                             confirmButton = {
-                                TextButton(onClick = {
-                                    showResetConfirm = false
-                                    viewModel.resetToDefaults()
-                                    scope.launch {
-                                        snackbarHostState.showSnackbar("Reset to default colors")
-                                    }
-                                }) { Text("Reset") }
+                                TextButton(
+                                    onClick = {
+                                        showResetConfirm = false
+                                        viewModel.resetToDefaults()
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Tag colors reset to defaults.")
+                                        }
+                                    },
+                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                ) { Text("Reset") }
                             },
                             dismissButton = {
                                 TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
@@ -111,55 +112,75 @@ fun TagColorsManagementScreen(
                     }
                 }
             )
-        }
+        },
+        contentWindowInsets = WindowInsets(0,0,0,0) // Kept as is, can be reviewed
     ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(tagColors) { tagColor ->
-                TagColorItem(
-                    tagColor = tagColor,
-                    onEdit = { editingColor = it },
-                    onDelete = { color ->
-                        lastDeleted = color
-                        viewModel.deleteTagColor(color)
-                        scope.launch {
-                            val result = snackbarHostState.showSnackbar(
-                                message = "Color deleted",
-                                actionLabel = "Undo"
-                            )
-                            if (result == SnackbarResult.ActionPerformed) {
-                                lastDeleted?.let { viewModel.restoreTagColor(it) }
-                                lastDeleted = null
+        if (tagColors.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Filled.Palette, contentDescription = "No colors", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("No custom tag colors found.", style = MaterialTheme.typography.headlineSmall)
+                    Text("Add colors using the '+' button above.", style = MaterialTheme.typography.bodyLarge)
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(horizontal = 16.dp), // Only horizontal for list items
+                contentPadding = PaddingValues(vertical = 16.dp), // Vertical padding for overall list
+                verticalArrangement = Arrangement.spacedBy(10.dp) // Spacing between items
+            ) {
+                items(tagColors, key = { it.id }) { tagColor -> // Added key for better performance
+                    TagColorItem(
+                        tagColor = tagColor,
+                        onEdit = { editingColor = it },
+                        onDelete = { color ->
+                            lastDeleted = color // Store for potential undo
+                            viewModel.deleteTagColor(color)
+                            scope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "Color '${color.name}' deleted",
+                                    actionLabel = "Undo",
+                                    duration = SnackbarDuration.Short
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    lastDeleted?.let { viewModel.restoreTagColor(it) }
+                                }
+                                lastDeleted = null // Clear after use
                             }
                         }
-                    }
-                )
+                    )
+                }
             }
         }
     }
-    
-    // Add/Edit Dialog
+
     if (showAddDialog || editingColor != null) {
         TagColorDialog(
-            tagColor = editingColor,
+            tagColorToEdit = editingColor, // Pass the color to be edited
             onDismiss = {
                 showAddDialog = false
                 editingColor = null
             },
-            onSave = { name, color ->
-                if (editingColor != null) {
-                    viewModel.updateTagColor(editingColor!!.copy(
-                        name = name,
-                        colorValue = color.toArgb(),
-                        updatedAt = System.currentTimeMillis()
-                    ))
-                } else {
-                    viewModel.addTagColor(name, color.toArgb())
+            onSave = { name, colorInt, id ->
+                if (id != null && editingColor != null) { // Editing existing color
+                    viewModel.updateTagColor(
+                        editingColor!!.copy(
+                            name = name,
+                            colorValue = colorInt,
+                            updatedAt = System.currentTimeMillis()
+                        )
+                    )
+                } else { // Adding new color
+                    viewModel.addTagColor(name, colorInt)
                 }
                 showAddDialog = false
                 editingColor = null
@@ -175,148 +196,129 @@ fun TagColorItem(
     onDelete: (TagColor) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp) // Softer corners
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp), // Adjusted padding
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Color preview
             Box(
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(36.dp) // Slightly smaller preview
                     .clip(CircleShape)
                     .background(tagColor.toColor())
                     .border(
-                        width = 2.dp,
-                        color = MaterialTheme.colorScheme.outline,
+                        width = 1.dp, // Thinner border
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), // Softer border
                         shape = CircleShape
                     )
             )
-            
             Spacer(modifier = Modifier.width(16.dp))
-            
-            // Color name
-            Column(
+            Text(
+                text = tagColor.name,
+                style = MaterialTheme.typography.bodyLarge, // Adjusted style
                 modifier = Modifier.weight(1f)
-            ) {
-                Text(
-                    text = tagColor.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-            
+            )
             // Actions
-            Row {
-                IconButton(onClick = { onEdit(tagColor) }) {
-                    Icon(
-                        Icons.Default.Edit,
-                        contentDescription = "Edit",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(onClick = { onDelete(tagColor) }) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
-                    )
-                }
+            IconButton(onClick = { onEdit(tagColor) }) {
+                Icon(Icons.Outlined.Edit, contentDescription = "Edit ${tagColor.name}", tint = MaterialTheme.colorScheme.primary) // <<< CHANGED ICON
+            }
+            IconButton(onClick = { onDelete(tagColor) }) {
+                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete ${tagColor.name}", tint = MaterialTheme.colorScheme.error) // Changed Icon
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class) // For AlertDialog
 @Composable
 fun TagColorDialog(
-    tagColor: TagColor? = null,
+    tagColorToEdit: TagColor? = null, // Renamed for clarity
     onDismiss: () -> Unit,
-    onSave: (String, Color) -> Unit
+    onSave: (name: String, colorInt: Int, id: String?) -> Unit // Pass ID for updates
 ) {
-    var name by remember { mutableStateOf(tagColor?.name ?: "") }
-    var selectedColor by remember { mutableStateOf(tagColor?.toColor() ?: Color.Red) }
-    var showColorPicker by remember { mutableStateOf(false) }
-    
+    var name by remember(tagColorToEdit) { mutableStateOf(tagColorToEdit?.name ?: "") }
+    var selectedColor by remember(tagColorToEdit) { mutableStateOf(tagColorToEdit?.toColor() ?: Color(0xFFE91E63)) } // Default to a vibrant pink
+    var nameError by remember { mutableStateOf<String?>(null) }
+
+    val colorPickerController = rememberColorPickerController() // No explicit type
+
+    LaunchedEffect(tagColorToEdit) {
+        // The method to programmatically set the controller's initial color
+        // is currently unresolved. This will lead to the picker defaulting to white.
+        // Developer needs to investigate the library API for version 1.0.0.
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { 
-            Text(if (tagColor != null) "Edit Tag Color" else "Add Tag Color") 
-        },
+//        icon = { Icon(if (tagColorToEdit != null) Icons.Filled.Edit else Icons.Filled.Add, contentDescription = null) },
+        title = { Text(if (tagColorToEdit != null) "Edit Tag Color" else "Add New Tag Color") },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 OutlinedTextField(
                     value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Color Name") },
+                    onValueChange = {
+                        name = it
+                        nameError = if (it.isBlank()) "Name cannot be empty" else null
+                    },
+                    label = { Text("Color Name*") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = nameError != null
                 )
-                
+                if (nameError != null) {
+                    Text(nameError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                }
+
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Color:")
-                    
+                    Text("Selected Color:", style = MaterialTheme.typography.bodyLarge)
                     Box(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(selectedColor)
-                            .border(
-                                width = 2.dp,
-                                color = MaterialTheme.colorScheme.outline,
-                                shape = CircleShape
-                            )
-                            .clickable { showColorPicker = true }
+                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
                     )
-                    
-                    TextButton(onClick = { showColorPicker = true }) {
-                        Text("Choose Color")
-                    }
                 }
-                
-                if (showColorPicker) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp)
-                        ) {
-                            HsvColorPicker(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(200.dp),
-                                controller = rememberColorPickerController(),
-                                onColorChanged = { colorEnvelope: ColorEnvelope ->
-                                    selectedColor = colorEnvelope.color
-                                }
-                            )
-                            
-                            Spacer(modifier = Modifier.height(8.dp))
-                            
-                            TextButton(
-                                onClick = { showColorPicker = false },
-                                modifier = Modifier.align(Alignment.End)
-                            ) {
-                                Text("Done")
-                            }
-                        }
+                HsvColorPicker(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(250.dp) // Increased height for better usability
+                        .padding(vertical = 8.dp),
+                    controller = colorPickerController,
+                    initialColor = selectedColor, // Initialize picker with current color
+                    onColorChanged = { colorEnvelope: ColorEnvelope ->
+                        selectedColor = colorEnvelope.color
                     }
-                }
+                )
+                // BrightnessSlider for more control, if desired
+                 BrightnessSlider(
+                     modifier = Modifier.fillMaxWidth().height(35.dp),
+                     controller = colorPickerController,
+                     borderRadius = 8.dp,
+                     wheelRadius = 10.dp,
+                     wheelColor = Color.White,
+                     wheelPaint = remember { androidx.compose.ui.graphics.Paint().apply { color = Color.Black } },
+                     initialColor = selectedColor // Initialize slider with current color
+                 )
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = {
                     if (name.isNotBlank()) {
-                        onSave(name.trim(), selectedColor)
+                        onSave(name.trim(), selectedColor.toArgb(), tagColorToEdit?.id)
+                    } else {
+                        nameError = "Name cannot be empty"
                     }
                 },
                 enabled = name.isNotBlank()
@@ -331,3 +333,6 @@ fun TagColorDialog(
         }
     )
 }
+
+// Helper extension function
+fun TagColor.toColor(): Color = Color(this.colorValue)

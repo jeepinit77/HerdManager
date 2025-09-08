@@ -12,7 +12,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.Modifier // Ensure Modifier is imported
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,7 +30,8 @@ import com.jumblemint.cows.data.repository.CattleRepository
 fun PasturesScreen(
     onNavigateToAddPasture: () -> Unit,
     onNavigateToPastureDetails: (String) -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -57,89 +58,109 @@ fun PasturesScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    // Handle errors from the ViewModel
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
             snackbarHostState.showSnackbar(
                 message = it,
                 duration = SnackbarDuration.Long
             )
-            // Consider adding: pasturesViewModel.onErrorShown() to clear the error in ViewModel
+            // pasturesViewModel.onErrorShown() // To clear the error in ViewModel after showing
         }
     }
 
     Scaffold(
+        modifier = modifier, // <<< APPLIED MODIFIER HERE
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAddPasture) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Pasture")
             }
-        },
-        topBar = {
-            TopAppBar(title = { Text("Pastures") })
         }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .padding(paddingValues)
-                .fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            if (uiState.unassignedCowCount > 0) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
+        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out to let the modifier handle insets
+    ) { paddingValues -> // This paddingValues is from THIS screen's Scaffold
+        if (uiState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues), // Use this Scaffold's padding
+                contentAlignment = Alignment.Center
+            ) { CircularProgressIndicator() }
+        } else if (uiState.pastures.isEmpty() && uiState.unassignedCowCount == 0) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues), // Use this Scaffold's padding
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "Nothing here yet", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "Add fields using the + button to get started", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .padding(paddingValues) // Use this Scaffold's padding for content below potential TopAppBar (if this Scaffold had one)
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), // Added vertical padding too for consistency
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (uiState.unassignedCowCount > 0) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            )
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = "Unassigned",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                                Text(
-                                    text = "Total Head: ${uiState.unassignedCowCount}",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Unassigned",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                    Text(
+                                        text = "Total Head: ${uiState.unassignedCowCount}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
-            
-            items(uiState.pastures, key = { it.pastureWithCount.pasture.id }) { pastureWithDetails ->
-                PastureCard(
-                    pastureWithDetails = pastureWithDetails,
-                    onClick = {
-                        onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
-                    },
-                    onEdit = {
-                        onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
-                    },
-                    onDelete = { pasture ->
-                        coroutineScope.launch {
-                            pasturesViewModel.deletePasture(pasture) // Call ViewModel method
-                            val snackbarResult = snackbarHostState.showSnackbar(
-                                message = "${pasture.name} deleted",
-                                actionLabel = "UNDO",
-                                duration = SnackbarDuration.Long
-                            )
-                            if (snackbarResult == SnackbarResult.ActionPerformed) {
-                                pasturesViewModel.undoDeletePasture()
+
+                items(uiState.pastures, key = { it.pastureWithCount.pasture.id }) { pastureWithDetails ->
+                    PastureCard(
+                        pastureWithDetails = pastureWithDetails,
+                        onClick = {
+                            onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
+                        },
+                        onEdit = { // Assuming edit navigates to the same detail screen
+                            onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
+                        },
+                        onDelete = { pasture ->
+                            coroutineScope.launch {
+                                pasturesViewModel.deletePasture(pasture)
+                                val snackbarResult = snackbarHostState.showSnackbar(
+                                    message = "${pasture.name} deleted",
+                                    actionLabel = "UNDO",
+                                    duration = SnackbarDuration.Long
+                                )
+                                if (snackbarResult == SnackbarResult.ActionPerformed) {
+                                    pasturesViewModel.undoDeletePasture()
+                                }
                             }
                         }
-                    }
-                )
+                    )
+                }
             }
         }
     }
@@ -160,7 +181,7 @@ fun PastureCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 8.dp), // Reduced padding slightly for a tighter card
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -169,9 +190,9 @@ fun PastureCard(
                 Text(
                     text = "Total Head: ${pastureWithDetails.pastureWithCount.cowCount}",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Medium // Changed from null
                 )
-                
+
                 if (pastureWithDetails.classificationBreakdown.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     val breakdownText = pastureWithDetails.classificationBreakdown
@@ -185,7 +206,7 @@ fun PastureCard(
                     )
                 }
             }
-            Row { 
+            Row { // Kept Edit and Delete IconButtons as they are part of the card content
                 IconButton(
                     onClick = onEdit
                 ) {

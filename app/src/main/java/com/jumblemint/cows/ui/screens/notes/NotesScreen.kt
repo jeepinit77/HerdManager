@@ -25,11 +25,12 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.model.Note
 import com.jumblemint.cows.ui.viewmodel.NotesViewModel
-// import com.jumblemint.cows.ui.components.SwipeToDeleteContainer // Import removed
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+// kotlin.math.max and kotlin.math.min are not directly used, can be removed if not needed by transformableState internals implicitly
+// For now, keeping them as they were in the original file.
 import kotlin.math.max
 import kotlin.math.min
 
@@ -37,7 +38,8 @@ import kotlin.math.min
 @Composable
 fun NotesScreen(
     viewModel: NotesViewModel = viewModel(),
-    onNavigateBack: (() -> Unit)? = null
+    onNavigateBack: (() -> Unit)? = null, // Used by MainActivity's TopAppBar
+    modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showAdd by remember { mutableStateOf(false) }
@@ -47,47 +49,55 @@ fun NotesScreen(
     var viewingNote by remember { mutableStateOf<Note?>(null) }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
-    // snackbarHostState and scope are used by NoteCard's onDelete
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // TODO: Communicate screen title "Notes" to MainActivity's TopAppBar if needed.
+    // LaunchedEffect(Unit) { /* call to update MainActivity's title */ }
+
     Scaffold(
-        topBar = { 
-            TopAppBar(
-                title = { Text("Notes") },
-                navigationIcon = {
-                    onNavigateBack?.let { callback ->
-                        IconButton(onClick = callback) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
-                        }
-                    }
-                }
-            )
-        },
+        modifier = modifier, // This modifier includes padding from MainActivity's Scaffold and fillMaxSize
         floatingActionButton = {
             FloatingActionButton(onClick = { showAdd = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Note")
             }
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) } // Added SnackbarHost
-    ) { padding ->
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Already commented out, good.
+    ) { localScaffoldPadding -> // Renamed from 'padding' to 'localScaffoldPadding' for clarity
+                               // This padding is from THIS screen's Scaffold (for FAB, etc.)
+
         if (uiState.isLoading) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(localScaffoldPadding), // Apply this screen's Scaffold's padding
+                contentAlignment = Alignment.Center
+            ) {
                 CircularProgressIndicator()
             }
         } else if (uiState.notes.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("No notes yet")
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .padding(localScaffoldPadding), // Apply this screen's Scaffold's padding
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "Nothing here yet", style = MaterialTheme.typography.headlineSmall)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "Add notes using the + button to get started", style = MaterialTheme.typography.bodyMedium)
+                }
             }
         } else {
-            // snackbarHostState and scope are defined above and used by NoteCard
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(localScaffoldPadding), // Apply this screen's Scaffold's padding
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), // Specific padding for list items
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(uiState.notes, key = { it.id }) { note ->
-                    // SwipeToDeleteContainer has been removed.
-                    // NoteCard is now a direct child.
                     NoteCard(
                         note = note,
                         dateFormat = dateFormat,
@@ -100,8 +110,6 @@ fun NotesScreen(
                             showEdit = true
                         },
                         onDelete = {
-                            // This onDelete is part of NoteCard and uses
-                            // snackbarHostState and scope defined in NotesScreen
                             scope.launch {
                                 viewModel.deleteNote(note)
                                 val res = snackbarHostState.showSnackbar(
@@ -119,17 +127,14 @@ fun NotesScreen(
             }
         }
 
-        // Error message handling - This was a Snackbar, changed to use the Scaffold's snackbarHostState
         uiState.error?.let { error ->
-            // LaunchedEffect to show snackbar when error changes
-            LaunchedEffect(error) {
+            LaunchedEffect(error) { // error is the key here
                 scope.launch {
                     snackbarHostState.showSnackbar(
                         message = error,
                         duration = SnackbarDuration.Short
                     )
-                    // Optionally, clear the error in ViewModel after showing
-                    // viewModel.clearError() 
+                    // Consider calling viewModel.clearError() here or after a delay
                 }
             }
         }
@@ -144,11 +149,11 @@ fun NotesScreen(
             }
         )
     }
-    
+
     if (showEdit && editingNote != null) {
         EditNoteDialog(
             note = editingNote!!,
-            onDismiss = { 
+            onDismiss = {
                 showEdit = false
                 editingNote = null
             },
@@ -159,7 +164,7 @@ fun NotesScreen(
             }
         )
     }
-    
+
     if (showFullScreen && viewingNote != null) {
         FullScreenNoteDialog(
             note = viewingNote!!,
@@ -191,11 +196,13 @@ private fun NoteCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) { // Added weight to Column
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                     if (note.title.isNotEmpty()) {
                         Text(
                             text = note.title,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                     Text(
@@ -206,14 +213,14 @@ private fun NoteCard(
                 }
 
                 Row {
-                    IconButton(onClick = onEdit) {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(40.dp)) {
                         Icon(
                             Icons.Default.Edit,
                             contentDescription = "Edit",
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
-                    IconButton(onClick = onDelete) {
+                    IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
                         Icon(
                             Icons.Default.Delete,
                             contentDescription = "Delete",
@@ -227,8 +234,9 @@ private fun NoteCard(
 
             Text(
                 text = note.text,
-                style = MaterialTheme.typography.bodyLarge,
-                overflow = TextOverflow.Ellipsis // Consider maxLines if text can be very long
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -247,14 +255,15 @@ private fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> 
             Column {
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { 
+                    onValueChange = {
                         title = it
                         titleError = if (it.isBlank()) "Title is required" else null
                     },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Title*") },
                     isError = titleError != null,
-                    supportingText = titleError?.let { { Text(it) } }
+                    supportingText = titleError?.let { { Text(it) } },
+                    singleLine = true
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -262,7 +271,7 @@ private fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> 
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 120.dp), // Use defaultMinSize for better behavior
                     label = { Text("Note (optional)") },
                     minLines = 3
                 )
@@ -292,7 +301,7 @@ private fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> 
 @Composable
 private fun EditNoteDialog(
     note: Note,
-    onDismiss: () -> Unit, 
+    onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit
 ) {
     var title by remember { mutableStateOf(note.title) }
@@ -306,14 +315,15 @@ private fun EditNoteDialog(
             Column {
                 OutlinedTextField(
                     value = title,
-                    onValueChange = { 
+                    onValueChange = {
                         title = it
                         titleError = if (it.isBlank()) "Title is required" else null
                     },
                     modifier = Modifier.fillMaxWidth(),
                     label = { Text("Title*") },
                     isError = titleError != null,
-                    supportingText = titleError?.let { { Text(it) } }
+                    supportingText = titleError?.let { { Text(it) } },
+                    singleLine = true
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -321,7 +331,7 @@ private fun EditNoteDialog(
                 OutlinedTextField(
                     value = text,
                     onValueChange = { text = it },
-                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 120.dp), // Use defaultMinSize
                     label = { Text("Note (optional)") },
                     minLines = 3
                 )
@@ -371,36 +381,25 @@ private fun FullScreenNoteDialog(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Top bar
-                TopAppBar(
-                    title = { Text("Note") },
+                TopAppBar( // This TopAppBar is part of the Dialog, which is fine.
+                    title = { Text(note.title.ifEmpty { "Note" }, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     navigationIcon = {
                         IconButton(onClick = onDismiss) {
                             Icon(Icons.Default.Close, contentDescription = "Close")
                         }
                     }
                 )
-                
-                // Content
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .padding(16.dp) // Content padding for the dialog's text area
                         .verticalScroll(rememberScrollState())
                         .transformable(state = transformableState)
                 ) {
-                    // Title
-                    if (note.title.isNotEmpty()) {
-                        Text(
-                            text = note.title,
-                            style = MaterialTheme.typography.headlineMedium.copy(
-                                fontSize = (MaterialTheme.typography.headlineMedium.fontSize.value * scale).sp
-                            ),
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
-                    
-                    // Date
+                    // Title inside content is removed as it's in Dialog's TopAppBar now
+                    // if (note.title.isNotEmpty()) { ... }
+
                     Text(
                         text = dateFormat.format(Date(note.timestamp)),
                         style = MaterialTheme.typography.bodyMedium.copy(
@@ -409,14 +408,13 @@ private fun FullScreenNoteDialog(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 16.dp)
                     )
-                    
-                    // Note text
+
                     Text(
                         text = note.text,
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = (MaterialTheme.typography.bodyLarge.fontSize.value * scale).sp
-                        ),
-                        lineHeight = (MaterialTheme.typography.bodyLarge.lineHeight.value * scale).sp
+                            fontSize = (MaterialTheme.typography.bodyLarge.fontSize.value * scale).sp,
+                            lineHeight = (MaterialTheme.typography.bodyLarge.lineHeight.value * scale).sp
+                        )
                     )
                 }
             }

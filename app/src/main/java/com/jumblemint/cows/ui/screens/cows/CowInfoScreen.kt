@@ -3,17 +3,17 @@ package com.jumblemint.cows.ui.screens.cows
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.StarBorder
+// import androidx.compose.foundation.lazy.LazyColumn // Not used directly if activities are in the main column
+// import androidx.compose.foundation.lazy.items // Not used directly
+// import androidx.compose.material.icons.Icons // Not needed if TopAppBar is removed
+// import androidx.compose.material.icons.filled.ArrowBack // Not needed
+// import androidx.compose.material.icons.filled.Edit // Not needed
+// import androidx.compose.material.icons.filled.Star // Not needed
+// import androidx.compose.material.icons.filled.StarBorder // Not needed
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.ui.Modifier // Ensure Modifier is imported
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -30,12 +30,13 @@ import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
 
-@OptIn(ExperimentalMaterial3Api::class)
+// @OptIn(ExperimentalMaterial3Api::class) // Not strictly needed if TopAppBar is removed, but keep if other M3 components are used directly.
 @Composable
 fun CowInfoScreen(
     cowId: Long,
-    onNavigateBack: () -> Unit,
-    onEditCow: () -> Unit
+    onNavigateBack: () -> Unit, // Still needed for MainActivity's TopAppBar if it provides a back button
+    onEditCow: () -> Unit,     // Still needed for MainActivity's TopAppBar if it provides an edit button
+    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
 ) {
     val context = LocalContext.current
     val database = CattleDatabase.getDatabase(context)
@@ -54,54 +55,39 @@ fun CowInfoScreen(
     val viewModel: CowInfoViewModel = viewModel(
         factory = CowInfoViewModelFactory(repository, cowId)
     )
-    
+
     val uiState by viewModel.uiState.collectAsState()
-    
+
     // Get tag color map for resolving tag colors
     val tagColorMap = rememberTagColorMap(repository)
-    
+
+    // The root composable now applies the modifier passed from CattleNavigation
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = modifier // <<< APPLIED MODIFIER HERE (this will include padding for MainActivity's TopAppBar)
+                           // .fillMaxSize() is now part of the incoming modifier
     ) {
-        // Top App Bar
-        TopAppBar(
-            title = { Text(uiState.cow?.name ?: "Cow Info") },
-            navigationIcon = {
-                IconButton(onClick = onNavigateBack) {
-                    Icon(Icons.Filled.ArrowBack, contentDescription = "Back")
-                }
-            },
-            actions = {
-                IconToggleButton(
-                    checked = uiState.cow?.isWatched == true,
-                    onCheckedChange = { viewModel.toggleWatch() }
-                ) {
-                    Icon(
-                        if (uiState.cow?.isWatched == true) Icons.Filled.Star else Icons.Filled.StarBorder,
-                        contentDescription = if (uiState.cow?.isWatched == true) "Stop Watching" else "Watch",
-                        tint = if (uiState.cow?.isWatched == true) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                IconButton(onClick = onEditCow) {
-                    Icon(Icons.Default.Edit, contentDescription = "Edit")
-                }
-            }
-        )
-        
+        // TopAppBar is REMOVED from here.
+        // Title, navigation, and actions will be handled by MainActivity's TopAppBarWithMenu.
+        // We might need to adjust TopAppBarWithMenu in MainActivity to show appropriate actions (like Edit, Watch)
+        // based on the CowInfoScreen route. For now, onNavigateBack and onEditCow are passed
+        // but not directly used by UI elements *within* this screen's composable.
+
         if (uiState.isLoading) {
             Box(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize(), // This Box can still fill the space *within* the padded Column
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
         } else {
             uiState.cow?.let { cow ->
+                // The main content Column now takes the padding from the outer Column (which got it from the modifier)
+                // and then adds its own internal scrolling and padding.
                 Column(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxSize() // Fill the space given by the parent Column
                         .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
+                        .padding(16.dp), // Internal padding for the content itself
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     // Header with tag and basic info
@@ -121,7 +107,7 @@ fun CowInfoScreen(
                                     backgroundColor = resolveTagColor(cow.tagColor, tagColorMap)
                                 )
                             }
-                            
+
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
                                     text = cow.name ?: "Unnamed Cow",
@@ -149,7 +135,7 @@ fun CowInfoScreen(
                             }
                         }
                     }
-                    
+
                     // Basic Information
                     Card {
                         Column(
@@ -161,7 +147,7 @@ fun CowInfoScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
-                            
+
                             cow.birthDate?.let {
                                 InfoRow("Birth Date", it.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")))
                             }
@@ -174,7 +160,7 @@ fun CowInfoScreen(
                             }
                         }
                     }
-                    
+
                     // Parentage
                     if (uiState.mother != null || uiState.father != null) {
                         Card {
@@ -187,7 +173,7 @@ fun CowInfoScreen(
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
-                                
+
                                 uiState.mother?.let { mother ->
                                     InfoRow("Mother", mother.name ?: "Unnamed (${mother.tagNumber ?: "No tag"})")
                                 }
@@ -197,7 +183,7 @@ fun CowInfoScreen(
                             }
                         }
                     }
-                    
+
                     // Children
                     if (uiState.children.isNotEmpty()) {
                         Card {
@@ -210,7 +196,7 @@ fun CowInfoScreen(
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
-                                
+
                                 uiState.children.forEach { child ->
                                     val childName = child.name ?: "Unnamed"
                                     val childTag = child.tagNumber?.let { " ($it)" } ?: ""
@@ -227,7 +213,7 @@ fun CowInfoScreen(
                             }
                         }
                     }
-                    
+
                     // Activities
                     if (uiState.activities.isNotEmpty()) {
                         Card {
@@ -240,12 +226,12 @@ fun CowInfoScreen(
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
-                                
+
                                 uiState.activities.take(5).forEach { activity ->
                                     val dateStr = activity.date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
                                     InfoRow(activity.activityType.name, "$dateStr - ${activity.notes ?: "No notes"}")
                                 }
-                                
+
                                 if (uiState.activities.size > 5) {
                                     Text(
                                         text = "... and ${uiState.activities.size - 5} more",
@@ -257,7 +243,7 @@ fun CowInfoScreen(
                             }
                         }
                     }
-                    
+
                     // Error message
                     uiState.error?.let { error ->
                         Card(
@@ -272,8 +258,8 @@ fun CowInfoScreen(
                             )
                         }
                     }
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Spacer(modifier = Modifier.height(16.dp)) // Spacer at the bottom for scroll padding
                 }
             }
         }
@@ -296,7 +282,7 @@ private fun InfoRow(label: String, value: String) {
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.weight(2f)
+            modifier = Modifier.weight(2f) // Give more weight to value if it can be long
         )
     }
 }

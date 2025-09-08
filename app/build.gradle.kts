@@ -62,7 +62,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
-    implementation("com.github.skydoves:colorpicker-compose:1.0.0")
+    implementation("com.github.skydoves:colorpicker-compose:1.1.2")
     
     // Firebase
     implementation(platform(libs.firebase.bom))
