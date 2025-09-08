@@ -103,16 +103,27 @@ class SettingsViewModel(
 
     fun installSampleData() {
         viewModelScope.launch {
+            if (_uiState.value.isSampleDataInstalled) {
+                _uiState.value = _uiState.value.copy(
+                    message = "Sample data is already installed.",
+                    isLoading = false // Ensure loading is reset
+                )
+                return@launch
+            }
             try {
                 _uiState.value = _uiState.value.copy(message = null, error = null, isLoading = true)
-                repository.installSampleData()
+                repository.installSampleData() // This can still throw an error, which we need to fix in the repo
                 _uiState.value = _uiState.value.copy(
                     isSampleDataInstalled = true,
                     message = "Sample data installed successfully.",
                     isLoading = false
                 )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "Failed to install sample data: ${e.message}", isLoading = false)
+                // The error message from the screenshot indicates the exception message is "Index 25 out of bounds for length 25"
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to install sample data: ${e.message}", // Keep original error reporting
+                    isLoading = false
+                )
             }
         }
     }

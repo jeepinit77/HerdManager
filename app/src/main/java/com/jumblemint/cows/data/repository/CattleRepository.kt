@@ -827,7 +827,7 @@ class CattleRepository(
         ))
         
         activities.add(Activity(
-            cowId = cowIds[25], // Ranger
+            cowId = cowIds[24], // Ranger  <-- CORRECTED FROM cowIds[25]
             date = baseDate.minusMonths(8),
             activityType = ActivityType.WEANED,
             notes = "Weaned from Luna at 8 months",
@@ -1021,7 +1021,7 @@ class CattleRepository(
                 ),
                 Note(
                     title = "Feed Inventory",
-                    text = "Current hay supply should last through winter. Need to order mineral supplements and check salt lick supplies in West Lot.",
+                    text = "Current hay supply should now last through winter. Need to order mineral supplements and check salt lick supplies in West Lot.",
                     timestamp = System.currentTimeMillis() - (1 * 24 * 60 * 60 * 1000) // 1 day ago
                 ),
                 Note(
@@ -1049,7 +1049,7 @@ class CattleRepository(
         }
         
         // Delete sample cows (by tag number pattern)
-        val sampleTagPrefixes = listOf("B00", "C00", "H00", "S00", "K00")
+        val sampleTagPrefixes = listOf("B00", "C00", "H00", "S00", "K00", "Y00") // Added Y00 for Yearlings
         val allCows = getAllCows().firstOrNull() ?: emptyList()
         allCows.filter { cow ->
             cow.tagNumber?.let { tag ->
