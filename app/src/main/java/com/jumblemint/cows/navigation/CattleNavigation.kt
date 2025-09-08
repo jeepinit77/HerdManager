@@ -1,6 +1,8 @@
 package com.jumblemint.cows.navigation
 
 import android.app.Application
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding // Import for creating screenModifierWithPadding
@@ -14,8 +16,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
@@ -90,14 +94,33 @@ fun CattleNavigation(
             )
         }
 
-        composable("${Screen.CowInfo.route}/{cowId}") { backStackEntry ->
-            val cowId = backStackEntry.arguments?.getString("cowId")?.toLongOrNull() ?: 0L
+        composable(
+            route = "${Screen.CowInfo.route}/{cowId}",
+            arguments = listOf(navArgument("cowId") { type = NavType.LongType }),
+            enterTransition = {
+                slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth })
+            },
+            exitTransition = {
+                slideOutHorizontally(targetOffsetX = { fullWidth -> -fullWidth })
+            },
+            popEnterTransition = {
+                slideInHorizontally(initialOffsetX = { fullWidth -> -fullWidth })
+            },
+            popExitTransition = {
+                slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth })
+            }
+        ) { backStackEntry ->
+            val cowId = backStackEntry.arguments?.getLong("cowId") ?: 0L // Use getLong
             CowInfoScreen(
                 modifier = screenModifierWithPadding,
                 cowId = cowId,
                 onNavigateBack = { navController.popBackStack() },
                 onEditCow = { navController.navigate("${Screen.CowDetail.route}/$cowId") },
-                onNavigateToCow = { selectedCowId -> navController.navigate("${Screen.CowInfo.route}/$selectedCowId") }
+                onNavigateToCow = { selectedCowId ->
+                    if (cowId != selectedCowId) { // Prevent navigating to the same cowId again
+                        navController.navigate("${Screen.CowInfo.route}/$selectedCowId")
+                    }
+                }
             )
         }
 
