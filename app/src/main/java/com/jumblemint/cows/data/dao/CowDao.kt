@@ -47,6 +47,13 @@ interface CowDao {
     @Query("SELECT * FROM cows WHERE fatherId = :fatherId AND isDeleted = 0 ORDER BY birthDate DESC")
     fun getCalvesByFather(fatherId: Long): Flow<List<Cow>>
 
+    // Queries for Siblings
+    @Query("SELECT * FROM cows WHERE motherId = :motherId AND id != :cowId AND isDeleted = 0 ORDER BY birthDate DESC")
+    fun getMaternalSiblings(cowId: Long, motherId: Long): Flow<List<Cow>>
+
+    @Query("SELECT * FROM cows WHERE fatherId = :fatherId AND id != :cowId AND isDeleted = 0 ORDER BY birthDate DESC")
+    fun getPaternalSiblings(cowId: Long, fatherId: Long): Flow<List<Cow>>
+
     // MODIFIED: pastureId parameter changed from Long? to String?
     @Query("UPDATE cows SET pastureId = :pastureId WHERE id = :cowId")
     suspend fun updateCowPasture(cowId: Long, pastureId: String?)

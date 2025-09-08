@@ -40,6 +40,11 @@ class CattleRepository(
     fun getActiveMales(): Flow<List<Cow>> = cowDao.getActiveMales()
     fun getCalvesByMother(motherId: Long): Flow<List<Cow>> = cowDao.getCalvesByMother(motherId)
     fun getCalvesByFather(fatherId: Long): Flow<List<Cow>> = cowDao.getCalvesByFather(fatherId)
+
+    // New methods for siblings
+    fun getMaternalSiblings(cowId: Long, motherId: Long): Flow<List<Cow>> = cowDao.getMaternalSiblings(cowId, motherId)
+    fun getPaternalSiblings(cowId: Long, fatherId: Long): Flow<List<Cow>> = cowDao.getPaternalSiblings(cowId, fatherId)
+
     suspend fun getCowById(id: Long): Cow? = cowDao.getCowById(id)
     fun getCowByIdFlow(id: Long): Flow<Cow?> = cowDao.getCowByIdFlow(id)
     suspend fun getCowByTagNumber(tagNumber: String): Cow? = cowDao.getCowByTagNumber(tagNumber)

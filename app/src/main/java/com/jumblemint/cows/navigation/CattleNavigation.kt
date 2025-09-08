@@ -96,7 +96,8 @@ fun CattleNavigation(
                 modifier = screenModifierWithPadding,
                 cowId = cowId,
                 onNavigateBack = { navController.popBackStack() },
-                onEditCow = { navController.navigate("${Screen.CowDetail.route}/$cowId") }
+                onEditCow = { navController.navigate("${Screen.CowDetail.route}/$cowId") },
+                onNavigateToCow = { selectedCowId -> navController.navigate("${Screen.CowInfo.route}/$selectedCowId") }
             )
         }
 
@@ -272,7 +273,7 @@ fun CattleNavigation(
     }
 }
 
-// Sealed class Screen definition remains the same
+// Sealed class Screen definition remains 
 sealed class Screen(val route: String, val title: String) {
     object Login : Screen("login", "Login")
     object SignIn : Screen("sign_in", "Sign In")
