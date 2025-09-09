@@ -4,13 +4,16 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
-// import androidx.compose.foundation.selection.selectable // Not directly used in the modified version
-// import androidx.compose.material.icons.Icons // Imports for specific icons will be kept if actions are hoisted
-// import androidx.compose.material.icons.filled.* // Or removed if actions are fully handled by MainActivity
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack // Removed this specific import
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier // Ensure Modifier is imported
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,10 +28,6 @@ import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModel
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModelFactory
-import androidx.compose.material.icons.Icons // Keep for FilterList, Clear, ClearAll if used in hoisted actions
-import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 
@@ -36,18 +35,12 @@ import androidx.compose.foundation.clickable
 @Composable
 fun WorkingListScreen(
     onNavigateBack: () -> Unit,
-    onCowClick: (Long) -> Unit, // Added onCowClick parameter
+    onCowClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
-    // TODO: Add parameters for hoisted actions if MainActivity will provide them:
-    // onToggleFilters: () -> Unit,
-    // onClearAllFilters: () -> Unit,
-    // onClearAllChecks: () -> Unit,
-    // showFiltersInAppBar: Boolean, // To control visibility of filter chip in AppBar
-    // hasActiveFiltersInAppBar: Boolean // To control visibility of clear filter icon in AppBar
 ) {
     val context = LocalContext.current
     val database = CattleDatabase.getDatabase(context)
-    val repository = remember { // Encapsulate repository creation in remember
+    val repository = remember {
         CattleRepository(
             cowDao = database.cowDao(),
             pastureDao = database.pastureDao(),
@@ -68,20 +61,33 @@ fun WorkingListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val filteredCows by viewModel.filteredCows.collectAsState()
     val checkedItems by viewModel.checkedItems.collectAsState()
-    var showFiltersState by remember { mutableStateOf(false) } // Renamed to avoid conflict if a prop is passed
+    var showFiltersState by remember { mutableStateOf(false) }
 
     val tagColorMap = rememberTagColorMap(repository)
 
     Scaffold(
-        modifier = modifier, 
-    ) { paddingValues -> 
-
-        Column( 
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = { Text("Working List") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onNavigateBack) { // Close button also navigates back
+                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                    }
+                }
+            )
+        }
+    ) { paddingValues ->
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) 
+                .padding(paddingValues)
         ) {
-
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -92,33 +98,32 @@ fun WorkingListScreen(
                 FilterChip(
                     onClick = { showFiltersState = !showFiltersState },
                     label = { Text("Filters") },
-                    selected = showFiltersState || hasActiveFilters(uiState), 
+                    selected = showFiltersState || hasActiveFilters(uiState),
                     leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") }
                 )
-                 if (hasActiveFilters(uiState)) {
+                if (hasActiveFilters(uiState)) {
                     IconButton(onClick = { viewModel.clearAllFilters() }) {
                         Icon(Icons.Default.Clear, contentDescription = "Clear Content Filters")
                     }
                 }
                 IconButton(onClick = { viewModel.clearAllChecks() }) {
-                     Icon(Icons.Default.ClearAll, contentDescription = "Clear All Content Checks")
+                    Icon(Icons.Default.ClearAll, contentDescription = "Clear All Content Checks")
                 }
             }
 
-
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize() 
-                    .padding(horizontal = 16.dp), 
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 8.dp) 
+                contentPadding = PaddingValues(bottom = 8.dp)
             ) {
-                if (showFiltersState) { 
+                if (showFiltersState) {
                     item {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 8.dp) 
+                                .padding(bottom = 8.dp)
                         ) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
@@ -134,11 +139,10 @@ fun WorkingListScreen(
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                     )
-                                    TextButton(onClick = { showFiltersState = false }) { 
+                                    TextButton(onClick = { showFiltersState = false }) {
                                         Text("Done")
                                     }
                                 }
-
                                 FilterSection(
                                     title = "Status",
                                     items = Status.values().toList(),
@@ -146,7 +150,6 @@ fun WorkingListScreen(
                                     onToggle = { viewModel.toggleStatusFilter(it) },
                                     itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                                 )
-
                                 FilterSection(
                                     title = "Animal Type",
                                     items = Classification.values().toList(),
@@ -154,14 +157,12 @@ fun WorkingListScreen(
                                     onToggle = { viewModel.toggleClassificationFilter(it) },
                                     itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                                 )
-
                                 FilterSection(
                                     title = "Gender",
                                     items = Gender.values().toList(), selectedItems = uiState.selectedGenders,
                                     onToggle = { viewModel.toggleGenderFilter(it) },
                                     itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                                 )
-
                                 if (uiState.availablePastures.isNotEmpty()) {
                                     FilterSection(
                                         title = "Pasture",
@@ -175,12 +176,11 @@ fun WorkingListScreen(
                         }
                     }
                 }
-
                 if (filteredCows.isNotEmpty()) {
                     item {
                         val checkedCount = checkedItems.size
                         val totalCount = filteredCows.size
-                        Column(modifier = Modifier.padding(top = 8.dp)) { 
+                        Column(modifier = Modifier.padding(top = 8.dp)) {
                             LinearProgressIndicator(
                                 progress = if (totalCount > 0) checkedCount.toFloat() / totalCount else 0f,
                                 modifier = Modifier.fillMaxWidth()
@@ -192,15 +192,13 @@ fun WorkingListScreen(
                             )
                         }
                     }
-                } else if (!showFiltersState) { 
-                     item {
+                } else if (!showFiltersState) {
+                    item {
                         Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
                             Text("No cows match the current criteria.", style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                 }
-
-
                 items(filteredCows, key = { it.id }) { cow ->
                     WorkingListItem(
                         cow = cow,
@@ -213,7 +211,7 @@ fun WorkingListScreen(
                             }
                         },
                         resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap),
-                        modifier = Modifier.clickable { onCowClick(cow.id) } // Make item clickable
+                        onCowClick = { onCowClick(cow.id) }
                     )
                 }
             }
@@ -245,7 +243,7 @@ private fun <T> FilterSection(
             fontWeight = FontWeight.Medium
         )
         Spacer(modifier = Modifier.height(8.dp))
-        LazyRow( 
+        LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(items) { item ->
@@ -265,37 +263,38 @@ fun WorkingListItem(
     cow: Cow,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    onCowClick: (Long) -> Unit, 
     resolvedTagColor: androidx.compose.ui.graphics.Color? = null,
-    modifier: Modifier = Modifier // Added modifier to make item clickable
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(), // Apply passed modifier here
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onCheckedChange(!isChecked) }, 
         colors = CardDefaults.cardColors(
             containerColor = if (isChecked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 8.dp, vertical = 12.dp) 
+                .padding(horizontal = 8.dp, vertical = 12.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
                 checked = isChecked,
-                onCheckedChange = onCheckedChange,
-                modifier = Modifier.size(24.dp) 
+                onCheckedChange = onCheckedChange, 
+                modifier = Modifier.size(24.dp)
             )
-
             Spacer(modifier = Modifier.width(12.dp))
-
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = cow.name ?: cow.tagNumber ?: "Unknown",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.clickable { onCowClick(cow.id) } 
                 )
-
                 Row {
                     Text(
                         text = cow.classification.name.lowercase().replaceFirstChar { it.uppercase() },
@@ -310,21 +309,18 @@ fun WorkingListItem(
                         )
                     }
                 }
-
-                 resolvedTagColor?.let { color ->
-                    if (color != MaterialTheme.colorScheme.surfaceVariant && color != MaterialTheme.colorScheme.primaryContainer) { 
+                resolvedTagColor?.let { color ->
+                    if (color != MaterialTheme.colorScheme.surfaceVariant && color != MaterialTheme.colorScheme.primaryContainer) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                             Box(modifier = Modifier.size(12.dp).background(color, shape = MaterialTheme.shapes.small))
-                             Spacer(modifier = Modifier.width(4.dp))
-                             Text("Tag Color", style = MaterialTheme.typography.bodySmall, color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant)
-                         }
-                     }
-                 }
-
-
-                cow.pastureId?.let { pastureId -> 
+                            Box(modifier = Modifier.size(12.dp).background(color, shape = MaterialTheme.shapes.small))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Tag Color", style = MaterialTheme.typography.bodySmall, color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                cow.pastureId?.let { pastureId ->
                     Text(
-                        text = "Pasture: $pastureId", 
+                        text = "Pasture: $pastureId",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
                     )

@@ -19,9 +19,8 @@ fun DropdownField(
     label: String,
     options: List<String>,
     modifier: Modifier = Modifier,
-    isError: Boolean = false, // <<< ADDED isError PARAMETER
-    enabled: Boolean = true, // <<< ADDED enabled PARAMETER for consistency
-    // Optional: provide a color for the current value to tint the field background
+    isError: Boolean = false,
+    enabled: Boolean = true,
     valueBackgroundColor: ((String) -> Color?)? = null
 ) {
     var expanded by remember { mutableStateOf(false) }
@@ -31,69 +30,77 @@ fun DropdownField(
     }
     val contrast = bgColor?.let { if (it.luminance() < 0.5f) Color.White else Color.Black }
 
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        // Text colors
+        focusedTextColor = if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface,
+        unfocusedTextColor = if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface,
+        disabledTextColor = (if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.38f),
+
+        // Container colors
+        focusedContainerColor = bgColor ?: Color.Transparent,
+        unfocusedContainerColor = bgColor ?: Color.Transparent,
+        disabledContainerColor = if (bgColor != null) bgColor.copy(alpha = 0.12f) else Color.Transparent,
+
+        // Cursor color
+        cursorColor = if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
+        errorCursorColor = MaterialTheme.colorScheme.error,
+
+        // Label colors
+        focusedLabelColor = if (bgColor != null && value.isNotEmpty()) contrast?.copy(alpha = 0.9f) ?: MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant,
+        unfocusedLabelColor = if (bgColor != null && value.isNotEmpty()) contrast?.copy(alpha = 0.7f) ?: MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant,
+        disabledLabelColor = (if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.38f),
+
+        // Border colors
+        focusedBorderColor = if (isError) MaterialTheme.colorScheme.error else (if (bgColor != null && value.isNotEmpty()) contrast?.copy(alpha = 0.6f) ?: MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary),
+        unfocusedBorderColor = if (isError) MaterialTheme.colorScheme.error else (if (bgColor != null && value.isNotEmpty()) contrast?.copy(alpha = 0.4f) ?: MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline),
+        disabledBorderColor = (if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline).copy(alpha = 0.38f),
+        errorBorderColor = MaterialTheme.colorScheme.error,
+
+        // Trailing icon colors
+        focusedTrailingIconColor = if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface,
+        unfocusedTrailingIconColor = if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface,
+        disabledTrailingIconColor = (if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.38f),
+        errorTrailingIconColor = MaterialTheme.colorScheme.error
+    )
+
     Box(modifier = modifier) {
         OutlinedTextField(
             value = value,
             onValueChange = { /* Handled by DropdownMenu item clicks */ },
             label = { Text(label) },
             readOnly = true,
-            enabled = enabled, // <<< APPLY enabled STATE
-            isError = isError, // <<< APPLY isError STATE
+            enabled = enabled,
+            isError = isError,
             trailingIcon = {
                 Icon(
                     Icons.Default.ArrowDropDown,
                     contentDescription = "Dropdown",
-                    modifier = Modifier.clickable(enabled = enabled) { expanded = !expanded } // Only clickable if enabled
+                    modifier = Modifier.clickable(enabled = enabled) { expanded = !expanded }
                 )
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = enabled) { expanded = true }, // Only clickable if enabled
-            colors = if (bgColor != null && value.isNotEmpty()) {
-                TextFieldDefaults.outlinedTextFieldColors(
-                    containerColor = bgColor,
-                    focusedTextColor = contrast ?: MaterialTheme.colorScheme.onSurface,
-                    unfocusedTextColor = contrast ?: MaterialTheme.colorScheme.onSurface,
-                    disabledTextColor = (contrast ?: MaterialTheme.colorScheme.onSurface).copy(alpha = 0.38f),
-                    focusedLabelColor = contrast?.copy(alpha = 0.9f) ?: MaterialTheme.colorScheme.onSurfaceVariant,
-                    unfocusedLabelColor = contrast?.copy(alpha = 0.7f) ?: MaterialTheme.colorScheme.onSurfaceVariant,
-                    disabledLabelColor = (contrast ?: MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.38f),
-                    cursorColor = contrast ?: MaterialTheme.colorScheme.primary,
-                    focusedBorderColor = if (isError) MaterialTheme.colorScheme.error else contrast?.copy(alpha = 0.6f) ?: MaterialTheme.colorScheme.primary,
-                    unfocusedBorderColor = if (isError) MaterialTheme.colorScheme.error else contrast?.copy(alpha = 0.4f) ?: MaterialTheme.colorScheme.outline,
-                    disabledBorderColor = (contrast ?: MaterialTheme.colorScheme.outline).copy(alpha = 0.38f),
-                    focusedTrailingIconColor = contrast ?: MaterialTheme.colorScheme.onSurface,
-                    unfocusedTrailingIconColor = contrast ?: MaterialTheme.colorScheme.onSurface,
-                    disabledTrailingIconColor = (contrast ?: MaterialTheme.colorScheme.onSurface).copy(alpha = 0.38f)
-                )
-            } else {
-                TextFieldDefaults.outlinedTextFieldColors(
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                    disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.38f),
-                    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                )
-            }
+                .clickable(enabled = enabled) { expanded = true },
+            colors = textFieldColors
         )
 
         DropdownMenu(
-            expanded = expanded && enabled, // Menu should not expand if field is disabled
+            expanded = expanded && enabled,
             onDismissRequest = { expanded = false },
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Option to clear selection if value is not empty
             if (value.isNotEmpty()) {
                 DropdownMenuItem(
-                    text = { Text("None") }, // Or "Clear Selection"
+                    text = { Text("None") },
                     onClick = {
-                        onValueChange("") // Send empty string to clear
+                        onValueChange("")
                         expanded = false
                     }
                 )
             }
 
             options.forEach { option ->
-                if (option.isNotEmpty()) { // Avoid adding an empty option if "None" is already handled
+                if (option.isNotEmpty()) {
                     DropdownMenuItem(
                         text = { Text(option) },
                         onClick = {
