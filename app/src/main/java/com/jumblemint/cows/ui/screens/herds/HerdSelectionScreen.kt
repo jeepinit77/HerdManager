@@ -25,6 +25,7 @@ fun HerdSelectionScreen(
     onHerdSelected: (String) -> Unit,
     onCreateHerd: () -> Unit,
     onNavigateBack: (() -> Unit)? = null,
+    onCowClick: (Long) -> Unit, // Added new parameter
     herdViewModel: HerdViewModel = viewModel()
 ) {
     val uiState by herdViewModel.uiState.collectAsState()
@@ -127,6 +128,9 @@ fun HerdSelectionScreen(
                         role = herdWithRole.role,
                         memberCount = herdWithRole.memberCount,
                         onClick = { onHerdSelected(herdWithRole.herd.id) }
+                        // If a cow were to be clicked from here, you might pass onCowClick down 
+                        // or use it if this card represented a cow.
+                        // For now, onCowClick is a parameter of HerdSelectionScreen but not used by HerdCard.
                     )
                 }
             }

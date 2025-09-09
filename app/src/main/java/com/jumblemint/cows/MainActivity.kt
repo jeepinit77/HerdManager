@@ -4,33 +4,30 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues 
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding 
+import androidx.compose.foundation.pager.PagerState // New Import
+import androidx.compose.foundation.pager.rememberPagerState // New Import
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-// NavDestination is no longer directly needed by TopAppBarWithMenu if we pass Screen
-// import androidx.navigation.NavDestination
-// import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.jumblemint.cows.navigation.CattleNavigation
-import com.jumblemint.cows.navigation.Screen // Import our Screen sealed class
+import com.jumblemint.cows.navigation.* // Import all from navigation for constants and Screen
 import com.jumblemint.cows.ui.theme.CowsTheme
-import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch // New Import
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        getString(R.string.default_web_client_id) // Keep this if used elsewhere
+        // getString(R.string.default_web_client_id) // Keep this if used elsewhere
 
         setContent {
             CowsTheme {
@@ -40,12 +37,31 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+// Helper function to get page index for a screen (must match Pager content)
+fun getPageIndexForScreen(screen: Screen): Int = when (screen) {
+    Screen.Dashboard -> DASHBOARD_PAGE_INDEX
+    Screen.Cows -> COWS_PAGE_INDEX
+    Screen.Pastures -> PASTURES_PAGE_INDEX
+    Screen.Activities -> ACTIVITIES_PAGE_INDEX
+    Screen.Notes -> NOTES_PAGE_INDEX
+    else -> -1 // Not a main pager screen
+}
+
+// Helper function to get screen for a page index
+fun getScreenForPageIndex(index: Int): Screen? = when (index) {
+    DASHBOARD_PAGE_INDEX -> Screen.Dashboard
+    COWS_PAGE_INDEX -> Screen.Cows
+    PASTURES_PAGE_INDEX -> Screen.Pastures
+    ACTIVITIES_PAGE_INDEX -> Screen.Activities
+    NOTES_PAGE_INDEX -> Screen.Notes
+    else -> null
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopAppBarWithMenu(currentScreen: Screen?, onNavigateSettings: () -> Unit) {
+fun TopAppBarWithMenu(currentScreenForTitle: Screen?, onNavigateSettings: () -> Unit) {
     var showMenu by remember { mutableStateOf(false) }
-    // Simplified title logic using Screen object's title property
-    val title = currentScreen?.title ?: "Cattle Manager"
+    val title = currentScreenForTitle?.title ?: "Cattle Manager"
 
     TopAppBar(
         title = { Text(title) },
@@ -64,17 +80,41 @@ fun TopAppBarWithMenu(currentScreen: Screen?, onNavigateSettings: () -> Unit) {
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CattleManagerApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRoutePattern = navBackStackEntry?.destination?.route
-    val currentScreen = Screen.fromRoute(currentRoutePattern)
+    val currentRouteFromNav = navBackStackEntry?.destination?.route
+    val currentScreenFromNav = Screen.fromRoute(currentRouteFromNav)
 
     val context = LocalContext.current
     val app = context.applicationContext as CattleApplication
     val currentUser by app.authService.currentUser.collectAsState(initial = null)
+    val coroutineScope = rememberCoroutineScope()
+
+    val initialPageForPagerState = if (currentScreenFromNav == Screen.MainPager) {
+        navBackStackEntry?.arguments?.getInt("initialPage", DASHBOARD_PAGE_INDEX) ?: DASHBOARD_PAGE_INDEX
+    } else {
+        DASHBOARD_PAGE_INDEX 
+    }
+
+    val pagerState = rememberPagerState(
+        initialPage = initialPageForPagerState,
+        pageCount = { MAIN_SCREEN_PAGE_COUNT }
+    )
+
+    LaunchedEffect(currentScreenFromNav, initialPageForPagerState) {
+        if (currentScreenFromNav == Screen.MainPager && pagerState.currentPage != initialPageForPagerState) {
+            pagerState.scrollToPage(initialPageForPagerState)
+        }
+    }
+    
+    val currentScreenForUI = if (currentScreenFromNav == Screen.MainPager) {
+        getScreenForPageIndex(pagerState.currentPage)
+    } else {
+        currentScreenFromNav
+    }
 
     val bottomNavItems = listOf(
         BottomNavItem(Screen.Dashboard, Icons.Default.Home, "Home"),
@@ -84,76 +124,70 @@ fun CattleManagerApp() {
         BottomNavItem(Screen.Notes, Icons.Default.Note, "Notes")
     )
 
-    // Determine if the main TopAppBar should be shown
-    var showMainTopAppBar = currentScreen?.hasOwnTopAppBar != true
-
-    // Special handling for PastureDetail route based on arguments
-    if (currentScreen == Screen.PastureDetail) {
+    var showMainTopAppBar = currentScreenForUI?.hasOwnTopAppBar != true
+    if (currentScreenFromNav == Screen.PastureDetail) {
         val pastureId = navBackStackEntry?.arguments?.getString("pastureId")
-        if (pastureId == "0") { // This is AddPastureScreen, which has its own TopAppBar
-            showMainTopAppBar = false
-        } else { // This is viewing PastureDetailScreen, which should use the main TopAppBar
-            showMainTopAppBar = true 
-        }
+        showMainTopAppBar = pastureId != "0"
     }
-    // Also ensure Login and Sign In screens don't show the main top app bar, if not already covered by hasOwnTopAppBar
-    if (currentScreen == Screen.Login || currentScreen == Screen.SignIn) {
+    if (currentScreenFromNav == Screen.Login || currentScreenFromNav == Screen.SignIn) {
         showMainTopAppBar = false
     }
-
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
                 if (showMainTopAppBar) {
-                    TopAppBarWithMenu(currentScreen) { navController.navigate(Screen.Settings.route) }
+                    TopAppBarWithMenu(currentScreenForUI) { navController.navigate(Screen.Settings.route) }
                 }
             },
             bottomBar = {
-                val currentRoute = navBackStackEntry?.destination?.route // Use pattern for consistency
-                val shouldShowBottomNav = bottomNavItems.any { item ->
-                    // Check if currentRoute matches item.screen.route or starts with item.screen.route + "/" for argument routes
-                    currentRoute == item.screen.route || currentRoute?.startsWith(item.screen.route + "/") == true ||
-                    (item.screen == Screen.Cows && currentRoute?.startsWith("${Screen.Cows.route}?") == true) // Specific for ?param style
-                }
-                if (shouldShowBottomNav) {
+                if (currentScreenFromNav == Screen.MainPager) {
                     NavigationBar {
                         bottomNavItems.forEach { item ->
+                            val pageIndex = getPageIndexForScreen(item.screen)
                             NavigationBarItem(
                                 icon = { Icon(item.icon, item.label) },
                                 label = { Text(item.label) },
-                                selected = currentRoute == item.screen.route || 
-                                           currentRoute?.startsWith(item.screen.route + "/") == true ||
-                                           (item.screen == Screen.Cows && currentRoute?.startsWith("${Screen.Cows.route}?") == true),
+                                selected = pagerState.currentPage == pageIndex,
                                 onClick = {
-                                    navController.navigate(item.screen.route) {
-                                        popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                                        launchSingleTop = true
-                                        restoreState = true
+                                    if (pageIndex != -1) { // item.screen is one of the pager screens
+                                        // Since this bottomBar is shown only when currentScreenFromNav == Screen.MainPager,
+                                        // we are on the MainPager. Just scroll the pagerState.
+                                        coroutineScope.launch {
+                                            pagerState.scrollToPage(pageIndex)
+                                        }
                                     }
                                 }
                             )
                         }
                         NavigationBarItem(
-                            selected = currentScreen == Screen.Sync || currentScreen == Screen.SignIn,
+                            selected = currentScreenFromNav == Screen.Sync || currentScreenFromNav == Screen.SignIn,
                             onClick = {
-                                if (currentUser == null || currentUser?.isLocalUser == true) {
-                                    navController.navigate(Screen.SignIn.route) { launchSingleTop = true }
+                                val targetRoute = if (currentUser == null || currentUser?.isLocalUser == true) {
+                                    Screen.SignIn.route
                                 } else {
-                                    navController.navigate(Screen.Sync.route) { launchSingleTop = true }
+                                    Screen.Sync.route 
+                                }
+                                navController.navigate(targetRoute) {
+                                     popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true 
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
                             },
-                            icon = { com.jumblemint.cows.ui.components.SyncStatusNavIcon() },
+                            icon = { com.jumblemint.cows.ui.components.SyncStatusNavIcon() }, 
                             label = { Text("Sync") }
                         )
                     }
                 }
             }
-        ) { innerPadding -> 
+        ) { innerPadding ->
             CattleNavigation(
                 navController = navController,
-                mainScaffoldPadding = innerPadding 
+                mainScaffoldPadding = innerPadding,
+                pagerState = pagerState 
             )
         }
     }

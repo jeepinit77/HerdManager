@@ -30,12 +30,14 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ClearAll
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkingListScreen(
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier, // <<< ADDED MODIFIER PARAMETER
+    onCowClick: (Long) -> Unit, // Added onCowClick parameter
+    modifier: Modifier = Modifier,
     // TODO: Add parameters for hoisted actions if MainActivity will provide them:
     // onToggleFilters: () -> Unit,
     // onClearAllFilters: () -> Unit,
@@ -70,37 +72,16 @@ fun WorkingListScreen(
 
     val tagColorMap = rememberTagColorMap(repository)
 
-    // TODO: Communicate screen title "Working List" to MainActivity's TopAppBar.
-    // This could be done via a callback, a shared ViewModel, or by passing it to NavHost.
-    // Example: LaunchedEffect(Unit) { /* call to update MainActivity's title */ }
-
-    // TODO: The actions (FilterChip, Clear Filters, Clear All Checks) previously in the TopAppBar
-    // need to be handled by MainActivity's TopAppBarWithMenu.
-    // This might involve:
-    // 1. Hoisting the state (`showFilters`, `hasActiveFilters`) and the event handlers
-    //    (`viewModel.clearAllFilters()`, `viewModel.clearAllChecks()`) to `CattleNavigation`
-    //    and then to `MainActivity`.
-    // 2. Or, `MainActivity`'s `TopAppBarWithMenu` could observe the `WorkingListViewModel` directly (if appropriate).
-    // For now, these actions are removed from this screen's Scaffold.
-    // The `showFiltersState` variable will control the visibility of the filter section *within* the content.
-    // A separate button might be needed in the content if the AppBar's filter toggle is not used.
-
     Scaffold(
-        modifier = modifier, // <<< APPLIED MODIFIER HERE
-        // topBar = { ... } // TopAppBar REMOVED
-        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out
-    ) { paddingValues -> // These paddingValues are from THIS Scaffold (e.g., if it had a FAB)
-                         // The `modifier` passed to this Scaffold ALREADY includes padding
-                         // from MainActivity's Scaffold (for the TopAppBarWithMenu).
+        modifier = modifier, 
+    ) { paddingValues -> 
 
-        Column( // Added a parent Column to manage layout of potential in-content filter toggle and list
+        Column( 
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Apply padding from THIS screen's Scaffold (if any elements like FAB were present)
+                .padding(paddingValues) 
         ) {
 
-            // Optional: In-content button to toggle filters if AppBar doesn't handle it
-            // This is a placeholder if the filter toggle is not part of the main AppBar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -111,7 +92,7 @@ fun WorkingListScreen(
                 FilterChip(
                     onClick = { showFiltersState = !showFiltersState },
                     label = { Text("Filters") },
-                    selected = showFiltersState || hasActiveFilters(uiState), // Use local state for chip selection
+                    selected = showFiltersState || hasActiveFilters(uiState), 
                     leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") }
                 )
                  if (hasActiveFilters(uiState)) {
@@ -127,18 +108,17 @@ fun WorkingListScreen(
 
             LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize() // Fills the remaining space in the parent Column
-                    .padding(horizontal = 16.dp), // Keep horizontal padding for the list items
+                    .fillMaxSize() 
+                    .padding(horizontal = 16.dp), 
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 8.dp) // Padding at the bottom of the list
+                contentPadding = PaddingValues(bottom = 8.dp) 
             ) {
-                // Expandable Filter Section
-                if (showFiltersState) { // Controlled by local state
+                if (showFiltersState) { 
                     item {
                         Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 8.dp) // Space below filter card
+                                .padding(bottom = 8.dp) 
                         ) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
@@ -154,12 +134,11 @@ fun WorkingListScreen(
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                     )
-                                    TextButton(onClick = { showFiltersState = false }) { // Use local state
+                                    TextButton(onClick = { showFiltersState = false }) { 
                                         Text("Done")
                                     }
                                 }
 
-                                // Status Filters
                                 FilterSection(
                                     title = "Status",
                                     items = Status.values().toList(),
@@ -168,7 +147,6 @@ fun WorkingListScreen(
                                     itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                                 )
 
-                                // Classification Filters
                                 FilterSection(
                                     title = "Animal Type",
                                     items = Classification.values().toList(),
@@ -177,7 +155,6 @@ fun WorkingListScreen(
                                     itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                                 )
 
-                                // Gender Filters
                                 FilterSection(
                                     title = "Gender",
                                     items = Gender.values().toList(), selectedItems = uiState.selectedGenders,
@@ -185,7 +162,6 @@ fun WorkingListScreen(
                                     itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                                 )
 
-                                // Pasture Filters
                                 if (uiState.availablePastures.isNotEmpty()) {
                                     FilterSection(
                                         title = "Pasture",
@@ -200,12 +176,11 @@ fun WorkingListScreen(
                     }
                 }
 
-                // Progress indicator
                 if (filteredCows.isNotEmpty()) {
                     item {
                         val checkedCount = checkedItems.size
                         val totalCount = filteredCows.size
-                        Column(modifier = Modifier.padding(top = 8.dp)) { // Add padding if filters are not shown
+                        Column(modifier = Modifier.padding(top = 8.dp)) { 
                             LinearProgressIndicator(
                                 progress = if (totalCount > 0) checkedCount.toFloat() / totalCount else 0f,
                                 modifier = Modifier.fillMaxWidth()
@@ -217,7 +192,7 @@ fun WorkingListScreen(
                             )
                         }
                     }
-                } else if (!showFiltersState) { // Show empty message only if not loading and filters are not open
+                } else if (!showFiltersState) { 
                      item {
                         Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
                             Text("No cows match the current criteria.", style = MaterialTheme.typography.bodyLarge)
@@ -226,7 +201,6 @@ fun WorkingListScreen(
                 }
 
 
-                // Cow List
                 items(filteredCows, key = { it.id }) { cow ->
                     WorkingListItem(
                         cow = cow,
@@ -238,7 +212,8 @@ fun WorkingListScreen(
                                 viewModel.uncheckItem(cow.id)
                             }
                         },
-                        resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap)
+                        resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap),
+                        modifier = Modifier.clickable { onCowClick(cow.id) } // Make item clickable
                     )
                 }
             }
@@ -246,10 +221,7 @@ fun WorkingListScreen(
     }
 }
 
-// Helper function to check if any filters are active (beyond the default active status)
 private fun hasActiveFilters(uiState: com.jumblemint.cows.ui.viewmodel.WorkingListUiState): Boolean {
-    // Assuming Status.ACTIVE is the default and other filters being empty is default.
-    // This logic might need adjustment based on what's considered "default" vs "active filter".
     val hasNonDefaultStatusFilters = uiState.selectedStatuses.isNotEmpty() && (uiState.selectedStatuses.size != 1 || !uiState.selectedStatuses.contains(Status.ACTIVE))
     return hasNonDefaultStatusFilters ||
            uiState.selectedClassifications.isNotEmpty() ||
@@ -273,7 +245,7 @@ private fun <T> FilterSection(
             fontWeight = FontWeight.Medium
         )
         Spacer(modifier = Modifier.height(8.dp))
-        LazyRow( // Changed from FlowRow for consistency if preferred, can be FlowRow if wrapping is desired
+        LazyRow( 
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(items) { item ->
@@ -293,24 +265,25 @@ fun WorkingListItem(
     cow: Cow,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    resolvedTagColor: androidx.compose.ui.graphics.Color? = null // Keep type explicit
+    resolvedTagColor: androidx.compose.ui.graphics.Color? = null,
+    modifier: Modifier = Modifier // Added modifier to make item clickable
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(), // Apply passed modifier here
         colors = CardDefaults.cardColors(
             containerColor = if (isChecked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 8.dp, vertical = 12.dp) // Adjusted padding
+                .padding(horizontal = 8.dp, vertical = 12.dp) 
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(
                 checked = isChecked,
                 onCheckedChange = onCheckedChange,
-                modifier = Modifier.size(24.dp) // Explicit size for checkbox
+                modifier = Modifier.size(24.dp) 
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -338,9 +311,8 @@ fun WorkingListItem(
                     }
                 }
 
-                // Display resolvedTagColor if available and different from default
                  resolvedTagColor?.let { color ->
-                    if (color != MaterialTheme.colorScheme.surfaceVariant && color != MaterialTheme.colorScheme.primaryContainer) { // Avoid showing default colors
+                    if (color != MaterialTheme.colorScheme.surfaceVariant && color != MaterialTheme.colorScheme.primaryContainer) { 
                         Row(verticalAlignment = Alignment.CenterVertically) {
                              Box(modifier = Modifier.size(12.dp).background(color, shape = MaterialTheme.shapes.small))
                              Spacer(modifier = Modifier.width(4.dp))
@@ -350,9 +322,9 @@ fun WorkingListItem(
                  }
 
 
-                cow.pastureId?.let { pastureId -> // This would ideally be pastureName
+                cow.pastureId?.let { pastureId -> 
                     Text(
-                        text = "Pasture: $pastureId", // TODO: Resolve pasture name if possible
+                        text = "Pasture: $pastureId", 
                         style = MaterialTheme.typography.bodySmall,
                         color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
                     )
