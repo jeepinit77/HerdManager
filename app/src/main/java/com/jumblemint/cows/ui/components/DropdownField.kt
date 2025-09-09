@@ -31,32 +31,21 @@ fun DropdownField(
     val contrast = bgColor?.let { if (it.luminance() < 0.5f) Color.White else Color.Black }
 
     val textFieldColors = OutlinedTextFieldDefaults.colors(
-        // Text colors
         focusedTextColor = if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface,
         unfocusedTextColor = if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface,
         disabledTextColor = (if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.38f),
-
-        // Container colors
         focusedContainerColor = bgColor ?: Color.Transparent,
         unfocusedContainerColor = bgColor ?: Color.Transparent,
         disabledContainerColor = if (bgColor != null) bgColor.copy(alpha = 0.12f) else Color.Transparent,
-
-        // Cursor color
         cursorColor = if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary,
         errorCursorColor = MaterialTheme.colorScheme.error,
-
-        // Label colors
         focusedLabelColor = if (bgColor != null && value.isNotEmpty()) contrast?.copy(alpha = 0.9f) ?: MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant,
         unfocusedLabelColor = if (bgColor != null && value.isNotEmpty()) contrast?.copy(alpha = 0.7f) ?: MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant,
         disabledLabelColor = (if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.38f),
-
-        // Border colors
         focusedBorderColor = if (isError) MaterialTheme.colorScheme.error else (if (bgColor != null && value.isNotEmpty()) contrast?.copy(alpha = 0.6f) ?: MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary),
         unfocusedBorderColor = if (isError) MaterialTheme.colorScheme.error else (if (bgColor != null && value.isNotEmpty()) contrast?.copy(alpha = 0.4f) ?: MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline),
         disabledBorderColor = (if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.outline).copy(alpha = 0.38f),
         errorBorderColor = MaterialTheme.colorScheme.error,
-
-        // Trailing icon colors
         focusedTrailingIconColor = if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface,
         unfocusedTrailingIconColor = if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface,
         disabledTrailingIconColor = (if (bgColor != null && value.isNotEmpty()) contrast ?: MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface).copy(alpha = 0.38f),
@@ -66,7 +55,7 @@ fun DropdownField(
     Box(modifier = modifier) {
         OutlinedTextField(
             value = value,
-            onValueChange = { /* Handled by DropdownMenu item clicks */ },
+            onValueChange = { /* Visual only, onValueChange handled by DropdownMenu */ },
             label = { Text(label) },
             readOnly = true,
             enabled = enabled,
@@ -75,17 +64,24 @@ fun DropdownField(
                 Icon(
                     Icons.Default.ArrowDropDown,
                     contentDescription = "Dropdown",
-                    modifier = Modifier.clickable(enabled = enabled) { expanded = !expanded }
+                    modifier = Modifier.clickable(enabled = enabled) { expanded = !expanded } // Icon remains clickable
                 )
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = enabled) { expanded = true },
+            modifier = Modifier.fillMaxWidth(),
             colors = textFieldColors
         )
 
+        // Clickable overlay to expand the dropdown
+        if (enabled) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .clickable(onClick = { expanded = true })
+            )
+        }
+
         DropdownMenu(
-            expanded = expanded && enabled,
+            expanded = expanded && enabled, // expanded state is now controlled by the overlay click or icon click
             onDismissRequest = { expanded = false },
             modifier = Modifier.fillMaxWidth()
         ) {
