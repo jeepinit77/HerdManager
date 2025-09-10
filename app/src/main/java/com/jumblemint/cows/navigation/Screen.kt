@@ -5,7 +5,7 @@ package com.jumblemint.cows.navigation
 const val MAIN_PAGER_ROUTE_TEMPLATE = "main_pager_route?initialPage={initialPage}"
 
 sealed class Screen(val route: String, val title: String? = null, val hasOwnTopAppBar: Boolean = false) {
-    data object Login : Screen("login_route", "Login", true)
+    data object Splash : Screen("splash_route", "Splash", true)
     data object SignIn : Screen("sign_in_route", "Sign In", true)
     data object MainPager : Screen(MAIN_PAGER_ROUTE_TEMPLATE, null, false) { // Title will be set by pager content
         fun buildRoute(initialPage: Int = 0): String {
@@ -77,7 +77,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
 
         val sealedObjects: List<Screen> by lazy {
             listOf(
-                Login, SignIn, MainPager, Dashboard, Cows, Pastures, Activities, Notes,
+                Splash, SignIn, MainPager, Dashboard, Cows, Pastures, Activities, Notes,
                 CowInfo, CowDetail, AddActivity, AddActivityWithId, CowList, Settings, PastureDetail,
                 AddPasture, EditPasture, AddBirth, AccountManagement, TagColorsManagement, ActivityTypesManagement,
                 Sync, WorkingList, HerdSelection

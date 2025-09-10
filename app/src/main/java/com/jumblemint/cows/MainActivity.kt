@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,9 +26,9 @@ import kotlinx.coroutines.launch // New Import
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        // getString(R.string.default_web_client_id) // Keep this if used elsewhere
 
         setContent {
             CowsTheme {
@@ -129,7 +130,7 @@ fun CattleManagerApp() {
         val pastureId = navBackStackEntry?.arguments?.getString("pastureId")
         showMainTopAppBar = pastureId != "0"
     }
-    if (currentScreenFromNav == Screen.Login || currentScreenFromNav == Screen.SignIn) {
+    if (currentScreenFromNav == Screen.SignIn) {
         showMainTopAppBar = false
     }
 

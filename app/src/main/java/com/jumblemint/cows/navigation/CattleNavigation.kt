@@ -31,6 +31,7 @@ import com.jumblemint.cows.ui.screens.activities.AddActivityScreen
 import com.jumblemint.cows.ui.screens.activities.AddBirthScreen
 import com.jumblemint.cows.ui.screens.auth.SignInScreen
 import com.jumblemint.cows.ui.screens.cows.CowDetailScreen
+import com.jumblemint.cows.ui.screens.splash.SplashScreen
 import com.jumblemint.cows.ui.screens.cows.CowInfoScreen
 import com.jumblemint.cows.ui.screens.cows.CowListScreen
 import com.jumblemint.cows.ui.screens.cows.CowsScreen
@@ -155,6 +156,7 @@ fun CattleNavigation(
         startDestination = Screen.MainPager.buildRoute(DASHBOARD_PAGE_INDEX),
         modifier = Modifier.fillMaxSize()
     ) {
+
         composable(
             route = Screen.MainPager.route,
             arguments = listOf(
@@ -288,7 +290,6 @@ fun CattleNavigation(
                 onSignInSuccess = {
                     navController.navigate(Screen.MainPager.buildRoute(DASHBOARD_PAGE_INDEX)) {
                         popUpTo(Screen.SignIn.route) { inclusive = true }
-                        popUpTo(Screen.Login.route) { inclusive = true }
                     }
                 }
             )
