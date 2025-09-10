@@ -26,6 +26,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.remember
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.ui.theme.getCardColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -195,7 +196,8 @@ fun PastureCard(
 ) {
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        colors = getCardColors()
     ) {
         Row(
             modifier = Modifier

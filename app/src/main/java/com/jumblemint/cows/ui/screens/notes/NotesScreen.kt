@@ -25,6 +25,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.model.Note
 import com.jumblemint.cows.ui.viewmodel.NotesViewModel
+import com.jumblemint.cows.ui.theme.getCardColors
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
@@ -188,7 +189,8 @@ private fun NoteCard(
 ) {
     Card(
         onClick = onView,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        colors = getCardColors()
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Row(

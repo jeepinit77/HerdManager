@@ -29,6 +29,7 @@ import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModel
 import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModelFactory
+import com.jumblemint.cows.ui.theme.getCardColors
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -127,7 +128,8 @@ fun ActivitiesScreen(
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 8.dp) // Space below filter card
+                                    .padding(bottom = 8.dp), // Space below filter card
+                                colors = getCardColors()
                             ) {
                                 Column(
                                     modifier = Modifier.padding(16.dp),
@@ -242,7 +244,8 @@ fun ActivityCard(
     onDelete: (() -> Unit)? = null
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        colors = getCardColors()
     ) {
         Column(
             modifier = Modifier.padding(16.dp)

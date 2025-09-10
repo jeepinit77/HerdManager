@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import com.jumblemint.cows.ui.theme.getGenderColor
+import com.jumblemint.cows.ui.theme.getCardBackgroundColor
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -44,12 +45,12 @@ fun CowCard(
     onDelete: (() -> Unit)? = null,
     resolvedTagColor: Color? = null
 ) {
-    // Gender-based background colors using theme system
+    // Use gender color as background for cow cards
     val genderColor = getGenderColor(cow.gender)
     val cardColors = CardDefaults.cardColors(
-        containerColor = genderColor.copy(alpha = 0.3f)
+        containerColor = genderColor
     )
-
+    
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),

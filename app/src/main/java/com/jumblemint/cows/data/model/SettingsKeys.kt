@@ -26,6 +26,12 @@ object SettingsKeys {
     const val THEME_MALE_COLOR_DARK = "theme_male_color_dark"
     const val THEME_FEMALE_COLOR_DARK = "theme_female_color_dark"
     const val THEME_TBD_COLOR_DARK = "theme_tbd_color_dark"
+    const val THEME_BACKGROUND_LIGHT = "theme_background_light"
+    const val THEME_BACKGROUND_DARK = "theme_background_dark"
+    const val THEME_SURFACE_LIGHT = "theme_surface_light"
+    const val THEME_SURFACE_DARK = "theme_surface_dark"
+    const val THEME_CARD_BACKGROUND_LIGHT = "theme_card_background_light"
+    const val THEME_CARD_BACKGROUND_DARK = "theme_card_background_dark"
     const val CURRENT_THEME_PRESET = "current_theme_preset"
     
     // Authentication settings

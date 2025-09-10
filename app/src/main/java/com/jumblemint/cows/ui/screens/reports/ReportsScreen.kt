@@ -19,6 +19,7 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModel
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
+import com.jumblemint.cows.ui.theme.getCardColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -147,7 +148,7 @@ fun ToolsCard(
     onAddCalfClick: () -> Unit,
     onWorkingListClick: () -> Unit
 ) {
-    Card {
+    Card(colors = getCardColors()) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
@@ -195,7 +196,7 @@ fun ToolItem(
     label: String,
     onClick: () -> Unit
 ) {
-    Card(onClick = onClick) { // Making the whole card clickable
+    Card(onClick = onClick, colors = getCardColors()) { // Making the whole card clickable
         Column(
             modifier = Modifier.padding(12.dp), // Adjusted padding
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -225,7 +226,7 @@ fun HerdOverviewCard(
     onClick: (type: String?) -> Unit,
     onWatchingClick: () -> Unit
 ) {
-    Card {
+    Card(colors = getCardColors()) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
@@ -285,7 +286,7 @@ fun ClickableStatItem(
     color: androidx.compose.ui.graphics.Color,
     onClick: () -> Unit
 ) {
-    Card(onClick = onClick) {
+    Card(onClick = onClick, colors = getCardColors()) {
         Column(
             modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp), // Adjusted padding
             horizontalAlignment = Alignment.CenterHorizontally
@@ -312,7 +313,7 @@ fun ClassificationBreakdownCard(
     classifications: Map<String, Int>,
     onRowClick: (String) -> Unit
 ) {
-    Card {
+    Card(colors = getCardColors()) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
@@ -365,7 +366,7 @@ fun PastureBreakdownCard(
     pastures: Map<String, Int>,
     onRowClick: (String) -> Unit
 ) {
-    Card {
+    Card(colors = getCardColors()) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
@@ -429,7 +430,7 @@ fun AgeBasedReportsCard(
     over10Years: Int,
     onRowClick: (String) -> Unit
 ) {
-    Card {
+    Card(colors = getCardColors()) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
@@ -497,7 +498,7 @@ fun BreedingReportsCard(
     onNotCalvedClick: () -> Unit,
     onCalvedClick: () -> Unit
 ) {
-    Card {
+    Card(colors = getCardColors()) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {

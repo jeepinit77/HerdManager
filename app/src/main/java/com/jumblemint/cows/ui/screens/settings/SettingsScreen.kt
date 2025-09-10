@@ -26,6 +26,7 @@ import com.jumblemint.cows.ui.viewmodel.SettingsViewModelFactory
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape // Added for SettingsCard
+import com.jumblemint.cows.ui.theme.getCardColors
 
 // Helper data class for quadruple values
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
@@ -382,7 +383,7 @@ fun SettingsCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    colors: CardColors = CardDefaults.cardColors(),
+    colors: CardColors = getCardColors(),
     content: @Composable (() -> Unit)? = null // For optional extra content
 ) {
     Card(

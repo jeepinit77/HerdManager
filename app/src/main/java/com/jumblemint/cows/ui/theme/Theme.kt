@@ -21,13 +21,17 @@ import com.jumblemint.cows.data.repository.CattleRepository
 private fun createDarkColorScheme(customColors: CustomColors) = darkColorScheme(
     primary = customColors.primaryDark,
     secondary = customColors.secondaryDark,
-    tertiary = customColors.tertiaryDark
+    tertiary = customColors.tertiaryDark,
+    background = customColors.backgroundDark,
+    surface = customColors.surfaceDark
 )
 
 private fun createLightColorScheme(customColors: CustomColors) = lightColorScheme(
     primary = customColors.primaryLight,
     secondary = customColors.secondaryLight,
-    tertiary = customColors.tertiaryLight
+    tertiary = customColors.tertiaryLight,
+    background = customColors.backgroundLight,
+    surface = customColors.surfaceLight
 )
 
 // Modern-sharp shapes across the app
