@@ -32,8 +32,9 @@ import com.jumblemint.cows.data.repository.CattleRepository
 fun PasturesScreen(
     onNavigateToAddPasture: () -> Unit,
     onNavigateToPastureDetails: (String) -> Unit,
+    onNavigateToEditPasture: (String) -> Unit,
     onNavigateBack: () -> Unit,
-    onNavigateToDashboard: () -> Unit, // Added new parameter
+    onNavigateToDashboard: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -162,7 +163,7 @@ fun PasturesScreen(
                             onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
                         },
                         onEdit = { 
-                            onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
+                            onNavigateToEditPasture(pastureWithDetails.pastureWithCount.pasture.id)
                         },
                         onDelete = { pasture ->
                             coroutineScope.launch {

@@ -45,7 +45,11 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
     }
     data object Settings : Screen("settings_route", "Settings", true)
     data object PastureDetail : Screen("pasture_detail_route/{pastureId}", "Pasture Details", false) { // hasOwnTopAppBar depends on ID (0 for add)
-        fun createRoute(pastureId: Long): String = route.replace("{pastureId}", pastureId.toString())
+        fun createRoute(pastureId: String): String = route.replace("{pastureId}", pastureId)
+    }
+    data object AddPasture : Screen("add_pasture_route", "Add Pasture", true)
+    data object EditPasture : Screen("edit_pasture_route/{pastureId}", "Edit Pasture", true) {
+        fun createRoute(pastureId: String): String = route.replace("{pastureId}", pastureId)
     }
     data object AddBirth : Screen("add_birth_route", "Add Birth", true)
     data object AccountManagement : Screen("account_management_route", "Account", true)
@@ -75,7 +79,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
             listOf(
                 Login, SignIn, MainPager, Dashboard, Cows, Pastures, Activities, Notes,
                 CowInfo, CowDetail, AddActivity, AddActivityWithId, CowList, Settings, PastureDetail,
-                AddBirth, AccountManagement, TagColorsManagement, ActivityTypesManagement,
+                AddPasture, EditPasture, AddBirth, AccountManagement, TagColorsManagement, ActivityTypesManagement,
                 Sync, WorkingList, HerdSelection
             ).distinct() // Ensure no duplicates if some routes are similar (e.g. AddActivity vs AddActivityWithId for fromRoute)
         }

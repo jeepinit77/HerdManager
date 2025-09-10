@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,6 +37,7 @@ import com.jumblemint.cows.ui.screens.cows.CowListScreen
 import com.jumblemint.cows.ui.screens.cows.CowsScreen
 import com.jumblemint.cows.ui.screens.herds.HerdSelectionScreen // सुनिश्चित किया गया आयात
 import com.jumblemint.cows.ui.screens.notes.NotesScreen
+import com.jumblemint.cows.ui.screens.pastures.AddPastureScreen
 import com.jumblemint.cows.ui.screens.pastures.PastureDetailScreen
 import com.jumblemint.cows.ui.screens.pastures.PasturesScreen
 import com.jumblemint.cows.ui.screens.reports.ReportsScreen
@@ -46,6 +48,10 @@ import com.jumblemint.cows.ui.screens.sync.SyncDetailsScreen
 import com.jumblemint.cows.ui.screens.workinglist.WorkingListScreen
 import com.jumblemint.cows.ui.viewmodel.AuthViewModel
 import com.jumblemint.cows.ui.viewmodel.AuthViewModelFactory
+import com.jumblemint.cows.ui.viewmodel.PasturesViewModel
+import com.jumblemint.cows.ui.viewmodel.PasturesViewModelFactory
+import com.jumblemint.cows.data.database.CattleDatabase
+import com.jumblemint.cows.data.repository.CattleRepository
 
 // MAIN_PAGER_ROUTE_TEMPLATE is used from Screen.kt (same package)
 fun mainPagerRoute(initialPage: Int = 0) = MAIN_PAGER_ROUTE_TEMPLATE.replace("{initialPage}", initialPage.toString())
@@ -99,9 +105,12 @@ fun MainScreensViewPager(
             )
             PASTURES_PAGE_INDEX -> PasturesScreen(
                 modifier = Modifier.fillMaxSize(),
-                onNavigateToAddPasture = { navController.navigate(Screen.PastureDetail.createRoute(0L)) }, // Corrected: Screen.PastureDetail.createRoute expects Long
+                onNavigateToAddPasture = { navController.navigate(Screen.AddPasture.route) },
                 onNavigateToPastureDetails = { pastureIdString: String ->
-                    navController.navigate(Screen.PastureDetail.createRoute(pastureIdString.toLongOrNull() ?: 0L)) // Corrected: Screen.PastureDetail.createRoute expects Long
+                    navController.navigate(Screen.PastureDetail.createRoute(pastureIdString))
+                },
+                onNavigateToEditPasture = { pastureIdString: String ->
+                    navController.navigate(Screen.EditPasture.createRoute(pastureIdString))
                 },
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToDashboard = {
@@ -299,23 +308,34 @@ fun CattleNavigation(
             )
         }
 
-        composable(Screen.PastureDetail.route) { backStackEntry ->
-            // Nav arg for PastureDetail is Long (retrieved), PastureDetailScreen expects String for its pastureId param
-            val pastureIdLong = backStackEntry.arguments?.getLong("pastureId") ?: 0L 
+        composable(
+            route = Screen.PastureDetail.route,
+            arguments = listOf(
+                navArgument("pastureId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val pastureId = backStackEntry.arguments?.getString("pastureId") ?: ""
             PastureDetailScreen(
                 modifier = screenModifierNoPadding,
-                pastureId = pastureIdLong.toString(), // Screen itself expects String
-                onNavigateBack = { navController.popBackStack() },
+                pastureId = pastureId,
+                onNavigateBack = { 
+                    navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
+                        popUpTo(navController.graph.findStartDestination().id)
+                        launchSingleTop = true
+                    }
+                },
                 onCowClick = { cowId: Long ->
                     navController.navigate(
                         Screen.CowInfo.createRoute(
                             cowId = cowId,
-                            returnToRoute = Screen.PastureDetail.createRoute(pastureIdLong) // Corrected: Screen.PastureDetail.createRoute expects Long
+                            returnToRoute = Screen.PastureDetail.createRoute(pastureId)
                         )
                     )
                 },
                 onCowEdit = { cowId: Long ->
-                    navController.navigate(Screen.CowDetail.createRoute(cowId)) // Screen.CowDetail.createRoute expects Long
+                    navController.navigate(Screen.CowDetail.createRoute(cowId))
                 }
             )
         }
@@ -324,6 +344,95 @@ fun CattleNavigation(
             AddBirthScreen(
                 modifier = screenModifierNoPadding,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.AddPasture.route) {
+            val context = LocalContext.current
+            val application = context.applicationContext as CattleApplication
+            val database = CattleDatabase.getDatabase(application)
+            val repository = remember {
+                CattleRepository(
+                    cowDao = database.cowDao(),
+                    pastureDao = database.pastureDao(),
+                    activityDao = database.activityDao(),
+                    settingsDao = database.settingsDao(),
+                    noteDao = database.noteDao(),
+                    userDao = database.userDao(),
+                    herdDao = database.herdDao(),
+                    herdMemberDao = database.herdMemberDao(),
+                    tagColorDao = database.tagColorDao(),
+                    activityTypeConfigDao = database.activityTypeConfigDao()
+                )
+            }
+            val pasturesViewModel: PasturesViewModel = viewModel(
+                factory = PasturesViewModelFactory(application, repository)
+            )
+            
+            AddPastureScreen(
+                modifier = screenModifierNoPadding,
+                onAddPasture = { pasture ->
+                    pasturesViewModel.insertNewPasture(pasture)
+                    navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
+                        popUpTo(navController.graph.findStartDestination().id)
+                        launchSingleTop = true
+                    }
+                },
+                onCancel = { 
+                    navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
+                        popUpTo(navController.graph.findStartDestination().id)
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+        composable(
+            route = Screen.EditPasture.route,
+            arguments = listOf(
+                navArgument("pastureId") {
+                    type = NavType.StringType
+                }
+            )
+        ) { backStackEntry ->
+            val pastureId = backStackEntry.arguments?.getString("pastureId") ?: ""
+            val context = LocalContext.current
+            val application = context.applicationContext as CattleApplication
+            val database = CattleDatabase.getDatabase(application)
+            val repository = remember {
+                CattleRepository(
+                    cowDao = database.cowDao(),
+                    pastureDao = database.pastureDao(),
+                    activityDao = database.activityDao(),
+                    settingsDao = database.settingsDao(),
+                    noteDao = database.noteDao(),
+                    userDao = database.userDao(),
+                    herdDao = database.herdDao(),
+                    herdMemberDao = database.herdMemberDao(),
+                    tagColorDao = database.tagColorDao(),
+                    activityTypeConfigDao = database.activityTypeConfigDao()
+                )
+            }
+            val pasturesViewModel: PasturesViewModel = viewModel(
+                factory = PasturesViewModelFactory(application, repository)
+            )
+            
+            val pasture by repository.getPastureById(pastureId).collectAsState(initial = null)
+            
+            AddPastureScreen(
+                modifier = screenModifierNoPadding,
+                editPasture = pasture,
+                onAddPasture = { updatedPasture ->
+                    pasturesViewModel.insertNewPasture(updatedPasture)
+                    navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
+                        popUpTo(navController.graph.findStartDestination().id)
+                        launchSingleTop = true
+                    }
+                },
+                onCancel = { 
+                    navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
+                        popUpTo(navController.graph.findStartDestination().id)
+                        launchSingleTop = true
+                    }
+                }
             )
         }
         composable(Screen.AccountManagement.route){

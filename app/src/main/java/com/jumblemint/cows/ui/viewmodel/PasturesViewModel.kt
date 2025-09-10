@@ -128,28 +128,41 @@ class PasturesViewModel(
             
             if (currentUser != null) {
                 val currentUserId = currentUser.uid
-                val newUniqueId = UUID.randomUUID().toString()
-
-                val pastureToSave = pastureFromUi.copy(
-                    id = newUniqueId,
-                    firestoreId = newUniqueId,
-                    isDeleted = false,
-                    createdBy = currentUserId,
-                    updatedBy = currentUserId,
-                    lastSyncAt = 0L
-                )
+                
+                val pastureToSave = if (pastureFromUi.id.isBlank()) {
+                    // New pasture
+                    val newUniqueId = UUID.randomUUID().toString()
+                    pastureFromUi.copy(
+                        id = newUniqueId,
+                        firestoreId = newUniqueId,
+                        isDeleted = false,
+                        createdBy = currentUserId,
+                        updatedBy = currentUserId,
+                        lastSyncAt = 0L
+                    )
+                } else {
+                    // Existing pasture (edit)
+                    pastureFromUi.copy(
+                        updatedBy = currentUserId,
+                        lastSyncAt = 0L
+                    )
+                }
 
                 try {
-                    cattleRepository.insertPasture(pastureToSave)
+                    if (pastureFromUi.id.isBlank()) {
+                        cattleRepository.insertPasture(pastureToSave)
+                    } else {
+                        cattleRepository.updatePasture(pastureToSave)
+                    }
 
                     if (!currentUser.isLocalUser) {
                         application.syncService.syncItemImmediately(currentUserId, pastureToSave)
                             .onFailure {
-                                println("PasturesViewModel: Error immediately syncing new pasture: ${it.message}")
+                                println("PasturesViewModel: Error immediately syncing pasture: ${it.message}")
                             }
                     }
                 } catch (e: Exception) {
-                    _uiState.update { it.copy(error = "Error inserting new pasture: ${e.message}") }
+                    _uiState.update { it.copy(error = "Error saving pasture: ${e.message}") }
                 }
             } else {
                 _uiState.update { it.copy(error = "No authenticated user. Cannot save pasture.") } 

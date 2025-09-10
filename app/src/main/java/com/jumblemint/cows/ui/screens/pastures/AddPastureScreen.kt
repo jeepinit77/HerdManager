@@ -14,12 +14,21 @@ import java.util.UUID
 fun AddPastureScreen(
     onAddPasture: (Pasture) -> Unit,
     onCancel: () -> Unit,
-    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
+    editPasture: Pasture? = null,
+    modifier: Modifier = Modifier
 ) {
     var name by remember { mutableStateOf("") }
     var sizeAcres by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var nameError by remember { mutableStateOf<String?>(null) }
+    
+    LaunchedEffect(editPasture) {
+        editPasture?.let { pasture ->
+            name = pasture.name
+            sizeAcres = pasture.sizeAcres?.toString() ?: ""
+            description = pasture.description ?: ""
+        }
+    }
 
     // Wrap AlertDialog in a Box that takes the modifier
     Box(
@@ -28,7 +37,7 @@ fun AddPastureScreen(
     ) {
         AlertDialog(
             onDismissRequest = onCancel,
-            title = { Text("Add New Pasture") },
+            title = { Text(if (editPasture != null) "Edit Pasture" else "Add New Pasture") },
             text = {
                 Column(
                     // Removed padding from here, can be added if needed around text fields specifically
@@ -84,19 +93,27 @@ fun AddPastureScreen(
                         if (name.isNotBlank()) {
                             val acres = sizeAcres.toDoubleOrNull()
                             onAddPasture(
-                                Pasture(
-                                    id = UUID.randomUUID().toString(),
-                                    name = name.trim(),
-                                    sizeAcres = acres,
-                                    description = description.trim().takeIf { it.isNotBlank() }
-                                )
+                                if (editPasture != null) {
+                                    editPasture.copy(
+                                        name = name.trim(),
+                                        sizeAcres = acres,
+                                        description = description.trim().takeIf { it.isNotBlank() }
+                                    )
+                                } else {
+                                    Pasture(
+                                        id = UUID.randomUUID().toString(),
+                                        name = name.trim(),
+                                        sizeAcres = acres,
+                                        description = description.trim().takeIf { it.isNotBlank() }
+                                    )
+                                }
                             )
                         } else {
                             nameError = "Name cannot be empty"
                         }
                     }
                 ) {
-                    Text("Add Pasture")
+                    Text(if (editPasture != null) "Save Changes" else "Add Pasture")
                 }
             },
             dismissButton = {
