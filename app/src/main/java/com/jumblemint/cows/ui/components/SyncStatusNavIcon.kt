@@ -24,6 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -79,6 +83,8 @@ fun SyncStatusNavIcon(modifier: Modifier = Modifier) {
     }
 
     val isSyncing = itemStatus == ItemSyncStatus.SYNCING || passStatus == SyncStatus.SYNCING
+    val hasError = itemStatus == ItemSyncStatus.ERROR || passStatus == SyncStatus.ERROR
+    val isSuccess = !isSyncing && !hasError && pendingCount == 0 && (currentUser != null && currentUser?.isLocalUser == false)
 
     val rotation = if (isSyncing) {
         val transition = rememberInfiniteTransition(label = "sync-rotate")
@@ -96,21 +102,41 @@ fun SyncStatusNavIcon(modifier: Modifier = Modifier) {
     val icon = when {
         !isOnline && (currentUser != null && currentUser?.isLocalUser != true) -> Icons.Default.CloudOff
         isSyncing -> Icons.Default.Sync
-        itemStatus == ItemSyncStatus.ERROR || passStatus == SyncStatus.ERROR -> Icons.Default.Error
+        hasError -> Icons.Default.Error
         currentUser == null || currentUser?.isLocalUser == true -> Icons.Default.AccountCircle
-        else -> Icons.Default.CheckCircle
+        isSuccess -> Icons.Default.CheckCircle
+        else -> Icons.Default.Sync
     }
     val tint = when {
-        isSyncing -> Color(0xFF1976D2) // blue during sync
+        isSyncing -> Color(0xFF1976D2)
+        hasError -> Color(0xFFD32F2F)
+        isSuccess -> Color(0xFF2E7D32)
         else -> Color.Unspecified
     }
 
     BadgedBox(badge = {
-        // Show badge only if user is signed in (not local) and there's a pending count
-        if (pendingCount > 0 && currentUser != null && currentUser?.isLocalUser == false) {
-            Badge { androidx.compose.material3.Text(pendingCount.toString()) }
+        // Show remaining items during sync, or pending items when not syncing
+        val badgeCount = if (isSyncing && pendingCount > 0) pendingCount else if (!isSyncing && pendingCount > 0 && currentUser != null && currentUser?.isLocalUser == false) pendingCount else 0
+        if (badgeCount > 0) {
+            Badge { androidx.compose.material3.Text(badgeCount.toString()) }
         }
     }) {
-        Icon(imageVector = icon, contentDescription = "Sync", modifier = modifier.rotate(rotation), tint = tint)
+        androidx.compose.foundation.layout.Box {
+            // Background circle for better visibility in dark mode
+            androidx.compose.foundation.Canvas(
+                modifier = androidx.compose.ui.Modifier.size(24.dp)
+            ) {
+                drawCircle(
+                    color = androidx.compose.ui.graphics.Color.White.copy(alpha = 0.9f),
+                    radius = size.minDimension / 2
+                )
+            }
+            Icon(
+                imageVector = icon, 
+                contentDescription = "Sync", 
+                modifier = modifier.rotate(rotation).size(20.dp).padding(2.dp), 
+                tint = tint
+            )
+        }
     }
 }

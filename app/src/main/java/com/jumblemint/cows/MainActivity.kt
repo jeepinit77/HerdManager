@@ -8,6 +8,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.PagerState // New Import
 import androidx.compose.foundation.pager.rememberPagerState // New Import
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
@@ -60,22 +62,31 @@ fun getScreenForPageIndex(index: Int): Screen? = when (index) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TopAppBarWithMenu(currentScreenForTitle: Screen?, onNavigateSettings: () -> Unit) {
-    var showMenu by remember { mutableStateOf(false) }
+fun TopAppBarWithMenu(currentScreenForTitle: Screen?, onNavigateSettings: () -> Unit, navController: androidx.navigation.NavController) {
     val title = currentScreenForTitle?.title ?: "Cattle Manager"
+    val context = LocalContext.current
+    val app = context.applicationContext as CattleApplication
+    val currentUser by app.authService.currentUser.collectAsState(initial = null)
 
     TopAppBar(
-        title = { Text(title) },
-        actions = {
-            IconButton(onClick = { showMenu = true }) {
-                Icon(Icons.Default.MoreVert, "Menu", tint = MaterialTheme.colorScheme.onSurface)
-            }
-            DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                DropdownMenuItem(
-                    text = { Text("Settings") },
-                    onClick = { showMenu = false; onNavigateSettings() },
-                    leadingIcon = { Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.onSurface) }
-                )
+        title = {
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = {
+                        val targetRoute = if (currentUser == null || currentUser?.isLocalUser == true) {
+                            Screen.SignIn.route
+                        } else {
+                            Screen.Sync.route
+                        }
+                        navController.navigate(targetRoute)
+                    },
+                    modifier = androidx.compose.ui.Modifier.padding(end = 4.dp)
+                ) {
+                    com.jumblemint.cows.ui.components.SyncStatusNavIcon()
+                }
+                Text(title)
             }
         }
     )
@@ -139,7 +150,7 @@ fun CattleManagerApp() {
             modifier = Modifier.fillMaxSize(),
             topBar = {
                 if (showMainTopAppBar) {
-                    TopAppBarWithMenu(currentScreenForUI) { navController.navigate(Screen.Settings.route) }
+                    TopAppBarWithMenu(currentScreenForUI, { navController.navigate(Screen.Settings.route) }, navController)
                 }
             },
             bottomBar = {
@@ -163,23 +174,12 @@ fun CattleManagerApp() {
                             )
                         }
                         NavigationBarItem(
-                            selected = currentScreenFromNav == Screen.Sync || currentScreenFromNav == Screen.SignIn,
+                            selected = currentScreenFromNav == Screen.Settings,
                             onClick = {
-                                val targetRoute = if (currentUser == null || currentUser?.isLocalUser == true) {
-                                    Screen.SignIn.route
-                                } else {
-                                    Screen.Sync.route 
-                                }
-                                navController.navigate(targetRoute) {
-                                     popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true 
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
+                                navController.navigate(Screen.Settings.route)
                             },
-                            icon = { com.jumblemint.cows.ui.components.SyncStatusNavIcon() }, 
-                            label = { Text("Sync") }
+                            icon = { Icon(Icons.Default.Settings, "Settings") }, 
+                            label = { Text("Settings") }
                         )
                     }
                 }

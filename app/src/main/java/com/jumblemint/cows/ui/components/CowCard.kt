@@ -51,6 +51,10 @@ fun CowCard(
         containerColor = genderColor
     )
     
+    // Calculate text color based on background luminance
+    val textColor = if (genderColor.luminance() < 0.5f) Color.White else Color.Black
+    val secondaryTextColor = if (genderColor.luminance() < 0.5f) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
+    
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
@@ -87,12 +91,13 @@ fun CowCard(
                             Text(
                                 text = cow.name ?: "Unnamed Cow",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = textColor
                             )
                             Text(
                                 text = cow.classification.name,
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = secondaryTextColor
                             )
                         }
                         // Watch toggle + Edit + Delete buttons on the right
@@ -102,7 +107,7 @@ fun CowCard(
                         ) {
                             onToggleWatch?.let {
                                 IconButton(onClick = it) {
-                                    val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                                    val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else secondaryTextColor
                                     Icon(
                                         imageVector = androidx.compose.material.icons.Icons.Filled.Star,
                                         contentDescription = if (cow.isWatched) "Unwatch" else "Watch",
@@ -114,7 +119,8 @@ fun CowCard(
                                 IconButton(onClick = it) {
                                     Icon(
                                         imageVector = androidx.compose.material.icons.Icons.Filled.Edit,
-                                        contentDescription = "Edit Cow"
+                                        contentDescription = "Edit Cow",
+                                        tint = textColor
                                     )
                                 }
                             }
@@ -123,7 +129,7 @@ fun CowCard(
                                     Icon(
                                         imageVector = androidx.compose.material.icons.Icons.Filled.Delete,
                                         contentDescription = "Delete Cow",
-                                        tint = MaterialTheme.colorScheme.error
+                                        tint = if (genderColor.luminance() < 0.5f) Color(0xFFFF6B6B) else Color(0xFFD32F2F)
                                     )
                                 }
                             }
@@ -142,7 +148,7 @@ fun CowCard(
                         Text(
                             text = "Age: $ageText",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = secondaryTextColor
                         )
                     }
                 }
