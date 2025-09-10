@@ -56,11 +56,14 @@ fun CowCard(
             containerColor = if (isDarkTheme) Color(0xFF4A4A4A) else Color(0xFFE0E0E0) // Dark gray / Medium gray
         )
     }
-    
+
     Card(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
-        colors = cardColors
+        shape = MaterialTheme.shapes.medium,
+        colors = cardColors,
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -105,7 +108,7 @@ fun CowCard(
                         ) {
                             onToggleWatch?.let {
                                 IconButton(onClick = it) {
-                                    val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                                    val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                                     Icon(
                                         imageVector = androidx.compose.material.icons.Icons.Filled.Star,
                                         contentDescription = if (cow.isWatched) "Unwatch" else "Watch",
