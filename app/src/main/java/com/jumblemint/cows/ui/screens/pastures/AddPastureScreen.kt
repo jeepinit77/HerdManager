@@ -7,7 +7,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.jumblemint.cows.data.model.Pasture
-import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,24 +89,32 @@ fun AddPastureScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        if (name.isNotBlank()) {
-                            val acres = sizeAcres.toDoubleOrNull()
-                            onAddPasture(
-                                if (editPasture != null) {
-                                    editPasture.copy(
-                                        name = name.trim(),
-                                        sizeAcres = acres,
-                                        description = description.trim().takeIf { it.isNotBlank() }
-                                    )
-                                } else {
-                                    Pasture(
-                                        id = UUID.randomUUID().toString(),
-                                        name = name.trim(),
-                                        sizeAcres = acres,
-                                        description = description.trim().takeIf { it.isNotBlank() }
-                                    )
-                                }
-                            )
+                        val trimmedName = name.trim()
+                        if (trimmedName.isNotBlank()) {
+                            val acres = sizeAcres.trim().takeIf { it.isNotBlank() }?.toDoubleOrNull()
+                            val trimmedDescription = description.trim().takeIf { it.isNotBlank() }
+                            
+                            try {
+                                onAddPasture(
+                                    if (editPasture != null) {
+                                        editPasture.copy(
+                                            name = trimmedName,
+                                            sizeAcres = acres,
+                                            description = trimmedDescription
+                                        )
+                                    } else {
+                                        Pasture(
+                                            id = "",
+                                            name = trimmedName,
+                                            sizeAcres = acres,
+                                            description = trimmedDescription
+                                        )
+                                    }
+                                )
+                            } catch (e: Exception) {
+                                println("AddPastureScreen: Error creating pasture: ${e.message}")
+                                e.printStackTrace()
+                            }
                         } else {
                             nameError = "Name cannot be empty"
                         }

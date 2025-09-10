@@ -8,8 +8,8 @@ data class Pasture(
     @PrimaryKey
     val id: String,
     val name: String,
-    val description: String?, // This line is critical
-    val sizeAcres: Double?,
+    val description: String? = null,
+    val sizeAcres: Double? = null,
     
     // Multi-user and sync fields
     val herdId: String? = null, // Which herd this pasture belongs to

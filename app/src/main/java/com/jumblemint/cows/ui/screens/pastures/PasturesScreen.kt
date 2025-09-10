@@ -69,7 +69,7 @@ fun PasturesScreen(
                 message = it,
                 duration = SnackbarDuration.Long
             )
-            // pasturesViewModel.onErrorShown() 
+            pasturesViewModel.clearError()
         }
     }
 

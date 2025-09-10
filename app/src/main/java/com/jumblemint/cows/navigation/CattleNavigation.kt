@@ -362,14 +362,12 @@ fun CattleNavigation(
                 onAddPasture = { pasture ->
                     pasturesViewModel.insertNewPasture(pasture)
                     navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
-                        popUpTo(navController.graph.findStartDestination().id)
-                        launchSingleTop = true
+                        popUpTo(Screen.AddPasture.route) { inclusive = true }
                     }
                 },
                 onCancel = { 
                     navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
-                        popUpTo(navController.graph.findStartDestination().id)
-                        launchSingleTop = true
+                        popUpTo(Screen.AddPasture.route) { inclusive = true }
                     }
                 }
             )
@@ -412,14 +410,12 @@ fun CattleNavigation(
                 onAddPasture = { updatedPasture ->
                     pasturesViewModel.insertNewPasture(updatedPasture)
                     navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
-                        popUpTo(navController.graph.findStartDestination().id)
-                        launchSingleTop = true
+                        popUpTo(Screen.EditPasture.route) { inclusive = true }
                     }
                 },
                 onCancel = { 
                     navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
-                        popUpTo(navController.graph.findStartDestination().id)
-                        launchSingleTop = true
+                        popUpTo(Screen.EditPasture.route) { inclusive = true }
                     }
                 }
             )
