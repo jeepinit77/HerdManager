@@ -39,6 +39,7 @@ fun SettingsScreen(
     onNavigateToAccountManagement: (() -> Unit)? = null,
     onNavigateToTagColors: (() -> Unit)? = null,
     onNavigateToActivityTypes: (() -> Unit)? = null,
+    onNavigateToThemeSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -131,6 +132,14 @@ fun SettingsScreen(
                     subtitle = "Manage activity types and fields",
                     icon = Icons.Filled.Assignment,
                     onClick = { onNavigateToActivityTypes?.invoke() }
+                )
+            }
+            item {
+                SettingsCard(
+                    title = "Theme Settings",
+                    subtitle = "Customize app colors and appearance",
+                    icon = Icons.Filled.Palette,
+                    onClick = { onNavigateToThemeSettings?.invoke() }
                 )
             }
 

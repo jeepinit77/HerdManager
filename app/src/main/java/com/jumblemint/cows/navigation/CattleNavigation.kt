@@ -44,6 +44,7 @@ import com.jumblemint.cows.ui.screens.reports.ReportsScreen
 import com.jumblemint.cows.ui.screens.settings.ActivityTypesManagementScreen
 import com.jumblemint.cows.ui.screens.settings.SettingsScreen
 import com.jumblemint.cows.ui.screens.settings.TagColorsManagementScreen
+import com.jumblemint.cows.ui.screens.settings.ThemeSettingsScreen
 import com.jumblemint.cows.ui.screens.sync.SyncDetailsScreen
 import com.jumblemint.cows.ui.screens.workinglist.WorkingListScreen
 import com.jumblemint.cows.ui.viewmodel.AuthViewModel
@@ -277,7 +278,8 @@ fun CattleNavigation(
                 onNavigateToHerds = { navController.navigate(Screen.HerdSelection.route) }, // This line uses Screen.HerdSelection.route
                 onNavigateToAccountManagement = { navController.navigate(Screen.AccountManagement.route) },
                 onNavigateToTagColors = { navController.navigate(Screen.TagColorsManagement.route) },
-                onNavigateToActivityTypes = { navController.navigate(Screen.ActivityTypesManagement.route) }
+                onNavigateToActivityTypes = { navController.navigate(Screen.ActivityTypesManagement.route) },
+                onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) }
             )
         }
 
@@ -438,6 +440,12 @@ fun CattleNavigation(
             ActivityTypesManagementScreen(
                 modifier = screenModifierWithPadding,
                  onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.ThemeSettings.route){
+            ThemeSettingsScreen(
+                modifier = screenModifierWithPadding,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(Screen.Sync.route) {

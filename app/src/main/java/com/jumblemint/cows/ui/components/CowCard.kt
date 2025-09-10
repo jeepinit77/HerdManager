@@ -3,6 +3,7 @@ package com.jumblemint.cows.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import com.jumblemint.cows.ui.theme.getGenderColor
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -43,19 +44,11 @@ fun CowCard(
     onDelete: (() -> Unit)? = null,
     resolvedTagColor: Color? = null
 ) {
-    // Gender-based background colors - more distinct and noticeable, theme-aware
-    val isDarkTheme = isSystemInDarkTheme()
-    val cardColors = when (cow.gender) {
-        Gender.FEMALE -> CardDefaults.cardColors(
-            containerColor = if (isDarkTheme) Color(0xFF8E2A5B) else Color(0xFFFFB3D9) // Dark pink / Bright pink
-        )
-        Gender.MALE -> CardDefaults.cardColors(
-            containerColor = if (isDarkTheme) Color(0xFF2A5B8E) else Color(0xFFB3D9FF) // Dark blue / Bright blue
-        )
-        Gender.TBD -> CardDefaults.cardColors(
-            containerColor = if (isDarkTheme) Color(0xFF4A4A4A) else Color(0xFFE0E0E0) // Dark gray / Medium gray
-        )
-    }
+    // Gender-based background colors using theme system
+    val genderColor = getGenderColor(cow.gender)
+    val cardColors = CardDefaults.cardColors(
+        containerColor = genderColor.copy(alpha = 0.3f)
+    )
 
     Card(
         onClick = onClick,

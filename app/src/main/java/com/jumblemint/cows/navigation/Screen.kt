@@ -55,6 +55,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
     data object AccountManagement : Screen("account_management_route", "Account", true)
     data object TagColorsManagement : Screen("tag_colors_management_route", "Tag Colors", true)
     data object ActivityTypesManagement : Screen("activity_types_management_route", "Activity Types", true)
+    data object ThemeSettings : Screen("theme_settings_route", "Theme Settings", true)
     data object Sync : Screen("sync_route", "Sync", true) 
     data object WorkingList : Screen("working_list_route", "Working List", true)
     data object HerdSelection : Screen("herd_selection_route", "Select Herd", true)
@@ -80,7 +81,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
                 Splash, SignIn, MainPager, Dashboard, Cows, Pastures, Activities, Notes,
                 CowInfo, CowDetail, AddActivity, AddActivityWithId, CowList, Settings, PastureDetail,
                 AddPasture, EditPasture, AddBirth, AccountManagement, TagColorsManagement, ActivityTypesManagement,
-                Sync, WorkingList, HerdSelection
+                ThemeSettings, Sync, WorkingList, HerdSelection
             ).distinct() // Ensure no duplicates if some routes are similar (e.g. AddActivity vs AddActivityWithId for fromRoute)
         }
     }

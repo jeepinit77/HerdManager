@@ -10,19 +10,24 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.data.database.CattleDatabase
+import com.jumblemint.cows.data.repository.CattleRepository
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+private fun createDarkColorScheme(customColors: CustomColors) = darkColorScheme(
+    primary = customColors.primaryDark,
+    secondary = customColors.secondaryDark,
+    tertiary = customColors.tertiaryDark
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+private fun createLightColorScheme(customColors: CustomColors) = lightColorScheme(
+    primary = customColors.primaryLight,
+    secondary = customColors.secondaryLight,
+    tertiary = customColors.tertiaryLight
 )
 
 // Modern-sharp shapes across the app
@@ -41,14 +46,30 @@ fun CowsTheme(
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val context = LocalContext.current
+    val application = context.applicationContext as CattleApplication
+    val database = CattleDatabase.getDatabase(context)
+    val repository = CattleRepository(
+        database.cowDao(),
+        database.pastureDao(),
+        database.activityDao(),
+        database.settingsDao(),
+        database.noteDao(),
+        database.userDao(),
+        database.herdDao(),
+        database.herdMemberDao(),
+        database.tagColorDao(),
+        database.activityTypeConfigDao()
+    )
+    val themeManager = ThemeManager(repository)
+    val customColors by themeManager.getCustomColors().collectAsState(initial = CustomColors())
+    
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+        darkTheme -> createDarkColorScheme(customColors)
+        else -> createLightColorScheme(customColors)
     }
 
     MaterialTheme(
