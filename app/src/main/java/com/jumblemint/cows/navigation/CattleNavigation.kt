@@ -29,7 +29,6 @@ import com.jumblemint.cows.ui.screens.account.AccountManagementScreen
 import com.jumblemint.cows.ui.screens.activities.ActivitiesScreen
 import com.jumblemint.cows.ui.screens.activities.AddActivityScreen
 import com.jumblemint.cows.ui.screens.activities.AddBirthScreen
-import com.jumblemint.cows.ui.screens.auth.LoginScreen
 import com.jumblemint.cows.ui.screens.auth.SignInScreen
 import com.jumblemint.cows.ui.screens.cows.CowDetailScreen
 import com.jumblemint.cows.ui.screens.cows.CowInfoScreen
@@ -153,22 +152,9 @@ fun CattleNavigation(
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route,
+        startDestination = Screen.MainPager.buildRoute(DASHBOARD_PAGE_INDEX),
         modifier = Modifier.fillMaxSize()
     ) {
-        composable(Screen.Login.route) {
-            val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(application.authService, application.repository, application.syncService))
-            LoginScreen(
-                modifier = screenModifierNoPadding,
-                authViewModel = authViewModel,
-                onLoginSuccess = {
-                    navController.navigate(Screen.MainPager.buildRoute(DASHBOARD_PAGE_INDEX)) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
-                    }
-                }
-            )
-        }
-
         composable(
             route = Screen.MainPager.route,
             arguments = listOf(
