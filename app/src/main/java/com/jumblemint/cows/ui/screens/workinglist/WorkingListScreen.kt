@@ -1,37 +1,43 @@
 package com.jumblemint.cows.ui.screens.workinglist
 
+import androidx.compose.foundation.ExperimentalFoundationApi // Added for stickyHeader
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack // Removed this specific import
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.ClearAll
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color // Ensure this import is present
+import androidx.compose.ui.graphics.luminance // <<< THE MISSING IMPORT >>>
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.Classification
 import com.jumblemint.cows.data.model.Cow
-import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.model.Gender
+import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
+import com.jumblemint.cows.ui.viewmodel.WorkingListUiState
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModel
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModelFactory
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun WorkingListScreen(
     onNavigateBack: () -> Unit,
@@ -66,7 +72,7 @@ fun WorkingListScreen(
     val tagColorMap = rememberTagColorMap(repository)
 
     Scaffold(
-        modifier = modifier,
+        modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
                 title = { Text("Working List") },
@@ -76,8 +82,19 @@ fun WorkingListScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = onNavigateBack) { // Close button also navigates back
-                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                    IconButton(onClick = { showFiltersState = !showFiltersState }) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Toggle Filters")
+                    }
+                    if (hasActiveFilters(uiState)) {
+                        IconButton(onClick = { viewModel.clearAllFilters() }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear Content Filters")
+                        }
+                    }
+                    IconButton(onClick = { viewModel.clearAllChecks() }) {
+                        Icon(Icons.Default.ClearAll, contentDescription = "Clear All Content Checks")
+                    }
+                    IconButton(onClick = onNavigateBack) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close Screen")
                     }
                 }
             )
@@ -88,35 +105,12 @@ fun WorkingListScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FilterChip(
-                    onClick = { showFiltersState = !showFiltersState },
-                    label = { Text("Filters") },
-                    selected = showFiltersState || hasActiveFilters(uiState),
-                    leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") }
-                )
-                if (hasActiveFilters(uiState)) {
-                    IconButton(onClick = { viewModel.clearAllFilters() }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear Content Filters")
-                    }
-                }
-                IconButton(onClick = { viewModel.clearAllChecks() }) {
-                    Icon(Icons.Default.ClearAll, contentDescription = "Clear All Content Checks")
-                }
-            }
-
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 8.dp)
+                contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)
             ) {
                 if (showFiltersState) {
                     item {
@@ -166,7 +160,7 @@ fun WorkingListScreen(
                                 if (uiState.availablePastures.isNotEmpty()) {
                                     FilterSection(
                                         title = "Pasture",
-                                        items = uiState.availablePastures,
+                                        items = uiState.availablePastures, 
                                         selectedItems = uiState.selectedPastures,
                                         onToggle = { viewModel.togglePastureFilter(it) },
                                         itemLabel = { it }
@@ -176,11 +170,17 @@ fun WorkingListScreen(
                         }
                     }
                 }
+
                 if (filteredCows.isNotEmpty()) {
-                    item {
+                    stickyHeader {
                         val checkedCount = checkedItems.size
                         val totalCount = filteredCows.size
-                        Column(modifier = Modifier.padding(top = 8.dp)) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surface) 
+                                .padding(top = 8.dp, bottom = 8.dp) 
+                        ) {
                             LinearProgressIndicator(
                                 progress = if (totalCount > 0) checkedCount.toFloat() / totalCount else 0f,
                                 modifier = Modifier.fillMaxWidth()
@@ -199,6 +199,7 @@ fun WorkingListScreen(
                         }
                     }
                 }
+
                 items(filteredCows, key = { it.id }) { cow ->
                     WorkingListItem(
                         cow = cow,
@@ -219,7 +220,7 @@ fun WorkingListScreen(
     }
 }
 
-private fun hasActiveFilters(uiState: com.jumblemint.cows.ui.viewmodel.WorkingListUiState): Boolean {
+private fun hasActiveFilters(uiState: WorkingListUiState): Boolean {
     val hasNonDefaultStatusFilters = uiState.selectedStatuses.isNotEmpty() && (uiState.selectedStatuses.size != 1 || !uiState.selectedStatuses.contains(Status.ACTIVE))
     return hasNonDefaultStatusFilters ||
            uiState.selectedClassifications.isNotEmpty() ||
@@ -257,20 +258,21 @@ private fun <T> FilterSection(
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkingListItem(
     cow: Cow,
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
-    onCowClick: (Long) -> Unit, 
-    resolvedTagColor: androidx.compose.ui.graphics.Color? = null,
+    onCowClick: (Long) -> Unit,
+    resolvedTagColor: Color? = null,
     modifier: Modifier = Modifier
 ) {
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!isChecked) }, 
+            .clickable { onCheckedChange(!isChecked) },
         colors = CardDefaults.cardColors(
             containerColor = if (isChecked) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
         )
@@ -283,9 +285,20 @@ fun WorkingListItem(
         ) {
             Checkbox(
                 checked = isChecked,
-                onCheckedChange = onCheckedChange, 
+                onCheckedChange = onCheckedChange,
                 modifier = Modifier.size(24.dp)
             )
+            Spacer(modifier = Modifier.width(8.dp))
+            IconButton(
+                onClick = { onCowClick(cow.id) },
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Info,
+                    contentDescription = "View Cow Info",
+                    tint = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -293,36 +306,31 @@ fun WorkingListItem(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.clickable { onCowClick(cow.id) } 
+                    modifier = Modifier.clickable { onCowClick(cow.id) }
                 )
-                Row {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = cow.classification.name.lowercase().replaceFirstChar { it.uppercase() },
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    cow.tagNumber?.let { tag ->
-                        Text(
-                            text = " • Tag: $tag",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
-                resolvedTagColor?.let { color ->
-                    if (color != MaterialTheme.colorScheme.surfaceVariant && color != MaterialTheme.colorScheme.primaryContainer) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(modifier = Modifier.size(12.dp).background(color, shape = MaterialTheme.shapes.small))
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Tag Color", style = MaterialTheme.typography.bodySmall, color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-                cow.pastureId?.let { pastureId ->
+                // TODO: Display pasture information (cow.pastureId) here when ready.
+            }
+            if (!cow.tagNumber.isNullOrBlank() && resolvedTagColor != null) {
+                val tagBackgroundColor: androidx.compose.ui.graphics.Color = resolvedTagColor // Explicit non-null type
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier
+                        .background(tagBackgroundColor, shape = MaterialTheme.shapes.small)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = "Pasture: $pastureId",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+                        text = cow.tagNumber,
+                        color = if (tagBackgroundColor.luminance() > 0.5f) Color.Black else Color.White, // Using unqualified Color.Black/White
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
