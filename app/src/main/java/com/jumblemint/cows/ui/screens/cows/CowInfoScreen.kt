@@ -25,6 +25,7 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.CattleTagBadge
+import com.jumblemint.cows.ui.components.SimpleTopAppBar
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.CowInfoViewModel
@@ -69,16 +70,12 @@ fun CowInfoScreen(
     Scaffold(
         modifier = Modifier.fillMaxSize(), 
         topBar = {
-            TopAppBar(
-                title = { Text(uiState.cow?.name ?: "Cow Information") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
+            SimpleTopAppBar(
+                title = uiState.cow?.name ?: "Cow Information",
+                onBack = onNavigateBack,
                 actions = {
-                    IconButton(onClick = onCloseFlow) { // Changed to onCloseFlow
-                        Icon(Icons.Filled.Close, contentDescription = "Close Flow") // Updated content description
+                    IconButton(onClick = onCloseFlow) {
+                        Icon(Icons.Filled.Close, contentDescription = "Close Flow")
                     }
                 }
             )
