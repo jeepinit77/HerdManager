@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack // Specific import for ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Save // Specific import for Save
 import androidx.compose.material.icons.outlined.Info // <<< IMPORT ADDED FOR OUTLINED INFO ICON
 import androidx.compose.material3.*
@@ -74,7 +74,7 @@ fun AddBirthScreen(
                 title = { Text("Record Birth") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Back") // Changed to Filled
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") // Changed to Filled
                     }
                 },
                 actions = {

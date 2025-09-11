@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items // Keep this import
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Edit // <<< ADDED IMPORT
 import androidx.compose.material3.*
@@ -76,7 +77,7 @@ fun TagColorsManagementScreen(
                 title = { Text("Manage Tag Colors") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
