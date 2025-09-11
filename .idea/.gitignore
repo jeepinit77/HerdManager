@@ -9,3 +9,7 @@
 /zencoder/chats/77ce86b9-619d-4516-a0bf-bc323b8a5718.json
 /zencoder/chats/b4391668-f5e7-46f0-9945-49bacdf46994.json
 /zencoder/chats/c3f3a306-d5b8-4087-ac1f-3fb4af138436.json
+# Zencoder local files
+/zencoder/chats
+/zencoder-chat-index.xml
+/zencoder-chats-dedicated.xml
