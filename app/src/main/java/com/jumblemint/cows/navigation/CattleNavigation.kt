@@ -75,6 +75,16 @@ fun MainScreensViewPager(
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
 
+    // Read initialPage argument from navController's currentBackStackEntry
+    val initialPage = navController.currentBackStackEntry?.arguments?.getInt("initialPage") ?: DASHBOARD_PAGE_INDEX
+
+    // Set pager to correct tab when shown
+    LaunchedEffect(initialPage) {
+        if (pagerState.currentPage != initialPage) {
+            pagerState.scrollToPage(initialPage)
+        }
+    }
+
     HorizontalPager(
         state = pagerState,
         modifier = Modifier
@@ -206,7 +216,8 @@ fun CattleNavigation(
                     if (!returnToRouteArg.isNullOrEmpty()) {
                         navController.navigate(returnToRouteArg)
                     } else {
-                        navController.navigate(mainPagerRoute(DASHBOARD_PAGE_INDEX))
+                        // Default to cows tab if no route is provided
+                        navController.navigate(mainPagerRoute(COWS_PAGE_INDEX))
                     }
                 }
             )
