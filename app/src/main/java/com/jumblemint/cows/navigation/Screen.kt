@@ -5,8 +5,8 @@ package com.jumblemint.cows.navigation
 const val MAIN_PAGER_ROUTE_TEMPLATE = "main_pager_route?initialPage={initialPage}"
 
 sealed class Screen(val route: String, val title: String? = null, val hasOwnTopAppBar: Boolean = false) {
-    data object Splash : Screen("splash_route", "Splash", true)
-    data object SignIn : Screen("sign_in_route", "Sign In", true)
+    data object Splash : Screen("splash_route", "Splash", false)
+    data object SignIn : Screen("sign_in_route", "Sign In", false)
     data object MainPager : Screen(MAIN_PAGER_ROUTE_TEMPLATE, null, false) { // Title will be set by pager content
         fun buildRoute(initialPage: Int = 0): String {
             return route.replace("{initialPage}", initialPage.toString())
@@ -18,24 +18,24 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
     data object Activities : Screen("activities_route", "Activities") // Now a page in MainPager
     data object Notes : Screen("notes_route", "Notes") // Now a page in MainPager
 
-    data object CowInfo : Screen("cow_info_route/{cowId}?returnToRoute={returnToRoute}", "Cow Info", true) {
+    data object CowInfo : Screen("cow_info_route/{cowId}?returnToRoute={returnToRoute}", "Cow Info", false) {
         fun createRoute(cowId: Long, returnToRoute: String?): String {
             val baseRoute = route.replace("{cowId}", cowId.toString())
             return returnToRoute?.let { "$baseRoute?returnToRoute=$it" } ?: baseRoute
         }
     }
-    data object CowDetail : Screen("cow_detail_route/{cowId}", "Cow Details", true) {
+    data object CowDetail : Screen("cow_detail_route/{cowId}", "Cow Details", false) {
         fun createRoute(cowId: Long): String = route.replace("{cowId}", cowId.toString())
     }
-    data object AddActivity : Screen("add_activity_route", "Add Activity", true) { // For navigating to add (no ID)
+    data object AddActivity : Screen("add_activity_route", "Add Activity", false) { // For navigating to add (no ID)
          fun createRoute(): String = route // No ID needed for initial navigation
     }
-     data object AddActivityWithId : Screen("add_activity_route/{activityId}", "Edit Activity", true) { // For composable route definition
+     data object AddActivityWithId : Screen("add_activity_route/{activityId}", "Edit Activity", false) { // For composable route definition
         fun createRoute(activityId: Long): String = route.replace("{activityId}", activityId.toString())
      }
 
 
-    data object CowList : Screen("cow_list_route?type={type}&value={value}", "Cow List", true) {
+    data object CowList : Screen("cow_list_route?type={type}&value={value}", "Cow List", false) {
         fun createRoute(type: String?, value: String?): String {
             var result = route
             result = type?.let { result.replace("{type}", it) } ?: result.replace("type={type}", "").replace("?&","?")
@@ -47,18 +47,18 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
     data object PastureDetail : Screen("pasture_detail_route/{pastureId}", "Pasture Details", false) { // hasOwnTopAppBar depends on ID (0 for add)
         fun createRoute(pastureId: String): String = route.replace("{pastureId}", pastureId)
     }
-    data object AddPasture : Screen("add_pasture_route", "Add Pasture", true)
-    data object EditPasture : Screen("edit_pasture_route/{pastureId}", "Edit Pasture", true) {
+    data object AddPasture : Screen("add_pasture_route", "Add Pasture", false)
+    data object EditPasture : Screen("edit_pasture_route/{pastureId}", "Edit Pasture", false) {
         fun createRoute(pastureId: String): String = route.replace("{pastureId}", pastureId)
     }
-    data object AddBirth : Screen("add_birth_route", "Add Birth", true)
-    data object AccountManagement : Screen("account_management_route", "Account", true)
-    data object TagColorsManagement : Screen("tag_colors_management_route", "Tag Colors", true)
-    data object ActivityTypesManagement : Screen("activity_types_management_route", "Activity Types", true)
-    data object ThemeSettings : Screen("theme_settings_route", "Theme Settings", true)
-    data object Sync : Screen("sync_route", "Sync", true) 
+    data object AddBirth : Screen("add_birth_route", "Add Birth", false)
+    data object AccountManagement : Screen("account_management_route", "Account", false)
+    data object TagColorsManagement : Screen("tag_colors_management_route", "Tag Colors", false)
+    data object ActivityTypesManagement : Screen("activity_types_management_route", "Activity Types", false)
+    data object ThemeSettings : Screen("theme_settings_route", "Theme Settings", false)
+    data object Sync : Screen("sync_route", "Sync", false) 
     data object WorkingList : Screen("working_list_route", "Working List", false)
-    data object HerdSelection : Screen("herd_selection_route", "Select Herd", true)
+    data object HerdSelection : Screen("herd_selection_route", "Select Herd", false)
 
     companion object {
         fun fromRoute(route: String?): Screen? {
