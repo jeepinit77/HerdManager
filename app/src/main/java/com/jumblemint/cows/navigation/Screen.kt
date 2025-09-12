@@ -43,7 +43,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
             return result.trimEnd('?').trimEnd('&')
         }
     }
-    data object Settings : Screen("settings_route", "Settings", true)
+    data object Settings : Screen("settings_route", "Settings", false)
     data object PastureDetail : Screen("pasture_detail_route/{pastureId}", "Pasture Details", false) { // hasOwnTopAppBar depends on ID (0 for add)
         fun createRoute(pastureId: String): String = route.replace("{pastureId}", pastureId)
     }
