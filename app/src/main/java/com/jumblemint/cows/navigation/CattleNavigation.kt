@@ -115,10 +115,7 @@ fun MainScreensViewPager(
                 },
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToDashboard = {
-                     navController.navigate(mainPagerRoute(DASHBOARD_PAGE_INDEX)) {
-                        popUpTo(navController.graph.findStartDestination().id)
-                        launchSingleTop = true
-                    }
+                    navController.navigate(mainPagerRoute(DASHBOARD_PAGE_INDEX))
                 }
             )
             ACTIVITIES_PAGE_INDEX -> ActivitiesScreen(
@@ -202,30 +199,14 @@ fun CattleNavigation(
                 onNavigateToCow = { selectedCowId: Long ->
                     if (cowId != selectedCowId) {
                         val finalRoute = Screen.CowInfo.createRoute(cowId = selectedCowId, returnToRoute = returnToRouteArg ?: mainPagerRoute(COWS_PAGE_INDEX))
-                        navController.navigate(finalRoute) { launchSingleTop = true; popUpTo(finalRoute) {inclusive = true} }
+                        navController.navigate(finalRoute)
                     }
                 },
                 onCloseFlow = {
                     if (!returnToRouteArg.isNullOrEmpty()) {
-                         if (returnToRouteArg.startsWith(MAIN_PAGER_ROUTE_TEMPLATE.split("?").first())) {
-                             navController.navigate(returnToRouteArg) {
-                                popUpTo(navController.graph.findStartDestination().id) { inclusive = false }
-                                launchSingleTop = true
-                            }
-                         } else {
-                            val success = navController.popBackStack(returnToRouteArg, inclusive = false, saveState = false)
-                            if (!success) {
-                                 navController.navigate(mainPagerRoute(DASHBOARD_PAGE_INDEX)) {
-                                    popUpTo(navController.graph.findStartDestination().id)
-                                    launchSingleTop = true
-                                }
-                            }
-                         }
+                        navController.navigate(returnToRouteArg)
                     } else {
-                        navController.navigate(mainPagerRoute(DASHBOARD_PAGE_INDEX)) {
-                            popUpTo(navController.graph.findStartDestination().id)
-                            launchSingleTop = true
-                        }
+                        navController.navigate(mainPagerRoute(DASHBOARD_PAGE_INDEX))
                     }
                 }
             )
