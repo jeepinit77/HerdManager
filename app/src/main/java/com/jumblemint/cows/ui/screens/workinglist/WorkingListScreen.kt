@@ -31,6 +31,7 @@ import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.ui.components.SimpleTopAppBar
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.WorkingListUiState
@@ -73,32 +74,12 @@ fun WorkingListScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = { Text("Working List") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showFiltersState = !showFiltersState }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Toggle Filters")
-                    }
-                    if (hasActiveFilters(uiState)) {
-                        IconButton(onClick = { viewModel.clearAllFilters() }) {
-                            Icon(Icons.Default.Clear, contentDescription = "Clear Content Filters")
-                        }
-                    }
-                    IconButton(onClick = { viewModel.clearAllChecks() }) {
-                        Icon(Icons.Default.ClearAll, contentDescription = "Clear All Content Checks")
-                    }
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close Screen")
-                    }
-                }
-            )
-        }
+//        topBar = {
+//            SimpleTopAppBar(
+//                title = "Working List",
+//                onBack = onNavigateBack
+//            )
+//        }
     ) { paddingValues ->
         Column(
             modifier = Modifier

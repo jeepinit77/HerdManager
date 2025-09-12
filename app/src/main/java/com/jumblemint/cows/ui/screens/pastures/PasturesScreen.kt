@@ -75,21 +75,6 @@ fun PasturesScreen(
 
     Scaffold(
         modifier = modifier, 
-        topBar = { // Added TopAppBar
-            TopAppBar(
-                title = { Text("Pastures") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = onNavigateToDashboard) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close to Dashboard")
-                    }
-                }
-            )
-        },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAddPasture) {

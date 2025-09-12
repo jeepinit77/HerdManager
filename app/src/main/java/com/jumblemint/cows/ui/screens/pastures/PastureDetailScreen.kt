@@ -3,13 +3,12 @@ package com.jumblemint.cows.ui.screens.pastures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-// import androidx.compose.material.icons.Icons // Not needed here if TopAppBar is removed
-// import androidx.compose.material.icons.filled.ArrowBack // Not needed here
-// import androidx.compose.material.icons.filled.Edit // Not needed here
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier // Ensure Modifier is imported
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -18,6 +17,7 @@ import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.CowCard
+import com.jumblemint.cows.ui.components.SimpleTopAppBar
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.PastureDetailViewModel
@@ -69,9 +69,21 @@ fun PastureDetailScreen(
     // when this screen is active and uiState.pasture is not null.
 
     Scaffold(
-        modifier = modifier, // <<< APPLIED MODIFIER HERE
+        modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        // topBar = { ... } // TopAppBar REMOVED
+        topBar = {
+            SimpleTopAppBar(
+                title = uiState.pasture?.name ?: "Pasture Details",
+                onBack = onNavigateBack,
+                actions = {
+                    if (uiState.pasture != null) {
+                        IconButton(onClick = onEditPasture) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Edit Pasture")
+                        }
+                    }
+                }
+            )
+        },
         // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out
     ) { localScaffoldPadding -> // This padding is from THIS Scaffold (if it had a FAB, BottomBar, etc.)
                                 // The `modifier` applied above already contains padding from MainActivity.

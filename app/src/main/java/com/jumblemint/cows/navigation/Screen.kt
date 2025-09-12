@@ -57,7 +57,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
     data object ActivityTypesManagement : Screen("activity_types_management_route", "Activity Types", true)
     data object ThemeSettings : Screen("theme_settings_route", "Theme Settings", true)
     data object Sync : Screen("sync_route", "Sync", true) 
-    data object WorkingList : Screen("working_list_route", "Working List", true)
+    data object WorkingList : Screen("working_list_route", "Working List", false)
     data object HerdSelection : Screen("herd_selection_route", "Select Herd", true)
 
     companion object {

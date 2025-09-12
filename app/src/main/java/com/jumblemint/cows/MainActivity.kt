@@ -23,6 +23,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.jumblemint.cows.navigation.* // Import all from navigation for constants and Screen
+import com.jumblemint.cows.ui.components.SimpleTopAppBar
 import com.jumblemint.cows.ui.theme.CowsTheme
 import kotlinx.coroutines.launch // New Import
 
@@ -58,6 +59,15 @@ fun getScreenForPageIndex(index: Int): Screen? = when (index) {
     ACTIVITIES_PAGE_INDEX -> Screen.Activities
     NOTES_PAGE_INDEX -> Screen.Notes
     else -> null
+}
+
+// New helper function to determine if the screen is one of the main tab screens
+fun isMainTabScreen(screen: Screen?): Boolean {
+    return screen == Screen.Dashboard ||
+           screen == Screen.Cows ||
+           screen == Screen.Pastures ||
+           screen == Screen.Activities ||
+           screen == Screen.Notes
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,60 +146,96 @@ fun CattleManagerApp() {
         BottomNavItem(Screen.Notes, Icons.Default.Note, "Notes")
     )
 
-    var showMainTopAppBar = currentScreenForUI?.hasOwnTopAppBar != true
-    if (currentScreenFromNav == Screen.PastureDetail) {
-        val pastureId = navBackStackEntry?.arguments?.getString("pastureId")
-        showMainTopAppBar = pastureId != "0"
-    }
-    if (currentScreenFromNav == Screen.SignIn) {
-        showMainTopAppBar = false
-    }
+    // Standardized logic: Only show TopAppBarWithMenu for main tabs
+    val showMainTopAppBar = isMainTabScreen(currentScreenForUI)
+    val showSimpleTopAppBar = !showMainTopAppBar && (currentScreenForUI?.hasOwnTopAppBar != true)
 
     Box(modifier = Modifier.fillMaxSize()) {
-        Scaffold(
-            modifier = Modifier.fillMaxSize(),
-            topBar = {
-                if (showMainTopAppBar) {
-                    TopAppBarWithMenu(currentScreenForUI, { navController.navigate(Screen.Settings.route) }, navController)
-                }
-            },
-            bottomBar = {
-                if (currentScreenFromNav == Screen.MainPager) {
-                    NavigationBar {
-                        bottomNavItems.forEach { item ->
-                            val pageIndex = getPageIndexForScreen(item.screen)
-                            NavigationBarItem(
-                                icon = { Icon(item.icon, item.label) },
-                                label = { Text(item.label) },
-                                selected = pagerState.currentPage == pageIndex,
-                                onClick = {
-                                    if (pageIndex != -1) { // item.screen is one of the pager screens
-                                        // Since this bottomBar is shown only when currentScreenFromNav == Screen.MainPager,
-                                        // we are on the MainPager. Just scroll the pagerState.
-                                        coroutineScope.launch {
-                                            pagerState.scrollToPage(pageIndex)
+        if (showMainTopAppBar || showSimpleTopAppBar) {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                topBar = {
+                    if (showMainTopAppBar) {
+                        TopAppBarWithMenu(currentScreenForUI, { navController.navigate(Screen.Settings.route) }, navController)
+                    } else if (showSimpleTopAppBar) {
+                        SimpleTopAppBar(title = currentScreenForUI?.title ?: "Cattle Manager", onBack = { navController.popBackStack() })
+                    }
+                },
+                bottomBar = {
+                    if (currentScreenFromNav == Screen.MainPager) {
+                        NavigationBar {
+                            bottomNavItems.forEach { item ->
+                                val pageIndex = getPageIndexForScreen(item.screen)
+                                NavigationBarItem(
+                                    icon = { Icon(item.icon, item.label) },
+                                    label = { Text(item.label) },
+                                    selected = pagerState.currentPage == pageIndex,
+                                    onClick = {
+                                        if (pageIndex != -1) {
+                                            coroutineScope.launch {
+                                                pagerState.scrollToPage(pageIndex)
+                                            }
                                         }
                                     }
-                                }
+                                )
+                            }
+                            NavigationBarItem(
+                                selected = currentScreenFromNav == Screen.Settings,
+                                onClick = {
+                                    navController.navigate(Screen.Settings.route)
+                                },
+                                icon = { Icon(Icons.Default.Settings, "Settings") },
+                                label = { Text("Settings") }
                             )
                         }
-                        NavigationBarItem(
-                            selected = currentScreenFromNav == Screen.Settings,
-                            onClick = {
-                                navController.navigate(Screen.Settings.route)
-                            },
-                            icon = { Icon(Icons.Default.Settings, "Settings") }, 
-                            label = { Text("Settings") }
-                        )
                     }
                 }
+            ) { innerPadding ->
+                CattleNavigation(
+                    navController = navController,
+                    mainScaffoldPadding = innerPadding,
+                    pagerState = pagerState
+                )
             }
-        ) { innerPadding ->
-            CattleNavigation(
-                navController = navController,
-                mainScaffoldPadding = innerPadding,
-                pagerState = pagerState 
-            )
+        } else {
+            Scaffold(
+                modifier = Modifier.fillMaxSize(),
+                bottomBar = {
+                    if (currentScreenFromNav == Screen.MainPager) {
+                        NavigationBar {
+                            bottomNavItems.forEach { item ->
+                                val pageIndex = getPageIndexForScreen(item.screen)
+                                NavigationBarItem(
+                                    icon = { Icon(item.icon, item.label) },
+                                    label = { Text(item.label) },
+                                    selected = pagerState.currentPage == pageIndex,
+                                    onClick = {
+                                        if (pageIndex != -1) {
+                                            coroutineScope.launch {
+                                                pagerState.scrollToPage(pageIndex)
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                            NavigationBarItem(
+                                selected = currentScreenFromNav == Screen.Settings,
+                                onClick = {
+                                    navController.navigate(Screen.Settings.route)
+                                },
+                                icon = { Icon(Icons.Default.Settings, "Settings") },
+                                label = { Text("Settings") }
+                            )
+                        }
+                    }
+                }
+            ) { innerPadding ->
+                CattleNavigation(
+                    navController = navController,
+                    mainScaffoldPadding = innerPadding,
+                    pagerState = pagerState
+                )
+            }
         }
     }
 }
