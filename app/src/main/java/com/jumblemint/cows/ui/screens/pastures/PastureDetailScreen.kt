@@ -75,16 +75,9 @@ fun PastureDetailScreen(
             SimpleTopAppBar(
                 title = uiState.pasture?.name ?: "Pasture Details",
                 onBack = onNavigateBack,
-                actions = {
-                    if (uiState.pasture != null) {
-                        IconButton(onClick = onEditPasture) {
-                            Icon(Icons.Filled.Edit, contentDescription = "Edit Pasture")
-                        }
-                    }
-                }
+                onEdit = onEditPasture
             )
-        },
-        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out
+        }
     ) { localScaffoldPadding -> // This padding is from THIS Scaffold (if it had a FAB, BottomBar, etc.)
                                 // The `modifier` applied above already contains padding from MainActivity.
 

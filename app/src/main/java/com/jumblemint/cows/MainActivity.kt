@@ -148,7 +148,8 @@ fun CattleManagerApp() {
 
     // Standardized logic: Only show TopAppBarWithMenu for main tabs
     val showMainTopAppBar = isMainTabScreen(currentScreenForUI)
-    val showSimpleTopAppBar = !showMainTopAppBar && (currentScreenForUI?.hasOwnTopAppBar != true)
+    val showSimpleTopAppBar = !showMainTopAppBar && (currentScreenForUI?.hasOwnTopAppBar != true) && 
+        currentScreenForUI != Screen.CowInfo && currentScreenForUI != Screen.PastureDetail
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (showMainTopAppBar || showSimpleTopAppBar) {

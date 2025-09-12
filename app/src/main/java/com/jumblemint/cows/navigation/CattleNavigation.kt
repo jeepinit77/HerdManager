@@ -317,6 +317,9 @@ fun CattleNavigation(
                 },
                 onCowEdit = { cowId: Long ->
                     navController.navigate(Screen.CowDetail.createRoute(cowId))
+                },
+                onEditPasture = {
+                    navController.navigate(Screen.EditPasture.createRoute(pastureId))
                 }
             )
         }

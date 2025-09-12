@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
@@ -68,16 +69,13 @@ fun CowInfoScreen(
     val tagColorMap = rememberTagColorMap(repository)
 
     Scaffold(
-        modifier = Modifier.fillMaxSize(), 
+        modifier = Modifier.fillMaxSize(),
         topBar = {
             SimpleTopAppBar(
                 title = uiState.cow?.name ?: "Cow Information",
                 onBack = onNavigateBack,
-                actions = {
-                    IconButton(onClick = onCloseFlow) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close Flow")
-                    }
-                }
+                onEdit = onEditCow,
+                onClose = onCloseFlow
             )
         }
     ) { paddingValues -> 
