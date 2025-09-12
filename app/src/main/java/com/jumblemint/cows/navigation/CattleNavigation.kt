@@ -254,7 +254,7 @@ fun CattleNavigation(
             val type = backStackEntry.arguments?.getString("type")
             val valueString = backStackEntry.arguments?.getString("value")
             CowListScreen(
-                modifier = screenModifierNoPadding,
+                modifier = screenModifierWithPadding,
                 type = type,
                 value = valueString,
                 onCowClick = { cowId: Long -> navController.navigate(Screen.CowInfo.createRoute(cowId, Screen.CowList.createRoute(type, valueString))) },

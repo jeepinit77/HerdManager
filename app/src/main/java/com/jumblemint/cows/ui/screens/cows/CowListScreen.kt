@@ -158,47 +158,34 @@ fun CowListScreen(
         // TODO: Update MainActivity's TopAppBar title state here or via a shared ViewModel / callback
     }
 
-    Scaffold(
-        modifier = modifier, // <<< APPLIED MODIFIER HERE
-        // topBar = { ... } // TopAppBar is REMOVED. Title and Nav handled by MainActivity.
-        // contentWindowInsets = WindowInsets(0, 0, 0, 0) // Commented out
-    ) { paddingValues -> // This paddingValues is from THIS Scaffold (if it had its own FAB, etc.)
-                         // The `modifier` above already includes padding from MainActivity's Scaffold.
-        if (allCowsState.isLoading && list.isEmpty()) { // Show loading only if list is empty due to loading
-            Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues), // Apply this Scaffold's padding
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else if (list.isEmpty()){
-             Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues), // Apply this Scaffold's padding
-                contentAlignment = Alignment.Center
-            ) {
-                Text("No cows match the criteria.", style = MaterialTheme.typography.bodyLarge)
-            }
+    if (allCowsState.isLoading && list.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
         }
-        else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues) // Apply this Scaffold's padding
-                    .padding(horizontal = 16.dp), // Specific content padding
-                contentPadding = PaddingValues(vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(list, key = { it.id }) { cow ->
-                    CowCard(
-                        cow = cow,
-                        onClick = { onCowClick(cow.id) },
-                        resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap)
-                    )
-                }
+    } else if (list.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("No cows match the criteria.", style = MaterialTheme.typography.bodyLarge)
+        }
+    } else {
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            contentPadding = PaddingValues(vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(list, key = { it.id }) { cow ->
+                CowCard(
+                    cow = cow,
+                    onClick = { onCowClick(cow.id) },
+                    resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap)
+                )
             }
         }
     }

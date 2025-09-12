@@ -79,7 +79,7 @@ fun CowsScreen(
     )
 
     Scaffold(
-        modifier = modifier, // <<< APPLIED MODIFIER HERE
+//        modifier = modifier, // <<< APPLIED MODIFIER HERE
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
