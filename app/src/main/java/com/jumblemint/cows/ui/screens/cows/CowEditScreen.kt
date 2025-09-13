@@ -222,6 +222,109 @@ fun CowEditScreen(
                         )
                     }
                 }
+
+                // Parentage
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Parentage",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        DropdownField(
+                            value = uiState.motherName ?: "",
+                            onValueChange = { motherName ->
+                                val mother = uiState.availableMothers.find { it.name == motherName }
+                                viewModel.updateMother(mother?.id)
+                            },
+                            label = "Mother",
+                            options = listOf("") + uiState.availableMothers.map { it.name ?: "Unnamed" },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        DropdownField(
+                            value = uiState.fatherName ?: "",
+                            onValueChange = { fatherName ->
+                                val father = uiState.availableFathers.find { it.name == fatherName }
+                                viewModel.updateFather(father?.id)
+                            },
+                            label = "Father",
+                            options = listOf("") + uiState.availableFathers.map { it.name ?: "Unnamed" },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+
+                // Status & Location
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = "Status & Location",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        DropdownField(
+                            value = uiState.status.name,
+                            onValueChange = { viewModel.updateStatus(Status.valueOf(it)) },
+                            label = "Status",
+                            options = Status.entries.map { it.name },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        DropdownField(
+                            value = uiState.pastureName ?: "",
+                            onValueChange = { pastureName ->
+                                val pasture = uiState.availablePastures.find { it.name == pastureName }
+                                viewModel.updatePasture(pasture?.id)
+                            },
+                            label = "Pasture",
+                            options = listOf("") + uiState.availablePastures.map { it.name },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = uiState.isWatched,
+                                onCheckedChange = viewModel::updateIsWatched
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Watch this cow",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = if (uiState.isWatched) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = null,
+                                tint = if (uiState.isWatched) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Save Button
+                Button(
+                    onClick = {
+                        saveAttempted = true
+                        viewModel.saveCow()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !uiState.isLoading
+                ) {
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    Text(if (cowId == 0L) "Add Cow" else "Save Changes")
+                }
             }
     }
 }
