@@ -72,20 +72,18 @@ fun CowEditScreen(
         }
     }
 
-    Box(modifier = modifier) {
-        if (uiState.isLoading && cowId != 0L) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
-                    .padding(16.dp),
+    if (uiState.isLoading && cowId != 0L) {
+        Box(
+            modifier = modifier,
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else {
+        Column(
+            modifier = modifier
+                .verticalScroll(scrollState)
+                .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Error message
@@ -195,6 +193,5 @@ fun CowEditScreen(
                     }
                 }
             }
-        }
     }
 }

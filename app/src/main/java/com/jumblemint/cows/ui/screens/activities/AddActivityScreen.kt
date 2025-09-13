@@ -93,19 +93,17 @@ fun AddActivityScreen(
         }
     }
 
-    Box(modifier = modifier) {
-        if (uiState.isLoading && editId != null) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
+    if (uiState.isLoading && editId != null) {
+        Box(
+            modifier = modifier,
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else {
+        LazyColumn(
+            modifier = modifier
+                .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
@@ -404,7 +402,6 @@ fun AddActivityScreen(
                     }
                 }
             }
-        }
     }
 }
 

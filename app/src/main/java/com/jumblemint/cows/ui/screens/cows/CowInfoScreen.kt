@@ -79,7 +79,7 @@ fun CowInfoScreen(
     }
 
     Column(
-        modifier = modifier.fillMaxSize() 
+        modifier = modifier
         ) {
             if (uiState.isLoading) {
                 Box(

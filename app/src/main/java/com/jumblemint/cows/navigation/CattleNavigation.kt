@@ -210,7 +210,7 @@ fun CattleNavigation(
             val returnToRouteArg = backStackEntry.arguments?.getString("returnToRoute")
 
             CowInfoScreen(
-                modifier = screenModifierNoPadding,
+                modifier = screenModifierWithPadding,
                 cowId = cowId,
                 onNavigateBack = { navController.popBackStack() },
                 onEditCow = { navController.navigate(Screen.CowDetail.createRoute(cowId)) },
@@ -276,7 +276,7 @@ fun CattleNavigation(
             }
             
             CowEditScreen(
-                modifier = screenModifierNoPadding,
+                modifier = screenModifierWithPadding,
                 cowId = cowId,
                 onNavigateBack = { navController.popBackStack() }
             )
@@ -288,7 +288,7 @@ fun CattleNavigation(
                 topAppBarController.updateActions(TopAppBarActions())
             }
             AddActivityScreen(
-                modifier = screenModifierNoPadding,
+                modifier = screenModifierWithPadding,
                 editId = null,
                 onNavigateBack = { navController.popBackStack() },
                 topAppBarController = topAppBarController
@@ -302,7 +302,7 @@ fun CattleNavigation(
                 topAppBarController.updateActions(TopAppBarActions())
             }
             AddActivityScreen(
-                modifier = screenModifierNoPadding,
+                modifier = screenModifierWithPadding,
                 editId = activityId,
                 onNavigateBack = { navController.popBackStack() },
                 topAppBarController = topAppBarController
@@ -339,7 +339,7 @@ fun CattleNavigation(
         composable(Screen.SignIn.route) {
             val authViewModel: AuthViewModel = viewModel(factory = AuthViewModelFactory(application.authService, application.repository, application.syncService))
             SignInScreen(
-                modifier = screenModifierNoPadding,
+                modifier = screenModifierWithPadding,
                 authViewModel = authViewModel,
                 onNavigateBack = { navController.popBackStack() },
                 onSignInSuccess = {
@@ -360,7 +360,7 @@ fun CattleNavigation(
         ) { backStackEntry ->
             val pastureId = backStackEntry.arguments?.getString("pastureId") ?: ""
             PastureDetailScreen(
-                modifier = screenModifierNoPadding,
+                modifier = screenModifierWithPadding,
                 pastureId = pastureId,
                 onNavigateBack = { 
                     navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
@@ -388,7 +388,7 @@ fun CattleNavigation(
 
         composable(Screen.AddBirth.route){
             AddBirthScreen(
-                modifier = screenModifierNoPadding,
+                modifier = screenModifierWithPadding,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
@@ -415,7 +415,7 @@ fun CattleNavigation(
             )
             
             AddPastureScreen(
-                modifier = screenModifierNoPadding,
+                modifier = screenModifierWithPadding,
                 onAddPasture = { pasture ->
                     pasturesViewModel.insertNewPasture(pasture)
                     navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
@@ -462,7 +462,7 @@ fun CattleNavigation(
             val pasture by repository.getPastureById(pastureId).collectAsState(initial = null)
             
             AddPastureScreen(
-                modifier = screenModifierNoPadding,
+                modifier = screenModifierWithPadding,
                 editPasture = pasture,
                 onAddPasture = { updatedPasture ->
                     pasturesViewModel.insertNewPasture(updatedPasture)
