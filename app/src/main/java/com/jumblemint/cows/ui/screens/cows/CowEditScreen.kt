@@ -26,6 +26,7 @@ import com.jumblemint.cows.ui.components.DropdownField
 import com.jumblemint.cows.ui.components.SimpleTopAppBar
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
+import com.jumblemint.cows.ui.theme.getGenderColor
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import java.time.LocalDate
@@ -60,6 +61,16 @@ fun CowEditScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val tagColorMap = rememberTagColorMap(repository)
+    val maleColor = getGenderColor(Gender.MALE)
+    val femaleColor = getGenderColor(Gender.FEMALE)
+    val tbdColor = getGenderColor(Gender.TBD)
+    val genderColorMap = remember(maleColor, femaleColor, tbdColor) {
+        mapOf(
+            Gender.MALE.name to maleColor,
+            Gender.FEMALE.name to femaleColor,
+            Gender.TBD.name to tbdColor
+        )
+    }
     val scrollState = rememberScrollState()
     var saveAttempted by remember { mutableStateOf(false) }
 
@@ -177,6 +188,9 @@ fun CowEditScreen(
                             modifier = Modifier.fillMaxWidth(),
                             valueBackgroundColor = { name ->
                                 resolveTagColor(name, tagColorMap)
+                            },
+                            optionBackgroundColor = { name ->
+                                resolveTagColor(name, tagColorMap)
                             }
                         )
                         DatePickerField(
@@ -186,18 +200,59 @@ fun CowEditScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                         DropdownField(
-                            value = uiState.gender.name,
-                            onValueChange = { viewModel.updateGender(Gender.valueOf(it)) },
+                            value = uiState.gender?.name ?: "",
+                            onValueChange = { genderName ->
+                                if (genderName.isNotEmpty()) {
+                                    viewModel.updateGender(Gender.valueOf(genderName))
+                                } else {
+                                    viewModel.updateGender(null)
+                                }
+                            },
                             label = "Gender",
                             options = Gender.entries.map { it.name },
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            valueBackgroundColor = { genderName ->
+                                genderColorMap[genderName]
+                            },
+                            optionBackgroundColor = { genderName ->
+                                genderColorMap[genderName]
+                            }
                         )
+                        val availableClassifications = remember(uiState.gender) {
+                            when (uiState.gender) {
+                                Gender.FEMALE -> listOf(Classification.COW, Classification.HEIFER, Classification.CALF)
+                                Gender.MALE -> listOf(Classification.BULL, Classification.STEER, Classification.CALF)
+                                Gender.TBD -> Classification.entries.toList()
+                                null -> Classification.entries.toList()
+                            }
+                        }
+                        val classificationColorMap = remember(maleColor, femaleColor, tbdColor) {
+                            mapOf(
+                                Classification.COW.name to femaleColor,
+                                Classification.HEIFER.name to femaleColor,
+                                Classification.BULL.name to maleColor,
+                                Classification.STEER.name to maleColor,
+                                Classification.CALF.name to tbdColor
+                            )
+                        }
                         DropdownField(
-                            value = uiState.classification.name,
-                            onValueChange = { viewModel.updateClassification(Classification.valueOf(it)) },
+                            value = uiState.classification?.name ?: "",
+                            onValueChange = { classificationName ->
+                                if (classificationName.isNotEmpty()) {
+                                    viewModel.updateClassification(Classification.valueOf(classificationName))
+                                } else {
+                                    viewModel.updateClassification(null)
+                                }
+                            },
                             label = "Classification",
-                            options = Classification.entries.map { it.name },
-                            modifier = Modifier.fillMaxWidth()
+                            options = availableClassifications.map { it.name },
+                            modifier = Modifier.fillMaxWidth(),
+                            valueBackgroundColor = { classificationName ->
+                                classificationColorMap[classificationName]
+                            },
+                            optionBackgroundColor = { classificationName ->
+                                classificationColorMap[classificationName]
+                            }
                         )
                     }
                 }
@@ -323,7 +378,7 @@ fun CowEditScreen(
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text(if (cowId == 0L) "Add Cow" else "Save Changes")
+                    Text(if (cowId == 0L) "Add Animal" else "Save Changes")
                 }
             }
     }

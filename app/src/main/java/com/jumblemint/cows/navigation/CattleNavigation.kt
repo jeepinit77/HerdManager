@@ -263,7 +263,7 @@ fun CattleNavigation(
             
             // Update TopAppBar for CowDetail
             LaunchedEffect(cowId) {
-                topAppBarController.updateTitle(if (cowId == 0L) "Add Cow" else "Edit Cow")
+                topAppBarController.updateTitle(if (cowId == 0L) "Add Animal" else "Edit Animal")
                 topAppBarController.updateActions(
                     TopAppBarActions(
                         onSave = { viewModel.saveCow() },

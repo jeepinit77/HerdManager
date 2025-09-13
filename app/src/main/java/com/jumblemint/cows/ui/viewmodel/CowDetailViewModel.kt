@@ -18,8 +18,8 @@ data class CowDetailUiState(
     val tagNumber: String = "",
     val tagColor: String? = null,
     val birthDate: LocalDate? = LocalDate.now(),
-    val gender: Gender = Gender.TBD,
-    val classification: Classification = Classification.CALF,
+    val gender: Gender? = null,
+    val classification: Classification? = null,
     val colorMarkings: String = "",
     val motherId: Long? = null,
     val fatherId: Long? = null,
@@ -161,8 +161,33 @@ class CowDetailViewModel(
     }
     fun updateTagColor(tagColor: String?) { _uiState.update { it.copy(tagColor = tagColor) } }
     fun updateBirthDate(birthDate: LocalDate?) { _uiState.update { it.copy(birthDate = birthDate) } }
-    fun updateGender(gender: Gender) { _uiState.update { it.copy(gender = gender) } }
-    fun updateClassification(classification: Classification) { _uiState.update { it.copy(classification = classification) } }
+    fun updateGender(gender: Gender?) { 
+        _uiState.update { currentState ->
+            val newClassification = when (gender) {
+                Gender.FEMALE -> when (currentState.classification) {
+                    Classification.BULL, Classification.STEER -> null
+                    else -> currentState.classification
+                }
+                Gender.MALE -> when (currentState.classification) {
+                    Classification.COW, Classification.HEIFER -> null
+                    else -> currentState.classification
+                }
+                else -> currentState.classification
+            }
+            currentState.copy(gender = gender, classification = newClassification)
+        }
+    }
+    
+    fun updateClassification(classification: Classification?) { 
+        _uiState.update { currentState ->
+            val newGender = when (classification) {
+                Classification.COW, Classification.HEIFER -> Gender.FEMALE
+                Classification.BULL, Classification.STEER -> Gender.MALE
+                else -> currentState.gender
+            }
+            currentState.copy(classification = classification, gender = newGender)
+        }
+    }
     fun updateColorMarkings(colorMarkings: String) { _uiState.update { it.copy(colorMarkings = colorMarkings) } }
     fun updateStatus(status: Status) { _uiState.update { it.copy(status = status) } }
     fun updateIsWatched(isWatched: Boolean) { _uiState.update { it.copy(isWatched = isWatched) } }
@@ -194,6 +219,17 @@ class CowDetailViewModel(
                 _uiState.update { it.copy(error = "Please enter a Name or a Tag Number.") }
                 return@launch
             }
+            
+            // Validation: Gender and Classification are required
+            if (currentState.gender == null) {
+                _uiState.update { it.copy(error = "Please select a Gender.") }
+                return@launch
+            }
+            
+            if (currentState.classification == null) {
+                _uiState.update { it.copy(error = "Please select a Classification.") }
+                return@launch
+            }
 
             val application = getApplication<CattleApplication>()
             val currentUser = application.authService.currentUser.first()
@@ -216,8 +252,8 @@ class CowDetailViewModel(
                     tagNumber = currentState.tagNumber,
                     tagColor = currentState.tagColor,
                     birthDate = currentState.birthDate ?: LocalDate.now(),
-                    gender = currentState.gender,
-                    classification = currentState.classification,
+                    gender = currentState.gender!!,
+                    classification = currentState.classification!!,
                     colorMarkings = currentState.colorMarkings.takeIf { it.isNotBlank() },
                     motherId = currentState.motherId,
                     fatherId = currentState.fatherId,
@@ -245,8 +281,8 @@ class CowDetailViewModel(
                     tagNumber = currentState.tagNumber,
                     tagColor = currentState.tagColor,
                     birthDate = currentState.birthDate ?: existingCow.birthDate,
-                    gender = currentState.gender,
-                    classification = currentState.classification,
+                    gender = currentState.gender!!,
+                    classification = currentState.classification!!,
                     colorMarkings = currentState.colorMarkings.takeIf { it.isNotBlank() },
                     motherId = currentState.motherId,
                     fatherId = currentState.fatherId,
