@@ -20,8 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
-import com.jumblemint.cows.ui.components.DatePickerField
-import com.jumblemint.cows.ui.components.DropdownField
+import com.jumblemint.cows.ui.components.*
 import com.jumblemint.cows.ui.viewmodel.AddActivityViewModel
 import com.jumblemint.cows.ui.viewmodel.AddActivityViewModelFactory
 // import java.time.LocalDate // <<< REMOVED UNUSED IMPORT
@@ -29,9 +28,10 @@ import com.jumblemint.cows.ui.viewmodel.AddActivityViewModelFactory
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddActivityScreen(
-    modifier: Modifier = Modifier, // <<< MOVED MODIFIER PARAMETER
+    modifier: Modifier = Modifier,
     editId: Long? = null,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    topAppBarController: TopAppBarController
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
@@ -55,6 +55,19 @@ fun AddActivityScreen(
     )
 
     val uiState by viewModel.uiState.collectAsState()
+    
+    // Update TopAppBar save button state
+    LaunchedEffect(uiState.isLoading, uiState.selectedCows.size, uiState.activityType, uiState.notes) {
+        val canSave = !uiState.isLoading && 
+                     uiState.selectedCows.isNotEmpty() && 
+                     (uiState.activityType != ActivityType.WORKED || uiState.notes.isNotBlank())
+        topAppBarController.updateActions(
+            TopAppBarActions(
+                onSave = { viewModel.saveActivity() },
+                saveEnabled = canSave
+            )
+        )
+    }
 
     var showFilters by remember { mutableStateOf(false) }
     var selectedGender by remember { mutableStateOf<Gender?>(null) }
@@ -80,32 +93,10 @@ fun AddActivityScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            TopAppBar(
-                title = { Text(if (editId != null) "Edit Activity" else "Add Activity") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = { viewModel.saveActivity() },
-                        enabled = !uiState.isLoading && uiState.selectedCows.isNotEmpty() && (uiState.activityType != ActivityType.WORKED || uiState.notes.isNotBlank())
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = "Save Activity")
-                    }
-                }
-            )
-        }
-    ) { scaffoldPadding ->
+    Box(modifier = modifier) {
         if (uiState.isLoading && editId != null) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(scaffoldPadding),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
@@ -114,7 +105,6 @@ fun AddActivityScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(scaffoldPadding)
                     .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)

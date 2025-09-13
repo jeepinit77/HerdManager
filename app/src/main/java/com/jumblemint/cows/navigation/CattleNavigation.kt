@@ -6,6 +6,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material3.Text
@@ -14,6 +15,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -49,10 +51,13 @@ import com.jumblemint.cows.ui.screens.sync.SyncDetailsScreen
 import com.jumblemint.cows.ui.screens.workinglist.WorkingListScreen
 import com.jumblemint.cows.ui.viewmodel.AuthViewModel
 import com.jumblemint.cows.ui.viewmodel.AuthViewModelFactory
+import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
+import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.PasturesViewModel
 import com.jumblemint.cows.ui.viewmodel.PasturesViewModelFactory
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.ui.components.*
 
 // MAIN_PAGER_ROUTE_TEMPLATE is used from Screen.kt (same package)
 fun mainPagerRoute(initialPage: Int = 0) = MAIN_PAGER_ROUTE_TEMPLATE.replace("{initialPage}", initialPage.toString())
@@ -150,7 +155,8 @@ fun MainScreensViewPager(
 fun CattleNavigation(
     navController: NavHostController,
     mainScaffoldPadding: PaddingValues,
-    pagerState: PagerState
+    pagerState: PagerState,
+    topAppBarController: TopAppBarController
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -205,7 +211,7 @@ fun CattleNavigation(
                 modifier = screenModifierNoPadding,
                 cowId = cowId,
                 onNavigateBack = { navController.popBackStack() },
-                onEditCow = { navController.navigate(Screen.CowDetail.createRoute(cowId)) }, // Screen.CowDetail.createRoute expects Long
+                onEditCow = { navController.navigate(Screen.CowDetail.createRoute(cowId)) },
                 onNavigateToCow = { selectedCowId: Long ->
                     if (cowId != selectedCowId) {
                         val finalRoute = Screen.CowInfo.createRoute(cowId = selectedCowId, returnToRoute = returnToRouteArg ?: mainPagerRoute(COWS_PAGE_INDEX))
@@ -216,37 +222,88 @@ fun CattleNavigation(
                     if (!returnToRouteArg.isNullOrEmpty()) {
                         navController.navigate(returnToRouteArg)
                     } else {
-                        // Default to cows tab if no route is provided
                         navController.navigate(mainPagerRoute(COWS_PAGE_INDEX))
                     }
-                }
+                },
+                topAppBarController = topAppBarController
             )
         }
 
         composable(Screen.CowDetail.route) { backStackEntry ->
-            // Nav arg for CowDetail is Long, as Screen.CowDetail.createRoute expects Long
-            val cowId = backStackEntry.arguments?.getLong("cowId") ?: 0L 
+            val cowId = backStackEntry.arguments?.getLong("cowId") ?: 0L
+            val context = LocalContext.current
+            val database = CattleDatabase.getDatabase(context)
+            val repository = remember {
+                CattleRepository(
+                    database.cowDao(),
+                    database.pastureDao(),
+                    database.activityDao(),
+                    database.settingsDao(),
+                    database.noteDao(),
+                    database.userDao(),
+                    database.herdDao(),
+                    database.herdMemberDao(),
+                    database.tagColorDao(),
+                    database.activityTypeConfigDao()
+                )
+            }
+            val viewModel: CowDetailViewModel = viewModel(
+                factory = CowDetailViewModelFactory(application, repository, cowId)
+            )
+            val uiState by viewModel.uiState.collectAsState()
+            
+            // Update TopAppBar for CowDetail
+            LaunchedEffect(cowId) {
+                topAppBarController.updateTitle(if (cowId == 0L) "Add Cow" else "Edit Cow")
+                topAppBarController.updateActions(
+                    TopAppBarActions(
+                        onSave = { viewModel.saveCow() },
+                        saveEnabled = !uiState.isLoading
+                    )
+                )
+            }
+            
+            // Update save button state when loading changes
+            LaunchedEffect(uiState.isLoading) {
+                topAppBarController.updateActions(
+                    TopAppBarActions(
+                        onSave = { viewModel.saveCow() },
+                        saveEnabled = !uiState.isLoading
+                    )
+                )
+            }
+            
             CowDetailScreen(
                 modifier = screenModifierNoPadding,
-                cowId = cowId, // Screen itself expects Long
+                cowId = cowId,
                 onNavigateBack = { navController.popBackStack() }
             )
         }
 
         composable(Screen.AddActivity.route) {
+            LaunchedEffect(Unit) {
+                topAppBarController.updateTitle("Add Activity")
+                topAppBarController.updateActions(TopAppBarActions())
+            }
             AddActivityScreen(
                 modifier = screenModifierNoPadding,
                 editId = null,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                topAppBarController = topAppBarController
             )
         }
 
         composable(Screen.AddActivityWithId.route) { backStackEntry ->
             val activityId = backStackEntry.arguments?.getString("activityId")?.toLongOrNull()
+            LaunchedEffect(activityId) {
+                topAppBarController.updateTitle("Edit Activity")
+                topAppBarController.updateActions(TopAppBarActions())
+            }
             AddActivityScreen(
                 modifier = screenModifierNoPadding,
                 editId = activityId,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                topAppBarController = topAppBarController
             )
         }
 
@@ -320,7 +377,8 @@ fun CattleNavigation(
                 },
                 onEditPasture = {
                     navController.navigate(Screen.EditPasture.createRoute(pastureId))
-                }
+                },
+                topAppBarController = topAppBarController
             )
         }
 

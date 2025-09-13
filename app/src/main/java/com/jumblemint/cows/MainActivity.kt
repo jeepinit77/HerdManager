@@ -23,7 +23,7 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.jumblemint.cows.navigation.* // Import all from navigation for constants and Screen
-import com.jumblemint.cows.ui.components.SimpleTopAppBar
+import com.jumblemint.cows.ui.components.*
 import com.jumblemint.cows.ui.theme.CowsTheme
 import kotlinx.coroutines.launch // New Import
 
@@ -114,6 +114,16 @@ fun CattleManagerApp() {
     val app = context.applicationContext as CattleApplication
     val currentUser by app.authService.currentUser.collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
+    
+    // TopAppBar controller
+    val topAppBarController = rememberTopAppBarController()
+    
+    // Reset TopAppBar when navigating to main screens
+    LaunchedEffect(currentScreenFromNav) {
+        if (isMainTabScreen(currentScreenFromNav)) {
+            topAppBarController.reset()
+        }
+    }
 
     val initialPageForPagerState = if (currentScreenFromNav == Screen.MainPager) {
         navBackStackEntry?.arguments?.getInt("initialPage", DASHBOARD_PAGE_INDEX) ?: DASHBOARD_PAGE_INDEX
@@ -146,10 +156,9 @@ fun CattleManagerApp() {
         BottomNavItem(Screen.Notes, Icons.Default.Note, "Notes")
     )
 
-    // Standardized logic: Only show TopAppBarWithMenu for main tabs
+    // Centralized TopAppBar logic
     val showMainTopAppBar = isMainTabScreen(currentScreenForUI)
-    val showSimpleTopAppBar = !showMainTopAppBar && (currentScreenForUI?.hasOwnTopAppBar != true) && 
-        currentScreenForUI != Screen.CowInfo && currentScreenForUI != Screen.PastureDetail
+    val showSimpleTopAppBar = !showMainTopAppBar
 
     Box(modifier = Modifier.fillMaxSize()) {
         if (showMainTopAppBar || showSimpleTopAppBar) {
@@ -159,7 +168,11 @@ fun CattleManagerApp() {
                     if (showMainTopAppBar) {
                         TopAppBarWithMenu(currentScreenForUI, { navController.navigate(Screen.Settings.route) }, navController)
                     } else if (showSimpleTopAppBar) {
-                        SimpleTopAppBar(title = currentScreenForUI?.title ?: "Cattle Manager", onBack = { navController.popBackStack() })
+                        SimpleTopAppBar(
+                            title = if (topAppBarController.title.isNotEmpty()) topAppBarController.title else (currentScreenForUI?.title ?: "Cattle Manager"),
+                            onBack = { navController.popBackStack() },
+                            actions = topAppBarController.actions
+                        )
                     }
                 },
                 bottomBar = {
@@ -197,7 +210,8 @@ fun CattleManagerApp() {
                 CattleNavigation(
                     navController = navController,
                     mainScaffoldPadding = innerPadding,
-                    pagerState = pagerState
+                    pagerState = pagerState,
+                    topAppBarController = topAppBarController
                 )
             }
         } else {
@@ -238,7 +252,8 @@ fun CattleManagerApp() {
                 CattleNavigation(
                     navController = navController,
                     mainScaffoldPadding = innerPadding,
-                    pagerState = pagerState
+                    pagerState = pagerState,
+                    topAppBarController = topAppBarController
                 )
             }
         }

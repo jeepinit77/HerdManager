@@ -16,10 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
-import com.jumblemint.cows.ui.components.CowCard
-import com.jumblemint.cows.ui.components.SimpleTopAppBar
-import com.jumblemint.cows.ui.components.rememberTagColorMap
-import com.jumblemint.cows.ui.components.resolveTagColor
+import com.jumblemint.cows.ui.components.*
 import com.jumblemint.cows.ui.viewmodel.PastureDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.PastureDetailViewModelFactory
 import kotlinx.coroutines.launch
@@ -32,7 +29,8 @@ fun PastureDetailScreen(
     onCowClick: (Long) -> Unit,
     onCowEdit: (Long) -> Unit,
     onEditPasture: () -> Unit = {},
-    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
+    topAppBarController: TopAppBarController,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -60,6 +58,16 @@ fun PastureDetailScreen(
     val tagColorMap = rememberTagColorMap(repository)
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    
+    // Update TopAppBar when pasture data changes
+    LaunchedEffect(uiState.pasture) {
+        topAppBarController.updateTitle(uiState.pasture?.name ?: "Pasture Details")
+        topAppBarController.updateActions(
+            TopAppBarActions(
+                onEdit = onEditPasture
+            )
+        )
+    }
 
     // TODO: Communicate pasture name (uiState.pasture?.name) to MainActivity's TopAppBar.
     // This could be done via a callback to update a shared state or ViewModel.
@@ -68,33 +76,22 @@ fun PastureDetailScreen(
     // TODO: Ensure MainActivity's TopAppBar shows an Edit icon that calls `onEditPasture`
     // when this screen is active and uiState.pasture is not null.
 
-    Scaffold(
-        modifier = modifier,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            SimpleTopAppBar(
-                title = uiState.pasture?.name ?: "Pasture Details",
-                onBack = onNavigateBack,
-                onEdit = onEditPasture
-            )
-        }
-    ) { localScaffoldPadding -> // This padding is from THIS Scaffold (if it had a FAB, BottomBar, etc.)
-                                // The `modifier` applied above already contains padding from MainActivity.
+    Box(modifier = modifier) {
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
 
         if (uiState.isLoading) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(localScaffoldPadding), // Apply this Scaffold's padding
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
         } else if (uiState.pasture == null) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(localScaffoldPadding), // Apply this Scaffold's padding
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
@@ -115,10 +112,8 @@ fun PastureDetailScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(localScaffoldPadding), // Apply this Scaffold's padding
-                contentPadding = PaddingValues(all = 16.dp), // Overall padding for the content list
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(all = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Pasture Information Card

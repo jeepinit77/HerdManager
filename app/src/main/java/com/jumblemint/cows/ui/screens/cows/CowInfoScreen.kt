@@ -26,10 +26,7 @@ import com.jumblemint.cows.CattleApplication // Assuming this is your Applicatio
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
-import com.jumblemint.cows.ui.components.CattleTagBadge
-import com.jumblemint.cows.ui.components.SimpleTopAppBar
-import com.jumblemint.cows.ui.components.rememberTagColorMap
-import com.jumblemint.cows.ui.components.resolveTagColor
+import com.jumblemint.cows.ui.components.*
 import com.jumblemint.cows.ui.viewmodel.CowInfoViewModel
 import com.jumblemint.cows.ui.viewmodel.CowInfoViewModelFactory // Assuming factory is in this package
 import java.time.LocalDate
@@ -43,8 +40,9 @@ fun CowInfoScreen(
     onNavigateBack: () -> Unit,
     onEditCow: () -> Unit,
     onNavigateToCow: (Long) -> Unit,
-    onCloseFlow: () -> Unit, // Changed from onNavigateToDashboard
-    modifier: Modifier = Modifier // This modifier is for the Navigation component to use
+    onCloseFlow: () -> Unit,
+    topAppBarController: TopAppBarController,
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val database = CattleDatabase.getDatabase(context)
@@ -68,22 +66,20 @@ fun CowInfoScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val tagColorMap = rememberTagColorMap(repository)
-
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            SimpleTopAppBar(
-                title = uiState.cow?.name ?: "Cow Information",
-                onBack = onNavigateBack,
+    
+    // Update TopAppBar when cow data changes
+    LaunchedEffect(uiState.cow) {
+        topAppBarController.updateTitle(uiState.cow?.name ?: "Cow Information")
+        topAppBarController.updateActions(
+            TopAppBarActions(
                 onEdit = onEditCow,
                 onClose = onCloseFlow
             )
-        }
-    ) { paddingValues -> 
-        Column(
-            modifier = Modifier 
-                .fillMaxSize()
-                .padding(paddingValues) 
+        )
+    }
+
+    Column(
+        modifier = modifier.fillMaxSize() 
         ) {
             if (uiState.isLoading) {
                 Box(
@@ -257,7 +253,6 @@ fun CowInfoScreen(
                 }
             }
         }
-    }
 }
 
 @Composable

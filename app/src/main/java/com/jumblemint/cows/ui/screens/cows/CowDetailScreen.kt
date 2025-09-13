@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
@@ -21,6 +19,7 @@ import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.DatePickerField
 import com.jumblemint.cows.ui.components.DropdownField
+import com.jumblemint.cows.ui.components.SimpleTopAppBar
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
@@ -74,47 +73,10 @@ fun CowDetailScreen(
         }
     }
 
-    Scaffold(
-        modifier = modifier, // <<< APPLIED MODIFIER HERE
-        topBar = {
-            TopAppBar(
-                title = { Text(if (cowId == 0L) "Add Cow" else "Edit Cow") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    if (cowId != 0L) {
-                        IconToggleButton(
-                            checked = uiState.isWatched,
-                            onCheckedChange = { viewModel.updateIsWatched(it) }
-                        ) {
-                            Icon(
-                                if (uiState.isWatched) Icons.Filled.Star else Icons.Filled.StarBorder,
-                                contentDescription = if (uiState.isWatched) "Unwatch" else "Watch",
-                                tint = if (uiState.isWatched) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                    IconButton(
-                        onClick = {
-                            saveAttempted = true
-                            viewModel.saveCow()
-                        },
-                        enabled = !uiState.isLoading
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = "Save Cow")
-                    }
-                }
-            )
-        }
-    ) { scaffoldPadding ->
+    Box(modifier = modifier) {
         if (uiState.isLoading && cowId != 0L) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(scaffoldPadding),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
@@ -123,9 +85,8 @@ fun CowDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(scaffoldPadding)
                     .verticalScroll(scrollState)
-                    .padding(16.dp), // Content padding for the form fields
+                    .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Error message
