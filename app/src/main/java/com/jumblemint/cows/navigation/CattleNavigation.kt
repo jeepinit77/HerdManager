@@ -32,11 +32,11 @@ import com.jumblemint.cows.ui.screens.activities.ActivitiesScreen
 import com.jumblemint.cows.ui.screens.activities.AddActivityScreen
 import com.jumblemint.cows.ui.screens.activities.AddBirthScreen
 import com.jumblemint.cows.ui.screens.auth.SignInScreen
-import com.jumblemint.cows.ui.screens.cows.CowDetailScreen
+import com.jumblemint.cows.ui.screens.cows.CowEditScreen
 import com.jumblemint.cows.ui.screens.splash.SplashScreen
 import com.jumblemint.cows.ui.screens.cows.CowInfoScreen
 import com.jumblemint.cows.ui.screens.cows.CowListScreen
-import com.jumblemint.cows.ui.screens.cows.CowsScreen
+
 import com.jumblemint.cows.ui.screens.herds.HerdSelectionScreen // सुनिश्चित किया गया आयात
 import com.jumblemint.cows.ui.screens.notes.NotesScreen
 import com.jumblemint.cows.ui.screens.pastures.AddPastureScreen
@@ -112,12 +112,14 @@ fun MainScreensViewPager(
                     onNavigateToAddBirth = { navController.navigate(Screen.AddBirth.route) }
                 )
             }
-            COWS_PAGE_INDEX -> CowsScreen(
+            COWS_PAGE_INDEX -> CowListScreen(
                 modifier = Modifier.fillMaxSize(),
                 pastureId = null,
                 onCowClick = { cowId: Long -> navController.navigate(Screen.CowInfo.createRoute(cowId = cowId, returnToRoute = mainPagerRoute(COWS_PAGE_INDEX))) },
-                onCowEdit = { cowId: Long -> navController.navigate(Screen.CowDetail.createRoute(cowId)) }, // Screen.CowDetail.createRoute expects Long
-                onAddCowClick = { navController.navigate(Screen.CowDetail.createRoute(0L)) } // Screen.CowDetail.createRoute expects Long
+                onCowEdit = { cowId: Long -> navController.navigate(Screen.CowDetail.createRoute(cowId)) },
+                onAddCowClick = { navController.navigate(Screen.CowDetail.createRoute(0L)) },
+                showSearchAndFilters = true,
+                showFab = true
             )
             PASTURES_PAGE_INDEX -> PasturesScreen(
                 modifier = Modifier.fillMaxSize(),
@@ -273,7 +275,7 @@ fun CattleNavigation(
                 )
             }
             
-            CowDetailScreen(
+            CowEditScreen(
                 modifier = screenModifierNoPadding,
                 cowId = cowId,
                 onNavigateBack = { navController.popBackStack() }
@@ -315,7 +317,9 @@ fun CattleNavigation(
                 type = type,
                 value = valueString,
                 onCowClick = { cowId: Long -> navController.navigate(Screen.CowInfo.createRoute(cowId, Screen.CowList.createRoute(type, valueString))) },
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                showSearchAndFilters = false,
+                showFab = false
             )
         }
 

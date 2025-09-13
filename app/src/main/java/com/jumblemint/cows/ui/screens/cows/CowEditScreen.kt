@@ -9,7 +9,7 @@ import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier // Ensure Modifier is imported
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -28,15 +28,15 @@ import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CowDetailScreen(
+fun CowEditScreen(
     cowId: Long,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
-    val repository = remember { // Encapsulate repository creation
+    val repository = remember {
         CattleRepository(
             database.cowDao(),
             database.pastureDao(),
@@ -62,7 +62,6 @@ fun CowDetailScreen(
     LaunchedEffect(uiState.error) {
         if (uiState.error != null) {
             saveAttempted = true
-            // Consider only scrolling if the error message is at the top and not visible
             scrollState.animateScrollTo(0)
         }
     }
@@ -126,7 +125,7 @@ fun CowDetailScreen(
                                 { Text("Either Name or Tag Number must be provided.") }
                             } else null,
                             colors = if (fieldsBlankError) OutlinedTextFieldDefaults.colors(
-                                errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f) // Softer error indication
+                                errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
                             ) else OutlinedTextFieldDefaults.colors()
                         )
                         OutlinedTextField(
@@ -139,7 +138,7 @@ fun CowDetailScreen(
                                 { Text("Either Name or Tag Number must be provided.") }
                             } else null,
                             colors = if (fieldsBlankError) OutlinedTextFieldDefaults.colors(
-                                errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f) // Softer error indication
+                                errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
                             ) else OutlinedTextFieldDefaults.colors()
                         )
                         DropdownField(
@@ -192,71 +191,6 @@ fun CowDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 2,
                             maxLines = 4
-                        )
-                    }
-                }
-
-                // Parentage
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "Parentage (Optional)",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        DropdownField(
-                            value = uiState.motherName ?: "",
-                            onValueChange = { name ->
-                                // Allow selection by name or tag number
-                                val mother = uiState.availableMothers.find { it.name == name || it.tagNumber == name }
-                                viewModel.updateMother(mother?.id)
-                            },
-                            label = "Mother",
-                            // Show name, fallback to tag number if name is blank
-                            options = uiState.availableMothers.mapNotNull { cow -> (cow.name?.takeIf { it.isNotBlank() } ?: cow.tagNumber?.takeIf { it.isNotBlank() }) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        DropdownField(
-                            value = uiState.fatherName ?: "",
-                            onValueChange = { name ->
-                                val father = uiState.availableFathers.find { it.name == name || it.tagNumber == name }
-                                viewModel.updateFather(father?.id)
-                            },
-                            label = "Father",
-                            options = uiState.availableFathers.mapNotNull { cow -> (cow.name?.takeIf { it.isNotBlank() } ?: cow.tagNumber?.takeIf { it.isNotBlank() }) },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                }
-
-                // Location & Status
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "Location & Status",
-                            style = MaterialTheme.typography.titleMedium
-                        )
-                        DropdownField(
-                            value = uiState.pastureName ?: "",
-                            onValueChange = { name ->
-                                val pasture = uiState.availablePastures.find { it.name == name }
-                                viewModel.updatePasture(pasture?.id)
-                            },
-                            label = "Pasture (Optional)",
-                            options = listOf("") + uiState.availablePastures.map { it.name }, // Allow "Unassigned"
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        DropdownField(
-                            value = uiState.status.name,
-                            onValueChange = { viewModel.updateStatus(Status.valueOf(it)) },
-                            label = "Status",
-                            options = Status.entries.map { it.name },
-                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }
