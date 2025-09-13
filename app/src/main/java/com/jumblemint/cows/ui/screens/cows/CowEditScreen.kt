@@ -1,9 +1,12 @@
 package com.jumblemint.cows.ui.screens.cows
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.*
@@ -12,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.offset
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
@@ -113,12 +117,24 @@ fun CowEditScreen(
                             style = MaterialTheme.typography.titleMedium
                         )
                         val fieldsBlankError = saveAttempted && uiState.name.isBlank() && uiState.tagNumber.isBlank()
+                        
                         OutlinedTextField(
                             value = uiState.name,
                             onValueChange = viewModel::updateName,
-                            label = { Text("Name (Optional)") },
+                            label = { Text("Name") },
                             modifier = Modifier.fillMaxWidth(),
                             isError = fieldsBlankError,
+                            trailingIcon = {
+                                IconButton(
+                                    onClick = { viewModel.toggleNameTagLink() }
+                                ) {
+                                    Icon(
+                                        imageVector = if (uiState.isNameTagLinked) Icons.Default.Link else Icons.Default.LinkOff,
+                                        contentDescription = if (uiState.isNameTagLinked) "Unlink from tag number" else "Link to tag number",
+                                        tint = if (uiState.isNameTagLinked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
                             supportingText = if (fieldsBlankError) {
                                 { Text("Either Name or Tag Number must be provided.") }
                             } else null,
@@ -126,18 +142,32 @@ fun CowEditScreen(
                                 errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
                             ) else OutlinedTextFieldDefaults.colors()
                         )
+                        
                         OutlinedTextField(
                             value = uiState.tagNumber,
                             onValueChange = viewModel::updateTagNumber,
-                            label = { Text("Tag Number (Optional)") },
+                            label = { Text("Tag Number") },
                             modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isNameTagLinked,
                             isError = fieldsBlankError,
-                             supportingText = if (fieldsBlankError) {
+                            supportingText = if (fieldsBlankError) {
                                 { Text("Either Name or Tag Number must be provided.") }
+                            } else if (uiState.isNameTagLinked) {
+                                { Text("Linked to Name field", color = MaterialTheme.colorScheme.primary) }
                             } else null,
-                            colors = if (fieldsBlankError) OutlinedTextFieldDefaults.colors(
-                                errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
-                            ) else OutlinedTextFieldDefaults.colors()
+                            colors = if (fieldsBlankError) {
+                                OutlinedTextFieldDefaults.colors(
+                                    errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                                )
+                            } else if (!uiState.isNameTagLinked) {
+                                OutlinedTextFieldDefaults.colors()
+                            } else {
+                                OutlinedTextFieldDefaults.colors(
+                                    disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                    disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
+                                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                            }
                         )
                         DropdownField(
                             value = uiState.tagColor ?: "",

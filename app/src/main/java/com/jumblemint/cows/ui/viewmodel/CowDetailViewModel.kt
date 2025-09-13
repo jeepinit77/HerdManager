@@ -38,7 +38,8 @@ data class CowDetailUiState(
     val tagColors: List<String> = emptyList(),
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isNameTagLinked: Boolean = false
 )
 
 class CowDetailViewModel(
@@ -120,8 +121,44 @@ class CowDetailViewModel(
         }
     }
 
-    fun updateName(name: String) { _uiState.update { it.copy(name = name) } }
-    fun updateTagNumber(tagNumber: String) { _uiState.update { it.copy(tagNumber = tagNumber) } }
+    fun updateName(name: String) { 
+        _uiState.update { 
+            if (it.isNameTagLinked) {
+                it.copy(name = name, tagNumber = name)
+            } else {
+                it.copy(name = name)
+            }
+        }
+    }
+    
+    fun updateTagNumber(tagNumber: String) { 
+        _uiState.update { 
+            if (it.isNameTagLinked) {
+                it.copy(name = tagNumber, tagNumber = tagNumber)
+            } else {
+                it.copy(tagNumber = tagNumber)
+            }
+        }
+    }
+    
+    fun toggleNameTagLink() {
+        _uiState.update { currentState ->
+            val newLinkedState = !currentState.isNameTagLinked
+            if (newLinkedState) {
+                // When linking, sync the non-empty field to the empty one, or name to tag if both have values
+                when {
+                    currentState.name.isNotBlank() && currentState.tagNumber.isBlank() -> 
+                        currentState.copy(isNameTagLinked = true, tagNumber = currentState.name)
+                    currentState.tagNumber.isNotBlank() && currentState.name.isBlank() -> 
+                        currentState.copy(isNameTagLinked = true, name = currentState.tagNumber)
+                    else -> 
+                        currentState.copy(isNameTagLinked = true, tagNumber = currentState.name)
+                }
+            } else {
+                currentState.copy(isNameTagLinked = false)
+            }
+        }
+    }
     fun updateTagColor(tagColor: String?) { _uiState.update { it.copy(tagColor = tagColor) } }
     fun updateBirthDate(birthDate: LocalDate?) { _uiState.update { it.copy(birthDate = birthDate) } }
     fun updateGender(gender: Gender) { _uiState.update { it.copy(gender = gender) } }
