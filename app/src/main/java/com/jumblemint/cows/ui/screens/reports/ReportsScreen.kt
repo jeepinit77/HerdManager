@@ -1,5 +1,6 @@
 package com.jumblemint.cows.ui.screens.reports
 
+import android.app.Application // Required for ViewModelFactory
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -34,7 +35,9 @@ fun ReportsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val application = context.applicationContext as com.jumblemint.cows.CattleApplication
+    val application = context.applicationContext as Application // Get Application instance
+
+    // ViewModel initialization with Application context for SharedPreferences
     val database = CattleDatabase.getDatabase(context)
     val repository = remember {
         CattleRepository(
@@ -50,8 +53,9 @@ fun ReportsScreen(
             database.activityTypeConfigDao()
         )
     }
+    val cattleApplication = context.applicationContext as com.jumblemint.cows.CattleApplication
     val viewModel: ReportsViewModel = viewModel(
-        factory = ReportsViewModelFactory(repository, application.authService)
+        factory = ReportsViewModelFactory(application, repository, cattleApplication.authService)
     )
 
     val uiState by viewModel.uiState.collectAsState()
@@ -61,29 +65,50 @@ fun ReportsScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    // TODO: Replace this with loading the actual persisted preference for showInteractiveHint
-    var showInteractiveHint by remember { mutableStateOf(true) }
-    var temporaryWobblePeriodActive by remember { mutableStateOf(false) }
 
-    LaunchedEffect(showInteractiveHint) {
-        if (showInteractiveHint) {
-            temporaryWobblePeriodActive = true // Enable the period where wobble can trigger
-            scope.launch { // Coroutine for Snackbar
+    // --- Hint Logic State ---
+    var hasClickedGotItState by remember { mutableStateOf(viewModel.hasUserClickedGotIt()) }
+    var hasShownCloseButtonState by remember { mutableStateOf(viewModel.hasShownCloseButton()) }
+    var snackbarShownThisScreenInstance by remember { mutableStateOf(false) }
+    var temporaryWobblePeriodActive by remember { mutableStateOf(false) }
+    // --- End Hint Logic State ---
+
+    LaunchedEffect(Unit) { 
+        if (!hasClickedGotItState && !snackbarShownThisScreenInstance) {
+            temporaryWobblePeriodActive = true 
+            snackbarShownThisScreenInstance = true 
+
+            val actionLabel = if (hasShownCloseButtonState) "GOT IT" else "Close"
+
+            scope.launch {
                 val result = snackbarHostState.showSnackbar(
                     message = "Tip: Most items on this screen can be tapped for more details.",
-                    actionLabel = "GOT IT",
-                    duration = SnackbarDuration.Long
+                    actionLabel = actionLabel,
+                    duration = SnackbarDuration.Short // Using Short duration
                 )
+
                 if (result == SnackbarResult.ActionPerformed) {
-                    showInteractiveHint = false
-                    temporaryWobblePeriodActive = false // Turn off wobble period if GOT IT is clicked
-                    // TODO: Persist showInteractiveHint = false here
+                    if (actionLabel == "GOT IT") {
+                        hasClickedGotItState = true
+                        viewModel.setHasUserClickedGotIt(true)
+                    } else { // Clicked "Close"
+                        hasShownCloseButtonState = true
+                        viewModel.setHasShownCloseButton(true)
+                    }
+                } else { // Snackbar dismissed without action (e.g., timeout)
+                    if (actionLabel == "Close") {
+                        hasShownCloseButtonState = true
+                        viewModel.setHasShownCloseButton(true)
+                    }
                 }
+                 if (hasClickedGotItState) { 
+                     temporaryWobblePeriodActive = false
+                 }
             }
-            delay(2500L) // Wobble animations can be triggered during this 2.5 second window.
-            temporaryWobblePeriodActive = false
+            delay(4000L) // Overall window for wobbles to occur
+            temporaryWobblePeriodActive = false 
         } else {
-            temporaryWobblePeriodActive = false // Ensure it's off if hint is already dismissed
+            temporaryWobblePeriodActive = false 
         }
     }
 
@@ -101,12 +126,14 @@ fun ReportsScreen(
                 modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                val showWobble = temporaryWobblePeriodActive && !hasClickedGotItState
+
                 item { HerdOverviewCard(uiState.totalCows, uiState.watchedCowsCount, { type -> onShowList("status", type) }, { onShowList("watching", null) }) }
                 item { ToolsCard(onNavigateToAddBirth, { onShowList("workingList", null) }) }
-                item { ClassificationBreakdownCard(uiState.classificationBreakdown, { classification -> onShowList("classification", classification) }, temporaryWobblePeriodActive && showInteractiveHint) }
-                item { PastureBreakdownCard(uiState.pastureBreakdown, { pastureName -> val id = pastureIdByName[pastureName]; if (id != null) onShowList("pasture", id.toString()) else onShowList("pastureName", pastureName) }, temporaryWobblePeriodActive && showInteractiveHint) }
-                item { AgeBasedReportsCard(uiState.cowsUnder1Year, uiState.cowsBetween1And5Years, uiState.cowsBetween5And10Years, uiState.cowsOver10Years, { rangeKey -> onShowList("age", rangeKey) }, temporaryWobblePeriodActive && showInteractiveHint) }
-                item { BreedingReportsCard(uiState.cowsNotCalvedIn9Months, uiState.cowsCalvedInPast9Months, { onShowList("notCalved", null) }, { onShowList("calved", null) }, temporaryWobblePeriodActive && showInteractiveHint) }
+                item { ClassificationBreakdownCard(uiState.classificationBreakdown, { classification -> onShowList("classification", classification) }, showWobble) }
+                item { PastureBreakdownCard(uiState.pastureBreakdown, { pastureName -> val id = pastureIdByName[pastureName]; if (id != null) onShowList("pasture", id.toString()) else onShowList("pastureName", pastureName) }, showWobble) }
+                item { AgeBasedReportsCard(uiState.cowsUnder1Year, uiState.cowsBetween1And5Years, uiState.cowsBetween5And10Years, uiState.cowsOver10Years, { rangeKey -> onShowList("age", rangeKey) }, showWobble) }
+                item { BreedingReportsCard(uiState.cowsNotCalvedIn9Months, uiState.cowsCalvedInPast9Months, { onShowList("notCalved", null) }, { onShowList("calved", null) }, showWobble) }
             }
         }
     }
@@ -188,15 +215,21 @@ fun WobbleTextHint(text: String, style: androidx.compose.ui.text.TextStyle, appl
 
     LaunchedEffect(applyWobble) {
         if (applyWobble) {
+            // Each WobbleTextHint instance gets its own speed characteristic for this activation
+            val baseDuration = 180L // Base duration for one half of a cycle
+            // Randomize duration between 150ms and 210ms (baseDuration +/- 30ms)
+            val randomDuration = Random.nextLong(baseDuration - 30, baseDuration + 31).coerceAtLeast(100L) // Ensure not too fast
+
             launch {
                 delay(Random.nextLong(50, 250)) // Stagger start of wobble
-                // Slower wobble: 3 cycles
-                for (i in 0..2) {
-                    rotation.animateTo(5f, animationSpec = tween(durationMillis = 150))
-                    rotation.animateTo(-5f, animationSpec = tween(durationMillis = 150))
+                for (i in 0..4) { // 5 cycles
+                    rotation.animateTo(5f, animationSpec = tween(durationMillis = randomDuration.toInt()))
+                    rotation.animateTo(-5f, animationSpec = tween(durationMillis = randomDuration.toInt()))
                 }
-                rotation.animateTo(0f, animationSpec = tween(durationMillis = 150)) // Settle back
+                rotation.animateTo(0f, animationSpec = tween(durationMillis = randomDuration.toInt())) // Settle back
             }
+        } else {
+             rotation.snapTo(0f)
         }
     }
 

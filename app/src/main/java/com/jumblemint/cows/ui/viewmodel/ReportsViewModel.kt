@@ -1,5 +1,7 @@
 package com.jumblemint.cows.ui.viewmodel
 
+import android.app.Application
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jumblemint.cows.data.model.*
@@ -12,18 +14,44 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.Period
 
+// SharedPreferences keys (conventionally, these might be in a separate constants file)
+private const val PREFS_NAME = "reports_prefs"
+private const val KEY_HAS_CLICKED_GOT_IT = "has_clicked_got_it"
+private const val KEY_HAS_SHOWN_CLOSE_BUTTON = "has_shown_close_button"
+
 class ReportsViewModel(
+    private val application: Application, // Added Application context
     private val repository: CattleRepository,
     private val authService: com.jumblemint.cows.auth.AuthService
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow(ReportsUiState())
     val uiState: StateFlow<ReportsUiState> = _uiState.asStateFlow()
-    
+
+    private val sharedPreferences = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
     init {
         loadReports()
     }
-    
+
+    // --- Hint Persistence Methods ---
+    fun hasUserClickedGotIt(): Boolean {
+        return sharedPreferences.getBoolean(KEY_HAS_CLICKED_GOT_IT, false)
+    }
+
+    fun setHasUserClickedGotIt(value: Boolean) {
+        sharedPreferences.edit().putBoolean(KEY_HAS_CLICKED_GOT_IT, value).apply()
+    }
+
+    fun hasShownCloseButton(): Boolean {
+        return sharedPreferences.getBoolean(KEY_HAS_SHOWN_CLOSE_BUTTON, false)
+    }
+
+    fun setHasShownCloseButton(value: Boolean) {
+        sharedPreferences.edit().putBoolean(KEY_HAS_SHOWN_CLOSE_BUTTON, value).apply()
+    }
+    // --- End Hint Persistence Methods ---
+
     private fun loadReports() {
         viewModelScope.launch {
             // Simplified: just get all data without herd filtering
@@ -44,12 +72,12 @@ class ReportsViewModel(
                     )
                     return@collect
                 }
-                
+
                 val allCows = data.cows
                 val activities = data.activities
                 val pastures = data.pastures
                 val watchedCows = data.watchedCows
-                
+
                 val activeCows = allCows.filter { it.status == Status.ACTIVE }
                 val soldCows = allCows.filter { it.status == Status.SOLD }
                 val deceasedCows = allCows.filter { it.status == Status.DECEASED }
@@ -91,7 +119,7 @@ class ReportsViewModel(
                     it.gender == Gender.FEMALE &&
                     it.classification in listOf(Classification.COW, Classification.HEIFER)
                 }
-                
+
                 // Find cows that have active calves (not sold, not weaned)
                 val activeCalves = allCows.filter { cow ->
                     cow.classification == Classification.CALF &&
@@ -100,7 +128,7 @@ class ReportsViewModel(
                 }
                 val mothersWithActiveCalves = activeCalves.mapNotNull { it.motherId }.toSet()
                 val cowsWithCalves = femaleCows.count { it.id in mothersWithActiveCalves }
-                
+
                 // Cows not calved in 9+ months (existing logic)
                 val nineMonthsAgo = today.minusMonths(9)
                 val calvesInPast9Months = allCows.filter { cow ->
@@ -116,7 +144,7 @@ class ReportsViewModel(
                     activeCows = activeCows.size,
                     soldCows = soldCows.size,
                     deceasedCows = deceasedCows.size,
-                    watchedCowsCount = watchedCows.size, // Added watched cows count
+                    watchedCowsCount = watchedCows.size,
                     classificationBreakdown = classificationBreakdown,
                     pastureBreakdown = pastureBreakdown,
                     cowsUnder1Year = cowsUnder1Year,
@@ -140,7 +168,7 @@ data class ReportsUiState(
     val activeCows: Int = 0,
     val soldCows: Int = 0,
     val deceasedCows: Int = 0,
-    val watchedCowsCount: Int = 0, // Added watched cows count
+    val watchedCowsCount: Int = 0,
     val classificationBreakdown: Map<String, Int> = emptyMap(),
     val pastureBreakdown: Map<String, Int> = emptyMap(),
     val cowsUnder1Year: Int = 0,

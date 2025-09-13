@@ -1,5 +1,6 @@
 package com.jumblemint.cows.ui.screens.cows
 
+import android.app.Application // Required for ViewModelFactory
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -52,7 +53,10 @@ fun CowListScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val application = context.applicationContext as CattleApplication
+    // Cast to Application for the ViewModelFactory, not just CattleApplication if it's used broadly
+    val applicationContext = context.applicationContext as Application
+    val cattleApplication = context.applicationContext as CattleApplication // If specific CattleApplication features are needed
+
     val database = CattleDatabase.getDatabase(context)
     val repository = remember {
         CattleRepository(
@@ -71,11 +75,12 @@ fun CowListScreen(
 
     // Use CowsViewModel when showing search/filters, ReportsViewModel for filtered lists
     val cowsViewModel: CowsViewModel? = if (showSearchAndFilters) {
-        viewModel(factory = CowsViewModelFactory(application, repository))
+        viewModel(factory = CowsViewModelFactory(cattleApplication, repository))
     } else null
     
     val reportsViewModel: ReportsViewModel? = if (!showSearchAndFilters) {
-        viewModel(factory = ReportsViewModelFactory(repository, application.authService))
+        // Corrected instantiation of ReportsViewModelFactory
+        viewModel(factory = ReportsViewModelFactory(applicationContext, repository, cattleApplication.authService))
     } else null
 
     val cowsUiState = cowsViewModel?.uiState?.collectAsState()
@@ -91,7 +96,7 @@ fun CowListScreen(
 
     if (showSearchAndFilters) {
         FocusAwareLiveSync(
-            orchestrator = application.syncOrchestrator,
+            orchestrator = cattleApplication.syncOrchestrator,
             screenKey = "Cows",
             intervalMs = 20_000L,
             leadingRun = true
