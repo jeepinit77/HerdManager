@@ -231,7 +231,14 @@ fun CattleNavigation(
             )
         }
 
-        composable(Screen.CowDetail.route) { backStackEntry ->
+        composable(
+            route = Screen.CowDetail.route,
+            arguments = listOf(
+                navArgument("cowId") {
+                    type = NavType.LongType
+                }
+            )
+        ) { backStackEntry ->
             val cowId = backStackEntry.arguments?.getLong("cowId") ?: 0L
             val context = LocalContext.current
             val database = CattleDatabase.getDatabase(context)
