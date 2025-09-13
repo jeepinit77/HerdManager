@@ -1,9 +1,59 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
 }
+
+// Version properties file
+val versionPropsFile = project.file("version.properties") // Relative to app module dir
+val versionProps = Properties()
+
+// Function to load version properties
+fun loadVersionProperties() {
+    if (versionPropsFile.exists()) {
+        versionPropsFile.inputStream().use {
+            versionProps.load(it)
+        }
+    } else {
+        // Should not happen if we ensure file is created, but good fallback
+        versionProps["APP_VERSION_MAJOR"] = "1"
+        versionProps["APP_VERSION_MINOR"] = "0"
+        versionProps["APP_VERSION_PATCH"] = "0" // Will be incremented to 1
+        versionProps["APP_BUILD_NUMBER"] = "0" // Will be incremented to 1
+    }
+}
+
+// Function to save version properties
+fun saveVersionProperties() {
+    versionPropsFile.outputStream().use {
+        versionProps.store(it, "Auto-incremented version properties")
+    }
+}
+
+// Load current versions
+loadVersionProperties()
+
+val appVersionMajor = versionProps.getProperty("APP_VERSION_MAJOR", "1").toInt()
+val appVersionMinor = versionProps.getProperty("APP_VERSION_MINOR", "0").toInt()
+var appVersionPatch = versionProps.getProperty("APP_VERSION_PATCH", "0").toInt()
+var appBuildNumber = versionProps.getProperty("APP_BUILD_NUMBER", "0").toInt()
+
+// Increment for this build
+appVersionPatch += 1
+appBuildNumber += 1
+
+val calculatedVersionName = "${appVersionMajor}.${appVersionMinor}.${appVersionPatch}"
+val calculatedVersionCode = appBuildNumber
+
+// Update properties for next build
+versionProps["APP_VERSION_MAJOR"] = appVersionMajor.toString()
+versionProps["APP_VERSION_MINOR"] = appVersionMinor.toString()
+versionProps["APP_VERSION_PATCH"] = appVersionPatch.toString()
+versionProps["APP_BUILD_NUMBER"] = appBuildNumber.toString()
+saveVersionProperties()
 
 android {
     namespace = "com.jumblemint.cows"
@@ -13,8 +63,8 @@ android {
         applicationId = "com.jumblemint.cows"
         minSdk = 30
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = calculatedVersionCode
+        versionName = calculatedVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
