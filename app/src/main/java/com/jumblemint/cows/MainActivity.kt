@@ -164,7 +164,9 @@ fun CattleManagerApp() {
                 },
                 bottomBar = {
                     if (currentScreenFromNav == Screen.MainPager) {
-                        NavigationBar {
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ) {
                             bottomNavItems.forEach { item ->
                                 val pageIndex = getPageIndexForScreen(item.screen)
                                 NavigationBarItem(
@@ -203,7 +205,9 @@ fun CattleManagerApp() {
                 modifier = Modifier.fillMaxSize(),
                 bottomBar = {
                     if (currentScreenFromNav == Screen.MainPager) {
-                        NavigationBar {
+                        NavigationBar(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        ) {
                             bottomNavItems.forEach { item ->
                                 val pageIndex = getPageIndexForScreen(item.screen)
                                 NavigationBarItem(
