@@ -49,7 +49,7 @@ fun ActivityTypesManagementScreen(
             database.cowDao(), database.pastureDao(), database.activityDao(),
             database.settingsDao(), database.noteDao(), database.userDao(),
             database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
-            database.activityTypeConfigDao()
+            database.activityTypeConfigDao(), database.breedDao()
         )
     }
 

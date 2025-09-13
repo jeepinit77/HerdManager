@@ -40,6 +40,7 @@ fun SettingsScreen(
     onNavigateToAccountManagement: (() -> Unit)? = null,
     onNavigateToTagColors: (() -> Unit)? = null,
     onNavigateToActivityTypes: (() -> Unit)? = null,
+    onNavigateToBreeds: (() -> Unit)? = null,
     onNavigateToThemeSettings: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -58,7 +59,8 @@ fun SettingsScreen(
             database.herdDao(),
             database.herdMemberDao(),
             database.tagColorDao(),
-            database.activityTypeConfigDao()
+            database.activityTypeConfigDao(),
+            database.breedDao()
         )
     }
     val viewModel: SettingsViewModel = viewModel(
@@ -133,6 +135,14 @@ fun SettingsScreen(
                     subtitle = "Manage activity types and fields",
                     icon = Icons.Filled.Assignment,
                     onClick = { onNavigateToActivityTypes?.invoke() }
+                )
+            }
+            item {
+                SettingsCard(
+                    title = "Breeds",
+                    subtitle = "Manage available cattle breeds",
+                    icon = Icons.Filled.Pets,
+                    onClick = { onNavigateToBreeds?.invoke() }
                 )
             }
             item {

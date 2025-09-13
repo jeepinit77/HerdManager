@@ -17,10 +17,11 @@ import com.jumblemint.cows.data.dao.HerdDao
 import com.jumblemint.cows.data.dao.HerdMemberDao
 import com.jumblemint.cows.data.dao.TagColorDao
 import com.jumblemint.cows.data.dao.ActivityTypeConfigDao
+import com.jumblemint.cows.data.dao.BreedDao
 import com.jumblemint.cows.data.model.* // Assuming all models are here
 
 // Modified the @Database annotation to include exportSchema = false
-@Database(entities = [Cow::class, Pasture::class, Activity::class, Settings::class, Note::class, User::class, Herd::class, HerdMember::class, TagColor::class, ActivityTypeConfig::class], version = 4, exportSchema = false)
+@Database(entities = [Cow::class, Pasture::class, Activity::class, Settings::class, Note::class, User::class, Herd::class, HerdMember::class, TagColor::class, ActivityTypeConfig::class, Breed::class], version = 5, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class CattleDatabase : RoomDatabase() {
     abstract fun cowDao(): CowDao
@@ -33,6 +34,7 @@ abstract class CattleDatabase : RoomDatabase() {
     abstract fun herdMemberDao(): HerdMemberDao
     abstract fun tagColorDao(): TagColorDao
     abstract fun activityTypeConfigDao(): ActivityTypeConfigDao
+    abstract fun breedDao(): BreedDao
 
     companion object {
         @Volatile
@@ -168,6 +170,30 @@ abstract class CattleDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Create breeds table
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS breeds (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        name TEXT NOT NULL,
+                        isActive INTEGER NOT NULL DEFAULT 1,
+                        isDefault INTEGER NOT NULL DEFAULT 0,
+                        createdAt INTEGER NOT NULL,
+                        updatedAt INTEGER NOT NULL,
+                        firestoreId TEXT,
+                        lastSyncAt INTEGER,
+                        updatedBy TEXT,
+                        isDeleted INTEGER NOT NULL DEFAULT 0
+                    )
+                """)
+
+                // Add new fields to cows table
+                database.execSQL("ALTER TABLE cows ADD COLUMN registrationNumber TEXT")
+                database.execSQL("ALTER TABLE cows ADD COLUMN breed TEXT")
+            }
+        }
+
         fun getDatabase(context: Context): CattleDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -175,7 +201,7 @@ abstract class CattleDatabase : RoomDatabase() {
                     CattleDatabase::class.java,
                     "cattle_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                 INSTANCE = instance
                 instance

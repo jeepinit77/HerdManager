@@ -52,7 +52,8 @@ fun CowEditScreen(
             database.herdDao(),
             database.herdMemberDao(),
             database.tagColorDao(),
-            database.activityTypeConfigDao()
+            database.activityTypeConfigDao(),
+            database.breedDao()
         )
     }
     val viewModel: CowDetailViewModel = viewModel(
@@ -274,6 +275,19 @@ fun CowEditScreen(
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 2,
                             maxLines = 4
+                        )
+                        OutlinedTextField(
+                            value = uiState.registrationNumber,
+                            onValueChange = viewModel::updateRegistrationNumber,
+                            label = { Text("Registration Number (Optional)") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        DropdownField(
+                            value = uiState.breed ?: "",
+                            onValueChange = viewModel::updateBreed,
+                            label = "Breed",
+                            options = listOf("") + uiState.breeds,
+                            modifier = Modifier.fillMaxWidth()
                         )
                     }
                 }

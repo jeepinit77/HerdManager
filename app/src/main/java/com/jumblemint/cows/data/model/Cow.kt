@@ -15,6 +15,8 @@ data class Cow(
     val gender: Gender = Gender.TBD,
     val classification: Classification = Classification.CALF,
     val colorMarkings: String? = null,
+    val registrationNumber: String? = null,
+    val breed: String? = null,
     val motherId: Long? = null, // Assuming Cow IDs are Long
     val fatherId: Long? = null, // Assuming Cow IDs are Long
     val status: Status = Status.ACTIVE,

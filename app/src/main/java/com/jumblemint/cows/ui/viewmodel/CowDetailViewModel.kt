@@ -21,6 +21,8 @@ data class CowDetailUiState(
     val gender: Gender? = null,
     val classification: Classification? = null,
     val colorMarkings: String = "",
+    val registrationNumber: String = "",
+    val breed: String? = null,
     val motherId: Long? = null,
     val fatherId: Long? = null,
     val motherName: String? = null,
@@ -36,6 +38,7 @@ data class CowDetailUiState(
     val availableFathers: List<Cow> = emptyList(),
     val availablePastures: List<Pasture> = emptyList(),
     val tagColors: List<String> = emptyList(),
+    val breeds: List<String> = emptyList(),
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
     val error: String? = null,
@@ -63,6 +66,7 @@ class CowDetailViewModel(
                 val fathers = repository.getActiveMales().first()
                 val pastures = repository.getAllPastures().first()
                 val tagColors = repository.getAllTagColors().first().map { it.name }
+                val breeds = repository.getAllBreeds().first().map { it.name }
 
                 if (cowId == 0L) { // New cow
                     _uiState.update {
@@ -72,6 +76,7 @@ class CowDetailViewModel(
                             availableFathers = fathers,
                             availablePastures = pastures,
                             tagColors = tagColors,
+                            breeds = breeds,
                             isLoading = false,
                             birthDate = LocalDate.now() // Default birthdate for new cow
                         )
@@ -93,6 +98,8 @@ class CowDetailViewModel(
                                 gender = cow.gender,
                                 classification = cow.classification,
                                 colorMarkings = cow.colorMarkings ?: "",
+                                registrationNumber = cow.registrationNumber ?: "",
+                                breed = cow.breed,
                                 motherId = cow.motherId,
                                 fatherId = cow.fatherId,
                                 motherName = motherName,
@@ -108,6 +115,7 @@ class CowDetailViewModel(
                                 availableFathers = fathers,
                                 availablePastures = pastures,
                                 tagColors = tagColors,
+                                breeds = breeds,
                                 isLoading = false
                             )
                         }
@@ -189,6 +197,8 @@ class CowDetailViewModel(
         }
     }
     fun updateColorMarkings(colorMarkings: String) { _uiState.update { it.copy(colorMarkings = colorMarkings) } }
+    fun updateRegistrationNumber(registrationNumber: String) { _uiState.update { it.copy(registrationNumber = registrationNumber) } }
+    fun updateBreed(breed: String?) { _uiState.update { it.copy(breed = breed) } }
     fun updateStatus(status: Status) { _uiState.update { it.copy(status = status) } }
     fun updateIsWatched(isWatched: Boolean) { _uiState.update { it.copy(isWatched = isWatched) } }
 
@@ -255,6 +265,8 @@ class CowDetailViewModel(
                     gender = currentState.gender!!,
                     classification = currentState.classification!!,
                     colorMarkings = currentState.colorMarkings.takeIf { it.isNotBlank() },
+                    registrationNumber = currentState.registrationNumber.takeIf { it.isNotBlank() },
+                    breed = currentState.breed,
                     motherId = currentState.motherId,
                     fatherId = currentState.fatherId,
                     status = currentState.status,
@@ -284,6 +296,8 @@ class CowDetailViewModel(
                     gender = currentState.gender!!,
                     classification = currentState.classification!!,
                     colorMarkings = currentState.colorMarkings.takeIf { it.isNotBlank() },
+                    registrationNumber = currentState.registrationNumber.takeIf { it.isNotBlank() },
+                    breed = currentState.breed,
                     motherId = currentState.motherId,
                     fatherId = currentState.fatherId,
                     status = currentState.status,

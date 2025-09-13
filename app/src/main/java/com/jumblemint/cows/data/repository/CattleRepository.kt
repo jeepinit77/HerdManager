@@ -10,6 +10,7 @@ import com.jumblemint.cows.data.dao.HerdDao
 import com.jumblemint.cows.data.dao.HerdMemberDao
 import com.jumblemint.cows.data.dao.TagColorDao
 import com.jumblemint.cows.data.dao.ActivityTypeConfigDao
+import com.jumblemint.cows.data.dao.BreedDao
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.ui.viewmodel.PastureWithCowCount // <<< ADDED IMPORT
 import kotlinx.coroutines.flow.Flow
@@ -28,7 +29,8 @@ class CattleRepository(
     private val herdDao: HerdDao? = null,
     private val herdMemberDao: HerdMemberDao? = null,
     private val tagColorDao: TagColorDao? = null,
-    private val activityTypeConfigDao: ActivityTypeConfigDao? = null
+    private val activityTypeConfigDao: ActivityTypeConfigDao? = null,
+    private val breedDao: BreedDao? = null
 ) {
 
     // Cow operations
@@ -324,6 +326,14 @@ class CattleRepository(
             val defaultActivityTypes = com.jumblemint.cows.data.model.ActivityTypeConfig.getDefaultActivityTypes()
             defaultActivityTypes.forEach { activityType ->
                 insertActivityType(activityType)
+            }
+        }
+        
+        // Initialize default breeds if none exist
+        if (breedDao != null && getAllBreeds().first().isEmpty()) {
+            val defaultBreeds = com.jumblemint.cows.data.model.Breed.getDefaultBreeds()
+            defaultBreeds.forEach { breed ->
+                insertBreed(breed)
             }
         }
         
@@ -1245,5 +1255,17 @@ class CattleRepository(
         activityTypeConfigDao?.deleteAllActivityTypes()
         // Insert the default activity types
         insertActivityTypes(ActivityTypeConfig.getDefaultActivityTypes())
+    }
+    
+    // Breed operations
+    fun getAllBreeds(): Flow<List<Breed>> = breedDao?.getAllBreeds() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+    suspend fun getBreedById(id: String): Breed? = breedDao?.getBreedById(id)
+    suspend fun insertBreed(breed: Breed) = breedDao?.insertBreed(breed)
+    suspend fun insertBreeds(breeds: List<Breed>) = breedDao?.insertBreeds(breeds)
+    suspend fun updateBreed(breed: Breed) = breedDao?.updateBreed(breed)
+    suspend fun deleteBreed(breed: Breed) = breedDao?.deleteBreed(breed)
+    suspend fun restoreDefaultBreeds() {
+        breedDao?.deleteAllBreeds()
+        insertBreeds(Breed.getDefaultBreeds())
     }
 }

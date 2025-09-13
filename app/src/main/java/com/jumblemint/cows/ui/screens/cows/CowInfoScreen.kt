@@ -148,7 +148,13 @@ fun CowInfoScreen(
                                 }
                                 InfoRow("Status", cow.status.name.lowercase().replaceFirstChar { it.uppercase() })
                                 uiState.pastureName?.let { InfoRow("Pasture", it) }
+                                cow.breed?.takeIf { it.isNotBlank() }?.let { InfoRow("Breed", it) }
+                                cow.registrationNumber?.takeIf { it.isNotBlank() }?.let { InfoRow("Registration #", it) }
                                 cow.colorMarkings?.takeIf { it.isNotBlank() }?.let { InfoRow("Color/Markings", it) }
+                                if (cow.isWatched) {
+                                    InfoRow("Status", "⭐ Watched")
+                                }
+                                cow.herdId?.takeIf { it.isNotBlank() }?.let { InfoRow("Herd ID", it) }
                             }
                         }
 

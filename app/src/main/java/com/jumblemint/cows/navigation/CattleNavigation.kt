@@ -46,6 +46,7 @@ import com.jumblemint.cows.ui.screens.reports.ReportsScreen
 import com.jumblemint.cows.ui.screens.settings.ActivityTypesManagementScreen
 import com.jumblemint.cows.ui.screens.settings.SettingsScreen
 import com.jumblemint.cows.ui.screens.settings.TagColorsManagementScreen
+import com.jumblemint.cows.ui.screens.settings.BreedsManagementScreen
 import com.jumblemint.cows.ui.screens.settings.ThemeSettingsScreen
 import com.jumblemint.cows.ui.screens.sync.SyncDetailsScreen
 import com.jumblemint.cows.ui.screens.workinglist.WorkingListScreen
@@ -253,7 +254,8 @@ fun CattleNavigation(
                     database.herdDao(),
                     database.herdMemberDao(),
                     database.tagColorDao(),
-                    database.activityTypeConfigDao()
+                    database.activityTypeConfigDao(),
+                    database.breedDao()
                 )
             }
             val viewModel: CowDetailViewModel = viewModel(
@@ -339,6 +341,7 @@ fun CattleNavigation(
                 onNavigateToAccountManagement = { navController.navigate(Screen.AccountManagement.route) },
                 onNavigateToTagColors = { navController.navigate(Screen.TagColorsManagement.route) },
                 onNavigateToActivityTypes = { navController.navigate(Screen.ActivityTypesManagement.route) },
+                onNavigateToBreeds = { navController.navigate(Screen.BreedsManagement.route) },
                 onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) }
             )
         }
@@ -414,7 +417,8 @@ fun CattleNavigation(
                     herdDao = database.herdDao(),
                     herdMemberDao = database.herdMemberDao(),
                     tagColorDao = database.tagColorDao(),
-                    activityTypeConfigDao = database.activityTypeConfigDao()
+                    activityTypeConfigDao = database.activityTypeConfigDao(),
+                    breedDao = database.breedDao()
                 )
             }
             val pasturesViewModel: PasturesViewModel = viewModel(
@@ -459,7 +463,8 @@ fun CattleNavigation(
                     herdDao = database.herdDao(),
                     herdMemberDao = database.herdMemberDao(),
                     tagColorDao = database.tagColorDao(),
-                    activityTypeConfigDao = database.activityTypeConfigDao()
+                    activityTypeConfigDao = database.activityTypeConfigDao(),
+                    breedDao = database.breedDao()
                 )
             }
             val pasturesViewModel: PasturesViewModel = viewModel(
@@ -498,6 +503,12 @@ fun CattleNavigation(
         }
         composable(Screen.ActivityTypesManagement.route){
             ActivityTypesManagementScreen(
+                modifier = screenModifierWithPadding,
+                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.BreedsManagement.route){
+            BreedsManagementScreen(
                 modifier = screenModifierWithPadding,
                  onNavigateBack = { navController.popBackStack() }
             )

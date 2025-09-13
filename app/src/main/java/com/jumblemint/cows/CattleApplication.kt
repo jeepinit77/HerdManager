@@ -30,7 +30,8 @@ class CattleApplication : Application() {
             herdDao = database.herdDao(),
             herdMemberDao = database.herdMemberDao(),
             tagColorDao = database.tagColorDao(),
-            activityTypeConfigDao = database.activityTypeConfigDao()
+            activityTypeConfigDao = database.activityTypeConfigDao(),
+            breedDao = database.breedDao()
         )
     }
     
