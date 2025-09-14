@@ -1,33 +1,30 @@
 package com.jumblemint.cows.ui.screens.settings
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
-// import androidx.compose.foundation.Image // No longer needed for PulsingLightbulbIcon
+// import androidx.compose.animation.core.FastOutSlowInEasing // Removed
+// import androidx.compose.animation.core.RepeatMode // Removed
+// import androidx.compose.animation.core.animateFloat // Removed
+// import androidx.compose.animation.core.infiniteRepeatable // Removed
+// import androidx.compose.animation.core.rememberInfiniteTransition // Removed
+// import androidx.compose.animation.core.tween // Removed
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Info // Corrected import
-import androidx.compose.material.icons.outlined.HelpOutline // Re-added this import
-import androidx.compose.material.icons.outlined.Lightbulb // Added for the pulsing icon
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.HelpOutline
+// import androidx.compose.material.icons.outlined.Lightbulb // Removed, handled by WobblingLightbulbIcon
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color // Added for Color.Yellow
-import androidx.compose.ui.graphics.graphicsLayer // Added for pulsing animation
+// import androidx.compose.ui.graphics.Color // Kept for other usages like MaterialTheme
+// import androidx.compose.ui.graphics.graphicsLayer // Removed
 import androidx.compose.ui.platform.LocalContext
-// import androidx.compose.ui.res.painterResource // No longer needed for PulsingLightbulbIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
-// import com.jumblemint.cows.R // No longer needed if not using custom drawable
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.sync.SyncStatus
@@ -35,38 +32,15 @@ import com.jumblemint.cows.ui.viewmodel.SettingsViewModel
 import com.jumblemint.cows.ui.viewmodel.SettingsViewModelFactory
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape // Added for SettingsCard
+import androidx.compose.foundation.shape.RoundedCornerShape
 import com.jumblemint.cows.ui.theme.getCardColors
-import androidx.compose.ui.graphics.vector.ImageVector // Needed for SettingsCard original icon param
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Added/Ensured import
 
 // Helper data class for quadruple values
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
-@Composable
-fun PulsingLightbulbIcon(modifier: Modifier = Modifier) {
-    val infiniteTransition = rememberInfiniteTransition(label = "lightbulbPulse")
-    val scale by infiniteTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 1.15f, // Pulse to 115% of original size
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 800, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "lightbulbScale"
-    )
-
-    Icon(
-        imageVector = Icons.Outlined.Lightbulb, // Using the built-in outlined lightbulb
-        contentDescription = "Tips Lightbulb",
-        tint = Color.Yellow, // Forcing the color to yellow
-        modifier = modifier
-            .size(28.dp) // Match the size used in SettingsCard, or adjust as needed
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-            }
-    )
-}
+// Removed local PulsingLightbulbIcon definition
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +57,7 @@ fun SettingsScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
-    val application = context.applicationContext as CattleApplication // application context
+    val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val repository = remember {
         CattleRepository(
@@ -110,7 +84,7 @@ fun SettingsScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     var showExportDialog by remember { mutableStateOf(false) }
-    var showSampleDataDialog by remember { mutableStateOf(false) }
+    var showSampleDataDialog by remember { mutableStateOf(false) } // Corrected typo here
     var showDeleteDataDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -121,7 +95,7 @@ fun SettingsScreen(
                     message = errorMsg,
                     duration = SnackbarDuration.Long
                 )
-                viewModel.clearError() // Clear error after showing
+                viewModel.clearError()
             }
         }
     }
@@ -133,7 +107,7 @@ fun SettingsScreen(
                     message = msg,
                     duration = SnackbarDuration.Short
                 )
-                viewModel.clearMessage() // Clear message after showing
+                viewModel.clearMessage()
             }
         }
     }
@@ -313,8 +287,8 @@ fun SettingsScreen(
                 SettingsCard(
                     title = "Reset Tips",
                     subtitle = "Show all coach marks and tips again",
-                    customIconContent = { PulsingLightbulbIcon() }, // Using the custom pulsing icon here
-                    icon = null, // Explicitly nullify the ImageVector icon
+                    customIconContent = { WobblingLightbulbIcon() }, // Changed to WobblingLightbulbIcon
+                    icon = null, 
                     onClick = {
                         coroutineScope.launch {
                             tipsManager.enableAllTips()
@@ -422,8 +396,8 @@ fun SettingsScreen(
 fun SettingsCard(
     title: String,
     subtitle: String,
-    icon: ImageVector? = null, // Made nullable to support custom icon
-    customIconContent: @Composable (() -> Unit)? = null, // New parameter for custom composable icon
+    icon: ImageVector? = null, 
+    customIconContent: @Composable (() -> Unit)? = null, 
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
@@ -477,15 +451,14 @@ fun SettingsCard(
     }
 }
 
-// Other dialogs (ExportDataDialog, SampleDataDialog, DeleteDataSelectiveDialog) remain unchanged below this line
-// ... (rest of the file as provided previously)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExportDataDialog(
     onDismiss: () -> Unit,
-    onExport: (String) -> Unit // "CSV" or "JSON"
+    onExport: (String) -> Unit
 ) {
-    var selectedFormat by remember { mutableStateOf("CSV") } // Default to CSV
+    var selectedFormat by remember { mutableStateOf("CSV") }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -550,7 +523,7 @@ fun SampleDataDialog(
             Button(
                 onClick = {
                     if (isSampleDataInstalled) onRemove() else onInstall()
-                    onDismiss() // Dismiss after action
+                    onDismiss()
                 },
                 colors = if (isSampleDataInstalled) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors()
             ) {
@@ -572,7 +545,7 @@ fun DeleteDataSelectiveDialog(
     onConfirm: (SettingsViewModel.DeleteSelection) -> Unit
 ) {
     var deleteLocal by remember { mutableStateOf(true) }
-    var deleteServer by remember { mutableStateOf(false) } // Default to not deleting server data for safety
+    var deleteServer by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -604,7 +577,7 @@ fun DeleteDataSelectiveDialog(
                     onDismiss()
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                enabled = deleteLocal || deleteServer // Only enable if at least one option is selected
+                enabled = deleteLocal || deleteServer
             ) {
                 Text("Delete")
             }

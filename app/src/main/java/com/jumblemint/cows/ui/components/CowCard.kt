@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import com.jumblemint.cows.ui.theme.getGenderColor
 import com.jumblemint.cows.ui.theme.getCardBackgroundColor
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons // Added this import
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
@@ -43,7 +44,7 @@ import java.time.Period
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.unit.Dp
-import com.jumblemint.cows.ui.components.PulsingLightbulbIcon // Added import
+import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Changed import
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,137 +57,138 @@ fun CowCard(
     onDelete: (() -> Unit)? = null,
     resolvedTagColor: Color? = null
 ) {
-    // Use gender color as background for cow cards
     val genderColor = getGenderColor(cow.gender)
     val cardColors = CardDefaults.cardColors(
         containerColor = genderColor
     )
-    
-    // Calculate text color based on background luminance
     val textColor = if (genderColor.luminance() < 0.5f) Color.White else Color.Black
     val secondaryTextColor = if (genderColor.luminance() < 0.5f) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
 
-    // Tips/coach-mark visibility and trigger state
     val context = LocalContext.current
     val tipsManager = remember { com.jumblemint.cows.data.preferences.TipsManager(context) }
     val tipId = "cow_card_watch_tip"
     val tipVisible by tipsManager.isTipVisible(tipId).collectAsState(initial = false)
     var showTip by remember { mutableStateOf(false) }
-    
-    Card(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium,
-        colors = cardColors,
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                // Tag on the top-left
-                if (cow.tagNumber != null || cow.tagColor != null) {
-                    CattleTagBadge(
-                        tagNumber = cow.tagNumber,
-                        tagColor = cow.tagColor,
-                        modifier = Modifier.size(width = 72.dp, height = 96.dp), // Adjust size as needed for your SVG
-                        backgroundColor = resolvedTagColor
-                    )
-                }
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
+    Box(modifier = modifier.fillMaxWidth()) { // Outer Box for positioning the icon relative to the card
+        Card(
+            onClick = onClick,
+            modifier = Modifier.fillMaxWidth(), // Card fills the Box
+            shape = MaterialTheme.shapes.medium,
+            colors = cardColors,
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+            border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    if (cow.tagNumber != null || cow.tagColor != null) {
+                        CattleTagBadge(
+                            tagNumber = cow.tagNumber,
+                            tagColor = cow.tagColor,
+                            modifier = Modifier.size(width = 72.dp, height = 96.dp),
+                            backgroundColor = resolvedTagColor
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = cow.name ?: "Unnamed Cow",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textColor
+                                )
+                                Text(
+                                    text = cow.classification.name,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = secondaryTextColor
+                                )
+                            }
+                            // Action buttons (Star, Edit, Delete) - Tip icon is removed from here
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                onToggleWatch?.let {
+                                    IconButton(onClick = it) {
+                                        val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else secondaryTextColor
+                                        Icon(
+                                            imageVector = Icons.Filled.Star,
+                                            contentDescription = if (cow.isWatched) "Unwatch" else "Watch",
+                                            tint = tint
+                                        )
+                                    }
+                                }
+                                onEdit?.let {
+                                    IconButton(onClick = it) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Edit,
+                                            contentDescription = "Edit Cow",
+                                            tint = textColor
+                                        )
+                                    }
+                                }
+                                onDelete?.let {
+                                    IconButton(onClick = it) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Delete,
+                                            contentDescription = "Delete Cow",
+                                            tint = if (genderColor.luminance() < 0.5f) Color(0xFFFF6B6B) else Color(0xFFD32F2F)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        cow.birthDate?.let { birthDate ->
+                            val age = Period.between(birthDate, LocalDate.now())
+                            val ageText = when {
+                                age.years > 0 -> "${age.years}y ${age.months}m"
+                                age.months > 0 -> "${age.months}m ${age.days}d"
+                                else -> "${age.days}d"
+                            }
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = cow.name ?: "Unnamed Cow",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = textColor
-                            )
-                            Text(
-                                text = cow.classification.name,
-                                style = MaterialTheme.typography.bodyMedium,
+                                text = "Age: $ageText",
+                                style = MaterialTheme.typography.bodySmall,
                                 color = secondaryTextColor
                             )
                         }
-                        // Watch toggle + Edit + Delete buttons on the right
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            if (tipVisible) {
-                                IconButton(onClick = { showTip = true }) {
-                                    PulsingLightbulbIcon() // Replaced here
-                                }
-                            }
-                            onToggleWatch?.let {
-                                IconButton(onClick = it) {
-                                    val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else secondaryTextColor
-                                    Icon(
-                                        imageVector = androidx.compose.material.icons.Icons.Filled.Star,
-                                        contentDescription = if (cow.isWatched) "Unwatch" else "Watch",
-                                        tint = tint
-                                    )
-                                }
-                            }
-                            onEdit?.let {
-                                IconButton(onClick = it) {
-                                    Icon(
-                                        imageVector = androidx.compose.material.icons.Icons.Filled.Edit,
-                                        contentDescription = "Edit Cow",
-                                        tint = textColor
-                                    )
-                                }
-                            }
-                            onDelete?.let {
-                                IconButton(onClick = it) {
-                                    Icon(
-                                        imageVector = androidx.compose.material.icons.Icons.Filled.Delete,
-                                        contentDescription = "Delete Cow",
-                                        tint = if (genderColor.luminance() < 0.5f) Color(0xFFFF6B6B) else Color(0xFFD32F2F)
-                                    )
-                                }
-                            }
-                        }
-
-                        if (showTip) {
-                            TipOverlay(
-                                tipId = tipId,
-                                tipText = "Tap the star to mark a cow as watched. Watched cows appear at the top of lists.",
-                                onClosed = { showTip = false },
-                                tipsManager = tipsManager
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    cow.birthDate?.let { birthDate ->
-                        val age = Period.between(birthDate, LocalDate.now())
-                        val ageText = when {
-                            age.years > 0 -> "${age.years}y ${age.months}m"
-                            age.months > 0 -> "${age.months}m ${age.days}d"
-                            else -> "${age.days}d"
-                        }
-                        Text(
-                            text = "Age: $ageText",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = secondaryTextColor
-                        )
                     }
                 }
             }
-            
+        } // End of Card content
 
+        // Tip Icon Button - overlaid on top-right of the Card, extending out
+        if (tipVisible) {
+            IconButton(
+                onClick = { showTip = true },
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 18.dp, y = (-18).dp) // Offset to extend past the edge
+            ) {
+                WobblingLightbulbIcon() // Changed to WobblingLightbulbIcon
+            }
+        }
+
+        // TipOverlay Dialog - its position in the tree here doesn't affect its modal appearance
+        if (showTip) {
+            TipOverlay(
+                tipId = tipId,
+                tipText = "Tap the star to mark a cow as watched. Watched cows appear at the top of lists.",
+                onClosed = { showTip = false },
+                tipsManager = tipsManager
+            )
         }
     }
 }
@@ -213,56 +215,51 @@ fun StatusBadge(status: Status) {
     }
 }
 
-// CattleTagShape class has been removed
-
 @Composable
 fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = Modifier, backgroundColor: Color? = null) {
     val bgColor = backgroundColor ?: when (tagColor?.lowercase()) {
-        "red" -> androidx.compose.ui.graphics.Color.Red
-        "blue" -> androidx.compose.ui.graphics.Color.Blue
-        "green" -> androidx.compose.ui.graphics.Color.Green
-        "yellow" -> androidx.compose.ui.graphics.Color.Yellow
-        "orange" -> androidx.compose.ui.graphics.Color(0xFFFFA500)
-        "purple" -> androidx.compose.ui.graphics.Color.Magenta
-        "pink" -> androidx.compose.ui.graphics.Color(0xFFFFC0CB)
-        "white" -> androidx.compose.ui.graphics.Color.White
-        "black" -> androidx.compose.ui.graphics.Color.Black
-        "brown" -> androidx.compose.ui.graphics.Color(0xFF8B4513)
+        "red" -> Color.Red
+        "blue" -> Color.Blue
+        "green" -> Color.Green
+        "yellow" -> Color.Yellow
+        "orange" -> Color(0xFFFFA500)
+        "purple" -> Color.Magenta
+        "pink" -> Color(0xFFFFC0CB)
+        "white" -> Color.White
+        "black" -> Color.Black
+        "brown" -> Color(0xFF8B4513)
         else -> MaterialTheme.colorScheme.surfaceVariant // Default color if tagColor is null or not recognized
     }
 
     Box(
         modifier = modifier,
-        // contentAlignment = Alignment.Center // No longer Center for the Box itself
     ) {
         Image(
             painter = painterResource(id = R.drawable.ear_tag),
             contentDescription = "Cattle Tag",
             colorFilter = ColorFilter.tint(bgColor),
-            modifier = Modifier.fillMaxSize() // SVG will fill the Box
+            modifier = Modifier.fillMaxSize()
         )
         Column(
             modifier = Modifier
-                .fillMaxSize() // Column takes the full size of the Box
-                .padding(horizontal = 4.dp, vertical = 8.dp), // General padding, adjust as needed
+                .fillMaxSize()
+                .padding(horizontal = 4.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Bottom // Push content to the bottom
+            verticalArrangement = Arrangement.Bottom
         ) {
-            // Tag Color Text (appears above Tag Number)
-            tagColor?.let { name ->
+            tagColor?.let {
                 Text(
-                    text = name.lowercase().replaceFirstChar { it.titlecase() },
-                    style = MaterialTheme.typography.labelSmall, // Consider adjusting style
+                    text = it.lowercase().replaceFirstChar { char -> char.titlecase() },
+                    style = MaterialTheme.typography.labelSmall,
                     color = if (bgColor.luminance() < 0.5f) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.7f),
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                 )
-                Spacer(modifier = Modifier.height(2.dp)) // Space between color and number
+                Spacer(modifier = Modifier.height(2.dp))
             }
-            // Tag Number Text (at the very bottom)
             Text(
                 text = (tagNumber ?: "—").uppercase(),
-                style = MaterialTheme.typography.headlineSmall, // Changed to a larger style
-                fontWeight = FontWeight.Bold, // Remains Bold
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 softWrap = false,
                 color = if (bgColor.luminance() < 0.5f) Color.White else Color.Black
