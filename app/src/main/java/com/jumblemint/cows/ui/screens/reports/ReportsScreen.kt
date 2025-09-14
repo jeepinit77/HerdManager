@@ -1,8 +1,6 @@
 package com.jumblemint.cows.ui.screens.reports
 
 import android.app.Application // Required for ViewModelFactory
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,7 +11,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer // Added for wobble
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -23,9 +20,6 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModel
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
 import com.jumblemint.cows.ui.theme.getCardColors
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlin.random.Random // Added for random delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +31,7 @@ fun ReportsScreen(
     val context = LocalContext.current
     val application = context.applicationContext as Application // Get Application instance
 
-    // ViewModel initialization with Application context for SharedPreferences
+    // ViewModel initialization
     val database = CattleDatabase.getDatabase(context)
     val repository = remember {
         CattleRepository(
@@ -63,58 +57,9 @@ fun ReportsScreen(
     val pastures by pasturesFlow.collectAsState(initial = emptyList())
     val pastureIdByName = remember(pastures) { pastures.associate { it.name to it.id } }
 
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-
-    // --- Hint Logic State ---
-    var hasClickedGotItState by remember { mutableStateOf(viewModel.hasUserClickedGotIt()) }
-    var hasShownCloseButtonState by remember { mutableStateOf(viewModel.hasShownCloseButton()) }
-    var snackbarShownThisScreenInstance by remember { mutableStateOf(false) }
-    var temporaryWobblePeriodActive by remember { mutableStateOf(false) }
-    // --- End Hint Logic State ---
-
-    LaunchedEffect(Unit) { 
-        if (!hasClickedGotItState && !snackbarShownThisScreenInstance) {
-            temporaryWobblePeriodActive = true 
-            snackbarShownThisScreenInstance = true 
-
-            val actionLabel = if (hasShownCloseButtonState) "GOT IT" else "Close"
-
-            scope.launch {
-                val result = snackbarHostState.showSnackbar(
-                    message = "Tip: Most items on this screen can be tapped for more details.",
-                    actionLabel = actionLabel,
-                    duration = SnackbarDuration.Short // Using Short duration
-                )
-
-                if (result == SnackbarResult.ActionPerformed) {
-                    if (actionLabel == "GOT IT") {
-                        hasClickedGotItState = true
-                        viewModel.setHasUserClickedGotIt(true)
-                    } else { // Clicked "Close"
-                        hasShownCloseButtonState = true
-                        viewModel.setHasShownCloseButton(true)
-                    }
-                } else { // Snackbar dismissed without action (e.g., timeout)
-                    if (actionLabel == "Close") {
-                        hasShownCloseButtonState = true
-                        viewModel.setHasShownCloseButton(true)
-                    }
-                }
-                 if (hasClickedGotItState) { 
-                     temporaryWobblePeriodActive = false
-                 }
-            }
-            delay(4000L) // Overall window for wobbles to occur
-            temporaryWobblePeriodActive = false 
-        } else {
-            temporaryWobblePeriodActive = false 
-        }
-    }
-
     Scaffold(
         modifier = modifier,
-        snackbarHost = { SnackbarHost(snackbarHostState) },
+        // snackbarHost has been removed
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         if (uiState.isLoading) {
@@ -126,14 +71,12 @@ fun ReportsScreen(
                 modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val showWobble = temporaryWobblePeriodActive && !hasClickedGotItState
-
                 item { HerdOverviewCard(uiState.totalCows, uiState.watchedCowsCount, { type -> onShowList("status", type) }, { onShowList("watching", null) }) }
                 item { ToolsCard(onNavigateToAddBirth, { onShowList("workingList", null) }) }
-                item { ClassificationBreakdownCard(uiState.classificationBreakdown, { classification -> onShowList("classification", classification) }, showWobble) }
-                item { PastureBreakdownCard(uiState.pastureBreakdown, { pastureName -> val id = pastureIdByName[pastureName]; if (id != null) onShowList("pasture", id.toString()) else onShowList("pastureName", pastureName) }, showWobble) }
-                item { AgeBasedReportsCard(uiState.cowsUnder1Year, uiState.cowsBetween1And5Years, uiState.cowsBetween5And10Years, uiState.cowsOver10Years, { rangeKey -> onShowList("age", rangeKey) }, showWobble) }
-                item { BreedingReportsCard(uiState.cowsNotCalvedIn9Months, uiState.cowsCalvedInPast9Months, { onShowList("notCalved", null) }, { onShowList("calved", null) }, showWobble) }
+                item { ClassificationBreakdownCard(uiState.classificationBreakdown) { classification -> onShowList("classification", classification) } }
+                item { PastureBreakdownCard(uiState.pastureBreakdown) { pastureName -> val id = pastureIdByName[pastureName]; if (id != null) onShowList("pasture", id.toString()) else onShowList("pastureName", pastureName) } }
+                item { AgeBasedReportsCard(uiState.cowsUnder1Year, uiState.cowsBetween1And5Years, uiState.cowsBetween5And10Years, uiState.cowsOver10Years) { rangeKey -> onShowList("age", rangeKey) } }
+                item { BreedingReportsCard(uiState.cowsNotCalvedIn9Months, uiState.cowsCalvedInPast9Months, { onShowList("notCalved", null) }, { onShowList("calved", null) }) }
             }
         }
     }
@@ -209,42 +152,11 @@ fun ClickableStatItem(label: String, count: Int, color: androidx.compose.ui.grap
     }
 }
 
-@Composable
-fun WobbleTextHint(text: String, style: androidx.compose.ui.text.TextStyle, applyWobble: Boolean) {
-    val rotation = remember { Animatable(0f) }
-
-    LaunchedEffect(applyWobble) {
-        if (applyWobble) {
-            // Each WobbleTextHint instance gets its own speed characteristic for this activation
-            val baseDuration = 180L // Base duration for one half of a cycle
-            // Randomize duration between 150ms and 210ms (baseDuration +/- 30ms)
-            val randomDuration = Random.nextLong(baseDuration - 30, baseDuration + 31).coerceAtLeast(100L) // Ensure not too fast
-
-            launch {
-                delay(Random.nextLong(50, 250)) // Stagger start of wobble
-                for (i in 0..4) { // 5 cycles
-                    rotation.animateTo(5f, animationSpec = tween(durationMillis = randomDuration.toInt()))
-                    rotation.animateTo(-5f, animationSpec = tween(durationMillis = randomDuration.toInt()))
-                }
-                rotation.animateTo(0f, animationSpec = tween(durationMillis = randomDuration.toInt())) // Settle back
-            }
-        } else {
-             rotation.snapTo(0f)
-        }
-    }
-
-    Text(
-        text = text,
-        style = style,
-        modifier = Modifier.graphicsLayer {
-            rotationZ = rotation.value
-        }
-    )
-}
+// WobbleTextHint composable has been removed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ClassificationBreakdownCard(classifications: Map<String, Int>, onRowClick: (String) -> Unit, applyHintEffect: Boolean) {
+fun ClassificationBreakdownCard(classifications: Map<String, Int>, onRowClick: (String) -> Unit) {
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -259,7 +171,7 @@ fun ClassificationBreakdownCard(classifications: Map<String, Int>, onRowClick: (
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    WobbleTextHint(text = classification, style = MaterialTheme.typography.bodyMedium, applyWobble = applyHintEffect)
+                    Text(text = classification, style = MaterialTheme.typography.bodyMedium)
                     Text(count.toString(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }
             }
@@ -269,7 +181,7 @@ fun ClassificationBreakdownCard(classifications: Map<String, Int>, onRowClick: (
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PastureBreakdownCard(pastures: Map<String, Int>, onRowClick: (String) -> Unit, applyHintEffect: Boolean) {
+fun PastureBreakdownCard(pastures: Map<String, Int>, onRowClick: (String) -> Unit) {
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -287,7 +199,7 @@ fun PastureBreakdownCard(pastures: Map<String, Int>, onRowClick: (String) -> Uni
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        WobbleTextHint(text = pasture, style = MaterialTheme.typography.bodyMedium, applyWobble = applyHintEffect)
+                        Text(text = pasture, style = MaterialTheme.typography.bodyMedium)
                         Text(count.toString(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                     }
                 }
@@ -298,7 +210,7 @@ fun PastureBreakdownCard(pastures: Map<String, Int>, onRowClick: (String) -> Uni
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AgeBasedReportsCard(under1Year: Int, between1And5Years: Int, between5And10Years: Int, over10Years: Int, onRowClick: (String) -> Unit, applyHintEffect: Boolean) {
+fun AgeBasedReportsCard(under1Year: Int, between1And5Years: Int, between5And10Years: Int, over10Years: Int, onRowClick: (String) -> Unit) {
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -320,7 +232,7 @@ fun AgeBasedReportsCard(under1Year: Int, between1And5Years: Int, between5And10Ye
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    WobbleTextHint(text = ageGroup, style = MaterialTheme.typography.bodyMedium, applyWobble = applyHintEffect)
+                    Text(text = ageGroup, style = MaterialTheme.typography.bodyMedium)
                     Text(count.toString(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                 }
             }
@@ -330,7 +242,7 @@ fun AgeBasedReportsCard(under1Year: Int, between1And5Years: Int, between5And10Ye
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BreedingReportsCard(cowsNotCalvedIn9Months: Int, cowsCalvedIn9Months: Int, onNotCalvedClick: () -> Unit, onCalvedClick: () -> Unit, applyHintEffect: Boolean) {
+fun BreedingReportsCard(cowsNotCalvedIn9Months: Int, cowsCalvedIn9Months: Int, onNotCalvedClick: () -> Unit, onCalvedClick: () -> Unit) {
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -344,7 +256,7 @@ fun BreedingReportsCard(cowsNotCalvedIn9Months: Int, cowsCalvedIn9Months: Int, o
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                WobbleTextHint(text = "Cows not calved in 9+ months", style = MaterialTheme.typography.bodyMedium, applyWobble = applyHintEffect)
+                Text(text = "Cows not calved in 9+ months", style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = cowsNotCalvedIn9Months.toString(),
                     style = MaterialTheme.typography.bodyMedium,
@@ -358,7 +270,7 @@ fun BreedingReportsCard(cowsNotCalvedIn9Months: Int, cowsCalvedIn9Months: Int, o
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                WobbleTextHint(text = "Cows with calves (last 9m)", style = MaterialTheme.typography.bodyMedium, applyWobble = applyHintEffect)
+                Text(text = "Cows with calves (last 9m)", style = MaterialTheme.typography.bodyMedium)
                 Text(cowsCalvedIn9Months.toString(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
             }
         }

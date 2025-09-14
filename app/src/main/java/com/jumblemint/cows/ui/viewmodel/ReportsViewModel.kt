@@ -14,13 +14,10 @@ import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.Period
 
-// SharedPreferences keys (conventionally, these might be in a separate constants file)
-private const val PREFS_NAME = "reports_prefs"
-private const val KEY_HAS_CLICKED_GOT_IT = "has_clicked_got_it"
-private const val KEY_HAS_SHOWN_CLOSE_BUTTON = "has_shown_close_button"
+// SharedPreferences keys and related methods have been removed
 
 class ReportsViewModel(
-    private val application: Application, // Added Application context
+    private val application: Application, // Application context might still be needed for other things
     private val repository: CattleRepository,
     private val authService: com.jumblemint.cows.auth.AuthService
 ) : ViewModel() {
@@ -28,29 +25,13 @@ class ReportsViewModel(
     private val _uiState = MutableStateFlow(ReportsUiState())
     val uiState: StateFlow<ReportsUiState> = _uiState.asStateFlow()
 
-    private val sharedPreferences = application.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+    // sharedPreferences property has been removed
 
     init {
         loadReports()
     }
 
-    // --- Hint Persistence Methods ---
-    fun hasUserClickedGotIt(): Boolean {
-        return sharedPreferences.getBoolean(KEY_HAS_CLICKED_GOT_IT, false)
-    }
-
-    fun setHasUserClickedGotIt(value: Boolean) {
-        sharedPreferences.edit().putBoolean(KEY_HAS_CLICKED_GOT_IT, value).apply()
-    }
-
-    fun hasShownCloseButton(): Boolean {
-        return sharedPreferences.getBoolean(KEY_HAS_SHOWN_CLOSE_BUTTON, false)
-    }
-
-    fun setHasShownCloseButton(value: Boolean) {
-        sharedPreferences.edit().putBoolean(KEY_HAS_SHOWN_CLOSE_BUTTON, value).apply()
-    }
-    // --- End Hint Persistence Methods ---
+    // Hint Persistence Methods have been removed
 
     private fun loadReports() {
         viewModelScope.launch {
