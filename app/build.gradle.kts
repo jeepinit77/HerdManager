@@ -115,6 +115,9 @@ dependencies {
     implementation("com.github.skydoves:colorpicker-compose:1.1.2")
     implementation("org.jetbrains.kotlin:kotlin-reflect:1.9.20")
     
+    // Tips persistence
+    implementation(libs.androidx.datastore.preferences)
+    
     // Firebase
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)

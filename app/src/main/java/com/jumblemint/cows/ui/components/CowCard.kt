@@ -11,7 +11,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+// import androidx.compose.material.icons.filled.Lightbulb // Removed
 import com.jumblemint.cows.R // Assuming your R file is here
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Gender
@@ -41,6 +43,7 @@ import java.time.Period
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.unit.Dp
+import com.jumblemint.cows.ui.components.PulsingLightbulbIcon // Added import
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,6 +65,13 @@ fun CowCard(
     // Calculate text color based on background luminance
     val textColor = if (genderColor.luminance() < 0.5f) Color.White else Color.Black
     val secondaryTextColor = if (genderColor.luminance() < 0.5f) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
+
+    // Tips/coach-mark visibility and trigger state
+    val context = LocalContext.current
+    val tipsManager = remember { com.jumblemint.cows.data.preferences.TipsManager(context) }
+    val tipId = "cow_card_watch_tip"
+    val tipVisible by tipsManager.isTipVisible(tipId).collectAsState(initial = false)
+    var showTip by remember { mutableStateOf(false) }
     
     Card(
         onClick = onClick,
@@ -113,6 +123,11 @@ fun CowCard(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
+                            if (tipVisible) {
+                                IconButton(onClick = { showTip = true }) {
+                                    PulsingLightbulbIcon() // Replaced here
+                                }
+                            }
                             onToggleWatch?.let {
                                 IconButton(onClick = it) {
                                     val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else secondaryTextColor
@@ -141,6 +156,15 @@ fun CowCard(
                                     )
                                 }
                             }
+                        }
+
+                        if (showTip) {
+                            TipOverlay(
+                                tipId = tipId,
+                                tipText = "Tap the star to mark a cow as watched. Watched cows appear at the top of lists.",
+                                onClosed = { showTip = false },
+                                tipsManager = tipsManager
+                            )
                         }
                     }
 

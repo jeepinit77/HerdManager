@@ -1,35 +1,72 @@
 package com.jumblemint.cows.ui.screens.settings
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+// import androidx.compose.foundation.Image // No longer needed for PulsingLightbulbIcon
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-// import androidx.compose.foundation.lazy.items // items is not directly used, LazyColumn's items { } is used.
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Info // Corrected import
 import androidx.compose.material.icons.outlined.HelpOutline // Re-added this import
+import androidx.compose.material.icons.outlined.Lightbulb // Added for the pulsing icon
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color // Added for Color.Yellow
+import androidx.compose.ui.graphics.graphicsLayer // Added for pulsing animation
 import androidx.compose.ui.platform.LocalContext
+// import androidx.compose.ui.res.painterResource // No longer needed for PulsingLightbulbIcon
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
+// import com.jumblemint.cows.R // No longer needed if not using custom drawable
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.sync.SyncStatus
 import com.jumblemint.cows.ui.viewmodel.SettingsViewModel
 import com.jumblemint.cows.ui.viewmodel.SettingsViewModelFactory
-// import kotlinx.coroutines.delay // Not used
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape // Added for SettingsCard
 import com.jumblemint.cows.ui.theme.getCardColors
+import androidx.compose.ui.graphics.vector.ImageVector // Needed for SettingsCard original icon param
 
 // Helper data class for quadruple values
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+
+@Composable
+fun PulsingLightbulbIcon(modifier: Modifier = Modifier) {
+    val infiniteTransition = rememberInfiniteTransition(label = "lightbulbPulse")
+    val scale by infiniteTransition.animateFloat(
+        initialValue = 1f,
+        targetValue = 1.15f, // Pulse to 115% of original size
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "lightbulbScale"
+    )
+
+    Icon(
+        imageVector = Icons.Outlined.Lightbulb, // Using the built-in outlined lightbulb
+        contentDescription = "Tips Lightbulb",
+        tint = Color.Yellow, // Forcing the color to yellow
+        modifier = modifier
+            .size(28.dp) // Match the size used in SettingsCard, or adjust as needed
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+            }
+    )
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,7 +101,6 @@ fun SettingsScreen(
         )
     }
     val viewModel: SettingsViewModel = viewModel(
-        // <<< Pass application to the factory
         factory = SettingsViewModelFactory(application, repository)
     )
 
@@ -78,7 +114,6 @@ fun SettingsScreen(
     var showDeleteDataDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // <<< LaunchedEffect for showing Snackbars for errors and messages
     LaunchedEffect(uiState.error) {
         uiState.error?.let { errorMsg ->
             coroutineScope.launch {
@@ -105,14 +140,13 @@ fun SettingsScreen(
 
 
     Column(
-        modifier = modifier // Modifier is applied to the root Column
+        modifier = modifier
     ) {
         LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(), // Ensure LazyColumn takes available space
+            modifier = Modifier.weight(1f).fillMaxWidth(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp) // Consistent spacing
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Customization Section
             item {
                 Text(
                     text = "Customization",
@@ -121,7 +155,7 @@ fun SettingsScreen(
                     modifier = Modifier.padding(bottom = 4.dp, top = 8.dp)
                 )
             }
-            item { // <<< CORRECTED SYNTAX HERE
+            item {
                 SettingsCard(
                     title = "Tag Colors",
                     subtitle = "Manage available tag colors",
@@ -154,7 +188,6 @@ fun SettingsScreen(
                 )
             }
 
-            // Account & Sync Section
             item {
                 Text(
                     text = "Account & Sync",
@@ -168,7 +201,6 @@ fun SettingsScreen(
                     currentUser?.isLocalUser == false -> {
                         val syncStatusText = when (syncStatus) {
                             SyncStatus.SYNCING -> "Syncing..."
-                            // <<< Use uiState.lastSyncTime
                             SyncStatus.SUCCESS -> "Last synced: ${uiState.lastSyncTime ?: "Recently"}"
                             SyncStatus.ERROR -> "Sync error occurred"
                             else -> uiState.lastSyncTime?.let { "Last synced: $it" } ?: "Sync enabled"
@@ -176,24 +208,20 @@ fun SettingsScreen(
                         Quadruple(
                             "Account: ${currentUser?.displayName ?: currentUser?.email ?: "Signed In"}",
                             "$syncStatusText • Tap to manage",
-                            when (syncStatus) {
-                                SyncStatus.SYNCING -> Icons.Filled.CloudSync
-                                SyncStatus.ERROR -> Icons.Filled.CloudOff
-                                else -> Icons.Filled.CloudDone
-                            },
+                            Icons.Filled.CloudSync as ImageVector?,
                             { onNavigateToAccountManagement?.invoke() }
                         )
                     }
                     currentUser?.isLocalUser == true -> Quadruple(
                         "Sign In & Sync",
                         "Currently using local storage only",
-                        Icons.Filled.CloudOff,
+                        Icons.Filled.CloudOff as ImageVector?,
                         { onNavigateToSignIn?.invoke() }
                     )
-                    else -> Quadruple( // Not signed in
+                    else -> Quadruple(
                         "Sign In & Sync",
                         "Sync data across devices and collaborate",
-                        Icons.Filled.CloudUpload, // Changed icon to suggest action
+                        Icons.Filled.CloudUpload as ImageVector?,
                         { onNavigateToSignIn?.invoke() }
                     )
                 }
@@ -206,13 +234,13 @@ fun SettingsScreen(
                         title = "Sync Now",
                         subtitle = when (syncStatus) {
                             SyncStatus.SYNCING -> "Syncing in progress..."
-                            SyncStatus.SUCCESS -> "Last sync successful" // Consider using uiState.lastSyncTime here too
+                            SyncStatus.SUCCESS -> "Last sync successful"
                             SyncStatus.ERROR -> "Last sync failed - tap to retry"
                             else -> "Manually sync your data"
                         },
                         icon = when (syncStatus) {
                             SyncStatus.SYNCING -> Icons.Filled.CloudSync
-                            SyncStatus.ERROR -> Icons.Filled.CloudOff // Or Icons.Filled.SyncProblem
+                            SyncStatus.ERROR -> Icons.Filled.CloudOff
                             else -> Icons.Filled.Refresh
                         },
                         onClick = {
@@ -226,7 +254,6 @@ fun SettingsScreen(
                 }
             }
 
-            // Data Management Section
             item {
                 Text(
                     text = "Data Management",
@@ -247,7 +274,7 @@ fun SettingsScreen(
                 SettingsCard(
                     title = "Import Data",
                     subtitle = "Import cattle data from file",
-                    icon = Icons.Filled.Upload, // Or FileUpload
+                    icon = Icons.Filled.Upload,
                     onClick = {
                         coroutineScope.launch {
                             snackbarHostState.showSnackbar("Import feature coming soon!")
@@ -267,24 +294,39 @@ fun SettingsScreen(
                 SettingsCard(
                     title = "Delete Data",
                     subtitle = "Selectively delete local and server data",
-                    icon = Icons.Filled.WarningAmber, // Or Icons.Outlined.DeleteForever
+                    icon = Icons.Filled.WarningAmber,
                     onClick = { showDeleteDataDialog = true }
                 )
             }
 
-            // App Information Section
             item {
                 Text(
-                    text = "App Information",
+                    text = "Tips & App Information",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(bottom = 4.dp, top = 16.dp)
                 )
             }
             item {
+                val context = LocalContext.current
+                val tipsManager = remember { com.jumblemint.cows.data.preferences.TipsManager(context) }
+                SettingsCard(
+                    title = "Reset Tips",
+                    subtitle = "Show all coach marks and tips again",
+                    customIconContent = { PulsingLightbulbIcon() }, // Using the custom pulsing icon here
+                    icon = null, // Explicitly nullify the ImageVector icon
+                    onClick = {
+                        coroutineScope.launch {
+                            tipsManager.enableAllTips()
+                            snackbarHostState.showSnackbar("Tips have been reset")
+                        }
+                    }
+                )
+            }
+            item {
                 SettingsCard(
                     title = "Version",
-                    subtitle = uiState.appVersion, // <<< Use uiState.appVersion
+                    subtitle = uiState.appVersion,
                     icon = Icons.Outlined.Info,
                     onClick = { /* No action needed or show app details dialog */ }
                 )
@@ -293,7 +335,7 @@ fun SettingsScreen(
                 SettingsCard(
                     title = "About Cattle Manager",
                     subtitle = "Learn more about the app",
-                    icon = Icons.Outlined.HelpOutline, // Or Icons.Filled.Help
+                    icon = Icons.Outlined.HelpOutline,
                     onClick = {
                          coroutineScope.launch {
                             snackbarHostState.showSnackbar("About screen coming soon!")
@@ -306,7 +348,7 @@ fun SettingsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable(enabled = false, onClick = {}) // Block interactions
+                    .clickable(enabled = false, onClick = {}) 
                     .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -322,7 +364,6 @@ fun SettingsScreen(
             onExport = { format ->
                 viewModel.exportData(format)
                 showExportDialog = false
-                // Message/error will be shown by LaunchedEffect observing uiState
             }
         )
     }
@@ -337,7 +378,6 @@ fun SettingsScreen(
                     coroutineScope.launch { application.authService.startUserSync(application.syncService) }
                 }
                 showSampleDataDialog = false
-                // Message/error will be shown by LaunchedEffect observing uiState
             },
             onRemove = {
                 viewModel.deleteSampleData()
@@ -345,7 +385,6 @@ fun SettingsScreen(
                     coroutineScope.launch { application.authService.startUserSync(application.syncService) }
                 }
                 showSampleDataDialog = false
-                // Message/error will be shown by LaunchedEffect observing uiState
             }
         )
     }
@@ -360,25 +399,19 @@ fun SettingsScreen(
                         if (uid != null) {
                             try {
                                 application.syncService.stopRealtimeSync(uid)
-                                // The ViewModel's deleteSelectedData will handle showing a message/error
                                 viewModel.deleteSelectedData(selection)
-                                // No longer calling viewModel.setError here
-                                application.syncService.startRealtimeSync(uid) // <<< CORRECTED CALL
+                                application.syncService.startRealtimeSync(uid)
                             } catch (e: Exception) {
-                                // ViewModel should ideally catch its own errors. If not,
-                                // we can set a general error here, but it's better if VM handles it.
-                                // For now, relying on VM's error handling.
                                  snackbarHostState.showSnackbar("Error during selective delete: ${e.message}")
                             }
                         } else {
                              snackbarHostState.showSnackbar("User ID not found for sync reset.")
                         }
-                    } else { // Local user or not signed in
+                    } else { 
                         viewModel.deleteSelectedData(selection)
                     }
                 }
                 showDeleteDataDialog = false
-                 // Message/error will be shown by LaunchedEffect observing uiState
             }
         )
     }
@@ -389,35 +422,40 @@ fun SettingsScreen(
 fun SettingsCard(
     title: String,
     subtitle: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector? = null, // Made nullable to support custom icon
+    customIconContent: @Composable (() -> Unit)? = null, // New parameter for custom composable icon
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     colors: CardColors = getCardColors(),
-    content: @Composable (() -> Unit)? = null // For optional extra content
+    content: @Composable (() -> Unit)? = null
 ) {
     Card(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp), // Consistent vertical padding
+            .padding(vertical = 4.dp),
         enabled = enabled,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp), // Consistent shape
+        shape = RoundedCornerShape(12.dp),
         colors = colors
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp) // Standard padding within the card
+                .padding(16.dp)
                 .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null, // title can serve as description
-                modifier = Modifier.size(28.dp), // Slightly larger icon
-                tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-            )
+            if (customIconContent != null) {
+                customIconContent()
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                    tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
+            }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -431,15 +469,16 @@ fun SettingsCard(
                     color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                 )
             }
-            // If additional content is provided, display it here
             content?.let {
-                Spacer(modifier = Modifier.width(16.dp)) // Add some space before the custom content
+                Spacer(modifier = Modifier.width(16.dp))
                 it()
             }
         }
     }
 }
 
+// Other dialogs (ExportDataDialog, SampleDataDialog, DeleteDataSelectiveDialog) remain unchanged below this line
+// ... (rest of the file as provided previously)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExportDataDialog(
@@ -550,14 +589,6 @@ fun DeleteDataSelectiveDialog(
                     )
                     Text("Delete Local Data (on this device)")
                 }
-                //Spacer(modifier = Modifier.height(8.dp))
-                //Row(verticalAlignment = Alignment.CenterVertically) {
-                //    Checkbox(
-                //        checked = deleteServer,
-                //        onCheckedChange = { deleteServer = it }
-                //    )
-                //    Text("Delete Server Data (requires re-sync if enabled)")
-                //}
                 Text(
                     "Note: Server data deletion is currently disabled in this dialog. " +
                             "To delete server data, please use the account management screen after ensuring local data is backed up or not needed.",
