@@ -1,5 +1,6 @@
 package com.jumblemint.cows.ui.components
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -15,8 +16,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter // Added this import
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathFillType
+import androidx.compose.ui.graphics.PathOperation
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.PathParser
@@ -24,15 +27,20 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.res.painterResource // Added this import
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.jumblemint.cows.R // Assuming your R file is here
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.model.Status
 import java.time.LocalDate
 import java.time.Period
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.unit.Dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,7 +84,7 @@ fun CowCard(
                     CattleTagBadge(
                         tagNumber = cow.tagNumber,
                         tagColor = cow.tagColor,
-                        modifier = Modifier.height(64.dp),
+                        modifier = Modifier.size(width = 72.dp, height = 96.dp), // Adjust size as needed for your SVG
                         backgroundColor = resolvedTagColor
                     )
                 }
@@ -181,60 +189,10 @@ fun StatusBadge(status: Status) {
     }
 }
 
-// Custom cattle ear tag with a rounded dome top and a small cutout hole
-class CattleTagShape(
-    private val cornerRadius: Float = 16f
-) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        val path = Path().apply { fillType = PathFillType.EvenOdd }
-        val w = size.width
-        val h = size.height
-
-        val left = 0f
-        val top = 0f
-        val right = w
-        val bottom = h
-        val cx = w / 2f
-
-        // Geometry for the rounded dome and short straight sides near the top
-        val bodyTopY = h * 0.35f           // Where the main body starts (below the dome)
-        val straightSide = h * 0.06f       // Short straight segment before curving into the dome
-
-        // Outer tag path (clockwise)
-        path.moveTo(left + cornerRadius, bottom)
-        // Bottom edge to bottom-right
-        path.lineTo(right - cornerRadius, bottom)
-        // Bottom-right corner
-        path.quadraticBezierTo(right, bottom, right, bottom - cornerRadius)
-        // Right edge up to short straight segment below the dome
-        path.lineTo(right, bodyTopY + straightSide)
-        // Short straight segment
-        path.lineTo(right, bodyTopY)
-        // Rounded dome: right shoulder to apex
-        path.quadraticBezierTo(right, top, cx, top)
-        // Rounded dome: apex to left shoulder
-        path.quadraticBezierTo(left, top, left, bodyTopY)
-        // Short straight segment on the left
-        path.lineTo(left, bodyTopY + straightSide)
-        // Left edge down to rounded bottom-left
-        path.lineTo(left, bottom - cornerRadius)
-        // Bottom-left corner
-        path.quadraticBezierTo(left, bottom, left + cornerRadius, bottom)
-        path.close()
-
-        // Small round cutout hole near the top center
-        val holeRadius = with(density) { 4.dp.toPx() }
-        val holeCenterY = (h * 0.12f).coerceAtLeast(holeRadius + 1f)
-        val holeRect = Rect(cx - holeRadius, holeCenterY - holeRadius, cx + holeRadius, holeCenterY + holeRadius)
-        path.addOval(holeRect)
-
-        return Outline.Generic(path)
-    }
-}
+// CattleTagShape class has been removed
 
 @Composable
 fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = Modifier, backgroundColor: Color? = null) {
-    // Use provided backgroundColor if available, otherwise fall back to predefined colors, then to default
     val bgColor = backgroundColor ?: when (tagColor?.lowercase()) {
         "red" -> androidx.compose.ui.graphics.Color.Red
         "blue" -> androidx.compose.ui.graphics.Color.Blue
@@ -246,39 +204,45 @@ fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = M
         "white" -> androidx.compose.ui.graphics.Color.White
         "black" -> androidx.compose.ui.graphics.Color.Black
         "brown" -> androidx.compose.ui.graphics.Color(0xFF8B4513)
-        else -> MaterialTheme.colorScheme.surfaceVariant
+        else -> MaterialTheme.colorScheme.surfaceVariant // Default color if tagColor is null or not recognized
     }
 
-    Surface(
-        color = bgColor,
-        shape = CattleTagShape(),
-        shadowElevation = 2.dp,
-        modifier = modifier
+    Box(
+        modifier = modifier,
+        // contentAlignment = Alignment.Center // No longer Center for the Box itself
     ) {
+        Image(
+            painter = painterResource(id = R.drawable.ear_tag),
+            contentDescription = "Cattle Tag",
+            colorFilter = ColorFilter.tint(bgColor),
+            modifier = Modifier.fillMaxSize() // SVG will fill the Box
+        )
         Column(
             modifier = Modifier
-                .heightIn(min = 36.dp)
-                .padding(start = 8.dp, end = 8.dp, top = 14.dp, bottom = 8.dp),
+                .fillMaxSize() // Column takes the full size of the Box
+                .padding(horizontal = 4.dp, vertical = 8.dp), // General padding, adjust as needed
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            verticalArrangement = Arrangement.Bottom // Push content to the bottom
         ) {
+            // Tag Color Text (appears above Tag Number)
+            tagColor?.let { name ->
+                Text(
+                    text = name.lowercase().replaceFirstChar { it.titlecase() },
+                    style = MaterialTheme.typography.labelSmall, // Consider adjusting style
+                    color = if (bgColor.luminance() < 0.5f) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.7f),
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                )
+                Spacer(modifier = Modifier.height(2.dp)) // Space between color and number
+            }
+            // Tag Number Text (at the very bottom)
             Text(
                 text = (tagNumber ?: "—").uppercase(),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.headlineSmall, // Changed to a larger style
+                fontWeight = FontWeight.Bold, // Remains Bold
                 maxLines = 1,
                 softWrap = false,
                 color = if (bgColor.luminance() < 0.5f) Color.White else Color.Black
             )
-            tagColor?.let { name ->
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = name.lowercase().replaceFirstChar { it.titlecase() },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (bgColor.luminance() < 0.5f) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.7f),
-                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                )
-            }
         }
     }
 }
