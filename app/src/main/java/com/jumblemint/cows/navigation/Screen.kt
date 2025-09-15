@@ -33,6 +33,10 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
      data object AddActivityWithId : Screen("add_activity_route/{activityId}", "Edit Activity", false) { // For composable route definition
         fun createRoute(activityId: Long): String = route.replace("{activityId}", activityId.toString())
      }
+    // New Screen for Activity Info
+    data object ActivityInfo : Screen("activity_info_route/{activityId}", "Activity Info", false) {
+        fun createRoute(activityId: Long): String = route.replace("{activityId}", activityId.toString())
+    }
 
 
     data object CowList : Screen("cow_list_route?type={type}&value={value}", "Cow List", false) {
@@ -80,7 +84,8 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
         val sealedObjects: List<Screen> by lazy {
             listOf(
                 Splash, SignIn, MainPager, Dashboard, Cows, Pastures, Activities, Notes,
-                CowInfo, CowDetail, AddActivity, AddActivityWithId, CowList, Settings, PastureDetail,
+                CowInfo, CowDetail, AddActivity, AddActivityWithId, ActivityInfo, // Added ActivityInfo here
+                CowList, Settings, PastureDetail,
                 AddPasture, EditPasture, AddBirth, AccountManagement, TagColorsManagement, ActivityTypesManagement,
                 BreedsManagement, ThemeSettings, Sync, WorkingList, HerdSelection
             ).distinct() // Ensure no duplicates if some routes are similar (e.g. AddActivity vs AddActivityWithId for fromRoute)

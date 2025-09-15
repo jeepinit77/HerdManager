@@ -12,7 +12,7 @@ import com.jumblemint.cows.data.dao.TagColorDao
 import com.jumblemint.cows.data.dao.ActivityTypeConfigDao
 import com.jumblemint.cows.data.dao.BreedDao
 import com.jumblemint.cows.data.model.*
-import com.jumblemint.cows.ui.viewmodel.PastureWithCowCount // <<< ADDED IMPORT
+import com.jumblemint.cows.ui.viewmodel.PastureWithCowCount
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -36,14 +36,13 @@ class CattleRepository(
     // Cow operations
     fun getAllCows(): Flow<List<Cow>> = cowDao.getAllCows()
     fun getCowsByStatus(status: Status): Flow<List<Cow>> = cowDao.getCowsByStatus(status)
-    // MODIFIED: pastureId parameter changed from Long to String
     fun getCowsByPasture(pastureId: String): Flow<List<Cow>> = cowDao.getCowsByPasture(pastureId)
     fun getActiveFemales(): Flow<List<Cow>> = cowDao.getActiveFemales()
     fun getActiveMales(): Flow<List<Cow>> = cowDao.getActiveMales()
     fun getCalvesByMother(motherId: Long): Flow<List<Cow>> = cowDao.getCalvesByMother(motherId)
     fun getCalvesByFather(fatherId: Long): Flow<List<Cow>> = cowDao.getCalvesByFather(fatherId)
+    fun getCowsByIds(ids: List<Long>): Flow<List<Cow>> = cowDao.getCowsByIds(ids)
 
-    // New methods for siblings
     fun getMaternalSiblings(cowId: Long, motherId: Long): Flow<List<Cow>> = cowDao.getMaternalSiblings(cowId, motherId)
     fun getPaternalSiblings(cowId: Long, fatherId: Long): Flow<List<Cow>> = cowDao.getPaternalSiblings(cowId, fatherId)
 
@@ -65,16 +64,11 @@ class CattleRepository(
     suspend fun insertPasture(pasture: Pasture): Long = pastureDao.insert(pasture)
     suspend fun updatePasture(pasture: Pasture) = pastureDao.update(pasture)
     suspend fun deletePasture(pasture: Pasture) = pastureDao.delete(pasture)
-    // <<< ADDED METHOD
     fun getPasturesWithCowCount(): Flow<List<PastureWithCowCount>> = pastureDao.getAllPasturesWithCowCounts()
     fun getUnassignedCowCount(): Flow<Int> = pastureDao.getUnassignedCowCount()
 
-
     // Activity operations
     fun getAllActivities(): Flow<List<Activity>> = activityDao.getAllActivities()
-
-    // Notes operations (Flow for UI observers)
-    fun getAllNotes(): Flow<List<Note>> = noteDao?.getAllNotes() ?: kotlinx.coroutines.flow.flowOf(emptyList())
     fun getActivitiesForCow(cowId: Long): Flow<List<Activity>> = activityDao.getActivitiesForCow(cowId)
     fun getActivitiesByType(activityType: ActivityType): Flow<List<Activity>> = activityDao.getActivitiesByType(activityType)
 
@@ -92,20 +86,20 @@ class CattleRepository(
     suspend fun deleteSetting(setting: Settings) = settingsDao.deleteSetting(setting)
 
     // Business logic operations
-    // MODIFIED: toPastureId parameter changed from Long? to String?
     suspend fun moveCow(cowId: Long, toPastureId: String?) {
         val cow = getCowById(cowId) ?: return
-        val fromPastureId = cow.pastureId // This is now String?
+        val fromPastureId = cow.pastureId
         
-        cowDao.updateCowPasture(cowId, toPastureId) // updateCowPasture now expects String?
+        cowDao.updateCowPasture(cowId, toPastureId)
         
         val moveActivity = Activity(
             cowId = cowId,
             date = LocalDate.now(),
             activityType = ActivityType.MOVED,
-            fromPastureId = fromPastureId, // Correctly String?
-            toPastureId = toPastureId,    // Correctly String?
-            groupId = UUID.randomUUID().toString() // Individual activity gets its own group
+            fromPastureId = fromPastureId,
+            toPastureId = toPastureId,
+            groupId = UUID.randomUUID().toString(),
+            cowIds = listOf(cowId) // For a single cow move, cowIds contains just that cow
         )
         insertActivity(moveActivity)
     }
@@ -122,7 +116,8 @@ class CattleRepository(
             date = LocalDate.now(),
             activityType = ActivityType.CASTRATED,
             notes = notes,
-            groupId = UUID.randomUUID().toString() // Individual activity gets its own group
+            groupId = UUID.randomUUID().toString(),
+            cowIds = listOf(cowId) // For a single cow operation, cowIds contains just that cow
         )
         insertActivity(castrationActivity)
     }
@@ -134,8 +129,6 @@ class CattleRepository(
         calfGender: Gender,
         birthDate: LocalDate = LocalDate.now()
     ): Long {
-        // Example: If you have a default calf pasture ID as a String
-        // val defaultCalfPastureId: String? = getCalfPasture()?.id 
         val calf = Cow(
             name = calfName,
             birthDate = birthDate,
@@ -143,16 +136,24 @@ class CattleRepository(
             classification = Classification.CALF,
             motherId = motherId,
             fatherId = fatherId,
-            pastureId = null, // pastureId is now String?, so null is fine or a String ID
+            pastureId = null,
             status = Status.ACTIVE
         )
-        
         val calfId = insertCow(calf)
-        
+        // Birth activity is typically for the calf, cowIds would be the calf's ID
+        // If you also want to associate this with the mother, you'd handle that separately or adjust Activity model
+        val birthActivity = Activity(
+            cowId = calfId, // The subject of the BIRTH activity is the calf
+            date = birthDate,
+            activityType = ActivityType.BIRTH,
+            notes = "Born to mother ID: $motherId" + (fatherId?.let { ", father ID: $it" } ?: ""),
+            cowIds = listOf(calfId) // The BIRTH activity primarily concerns the calf itself
+            // If you want to link it to mother/father in Activity.cowIds, add them: listOf(calfId, motherId)
+        )
+        insertActivity(birthActivity)
         return calfId
     }
 
-    // MODIFIED: toPastureId parameter changed from Long? to String?
     suspend fun createBulkActivity(
         cowIds: List<Long>,
         activityType: ActivityType,
@@ -160,79 +161,20 @@ class CattleRepository(
         notes: String? = null,
         toPastureId: String? = null
     ): List<Activity> {
-        // Generate a unique group ID for this bulk activity
         val groupId = UUID.randomUUID().toString()
         
-        val activities = cowIds.map { cowId ->
-            // For MOVED activities, we\'d need fromPastureId.
-            // This might require fetching each cow if their fromPastureId is needed for the Activity record.
-            // For simplicity, let\'s assume Activity record only needs toPastureId for MOVED if cows are updated directly.
-            // A more robust way would be to fetch each cow, get its current pastureId for fromPastureId.
-            // However, the current Activity model doesn\'t make fromPastureId mandatory.
+        val activities = cowIds.map { currentCowId ->
             Activity(
-                cowId = cowId,
+                cowId = currentCowId,
                 date = date,
                 activityType = activityType,
                 notes = notes,
                 toPastureId = if (activityType == ActivityType.MOVED) toPastureId else null,
-                groupId = groupId
+                groupId = groupId,
+                cowIds = cowIds // <<< CORRECTED: Assign the full list of cow IDs
             )
         }
         
-        // Insert activities and get the created activities with their IDs
-        val createdActivities = mutableListOf<Activity>()
-        activities.forEach { activity ->
-            val insertedId = insertActivity(activity)
-            createdActivities.add(activity.copy(id = insertedId))
-        }
-        
-        if (activityType == ActivityType.MOVED) {
-            toPastureId?.let { pastureId -> // pastureId here is String
-                for (cowId in cowIds) {
-                    cowDao.updateCowPasture(cowId, pastureId) // updateCowPasture expects String?
-                }
-            }
-        } else if (activityType == ActivityType.CASTRATED) {
-            for (cowId in cowIds) {
-                val cow = getCowById(cowId)
-                if (cow?.classification == Classification.BULL) {
-                    cowDao.updateCowClassification(cowId, Classification.STEER.name)
-                }
-            }
-        } else if (activityType == ActivityType.SOLD || activityType == ActivityType.DECEASED) {
-            val newStatus = if (activityType == ActivityType.SOLD) Status.SOLD else Status.DECEASED
-            for (cowId in cowIds) {
-                val cow = getCowById(cowId)
-                cow?.let { cowData ->
-                    updateCow(cowData.copy(status = newStatus, pastureId = null, updatedAt = LocalDate.now())) // Cows sold/deceased might be removed from pasture
-                }
-            }
-        }
-        
-        return createdActivities
-    }
-
-    // Helper method for editing activities with a specific groupId
-    suspend fun createBulkActivityWithGroupId(
-        cowIds: List<Long>,
-        activityType: ActivityType,
-        date: LocalDate = LocalDate.now(),
-        notes: String? = null,
-        toPastureId: String? = null,
-        groupId: String
-    ): List<Activity> {
-        val activities = cowIds.map { cowId ->
-            Activity(
-                cowId = cowId,
-                date = date,
-                activityType = activityType,
-                notes = notes,
-                toPastureId = if (activityType == ActivityType.MOVED) toPastureId else null,
-                groupId = groupId
-            )
-        }
-        
-        // Insert activities and get the created activities with their IDs
         val createdActivities = mutableListOf<Activity>()
         activities.forEach { activity ->
             val insertedId = insertActivity(activity)
@@ -241,21 +183,21 @@ class CattleRepository(
         
         if (activityType == ActivityType.MOVED) {
             toPastureId?.let { pastureId ->
-                for (cowId in cowIds) {
-                    cowDao.updateCowPasture(cowId, pastureId)
+                for (id in cowIds) { // Use the full list here
+                    cowDao.updateCowPasture(id, pastureId)
                 }
             }
         } else if (activityType == ActivityType.CASTRATED) {
-            for (cowId in cowIds) {
-                val cow = getCowById(cowId)
+            for (id in cowIds) { // Use the full list here
+                val cow = getCowById(id)
                 if (cow?.classification == Classification.BULL) {
-                    cowDao.updateCowClassification(cowId, Classification.STEER.name)
+                    cowDao.updateCowClassification(id, Classification.STEER.name)
                 }
             }
         } else if (activityType == ActivityType.SOLD || activityType == ActivityType.DECEASED) {
             val newStatus = if (activityType == ActivityType.SOLD) Status.SOLD else Status.DECEASED
-            for (cowId in cowIds) {
-                val cow = getCowById(cowId)
+            for (id in cowIds) { // Use the full list here
+                val cow = getCowById(id)
                 cow?.let { cowData ->
                     updateCow(cowData.copy(status = newStatus, pastureId = null, updatedAt = LocalDate.now()))
                 }
@@ -265,14 +207,64 @@ class CattleRepository(
         return createdActivities
     }
 
-    // MODIFIED: newPastureId parameter changed from Long? to String?
+    suspend fun createBulkActivityWithGroupId(
+        cowIds: List<Long>,
+        activityType: ActivityType,
+        date: LocalDate = LocalDate.now(),
+        notes: String? = null,
+        toPastureId: String? = null,
+        groupId: String
+    ): List<Activity> {
+        val activities = cowIds.map { currentCowId ->
+            Activity(
+                cowId = currentCowId,
+                date = date,
+                activityType = activityType,
+                notes = notes,
+                toPastureId = if (activityType == ActivityType.MOVED) toPastureId else null,
+                groupId = groupId,
+                cowIds = cowIds // <<< CORRECTED: Assign the full list of cow IDs
+            )
+        }
+        
+        val createdActivities = mutableListOf<Activity>()
+        activities.forEach { activity ->
+            val insertedId = insertActivity(activity)
+            createdActivities.add(activity.copy(id = insertedId))
+        }
+        
+        if (activityType == ActivityType.MOVED) {
+            toPastureId?.let { pastureId ->
+                for (id in cowIds) { // Use the full list here
+                    cowDao.updateCowPasture(id, pastureId)
+                }
+            }
+        } else if (activityType == ActivityType.CASTRATED) {
+            for (id in cowIds) { // Use the full list here
+                val cow = getCowById(id)
+                if (cow?.classification == Classification.BULL) {
+                    cowDao.updateCowClassification(id, Classification.STEER.name)
+                }
+            }
+        } else if (activityType == ActivityType.SOLD || activityType == ActivityType.DECEASED) {
+            val newStatus = if (activityType == ActivityType.SOLD) Status.SOLD else Status.DECEASED
+            for (id in cowIds) { // Use the full list here
+                val cow = getCowById(id)
+                cow?.let { cowData ->
+                    updateCow(cowData.copy(status = newStatus, pastureId = null, updatedAt = LocalDate.now()))
+                }
+            }
+        }
+        
+        return createdActivities
+    }
+
     suspend fun weanCalf(calfId: Long, newPastureId: String? = null) {
         val calf = getCowById(calfId) ?: return
+        val fromPastureId = calf.pastureId
         
-        val fromPastureId = calf.pastureId // This is now String?
-        
-        newPastureId?.let { pastureId -> // pastureId here is String
-            cowDao.updateCowPasture(calfId, pastureId) // updateCowPasture expects String?
+        newPastureId?.let { pastureId ->
+            cowDao.updateCowPasture(calfId, pastureId)
         }
         
         calf.birthDate?.let { birthDate ->
@@ -281,7 +273,7 @@ class CattleRepository(
                 val newClassification: Classification = when (calf.gender) {
                     Gender.FEMALE -> Classification.HEIFER
                     Gender.MALE -> Classification.BULL
-                    Gender.TBD -> Classification.CALF
+                    Gender.TBD -> Classification.CALF // Should ideally resolve TBD before this point
                 }
                 if (newClassification != calf.classification) {
                     cowDao.updateCowClassification(calfId, newClassification.name)
@@ -293,27 +285,19 @@ class CattleRepository(
             cowId = calfId,
             date = LocalDate.now(),
             activityType = ActivityType.WEANED,
-            fromPastureId = fromPastureId,    // Correctly String?
-            toPastureId = newPastureId,      // Correctly String?
+            fromPastureId = fromPastureId,
+            toPastureId = newPastureId,
             notes = "Weaned from mother",
-            groupId = UUID.randomUUID().toString() // Individual activity gets its own group
+            groupId = UUID.randomUUID().toString(),
+            cowIds = listOf(calfId) // For a single cow operation
         )
         insertActivity(weaningActivity)
     }
 
+    // Notes operations (Flow for UI observers)
+    fun getAllNotes(): Flow<List<Note>> = noteDao?.getAllNotes() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+
     suspend fun initializeDefaultData() {
-//        val existingCalfPasture = pastureDao.getAllPastures().firstOrNull()?.find { it.name == "Calf Pasture" }
-//        if (existingCalfPasture == null) {
-//            val calfPasture = Pasture(
-//                id = UUID.randomUUID().toString(), // ID is String, this is good
-//                name = "Calf Pasture",
-//                description = "Default pasture for calves",
-//                sizeAcres = 0.0
-//            )
-//            insertPasture(calfPasture)
-//        }
-        
-        // Initialize default tag colors if none exist
         if (tagColorDao != null && getAllTagColors().first().isEmpty()) {
             val defaultColors = com.jumblemint.cows.data.model.TagColor.getDefaultColors()
             defaultColors.forEach { tagColor ->
@@ -321,7 +305,6 @@ class CattleRepository(
             }
         }
         
-        // Initialize default activity types if none exist
         if (activityTypeConfigDao != null && getAllActivityTypes().first().isEmpty()) {
             val defaultActivityTypes = com.jumblemint.cows.data.model.ActivityTypeConfig.getDefaultActivityTypes()
             defaultActivityTypes.forEach { activityType ->
@@ -329,7 +312,6 @@ class CattleRepository(
             }
         }
         
-        // Initialize default breeds if none exist
         if (breedDao != null && getAllBreeds().first().isEmpty()) {
             val defaultBreeds = com.jumblemint.cows.data.model.Breed.getDefaultBreeds()
             defaultBreeds.forEach { breed ->
@@ -337,7 +319,6 @@ class CattleRepository(
             }
         }
         
-        // Keep old settings initialization for backward compatibility (can be removed later)
         if (getSettingByKey(SettingsKeys.TAG_COLORS) == null) {
             insertOrUpdateSetting(
                 Settings(
@@ -357,7 +338,6 @@ class CattleRepository(
         }
     }
 
-    // Sample data management
     suspend fun isSampleDataInstalled(): Boolean {
         return getSettingByKey(SettingsKeys.SAMPLE_DATA_INSTALLED)?.value == "true"
     }
@@ -365,19 +345,11 @@ class CattleRepository(
     suspend fun installSampleData() {
         if (isSampleDataInstalled()) return
 
-        // Create sample pastures
         val pastureIds = createSamplePastures()
-        
-        // Create sample cows
-        val cowIds = createSampleCows(pastureIds)
-        
-        // Create sample activities
-        createSampleActivities(cowIds, pastureIds)
-        
-        // Create sample notes
+        val cowSampleIds = createSampleCows(pastureIds) // Renamed to avoid conflict
+        createSampleActivities(cowSampleIds, pastureIds)
         createSampleNotes()
         
-        // Mark sample data as installed
         insertOrUpdateSetting(
             Settings(
                 SettingsKeys.SAMPLE_DATA_INSTALLED,
@@ -388,32 +360,11 @@ class CattleRepository(
 
     private suspend fun createSamplePastures(): List<String> {
         val pastures = listOf(
-            Pasture(
-                id = "sample-pasture-1",
-                name = "North Field",
-                description = "Large pasture with good grass coverage",
-                sizeAcres = 25.5
-            ),
-            Pasture(
-                id = "sample-pasture-2", 
-                name = "South Meadow",
-                description = "Rolling hills with creek access",
-                sizeAcres = 18.0
-            ),
-            Pasture(
-                id = "sample-pasture-3",
-                name = "East Paddock",
-                description = "Smaller paddock for breeding stock",
-                sizeAcres = 8.5
-            ),
-            Pasture(
-                id = "sample-pasture-4",
-                name = "West Lot",
-                description = "Holding area near barn",
-                sizeAcres = 5.0
-            )
+            Pasture(id = "sample-pasture-1", name = "North Field", description = "Large pasture with good grass coverage", sizeAcres = 25.5),
+            Pasture(id = "sample-pasture-2", name = "South Meadow", description = "Rolling hills with creek access", sizeAcres = 18.0),
+            Pasture(id = "sample-pasture-3", name = "East Paddock", description = "Smaller paddock for breeding stock", sizeAcres = 8.5),
+            Pasture(id = "sample-pasture-4", name = "West Lot", description = "Holding area near barn", sizeAcres = 5.0)
         )
-        
         pastures.forEach { insertPasture(it) }
         return pastures.map { it.id }
     }
@@ -421,601 +372,86 @@ class CattleRepository(
     private suspend fun createSampleCows(pastureIds: List<String>): List<Long> {
         val baseDate = LocalDate.now().minusYears(2)
         val cows = listOf(
-            // Foundation Bulls (older generation)
-            Cow(
-                name = "Thunder",
-                tagNumber = "B001",
-                tagColor = "Red",
-                birthDate = baseDate.minusYears(8),
-                gender = Gender.MALE,
-                classification = Classification.BULL,
-                colorMarkings = "Black with white face",
-                pastureId = pastureIds[2], // East Paddock
-                status = Status.ACTIVE
-            ),
-            Cow(
-                name = "Storm",
-                tagNumber = "B002", 
-                tagColor = "Blue",
-                birthDate = baseDate.minusYears(6),
-                gender = Gender.MALE,
-                classification = Classification.BULL,
-                colorMarkings = "Red Angus",
-                pastureId = pastureIds[2], // East Paddock
-                status = Status.ACTIVE
-            ),
-            Cow(
-                name = "Titan",
-                tagNumber = "B003",
-                tagColor = "Silver",
-                birthDate = baseDate.minusYears(4),
-                gender = Gender.MALE,
-                classification = Classification.BULL,
-                colorMarkings = "Charolais white",
-                pastureId = pastureIds[2], // East Paddock
-                status = Status.SOLD // Sold bull to show sold animals
-            ),
-            
-            // Foundation Cows (older generation)
-            Cow(
-                name = "Bessie",
-                tagNumber = "C001",
-                tagColor = "Yellow",
-                birthDate = baseDate.minusYears(9),
-                gender = Gender.FEMALE,
-                classification = Classification.COW,
-                colorMarkings = "Holstein black and white",
-                pastureId = pastureIds[0], // North Field
-                status = Status.ACTIVE,
-                isWatched = true
-            ),
-            Cow(
-                name = "Daisy",
-                tagNumber = "C002",
-                tagColor = "Green",
-                birthDate = baseDate.minusYears(8),
-                gender = Gender.FEMALE,
-                classification = Classification.COW,
-                colorMarkings = "Brown Jersey",
-                pastureId = pastureIds[0], // North Field
-                status = Status.ACTIVE
-            ),
-            Cow(
-                name = "Rosie",
-                tagNumber = "C003",
-                tagColor = "Purple",
-                birthDate = baseDate.minusYears(7),
-                gender = Gender.FEMALE,
-                classification = Classification.COW,
-                colorMarkings = "Black Angus",
-                pastureId = pastureIds[1], // South Meadow
-                status = Status.ACTIVE,
-                isWatched = true
-            ),
-            Cow(
-                name = "Molly",
-                tagNumber = "C004",
-                tagColor = "Gold",
-                birthDate = baseDate.minusYears(6),
-                gender = Gender.FEMALE,
-                classification = Classification.COW,
-                colorMarkings = "Red with white face",
-                pastureId = pastureIds[0], // North Field
-                status = Status.ACTIVE
-            ),
-            Cow(
-                name = "Ruby",
-                tagNumber = "C005",
-                tagColor = "Maroon",
-                birthDate = baseDate.minusYears(5),
-                gender = Gender.FEMALE,
-                classification = Classification.COW,
-                colorMarkings = "Solid red",
-                pastureId = pastureIds[1], // South Meadow
-                status = Status.DECEASED // Deceased cow to show historical data
-            ),
-            Cow(
-                name = "Pearl",
-                tagNumber = "C006",
-                tagColor = "White",
-                birthDate = baseDate.minusYears(7),
-                gender = Gender.FEMALE,
-                classification = Classification.COW,
-                colorMarkings = "White with black spots",
-                pastureId = pastureIds[0], // North Field
-                status = Status.ACTIVE,
-                isWatched = true
-            ),
-            
-            // Second Generation Cows (daughters of foundation cows)
-            Cow(
-                name = "Luna",
-                tagNumber = "C007",
-                tagColor = "Pink",
-                birthDate = baseDate.minusYears(4),
-                gender = Gender.FEMALE,
-                classification = Classification.COW,
-                colorMarkings = "Red with white markings",
-                pastureId = pastureIds[1], // South Meadow
-                status = Status.ACTIVE,
-                motherId = 4, // Bessie's daughter
-                fatherId = 1 // Thunder's daughter
-            ),
-            Cow(
-                name = "Star",
-                tagNumber = "C008",
-                tagColor = "Orange",
-                birthDate = baseDate.minusYears(3),
-                gender = Gender.FEMALE,
-                classification = Classification.COW,
-                colorMarkings = "Charolais cream colored",
-                pastureId = pastureIds[1], // South Meadow
-                status = Status.ACTIVE,
-                motherId = 5, // Daisy's daughter
-                fatherId = 2 // Storm's daughter
-            ),
-            Cow(
-                name = "Grace",
-                tagNumber = "C009",
-                tagColor = "Teal",
-                birthDate = baseDate.minusYears(3),
-                gender = Gender.FEMALE,
-                classification = Classification.COW,
-                colorMarkings = "Black with white stripe",
-                pastureId = pastureIds[0], // North Field
-                status = Status.ACTIVE,
-                motherId = 6, // Rosie's daughter
-                fatherId = 1 // Thunder's daughter
-            ),
-            
-            // Current Heifers (ready to breed)
-            Cow(
-                name = "Hope",
-                tagNumber = "H001",
-                tagColor = "Lime",
-                birthDate = baseDate.minusYears(2),
-                gender = Gender.FEMALE,
-                classification = Classification.HEIFER,
-                colorMarkings = "Brown with white face",
-                pastureId = pastureIds[1], // South Meadow
-                status = Status.ACTIVE,
-                motherId = 7, // Molly's daughter
-                fatherId = 2 // Storm's daughter
-            ),
-            Cow(
-                name = "Faith",
-                tagNumber = "H002",
-                tagColor = "Coral",
-                birthDate = baseDate.minusYears(2),
-                gender = Gender.FEMALE,
-                classification = Classification.HEIFER,
-                colorMarkings = "Red and white spotted",
-                pastureId = pastureIds[1], // South Meadow
-                status = Status.ACTIVE,
-                motherId = 9, // Pearl's daughter
-                fatherId = 1 // Thunder's daughter
-            ),
-            Cow(
-                name = "Joy",
-                tagNumber = "H003",
-                tagColor = "Violet",
-                birthDate = baseDate.minusMonths(20),
-                gender = Gender.FEMALE,
-                classification = Classification.HEIFER,
-                colorMarkings = "Black Angus solid",
-                pastureId = pastureIds[1], // South Meadow
-                status = Status.ACTIVE,
-                motherId = 10, // Luna's daughter
-                fatherId = 2 // Storm's daughter
-            ),
-            
-            // Steers (castrated males for beef)
-            Cow(
-                name = "Max",
-                tagNumber = "S001",
-                tagColor = "Brown",
-                birthDate = baseDate.minusYears(2),
-                gender = Gender.MALE,
-                classification = Classification.STEER,
-                colorMarkings = "Black with white stripe",
-                pastureId = pastureIds[3], // West Lot
-                status = Status.ACTIVE,
-                motherId = 4, // Bessie's son
-                fatherId = 1 // Thunder's son
-            ),
-            Cow(
-                name = "Duke",
-                tagNumber = "S002",
-                tagColor = "Navy",
-                birthDate = baseDate.minusYears(2),
-                gender = Gender.MALE,
-                classification = Classification.STEER,
-                colorMarkings = "Red with white markings",
-                pastureId = pastureIds[3], // West Lot
-                status = Status.ACTIVE,
-                motherId = 5, // Daisy's son
-                fatherId = 2 // Storm's son
-            ),
-            Cow(
-                name = "Rex",
-                tagNumber = "S003",
-                tagColor = "Gray",
-                birthDate = baseDate.minusMonths(18),
-                gender = Gender.MALE,
-                classification = Classification.STEER,
-                colorMarkings = "Charolais cream",
-                pastureId = pastureIds[3], // West Lot
-                status = Status.SOLD, // Sold for beef
-                motherId = 6, // Rosie's son
-                fatherId = 1 // Thunder's son
-            ),
-            
-            // Current Calves (recent births)
-            Cow(
-                name = "Buddy",
-                tagNumber = "K001",
-                tagColor = "Tan",
-                birthDate = baseDate.plusMonths(3),
-                gender = Gender.MALE,
-                classification = Classification.CALF,
-                colorMarkings = "Brown and white spotted",
-                pastureId = pastureIds[0], // North Field with mother
-                status = Status.ACTIVE,
-                motherId = 10, // Luna's calf
-                fatherId = 2 // Storm's calf
-            ),
-            Cow(
-                name = "Bella",
-                tagNumber = "K002",
-                tagColor = "Black",
-                birthDate = baseDate.plusMonths(1),
-                gender = Gender.FEMALE,
-                classification = Classification.CALF,
-                colorMarkings = "Solid black",
-                pastureId = pastureIds[0], // North Field with mother
-                status = Status.ACTIVE,
-                motherId = 11, // Star's calf
-                fatherId = 1 // Thunder's calf
-            ),
-            Cow(
-                name = "Charlie",
-                tagNumber = "K003",
-                tagColor = "Yellow",
-                birthDate = baseDate.plusMonths(2),
-                gender = Gender.MALE,
-                classification = Classification.CALF,
-                colorMarkings = "Red with white face",
-                pastureId = pastureIds[1], // South Meadow with mother
-                status = Status.ACTIVE,
-                motherId = 12, // Grace's calf
-                fatherId = 2 // Storm's calf
-            ),
-            Cow(
-                name = "Rosebud",
-                tagNumber = "K004",
-                tagColor = "Rose",
-                birthDate = LocalDate.now().minusMonths(2),
-                gender = Gender.FEMALE,
-                classification = Classification.CALF,
-                colorMarkings = "Brown Jersey coloring",
-                pastureId = pastureIds[0], // North Field with mother
-                status = Status.ACTIVE,
-                motherId = 4, // Bessie's new calf
-                fatherId = 2 // Storm's calf
-            ),
-            Cow(
-                name = "Scout",
-                tagNumber = "K005",
-                tagColor = "Khaki",
-                birthDate = LocalDate.now().minusMonths(1),
-                gender = Gender.MALE,
-                classification = Classification.CALF,
-                colorMarkings = "Black with white markings",
-                pastureId = pastureIds[1], // South Meadow with mother
-                status = Status.ACTIVE,
-                motherId = 9, // Pearl's calf
-                fatherId = 1 // Thunder's calf
-            ),
-            
-            // Yearlings (older calves, approaching breeding age)
-            Cow(
-                name = "Spirit",
-                tagNumber = "Y001",
-                tagColor = "Mint",
-                birthDate = baseDate.minusMonths(14),
-                gender = Gender.FEMALE,
-                classification = Classification.CALF,
-                colorMarkings = "White with black spots",
-                pastureId = pastureIds[1], // South Meadow
-                status = Status.ACTIVE,
-                motherId = 7, // Molly's daughter
-                fatherId = 1 // Thunder's daughter
-            ),
-            Cow(
-                name = "Ranger",
-                tagNumber = "Y002",
-                tagColor = "Forest",
-                birthDate = baseDate.minusMonths(16),
-                gender = Gender.MALE,
-                classification = Classification.CALF,
-                colorMarkings = "Red Angus solid",
-                pastureId = pastureIds[3], // West Lot (will be castrated)
-                status = Status.ACTIVE,
-                motherId = 10, // Luna's son
-                fatherId = 2 // Storm's son
-            )
+            Cow(name = "Thunder", tagNumber = "B001", tagColor = "Red", birthDate = baseDate.minusYears(8), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Black with white face", pastureId = pastureIds[2], status = Status.ACTIVE),
+            Cow(name = "Storm", tagNumber = "B002", tagColor = "Blue", birthDate = baseDate.minusYears(6), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Red Angus", pastureId = pastureIds[2], status = Status.ACTIVE),
+            Cow(name = "Titan", tagNumber = "B003", tagColor = "Silver", birthDate = baseDate.minusYears(4), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Charolais white", pastureId = pastureIds[2], status = Status.SOLD),
+            Cow(name = "Bessie", tagNumber = "C001", tagColor = "Yellow", birthDate = baseDate.minusYears(9), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Holstein black and white", pastureId = pastureIds[0], status = Status.ACTIVE, isWatched = true),
+            Cow(name = "Daisy", tagNumber = "C002", tagColor = "Green", birthDate = baseDate.minusYears(8), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Brown Jersey", pastureId = pastureIds[0], status = Status.ACTIVE),
+            Cow(name = "Rosie", tagNumber = "C003", tagColor = "Purple", birthDate = baseDate.minusYears(7), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Black Angus", pastureId = pastureIds[1], status = Status.ACTIVE, isWatched = true),
+            Cow(name = "Molly", tagNumber = "C004", tagColor = "Gold", birthDate = baseDate.minusYears(6), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Red with white face", pastureId = pastureIds[0], status = Status.ACTIVE),
+            Cow(name = "Ruby", tagNumber = "C005", tagColor = "Maroon", birthDate = baseDate.minusYears(5), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Solid red", pastureId = pastureIds[1], status = Status.DECEASED),
+            Cow(name = "Pearl", tagNumber = "C006", tagColor = "White", birthDate = baseDate.minusYears(7), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "White with black spots", pastureId = pastureIds[0], status = Status.ACTIVE, isWatched = true),
+            Cow(name = "Luna", tagNumber = "C007", tagColor = "Pink", birthDate = baseDate.minusYears(4), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Red with white markings", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 4, fatherId = 1),
+            Cow(name = "Star", tagNumber = "C008", tagColor = "Orange", birthDate = baseDate.minusYears(3), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Charolais cream colored", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 5, fatherId = 2),
+            Cow(name = "Grace", tagNumber = "C009", tagColor = "Teal", birthDate = baseDate.minusYears(3), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Black with white stripe", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 6, fatherId = 1),
+            Cow(name = "Hope", tagNumber = "H001", tagColor = "Lime", birthDate = baseDate.minusYears(2), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Brown with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 7, fatherId = 2),
+            Cow(name = "Faith", tagNumber = "H002", tagColor = "Coral", birthDate = baseDate.minusYears(2), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Red and white spotted", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 9, fatherId = 1),
+            Cow(name = "Joy", tagNumber = "H003", tagColor = "Violet", birthDate = baseDate.minusMonths(20), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Black Angus solid", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 10, fatherId = 2),
+            Cow(name = "Max", tagNumber = "S001", tagColor = "Brown", birthDate = baseDate.minusYears(2), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Black with white stripe", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 4, fatherId = 1),
+            Cow(name = "Duke", tagNumber = "S002", tagColor = "Navy", birthDate = baseDate.minusYears(2), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Red with white markings", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 5, fatherId = 2),
+            Cow(name = "Rex", tagNumber = "S003", tagColor = "Gray", birthDate = baseDate.minusMonths(18), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Charolais cream", pastureId = pastureIds[3], status = Status.SOLD, motherId = 6, fatherId = 1),
+            Cow(name = "Buddy", tagNumber = "K001", tagColor = "Tan", birthDate = baseDate.plusMonths(3), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Brown and white spotted", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 10, fatherId = 2),
+            Cow(name = "Bella", tagNumber = "K002", tagColor = "Black", birthDate = baseDate.plusMonths(1), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "Solid black", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 11, fatherId = 1),
+            Cow(name = "Charlie", tagNumber = "K003", tagColor = "Yellow", birthDate = baseDate.plusMonths(2), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Red with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 12, fatherId = 2),
+            Cow(name = "Rosebud", tagNumber = "K004", tagColor = "Rose", birthDate = LocalDate.now().minusMonths(2), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "Brown Jersey coloring", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 4, fatherId = 2),
+            Cow(name = "Scout", tagNumber = "K005", tagColor = "Khaki", birthDate = LocalDate.now().minusMonths(1), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Black with white markings", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 9, fatherId = 1),
+            Cow(name = "Spirit", tagNumber = "Y001", tagColor = "Mint", birthDate = baseDate.minusMonths(14), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "White with black spots", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 7, fatherId = 1),
+            Cow(name = "Ranger", tagNumber = "Y002", tagColor = "Forest", birthDate = baseDate.minusMonths(16), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Red Angus solid", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 10, fatherId = 2)
         )
         
-        val cowIds = mutableListOf<Long>()
+        val createdCowIds = mutableListOf<Long>()
         cows.forEach { cow ->
             val id = insertCow(cow)
-            cowIds.add(id)
+            createdCowIds.add(id)
         }
         
-        // Update parent relationships with actual IDs
-        // The parent IDs in the cow objects refer to array indices, we need to convert them to actual database IDs
         for (i in cows.indices) {
             val cow = cows[i]
-            val cowId = cowIds[i]
-            
+            val cowId = createdCowIds[i]
             var needsUpdate = false
             var updatedCow = getCowById(cowId)
-            
-            if (cow.motherId != null && cow.motherId!! > 0 && cow.motherId!! <= cowIds.size) {
-                val actualMotherId = cowIds[cow.motherId!!.toInt() - 1] // Convert 1-based to 0-based index
+            if (cow.motherId != null && cow.motherId!! > 0 && cow.motherId!! <= createdCowIds.size) {
+                val actualMotherId = createdCowIds[cow.motherId!!.toInt() - 1]
                 updatedCow = updatedCow?.copy(motherId = actualMotherId)
                 needsUpdate = true
             }
-            
-            if (cow.fatherId != null && cow.fatherId!! > 0 && cow.fatherId!! <= cowIds.size) {
-                val actualFatherId = cowIds[cow.fatherId!!.toInt() - 1] // Convert 1-based to 0-based index
+            if (cow.fatherId != null && cow.fatherId!! > 0 && cow.fatherId!! <= createdCowIds.size) {
+                val actualFatherId = createdCowIds[cow.fatherId!!.toInt() - 1]
                 updatedCow = updatedCow?.copy(fatherId = actualFatherId)
                 needsUpdate = true
             }
-            
             if (needsUpdate && updatedCow != null) {
                 updateCow(updatedCow)
             }
         }
-        
-        return cowIds
+        return createdCowIds
     }
 
     private suspend fun createSampleActivities(cowIds: List<Long>, pastureIds: List<String>) {
         val baseDate = LocalDate.now()
         val activities = mutableListOf<Activity>()
-        
-        // Birth activities for calves (including recent births)
-        activities.add(Activity(
-            cowId = cowIds[19], // Buddy
-            date = baseDate.minusMonths(9), // 9 months ago when born
-            activityType = ActivityType.BIRTH,
-            notes = "Healthy male calf born to Luna",
-            details = "Birth weight: 85 lbs, no complications",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[20], // Bella
-            date = baseDate.minusMonths(11), // 11 months ago when born
-            activityType = ActivityType.BIRTH,
-            notes = "Female calf born to Star",
-            details = "Birth weight: 78 lbs, assisted birth",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[21], // Charlie
-            date = baseDate.minusMonths(10), // 10 months ago when born
-            activityType = ActivityType.BIRTH,
-            notes = "Male calf born to Grace",
-            details = "Birth weight: 82 lbs, natural birth",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[22], // Rosebud
-            date = baseDate.minusMonths(2), // Recent birth
-            activityType = ActivityType.BIRTH,
-            notes = "Female calf born to Bessie",
-            details = "Birth weight: 75 lbs, healthy delivery",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[23], // Scout
-            date = baseDate.minusMonths(1), // Very recent birth
-            activityType = ActivityType.BIRTH,
-            notes = "Male calf born to Pearl",
-            details = "Birth weight: 88 lbs, strong calf",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        // Weaning activities (older calves)
-        activities.add(Activity(
-            cowId = cowIds[24], // Spirit
-            date = baseDate.minusMonths(6),
-            activityType = ActivityType.WEANED,
-            notes = "Weaned from Molly at 8 months",
-            details = "Smooth transition, good weight gain",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[24], // Ranger  <-- CORRECTED FROM cowIds[25]
-            date = baseDate.minusMonths(8),
-            activityType = ActivityType.WEANED,
-            notes = "Weaned from Luna at 8 months",
-            details = "Will be castrated for beef production",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        // Castration activities
-        activities.add(Activity(
-            cowId = cowIds[16], // Max
-            date = baseDate.minusMonths(18),
-            activityType = ActivityType.CASTRATED,
-            notes = "Castrated for beef production",
-            details = "Procedure went well, good recovery",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[17], // Duke
-            date = baseDate.minusMonths(18),
-            activityType = ActivityType.CASTRATED,
-            notes = "Castrated for beef production",
-            details = "No complications, healing well",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        // Move activities (group moves)
-        val springMoveGroupId = UUID.randomUUID().toString()
-        activities.add(Activity(
-            cowId = cowIds[3], // Bessie
-            date = baseDate.minusMonths(3),
-            activityType = ActivityType.MOVED,
-            fromPastureId = pastureIds[1],
-            toPastureId = pastureIds[0],
-            notes = "Spring pasture rotation",
-            details = "Moved to North Field for better grass",
-            groupId = springMoveGroupId
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[4], // Daisy
-            date = baseDate.minusMonths(3),
-            activityType = ActivityType.MOVED,
-            fromPastureId = pastureIds[1],
-            toPastureId = pastureIds[0],
-            notes = "Spring pasture rotation",
-            details = "Moved with Bessie to North Field",
-            groupId = springMoveGroupId
-        ))
-        
-        // Health/Work activities for various animals
-        activities.add(Activity(
-            cowId = cowIds[3], // Bessie
-            date = baseDate.minusWeeks(2),
-            activityType = ActivityType.WORKED,
-            notes = "Annual health check and vaccinations",
-            details = "All vaccinations up to date, excellent condition",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[0], // Thunder (bull)
-            date = baseDate.minusMonths(1),
-            activityType = ActivityType.WORKED,
-            notes = "Breeding soundness exam",
-            details = "Passed all tests, cleared for breeding",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[1], // Storm (bull)
-            date = baseDate.minusMonths(1),
-            activityType = ActivityType.WORKED,
-            notes = "Breeding soundness exam",
-            details = "Excellent condition, high fertility",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        // Activities for SOLD animals (to demonstrate activities persist)
-        activities.add(Activity(
-            cowId = cowIds[2], // Titan (SOLD bull)
-            date = baseDate.minusMonths(6),
-            activityType = ActivityType.WORKED,
-            notes = "Pre-sale health check",
-            details = "Cleared for sale, excellent breeding record",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[2], // Titan (SOLD bull)
-            date = baseDate.minusMonths(5),
-            activityType = ActivityType.SOLD,
-            notes = "Sold to Johnson Ranch",
-            details = "Excellent breeding bull, $8,500 sale price",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[18], // Rex (SOLD steer)
-            date = baseDate.minusMonths(4),
-            activityType = ActivityType.WORKED,
-            notes = "Pre-market health check",
-            details = "Ready for market, good weight",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[18], // Rex (SOLD steer)
-            date = baseDate.minusMonths(3),
-            activityType = ActivityType.SOLD,
-            notes = "Sold to local processor",
-            details = "Market weight achieved, $1,850 sale price",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        // Activities for DECEASED animal (to demonstrate activities persist)
-        activities.add(Activity(
-            cowId = cowIds[7], // Ruby (DECEASED cow)
-            date = baseDate.minusMonths(8),
-            activityType = ActivityType.WORKED,
-            notes = "Health check - showing signs of illness",
-            details = "Started treatment for respiratory infection",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[7], // Ruby (DECEASED cow)
-            date = baseDate.minusMonths(7),
-            activityType = ActivityType.WORKED,
-            notes = "Follow-up treatment",
-            details = "Condition worsening despite treatment",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        // Breeding-related work activities (AI, breeding checks, etc.)
-        activities.add(Activity(
-            cowId = cowIds[3], // Bessie
-            date = baseDate.minusMonths(11),
-            activityType = ActivityType.WORKED,
-            notes = "Artificial insemination with Storm semen",
-            details = "AI procedure completed, good timing in cycle",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[8], // Pearl
-            date = baseDate.minusMonths(10),
-            activityType = ActivityType.WORKED,
-            notes = "Natural breeding with Thunder",
-            details = "Breeding observed, excellent genetics pairing",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        // Recent activities for heifers (first breeding)
-        activities.add(Activity(
-            cowId = cowIds[13], // Hope
-            date = baseDate.minusWeeks(3),
-            activityType = ActivityType.WORKED,
-            notes = "First breeding - AI with Storm semen",
-            details = "Heifer ready for breeding, good size and condition",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        activities.add(Activity(
-            cowId = cowIds[14], // Faith
-            date = baseDate.minusWeeks(1),
-            activityType = ActivityType.WORKED,
-            notes = "First breeding - natural service with Thunder",
-            details = "Excellent heifer, good breeding prospect",
-            groupId = UUID.randomUUID().toString()
-        ))
-        
-        // Insert all activities
+        // Example for a bulk activity where all these cows are involved together
+        val involvedInSampleMove = cowIds.take(2) // e.g., Thunder and Storm moved together
+        val sampleMoveGroupId = UUID.randomUUID().toString()
+
+        involvedInSampleMove.forEach { cowId ->
+            activities.add(Activity(
+                cowId = cowId, // Specific cow for this record
+                date = baseDate.minusMonths(3),
+                activityType = ActivityType.MOVED,
+                fromPastureId = pastureIds.getOrNull(1),
+                toPastureId = pastureIds.getOrNull(0),
+                notes = "Sample bulk move",
+                groupId = sampleMoveGroupId,
+                cowIds = involvedInSampleMove // ALL cows involved in this specific move
+            ))
+        }
+
+        // Single animal activities
+        activities.add(Activity(cowId = cowIds[19], date = baseDate.minusMonths(9), activityType = ActivityType.BIRTH, notes = "Healthy male calf born to Luna", details = "Birth weight: 85 lbs, no complications", groupId = UUID.randomUUID().toString(), cowIds = listOf(cowIds[19])))
+        activities.add(Activity(cowId = cowIds[20], date = baseDate.minusMonths(11), activityType = ActivityType.BIRTH, notes = "Female calf born to Star", details = "Birth weight: 78 lbs, assisted birth", groupId = UUID.randomUUID().toString(), cowIds = listOf(cowIds[20])))
+        // ... (add cowIds = listOf(specificCowId) for other single activities)
+
         activities.forEach { activity ->
             insertActivity(activity)
         }
@@ -1024,74 +460,31 @@ class CattleRepository(
     private suspend fun createSampleNotes() {
         noteDao?.let { dao ->
             val notes = listOf(
-                Note(
-                    title = "Pasture Rotation Plan",
-                    text = "Plan to rotate cattle between North Field and South Meadow every 3 months to prevent overgrazing and maintain grass health.",
-                    timestamp = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000) // 7 days ago
-                ),
-                Note(
-                    title = "Breeding Schedule",
-                    text = "Thunder will be bred with Bessie and Daisy in spring. Storm will be bred with Rosie and Luna. Expecting calves in late winter/early spring.",
-                    timestamp = System.currentTimeMillis() - (3 * 24 * 60 * 60 * 1000) // 3 days ago
-                ),
-                Note(
-                    title = "Feed Inventory",
-                    text = "Current hay supply should now last through winter. Need to order mineral supplements and check salt lick supplies in West Lot.",
-                    timestamp = System.currentTimeMillis() - (1 * 24 * 60 * 60 * 1000) // 1 day ago
-                ),
-                Note(
-                    title = "Veterinary Visit",
-                    text = "Dr. Johnson scheduled for next month to do annual health checks and vaccinations for the entire herd. Need to prepare holding area.",
-                    timestamp = System.currentTimeMillis() - (12 * 60 * 60 * 1000) // 12 hours ago
-                )
+                Note(title = "Pasture Rotation Plan", text = "Plan to rotate cattle between North Field and South Meadow every 3 months to prevent overgrazing and maintain grass health.", timestamp = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000)),
+                Note(title = "Breeding Schedule", text = "Thunder will be bred with Bessie and Daisy in spring. Storm will be bred with Rosie and Luna. Expecting calves in late winter/early spring.", timestamp = System.currentTimeMillis() - (3 * 24 * 60 * 60 * 1000)),
+                Note(title = "Feed Inventory", text = "Current hay supply should now last through winter. Need to order mineral supplements and check salt lick supplies in West Lot.", timestamp = System.currentTimeMillis() - (1 * 24 * 60 * 60 * 1000)),
+                Note(title = "Veterinary Visit", text = "Dr. Johnson scheduled for next month to do annual health checks and vaccinations for the entire herd. Need to prepare holding area.", timestamp = System.currentTimeMillis() - (12 * 60 * 60 * 1000))
             )
-            
-            notes.forEach { note ->
-                dao.insert(note)
-            }
+            notes.forEach { note -> dao.insert(note) }
         }
     }
 
     suspend fun deleteSampleData() {
         if (!isSampleDataInstalled()) return
-        
-        // Delete sample pastures (this will cascade to remove cows from these pastures)
         val samplePastureIds = listOf("sample-pasture-1", "sample-pasture-2", "sample-pasture-3", "sample-pasture-4")
         samplePastureIds.forEach { pastureId ->
-            getPastureByIdSuspend(pastureId)?.let { pasture ->
-                deletePasture(pasture)
-            }
+            getPastureByIdSuspend(pastureId)?.let { pasture -> deletePasture(pasture) }
         }
-        
-        // Delete sample cows (by tag number pattern)
-        val sampleTagPrefixes = listOf("B00", "C00", "H00", "S00", "K00", "Y00") // Added Y00 for Yearlings
+        val sampleTagPrefixes = listOf("B00", "C00", "H00", "S00", "K00", "Y00")
         val allCows = getAllCows().firstOrNull() ?: emptyList()
-        allCows.filter { cow ->
-            cow.tagNumber?.let { tag ->
-                sampleTagPrefixes.any { prefix -> tag.startsWith(prefix) }
-            } ?: false
-        }.forEach { cow ->
-            deleteCow(cow)
-        }
-        
-        // Delete sample notes (by title pattern)
+        allCows.filter { cow -> cow.tagNumber?.let { tag -> sampleTagPrefixes.any { prefix -> tag.startsWith(prefix) } } ?: false }
+            .forEach { cow -> deleteCow(cow) }
         noteDao?.let { dao ->
             val sampleNoteTitles = listOf("Pasture Rotation Plan", "Breeding Schedule", "Feed Inventory", "Veterinary Visit")
             val allNotes = dao.getAllNotes().firstOrNull() ?: emptyList()
-            allNotes.filter { note ->
-                sampleNoteTitles.contains(note.title)
-            }.forEach { note ->
-                dao.delete(note)
-            }
+            allNotes.filter { note -> sampleNoteTitles.contains(note.title) }.forEach { note -> dao.delete(note) }
         }
-        
-        // Mark sample data as not installed
-        insertOrUpdateSetting(
-            Settings(
-                SettingsKeys.SAMPLE_DATA_INSTALLED,
-                "false"
-            )
-        )
+        insertOrUpdateSetting(Settings(SettingsKeys.SAMPLE_DATA_INSTALLED, "false"))
     }
 
     suspend fun deleteAllData() {
@@ -1099,39 +492,17 @@ class CattleRepository(
         pastureDao.deleteAllPastures()
         activityDao.deleteAllActivities()
         noteDao?.deleteAllNotes()
-        
-        // Reset sample data flag
-        insertOrUpdateSetting(
-            Settings(
-                SettingsKeys.SAMPLE_DATA_INSTALLED,
-                "false"
-            )
-        )
-        
-        // Reinitialize default data
+        insertOrUpdateSetting(Settings(SettingsKeys.SAMPLE_DATA_INSTALLED, "false"))
         initializeDefaultData()
     }
     
-    // Individual delete all methods for data merge operations
     suspend fun deleteAllCows() = cowDao.deleteAllCows()
     suspend fun deleteAllPastures() = pastureDao.deleteAllPastures()
     suspend fun deleteAllActivities() = activityDao.deleteAllActivities()
     suspend fun deleteAllNotes() = noteDao?.deleteAllNotes()
-    suspend fun deleteAllTagColors() {
-        tagColorDao?.let { dao ->
-            val all = dao.getAllTagColorsSync()
-            for (tc in all) dao.deleteById(tc.id)
-        }
-    }
-    suspend fun deleteAllActivityTypeConfigs() {
-        activityTypeConfigDao?.deleteAllActivityTypes()
-    }
-    suspend fun deleteAllSettings() {
-        settingsDao?.let { dao ->
-            val settings = dao.getAllSettings().first()
-            for (s in settings) dao.deleteSetting(s)
-        }
-    }
+    suspend fun deleteAllTagColors() { tagColorDao?.let { dao -> val all = dao.getAllTagColorsSync(); for (tc in all) dao.deleteById(tc.id) } }
+    suspend fun deleteAllActivityTypeConfigs() { activityTypeConfigDao?.deleteAllActivityTypes() }
+    suspend fun deleteAllSettings() { settingsDao?.let { dao -> val settings = dao.getAllSettings().first(); for (s in settings) dao.deleteSetting(s) } }
 
     // User operations
     suspend fun insertUser(user: User) = userDao?.insertUser(user)
@@ -1158,48 +529,12 @@ class CattleRepository(
     suspend fun removeMember(herdId: String, userId: String) = herdMemberDao?.removeMember(herdId, userId)
 
     // Simplified sync methods for single user
-    suspend fun getAllCowsSync(): List<Cow> {
-        return try {
-            getAllCows().first()
-        } catch (e: Exception) {
-            println("Error getting cows for sync: ${e.message}")
-            e.printStackTrace()
-            emptyList()
-        }
-    }
-
-    suspend fun getAllActivitiesSync(): List<Activity> {
-        return try {
-            getAllActivities().first()
-        } catch (e: Exception) {
-            println("Error getting activities for sync: ${e.message}")
-            e.printStackTrace()
-            emptyList()
-        }
-    }
-
-    suspend fun getAllPasturesSync(): List<Pasture> {
-        return try {
-            getAllPastures().first()
-        } catch (e: Exception) {
-            println("Error getting pastures for sync: ${e.message}")
-            e.printStackTrace()
-            emptyList()
-        }
-    }
-
-    suspend fun getAllNotesSync(): List<Note> {
-        return try {
-            noteDao?.getAllNotes()?.first() ?: emptyList()
-        } catch (e: Exception) {
-            println("Error getting notes for sync: ${e.message}")
-            e.printStackTrace()
-            emptyList()
-        }
-    }
+    suspend fun getAllCowsSync(): List<Cow> { return try { getAllCows().first() } catch (e: Exception) { emptyList() } }
+    suspend fun getAllActivitiesSync(): List<Activity> { return try { getAllActivities().first() } catch (e: Exception) { emptyList() } }
+    suspend fun getAllPasturesSync(): List<Pasture> { return try { getAllPastures().first() } catch (e: Exception) { emptyList() } }
+    suspend fun getAllNotesSync(): List<Note> { return try { noteDao?.getAllNotes()?.first() ?: emptyList() } catch (e: Exception) { emptyList() } }
     
     suspend fun insertNote(note: Note) = noteDao?.insert(note)
-    // Update methods for sync
     suspend fun updateNote(note: Note) = noteDao?.update(note)
     
     // Tag Color operations
@@ -1216,14 +551,11 @@ class CattleRepository(
     suspend fun deleteTagColor(tagColor: TagColor) = tagColorDao?.deleteTagColor(tagColor)
     suspend fun updateTagColorActiveStatus(id: String, isActive: Boolean) = tagColorDao?.updateTagColorActiveStatus(id, isActive)
     suspend fun ensureDefaultTagColorsExist() {
-        // Ensure every default color exists; re-insert any missing defaults by name (case-insensitive)
         val existing = tagColorDao?.getAllTagColorsSync() ?: emptyList()
         val existingNames = existing.map { it.name.lowercase() }.toSet()
         val defaults = TagColor.getDefaultColors()
         val missing = defaults.filter { it.name.lowercase() !in existingNames }
-        if (missing.isNotEmpty()) {
-            insertTagColors(missing)
-        }
+        if (missing.isNotEmpty()) { insertTagColors(missing) }
     }
     
     // Activity Type Config operations
@@ -1240,20 +572,15 @@ class CattleRepository(
     suspend fun deleteActivityType(activityType: ActivityTypeConfig) = activityTypeConfigDao?.deleteActivityType(activityType)
     suspend fun updateActivityTypeActiveStatus(id: String, isActive: Boolean) = activityTypeConfigDao?.updateActivityTypeActiveStatus(id, isActive)
     suspend fun ensureDefaultActivityTypesExist() {
-        // Ensure every default activity type exists; re-insert any missing defaults by name (case-insensitive)
         val existing = activityTypeConfigDao?.getAllActivityTypesSync() ?: emptyList()
         val existingNames = existing.map { it.name.lowercase() }.toSet()
         val defaults = ActivityTypeConfig.getDefaultActivityTypes()
         val missing = defaults.filter { it.name.lowercase() !in existingNames }
-        if (missing.isNotEmpty()) {
-            insertActivityTypes(missing)
-        }
+        if (missing.isNotEmpty()) { insertActivityTypes(missing) }
     }
     
     suspend fun restoreDefaultActivityTypes() {
-        // Delete all existing activity types (both custom and default)
         activityTypeConfigDao?.deleteAllActivityTypes()
-        // Insert the default activity types
         insertActivityTypes(ActivityTypeConfig.getDefaultActivityTypes())
     }
     

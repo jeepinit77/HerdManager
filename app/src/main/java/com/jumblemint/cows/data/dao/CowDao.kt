@@ -70,5 +70,8 @@ interface CowDao {
     @Query("DELETE FROM cows")
     suspend fun deleteAllCows()
 
+    @Query("SELECT * FROM cows WHERE id IN (:ids)")
+    fun getCowsByIds(ids: List<Long>): Flow<List<Cow>>
+
     // Add other queries as needed, e.g., for search, filtering by multiple criteria
 }

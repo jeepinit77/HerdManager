@@ -1,6 +1,7 @@
 package com.jumblemint.cows.ui.screens.activities
 
 import android.app.Application
+import androidx.compose.foundation.clickable // Added for Card click
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -9,17 +10,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
-// import androidx.compose.material.icons.filled.FilterList // Not directly used in the main Scaffold
-// import androidx.compose.material.icons.filled.Clear // Not directly used in the main Scaffold
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier // Ensure Modifier is imported
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.ui.tooling.preview.Preview // Keep Preview for now
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.Activity
 import com.jumblemint.cows.data.model.ActivityType
@@ -35,17 +33,16 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 
 @OptIn(ExperimentalMaterial3Api::class)
-// @Preview(showBackground = true) // Preview might not work well with ViewModel and context-based setup
 @Composable
 fun ActivitiesScreen(
     onAddActivityClick: () -> Unit = {},
     onEditActivityClick: (Activity) -> Unit = {},
-    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
+    onActivityClick: (Long) -> Unit = {}, // <<< ADDED PARAMETER
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val database = CattleDatabase.getDatabase(context)
-    // Consider injecting repository if this screen is complex, or ensure ViewModel handles most logic
-    val repository = remember { // Encapsulate repository creation in remember
+    val repository = remember {
         CattleRepository(
             database.cowDao(),
             database.pastureDao(),
@@ -56,7 +53,8 @@ fun ActivitiesScreen(
             database.herdDao(),
             database.herdMemberDao(),
             database.tagColorDao(),
-            database.activityTypeConfigDao()
+            database.activityTypeConfigDao(),
+            database.breedDao() // Added missing breedDao
         )
     }
     val viewModel: ActivitiesViewModel = viewModel(
@@ -64,38 +62,26 @@ fun ActivitiesScreen(
     )
 
     val uiState by viewModel.uiState.collectAsState()
-    var showFilters by remember { mutableStateOf(false) } // This state is for the filter section inside the screen
+    var showFilters by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
     Scaffold(
-        modifier = modifier, // <<< APPLIED MODIFIER HERE
+        modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddActivityClick) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Activity")
             }
         },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0) // <<< UNCOMMENTED THIS LINE
-    ) { paddingValues -> // This paddingValues is from THIS screen's Scaffold
-                         // It will be used by the LazyColumn to position itself correctly
-                         // relative to THIS Scaffold's FAB, if any.
-                         // The `modifier` passed to this Scaffold already contains padding
-                         // from MainActivity's Scaffold (for the TopAppBarWithMenu).
-
-        // Main content column
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { paddingValues -> 
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Apply padding from THIS screen's Scaffold
+                .padding(paddingValues)
         ) {
-            // TODO: Add a FilterChip or similar button here to toggle `showFilters`
-            // This button would be part of THIS screen's content, below MainActivity's TopAppBar.
-            // Example:
-            // Button(onClick = { showFilters = !showFilters }) { Text("Toggle Filters") }
-
-
             if (uiState.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -103,7 +89,7 @@ fun ActivitiesScreen(
                 ) {
                     CircularProgressIndicator()
                 }
-            } else if (uiState.activityGroups.isEmpty() && !showFilters) { // Don't show "Nothing here" if filters are open
+            } else if (uiState.activityGroups.isEmpty() && !showFilters) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -117,18 +103,17 @@ fun ActivitiesScreen(
             } else {
                 LazyColumn(
                     modifier = Modifier
-                        .fillMaxSize() // LazyColumn fills the space given by the parent Column
-                        .padding(horizontal = 16.dp), // Add horizontal padding for content list
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp) // Padding for the list items themselves
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)
                 ) {
-                    // Expandable Filter Section
                     if (showFilters) {
                         item {
                             Card(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(bottom = 8.dp), // Space below filter card
+                                    .padding(bottom = 8.dp),
                                 colors = getCardColors()
                             ) {
                                 Column(
@@ -149,8 +134,6 @@ fun ActivitiesScreen(
                                             Text("Done")
                                         }
                                     }
-
-                                    // Status Filters
                                     FilterSection(
                                         title = "Cattle Status",
                                         items = Status.values().toList(),
@@ -158,8 +141,6 @@ fun ActivitiesScreen(
                                         onToggle = { viewModel.toggleStatusFilter(it) },
                                         itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                                     )
-
-                                    // Classification Filters
                                     FilterSection(
                                         title = "Animal Type",
                                         items = Classification.values().toList(),
@@ -167,8 +148,6 @@ fun ActivitiesScreen(
                                         onToggle = { viewModel.toggleClassificationFilter(it) },
                                         itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                                     )
-
-                                    // Gender Filters
                                     FilterSection(
                                         title = "Gender",
                                         items = Gender.values().toList(),
@@ -176,8 +155,6 @@ fun ActivitiesScreen(
                                         onToggle = { viewModel.toggleGenderFilter(it) },
                                         itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
                                     )
-
-                                    // Pasture Filters
                                     if (uiState.availablePastures.isNotEmpty()) {
                                         FilterSection(
                                             title = "Pasture",
@@ -187,8 +164,6 @@ fun ActivitiesScreen(
                                             itemLabel = { it }
                                         )
                                     }
-
-                                    // Activity Type Filters
                                     FilterSection(
                                         title = "Activity Type",
                                         items = ActivityType.values().toList(),
@@ -206,6 +181,7 @@ fun ActivitiesScreen(
                             ActivityCard(
                                 activity = group.sample,
                                 cowNames = group.cowNames.filterNotNull(),
+                                onClick = { onActivityClick(group.sample.id) }, // <<< PASSING CLICK HANDLER
                                 onEdit = { onEditActivityClick(group.sample) },
                                 onDelete = {
                                     scope.launch {
@@ -222,7 +198,7 @@ fun ActivitiesScreen(
                                 }
                             )
                         }
-                    } else if (showFilters) { // If filters are shown but result is empty
+                    } else if (showFilters) {
                         item {
                             Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("No activities match your filters.", style = MaterialTheme.typography.bodyLarge)
@@ -240,11 +216,14 @@ fun ActivitiesScreen(
 fun ActivityCard(
     activity: Activity,
     cowNames: List<String>,
+    onClick: () -> Unit, // <<< ADDED onClick PARAMETER
     onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick), // <<< MADE CARD CLICKABLE
         colors = getCardColors()
     ) {
         Column(
@@ -253,11 +232,11 @@ fun ActivityCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top // Changed to Top for better alignment with multiline text
+                verticalAlignment = Alignment.Top
             ) {
-                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) { // Added padding to prevent text touching icons
+                Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                     Text(
-                        text = activity.activityType.name.lowercase().replaceFirstChar { it.uppercase() },
+                        text = activity.activityType.displayName, // Using displayName
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -270,11 +249,13 @@ fun ActivityCard(
                         )
                     }
 
-                    activity.notes?.takeIf { it.isNotBlank() }?.let { notes -> // Added takeIf
+                    activity.notes?.takeIf { it.isNotBlank() }?.let { notes ->
                         Text(
                             text = notes,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2, // Limit notes preview if needed
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis // Added for long notes
                         )
                     }
                 }
@@ -285,15 +266,14 @@ fun ActivityCard(
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    // Removed Spacer(modifier = Modifier.height(4.dp)) as IconButtons have their own touch target size
                     Row {
                         onEdit?.let {
-                            IconButton(onClick = it, modifier = Modifier.size(40.dp)) { // Standardized IconButton size
+                            IconButton(onClick = it, modifier = Modifier.size(40.dp)) {
                                 Icon(Icons.Filled.Edit, contentDescription = "Edit Activity")
                             }
                         }
                         onDelete?.let {
-                            IconButton(onClick = it, modifier = Modifier.size(40.dp)) { // Standardized IconButton size
+                            IconButton(onClick = it, modifier = Modifier.size(40.dp)) { 
                                 Icon(
                                     imageVector = Icons.Filled.Delete,
                                     contentDescription = "Delete Activity",
@@ -308,10 +288,8 @@ fun ActivityCard(
     }
 }
 
-// Helper function to check if any filters are active (beyond the default active status)
-// This function might need to be removed or adapted if filter toggling is done via MainActivity's TopAppBar
 private fun hasActiveFilters(uiState: com.jumblemint.cows.ui.viewmodel.ActivitiesUiState): Boolean {
-    return uiState.selectedStatuses != setOf(Status.ACTIVE) || // Example: Assuming ACTIVE is default
+    return uiState.selectedStatuses != setOf(Status.ACTIVE) ||
            uiState.selectedClassifications.isNotEmpty() ||
            uiState.selectedGenders.isNotEmpty() ||
            uiState.selectedPastures.isNotEmpty() ||
@@ -334,7 +312,7 @@ private fun <T> FilterSection(
             fontWeight = FontWeight.Medium
         )
         Spacer(modifier = Modifier.height(8.dp))
-        LazyRow( // Changed from FlowRow to LazyRow for simplicity, can be FlowRow if needed
+        LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(items) { item ->

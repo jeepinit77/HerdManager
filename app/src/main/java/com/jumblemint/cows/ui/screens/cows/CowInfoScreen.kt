@@ -116,7 +116,7 @@ fun CowInfoScreen(
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = cow.name ?: "Unnamed Cow",
+                                        text = cow.name ?: "Unnamed Animal",
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -253,7 +253,7 @@ fun CowInfoScreen(
                 } ?: run {
                     if (!uiState.isLoading) {
                         Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
-                            Text("Cow not found or an error occurred.", style = MaterialTheme.typography.titleMedium)
+                            Text("Animal not found or an error occurred.", style = MaterialTheme.typography.titleMedium)
                         }
                     }
                 }

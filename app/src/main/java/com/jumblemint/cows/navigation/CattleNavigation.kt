@@ -29,6 +29,8 @@ import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.model.Activity // Corrected: Import for Activity model
 import com.jumblemint.cows.ui.screens.account.AccountManagementScreen
 import com.jumblemint.cows.ui.screens.activities.ActivitiesScreen
+// Import for ActivityInfoScreen
+import com.jumblemint.cows.ui.screens.activities.ActivityInfoScreen
 import com.jumblemint.cows.ui.screens.activities.AddActivityScreen
 import com.jumblemint.cows.ui.screens.activities.AddBirthScreen
 import com.jumblemint.cows.ui.screens.auth.SignInScreen
@@ -131,6 +133,7 @@ fun MainScreensViewPager(
                 onNavigateToEditPasture = { pastureIdString: String ->
                     navController.navigate(Screen.EditPasture.createRoute(pastureIdString))
                 },
+                onNavigateToUnassignedList = { navController.navigate(Screen.CowList.createRoute(type = "unassigned", value = null)) }, // Added this line
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToDashboard = {
                     navController.navigate(mainPagerRoute(DASHBOARD_PAGE_INDEX))
@@ -141,6 +144,10 @@ fun MainScreensViewPager(
                 onAddActivityClick = { navController.navigate(Screen.AddActivity.createRoute()) },
                 onEditActivityClick = { activity: Activity ->
                     navController.navigate(Screen.AddActivityWithId.createRoute(activity.id))
+                },
+                // Navigate to ActivityInfoScreen when an activity is clicked
+                onActivityClick = { activityId: Long ->
+                    navController.navigate(Screen.ActivityInfo.createRoute(activityId))
                 }
             )
             NOTES_PAGE_INDEX -> NotesScreen(
@@ -164,7 +171,7 @@ fun CattleNavigation(
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
     val screenModifierNoPadding = Modifier.fillMaxSize()
-    val screenModifierWithPadding = Modifier // This variable is defined but might not be used if HerdSelectionScreen doesn't take a modifier
+    val screenModifierWithPadding = Modifier
         .padding(mainScaffoldPadding)
         .fillMaxSize()
 
@@ -241,8 +248,8 @@ fun CattleNavigation(
             )
         ) { backStackEntry ->
             val cowId = backStackEntry.arguments?.getLong("cowId") ?: 0L
-            val context = LocalContext.current
-            val database = CattleDatabase.getDatabase(context)
+            val localContext = LocalContext.current // Renamed to avoid conflict
+            val database = CattleDatabase.getDatabase(localContext)
             val repository = remember {
                 CattleRepository(
                     database.cowDao(),
@@ -263,19 +270,8 @@ fun CattleNavigation(
             )
             val uiState by viewModel.uiState.collectAsState()
             
-            // Update TopAppBar for CowDetail
-            LaunchedEffect(cowId) {
+            LaunchedEffect(cowId, uiState.isLoading) { // Combined LaunchedEffect
                 topAppBarController.updateTitle(if (cowId == 0L) "Add Animal" else "Edit Animal")
-                topAppBarController.updateActions(
-                    TopAppBarActions(
-                        onSave = { viewModel.saveCow() },
-                        saveEnabled = !uiState.isLoading
-                    )
-                )
-            }
-            
-            // Update save button state when loading changes
-            LaunchedEffect(uiState.isLoading) {
                 topAppBarController.updateActions(
                     TopAppBarActions(
                         onSave = { viewModel.saveCow() },
@@ -304,16 +300,44 @@ fun CattleNavigation(
             )
         }
 
-        composable(Screen.AddActivityWithId.route) { backStackEntry ->
-            val activityId = backStackEntry.arguments?.getString("activityId")?.toLongOrNull()
+        composable(Screen.AddActivityWithId.route,
+            arguments = listOf(navArgument("activityId") { type = NavType.LongType }) // Ensure argument is defined
+        ) { backStackEntry ->
+            val activityId = backStackEntry.arguments?.getLong("activityId")
             LaunchedEffect(activityId) {
                 topAppBarController.updateTitle("Edit Activity")
-                topAppBarController.updateActions(TopAppBarActions())
+                topAppBarController.updateActions(TopAppBarActions()) // Consider adding save action here too
             }
             AddActivityScreen(
                 modifier = screenModifierWithPadding,
                 editId = activityId,
                 onNavigateBack = { navController.popBackStack() },
+                topAppBarController = topAppBarController
+            )
+        }
+        
+        // Composable for ActivityInfoScreen
+        composable(
+            route = Screen.ActivityInfo.route,
+            arguments = listOf(
+                navArgument("activityId") { type = NavType.LongType }
+            ),
+            enterTransition = { slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth }) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { fullWidth -> -fullWidth }) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { fullWidth -> -fullWidth }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth }) }
+        ) { backStackEntry ->
+            val activityId = backStackEntry.arguments?.getLong("activityId") ?: 0L
+            ActivityInfoScreen(
+                modifier = screenModifierWithPadding,
+                activityId = activityId,
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToCow = { cowId ->
+                    navController.navigate(Screen.CowInfo.createRoute(cowId = cowId, returnToRoute = Screen.ActivityInfo.createRoute(activityId)))
+                },
+                onEditActivity = { currentActivityId ->
+                    navController.navigate(Screen.AddActivityWithId.createRoute(currentActivityId))
+                },
                 topAppBarController = topAppBarController
             )
         }
@@ -337,7 +361,7 @@ fun CattleNavigation(
                 modifier = screenModifierWithPadding,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToSignIn = { navController.navigate(Screen.SignIn.route) },
-                onNavigateToHerds = { navController.navigate(Screen.HerdSelection.route) }, // This line uses Screen.HerdSelection.route
+                onNavigateToHerds = { navController.navigate(Screen.HerdSelection.route) },
                 onNavigateToAccountManagement = { navController.navigate(Screen.AccountManagement.route) },
                 onNavigateToTagColors = { navController.navigate(Screen.TagColorsManagement.route) },
                 onNavigateToActivityTypes = { navController.navigate(Screen.ActivityTypesManagement.route) },
@@ -403,9 +427,9 @@ fun CattleNavigation(
             )
         }
         composable(Screen.AddPasture.route) {
-            val context = LocalContext.current
-            val application = context.applicationContext as CattleApplication
-            val database = CattleDatabase.getDatabase(application)
+            val localContext = LocalContext.current // Renamed
+            val applicationContext = localContext.applicationContext as CattleApplication // Renamed
+            val database = CattleDatabase.getDatabase(applicationContext)
             val repository = remember {
                 CattleRepository(
                     cowDao = database.cowDao(),
@@ -422,7 +446,7 @@ fun CattleNavigation(
                 )
             }
             val pasturesViewModel: PasturesViewModel = viewModel(
-                factory = PasturesViewModelFactory(application, repository)
+                factory = PasturesViewModelFactory(applicationContext, repository)
             )
             
             AddPastureScreen(
@@ -449,9 +473,9 @@ fun CattleNavigation(
             )
         ) { backStackEntry ->
             val pastureId = backStackEntry.arguments?.getString("pastureId") ?: ""
-            val context = LocalContext.current
-            val application = context.applicationContext as CattleApplication
-            val database = CattleDatabase.getDatabase(application)
+            val localContext = LocalContext.current // Renamed
+            val applicationContext = localContext.applicationContext as CattleApplication // Renamed
+            val database = CattleDatabase.getDatabase(applicationContext)
             val repository = remember {
                 CattleRepository(
                     cowDao = database.cowDao(),
@@ -468,7 +492,7 @@ fun CattleNavigation(
                 )
             }
             val pasturesViewModel: PasturesViewModel = viewModel(
-                factory = PasturesViewModelFactory(application, repository)
+                factory = PasturesViewModelFactory(applicationContext, repository)
             )
             
             val pasture by repository.getPastureById(pastureId).collectAsState(initial = null)

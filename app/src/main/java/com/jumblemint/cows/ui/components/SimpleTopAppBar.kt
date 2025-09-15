@@ -10,6 +10,7 @@ import androidx.compose.ui.Modifier
 
 data class TopAppBarActions(
     val onEdit: (() -> Unit)? = null,
+    val editEnabled: Boolean = true, // <<< ADDED editEnabled
     val onSave: (() -> Unit)? = null,
     val onClose: (() -> Unit)? = null,
     val saveEnabled: Boolean = true,
@@ -32,7 +33,10 @@ fun SimpleTopAppBar(
         },
         actions = {
             actions.onEdit?.let { editAction ->
-                IconButton(onClick = editAction) {
+                IconButton(
+                    onClick = editAction,
+                    enabled = actions.editEnabled // <<< USED editEnabled
+                ) {
                     Icon(Icons.Filled.Edit, contentDescription = "Edit")
                 }
             }
@@ -70,6 +74,7 @@ fun SimpleTopAppBar(
         onBack = onBack,
         actions = TopAppBarActions(
             onEdit = onEdit,
+            // editEnabled will default to true here, which is fine for legacy usage
             onSave = onSave,
             onClose = onClose,
             customActions = actions

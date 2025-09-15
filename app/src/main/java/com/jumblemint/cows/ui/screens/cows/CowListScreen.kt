@@ -120,13 +120,16 @@ fun CowListScreen(
                 }
                 "classification" -> active.filter { it.classification.name == value }
                 "pasture" -> active.filter { it.pastureId == value }
-                "pastureName" -> {
+                "pastureName" -> { // This case handles if value is "Unassigned" or a pasture name
                     if (value == "Unassigned") {
                         active.filter { it.pastureId == null }
                     } else {
-                        active
+                        // If value is a pasture name, this might need to resolve to an ID first
+                        // For now, assuming if it's not "Unassigned", it implies a specific pasture (though filtering by name isn't robust here)
+                        active // This branch might need refinement if 'value' is a pasture name to be looked up
                     }
                 }
+                "unassigned" -> active.filter { it.pastureId == null } // Added for specific "unassigned" type
                 "notCalved" -> {
                     val nineMonthsAgo = LocalDate.now().minusMonths(9)
                     val female = active.filter { it.gender == Gender.FEMALE && it.classification in listOf(Classification.COW, Classification.HEIFER) }
@@ -157,7 +160,6 @@ fun CowListScreen(
     var screenTitle by remember { mutableStateOf("Cows") }
 
     // This LaunchedEffect sets the screenTitle.
-    // MainActivity's TopAppBarWithMenu would need to observe this or a similar state.
     LaunchedEffect(type, value, repository) {
         var newTitle = "Cows"
         when (type) {
@@ -180,13 +182,14 @@ fun CowListScreen(
                     newTitle = "Cows by Pasture"
                 }
             }
-            "pastureName" -> { // This case might need a lookup if 'value' is a name that needs to resolve to an ID for filtering
+            "pastureName" -> { 
                 newTitle = if (value == "Unassigned") {
-                    "Unassigned Cows"
+                    "Unassigned Animals"
                 } else {
                     value?.let { "Pasture: $it" } ?: "Cows by Pasture"
                 }
             }
+            "unassigned" -> newTitle = "Unassigned Animals" // Added for specific "unassigned" type
             "notCalved" -> newTitle = "Not Calved (9+ Months)"
             "calved" -> newTitle = "Cows with Active Calves"
             "age" -> {

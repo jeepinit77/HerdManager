@@ -15,43 +15,36 @@ import java.time.LocalDate
             childColumns = ["cowId"],
             onDelete = ForeignKey.CASCADE
         )
-        // We are removing Pasture foreign keys for now due to type mismatch (Pasture.id is String)
-        // If Pasture.id becomes Long, these can be re-added.
-        // Or, if Cow.pastureId becomes String, these would need to reference Pasture.id as String.
-        /*
-        ForeignKey(
-            entity = Pasture::class,
-            parentColumns = ["id"],
-            childColumns = ["fromPastureId"],
-            onDelete = ForeignKey.SET_NULL
-        ),
-        ForeignKey(
-            entity = Pasture::class,
-            parentColumns = ["id"],
-            childColumns = ["toPastureId"],
-            onDelete = ForeignKey.SET_NULL
-        )
-        */
     ],
-    indices = [Index("cowId"), Index("groupId")] // Added groupId index
+    indices = [Index("cowId"), Index("groupId")]
 )
 data class Activity(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0L,
-    val cowId: Long,
+    val cowId: Long, // This likely needs to change to a List<Long> or be handled differently for activities involving multiple cows.
+                     // For now, keeping as is, but ActivityInfoScreen implies multiple cows.
+                     // This single cowId might be the primary cow or an old field.
     val date: LocalDate = LocalDate.now(),
     val activityType: ActivityType,
     val notes: String? = null,
-    val fromPastureId: String? = null, // MODIFIED: Was Long?
-    val toPastureId: String? = null,   // MODIFIED: Was Long?
-    val details: String? = null, // For medication, sales info, etc.
-    val groupId: String? = null, // NEW: Links related activities together
-    
+    val fromPastureId: String? = null,
+    val toPastureId: String? = null,
+    val details: String? = null,
+    val groupId: String? = null,
+
+    // Fields from ActivityInfoScreen
+    val result: String? = null,
+    val quantity: Double? = null,
+    val technician: String? = null,
+    val cost: Double? = null,
+
     // Multi-user and sync fields
-    val herdId: String? = null, // Which herd this activity belongs to
-    val firestoreId: String? = null, // Firestore document ID for sync
-    val lastSyncAt: Long = 0L, // Last time synced with Firestore
-    val isDeleted: Boolean = false, // Soft delete flag for sync
-    val createdBy: String? = null, // User UID who created this record
-    val updatedBy: String? = null // User UID who last updated this record
+    val herdId: String? = null,
+    val firestoreId: String? = null,
+    val lastSyncAt: Long = 0L,
+    val isDeleted: Boolean = false,
+    val createdBy: String? = null,
+    val updatedBy: String? = null,
+    // New field to store associated cow IDs for activities involving multiple cows
+    val cowIds: List<Long> = emptyList() // Added to match usage in ActivityInfoViewModel
 )

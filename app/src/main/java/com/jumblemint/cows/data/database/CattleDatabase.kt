@@ -19,10 +19,11 @@ import com.jumblemint.cows.data.dao.TagColorDao
 import com.jumblemint.cows.data.dao.ActivityTypeConfigDao
 import com.jumblemint.cows.data.dao.BreedDao
 import com.jumblemint.cows.data.model.* // Assuming all models are here
+import com.jumblemint.cows.data.database.converters.ListLongConverter // <<< ADDED IMPORT
 
 // Modified the @Database annotation to include exportSchema = false
 @Database(entities = [Cow::class, Pasture::class, Activity::class, Settings::class, Note::class, User::class, Herd::class, HerdMember::class, TagColor::class, ActivityTypeConfig::class, Breed::class], version = 5, exportSchema = false)
-@TypeConverters(Converters::class)
+@TypeConverters(Converters::class, ListLongConverter::class) // <<< MODIFIED THIS LINE
 abstract class CattleDatabase : RoomDatabase() {
     abstract fun cowDao(): CowDao
     abstract fun pastureDao(): PastureDao

@@ -14,7 +14,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier 
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -34,6 +34,7 @@ fun PasturesScreen(
     onNavigateToAddPasture: () -> Unit,
     onNavigateToPastureDetails: (String) -> Unit,
     onNavigateToEditPasture: (String) -> Unit,
+    onNavigateToUnassignedList: () -> Unit, // Added new navigation callback
     onNavigateBack: () -> Unit,
     onNavigateToDashboard: () -> Unit,
     modifier: Modifier = Modifier
@@ -74,27 +75,27 @@ fun PasturesScreen(
     }
 
     Scaffold(
-        modifier = modifier, 
+        modifier = modifier,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAddPasture) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Pasture")
             }
         },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0) 
-    ) { paddingValues -> 
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { paddingValues ->
         if (uiState.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues), 
+                    .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) { CircularProgressIndicator() }
         } else if (uiState.pastures.isEmpty() && uiState.unassignedCowCount == 0) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues), 
+                    .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -106,18 +107,18 @@ fun PasturesScreen(
         } else {
             LazyColumn(
                 modifier = Modifier
-                    .padding(paddingValues) 
+                    .padding(paddingValues)
                     .fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), 
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (uiState.unassignedCowCount > 0) {
+                // Show Unassigned card only if there are unassigned cows AND at least one actual pasture exists
+                if (uiState.unassignedCowCount > 0 && uiState.pastures.isNotEmpty()) {
                     item {
                         Card(
+                            onClick = { onNavigateToUnassignedList() }, // Made card tappable
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            )
+                            colors = getCardColors() // Changed to use getCardColors for consistency
                         ) {
                             Row(
                                 modifier = Modifier
@@ -129,12 +130,12 @@ fun PasturesScreen(
                                     Text(
                                         text = "Unassigned",
                                         style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        // color = MaterialTheme.colorScheme.onSecondaryContainer // Color will now come from getCardColors
                                     )
                                     Text(
                                         text = "Total Head: ${uiState.unassignedCowCount}",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        // color = MaterialTheme.colorScheme.onSecondaryContainer // Color will now come from getCardColors
                                     )
                                 }
                             }
@@ -148,7 +149,7 @@ fun PasturesScreen(
                         onClick = {
                             onNavigateToPastureDetails(pastureWithDetails.pastureWithCount.pasture.id)
                         },
-                        onEdit = { 
+                        onEdit = {
                             onNavigateToEditPasture(pastureWithDetails.pastureWithCount.pasture.id)
                         },
                         onDelete = { pasture ->
@@ -187,7 +188,7 @@ fun PastureCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 8.dp), 
+                .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -196,7 +197,7 @@ fun PastureCard(
                 Text(
                     text = "Total Head: ${pastureWithDetails.pastureWithCount.cowCount}",
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium 
+                    fontWeight = FontWeight.Medium
                 )
 
                 if (pastureWithDetails.classificationBreakdown.isNotEmpty()) {
