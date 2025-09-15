@@ -52,6 +52,8 @@ import com.jumblemint.cows.ui.screens.settings.BreedsManagementScreen
 import com.jumblemint.cows.ui.screens.settings.ThemeSettingsScreen
 import com.jumblemint.cows.ui.screens.sync.SyncDetailsScreen
 import com.jumblemint.cows.ui.screens.workinglist.WorkingListScreen
+import com.jumblemint.cows.ui.viewmodel.AddBirthViewModel
+import com.jumblemint.cows.ui.viewmodel.AddBirthViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.AuthViewModel
 import com.jumblemint.cows.ui.viewmodel.AuthViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
@@ -421,9 +423,47 @@ fun CattleNavigation(
         }
 
         composable(Screen.AddBirth.route){
+            val localContext = LocalContext.current
+            val database = CattleDatabase.getDatabase(localContext)
+            val repository = remember {
+                CattleRepository(
+                    cowDao = database.cowDao(),
+                    pastureDao = database.pastureDao(),
+                    activityDao = database.activityDao(),
+                    settingsDao = database.settingsDao(),
+                    noteDao = database.noteDao(),
+                    userDao = database.userDao(),
+                    herdDao = database.herdDao(),
+                    herdMemberDao = database.herdMemberDao(),
+                    tagColorDao = database.tagColorDao(),
+                    activityTypeConfigDao = database.activityTypeConfigDao(),
+                    breedDao = database.breedDao()
+                )
+            }
+
+            val addBirthViewModel: AddBirthViewModel = viewModel(
+                factory = AddBirthViewModelFactory(
+                    repository,
+                    application.authService,
+                    application.syncService
+                )
+            )
+            val uiState by addBirthViewModel.uiState.collectAsState()
+
+            LaunchedEffect(uiState.isLoading, uiState.motherId) {
+                topAppBarController.updateTitle("Record Birth")
+                topAppBarController.updateActions(
+                    TopAppBarActions(
+                        onSave = { addBirthViewModel.recordBirth() },
+                        saveEnabled = !uiState.isLoading && uiState.motherId != null
+                    )
+                )
+            }
+
             AddBirthScreen(
                 modifier = screenModifierWithPadding,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                viewModel = addBirthViewModel
             )
         }
         composable(Screen.AddPasture.route) {
