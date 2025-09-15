@@ -8,8 +8,8 @@ import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-// Single DataStore instance scoped to Context
-private val Context.tipsDataStore by preferencesDataStore(name = "tips")
+// Single DataStore instance scoped to Context, made internal for module-wide access
+internal val Context.tipsDataStore by preferencesDataStore(name = "tips")
 
 object TipPrefsKeys {
     val DISABLE_ALL = booleanPreferencesKey("tips_disabled")

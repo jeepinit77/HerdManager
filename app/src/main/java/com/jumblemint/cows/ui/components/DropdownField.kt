@@ -11,9 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 
@@ -34,7 +32,11 @@ fun DropdownField(
     var expanded by remember { mutableStateOf(false) }
 
     val accentColor = remember(value, valueBackgroundColor) {
-        valueBackgroundColor?.invoke(value)
+        if (value.isNotEmpty()) { // Only get accent color if there's a value
+            valueBackgroundColor?.invoke(value)
+        } else {
+            null
+        }
     }
 
     Box(modifier = modifier) {
@@ -45,25 +47,29 @@ fun DropdownField(
             readOnly = true,
             enabled = enabled,
             isError = isError,
+            colors = if (enabled && !isError && accentColor != null && value.isNotEmpty()) {
+                val contrastingColor = if (accentColor.luminance() < 0.5f) Color.White else Color.Black
+                OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = accentColor,
+                    unfocusedContainerColor = accentColor,
+                    focusedTextColor = contrastingColor,
+                    unfocusedTextColor = contrastingColor,
+                    focusedTrailingIconColor = contrastingColor,
+                    unfocusedTrailingIconColor = contrastingColor,
+                    cursorColor = contrastingColor
+                    // Default label and border colors will be used, which is appropriate
+                    // as the label is outside the colored container when a value is present.
+                )
+            } else {
+                OutlinedTextFieldDefaults.colors() // Default colors for other states
+            },
             trailingIcon = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (accentColor != null && value.isNotEmpty()) {
-                        Box(
-                            modifier = Modifier
-                                .size(16.dp)
-                                .background(
-                                    color = accentColor,
-                                    shape = RoundedCornerShape(2.dp)
-                                )
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Icon(
-                        Icons.Default.ArrowDropDown,
-                        contentDescription = "Dropdown",
-                        modifier = Modifier.clickable(enabled = enabled) { expanded = !expanded }
-                    )
-                }
+                // Swatch Box and Spacer removed
+                Icon(
+                    Icons.Default.ArrowDropDown,
+                    contentDescription = "Dropdown",
+                    modifier = Modifier.clickable(enabled = enabled) { expanded = !expanded }
+                )
             },
             modifier = Modifier.fillMaxWidth()
         )
@@ -78,7 +84,7 @@ fun DropdownField(
         }
 
         DropdownMenu(
-            expanded = expanded && enabled, // expanded state is now controlled by the overlay click or icon click
+            expanded = expanded && enabled,
             onDismissRequest = { expanded = false },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -116,9 +122,7 @@ fun DropdownField(
                             MenuDefaults.itemColors()
                         },
                         modifier = if (optionBgColor != null) {
-                            Modifier.drawBehind {
-                                drawRect(optionBgColor)
-                            }
+                            Modifier.background(optionBgColor) 
                         } else {
                             Modifier
                         }

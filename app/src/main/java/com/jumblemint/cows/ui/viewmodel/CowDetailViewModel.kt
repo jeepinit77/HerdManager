@@ -1,23 +1,27 @@
 package com.jumblemint.cows.ui.viewmodel
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.model.*
+import com.jumblemint.cows.data.preferences.tipsDataStore
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.util.UUID // Added import
+import java.util.UUID
 
-// CowDetailUiState is defined here or imported
 data class CowDetailUiState(
     val id: Long = 0L,
     val name: String = "",
     val tagNumber: String = "",
     val tagColor: String? = null,
-    val birthDate: LocalDate? = LocalDate.now(),
+    val birthDate: LocalDate? = null,
     val gender: Gender? = null,
     val classification: Classification? = null,
     val colorMarkings: String = "",
@@ -28,7 +32,7 @@ data class CowDetailUiState(
     val motherName: String? = null,
     val fatherName: String? = null,
     val status: Status = Status.ACTIVE,
-    val pastureId: String? = null, 
+    val pastureId: String? = null,
     val pastureName: String? = null,
     val photos: List<String> = emptyList(),
     val isWatched: Boolean = false,
@@ -46,13 +50,21 @@ data class CowDetailUiState(
 )
 
 class CowDetailViewModel(
-    application: CattleApplication,
+    private val application: CattleApplication,
     private val repository: CattleRepository,
-    private val cowId: Long
+    private val cowId: Long,
+    private val tipsDataStore: DataStore<Preferences>
 ) : AndroidViewModel(application) {
 
     private val _uiState = MutableStateFlow(CowDetailUiState())
     val uiState: StateFlow<CowDetailUiState> = _uiState.asStateFlow()
+
+    private val _saveAttemptSignal = MutableSharedFlow<Unit>() // No replay needed, fires once per attempt
+    val saveAttemptSignal: SharedFlow<Unit> = _saveAttemptSignal.asSharedFlow()
+
+    private object PreferencesKeys {
+        val NAME_TAG_LINKED_KEY = booleanPreferencesKey("name_tag_linked")
+    }
 
     init {
         loadInitialData()
@@ -60,7 +72,14 @@ class CowDetailViewModel(
 
     private fun loadInitialData() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            val initialLinkState = tipsDataStore.data
+                .map { preferences ->
+                    preferences[PreferencesKeys.NAME_TAG_LINKED_KEY] ?: false
+                }
+                .firstOrNull() ?: false
+            
+            _uiState.update { it.copy(isLoading = true, isNameTagLinked = initialLinkState) }
+            
             try {
                 val mothers = repository.getActiveFemales().first()
                 val fathers = repository.getActiveMales().first()
@@ -78,16 +97,20 @@ class CowDetailViewModel(
                             tagColors = tagColors,
                             breeds = breeds,
                             isLoading = false,
-                            birthDate = LocalDate.now() // Default birthdate for new cow
+                            birthDate = null
                         )
+                    }
+                    if (initialLinkState && _uiState.value.name.isNotBlank()) {
+                        _uiState.update { it.copy(tagNumber = it.name) }
+                    } else if (initialLinkState && _uiState.value.tagNumber.isNotBlank()){
+                         _uiState.update { it.copy(name = it.tagNumber) }
                     }
                 } else { // Existing cow
                     val cow = repository.getCowById(cowId)
                     if (cow != null) {
                         val motherName = cow.motherId?.let { repository.getCowById(it)?.name }
                         val fatherName = cow.fatherId?.let { repository.getCowById(it)?.name }
-                        val currentPasture = pastures.find { it.id == cow.pastureId } 
-
+                        val currentPasture = pastures.find { it.id == cow.pastureId }
                         _uiState.update {
                             it.copy(
                                 id = cow.id,
@@ -105,7 +128,7 @@ class CowDetailViewModel(
                                 motherName = motherName,
                                 fatherName = fatherName,
                                 status = cow.status,
-                                pastureId = cow.pastureId, 
+                                pastureId = cow.pastureId,
                                 pastureName = currentPasture?.name,
                                 photos = cow.photos,
                                 isWatched = cow.isWatched,
@@ -119,6 +142,13 @@ class CowDetailViewModel(
                                 isLoading = false
                             )
                         }
+                        if (initialLinkState) {
+                             if (_uiState.value.name.isNotBlank()) {
+                                _uiState.update { it.copy(tagNumber = it.name) }
+                            } else if (_uiState.value.tagNumber.isNotBlank()){
+                                 _uiState.update { it.copy(name = it.tagNumber) }
+                            }
+                        }
                     } else {
                         _uiState.update { it.copy(error = "Cow not found", isLoading = false) }
                     }
@@ -129,35 +159,34 @@ class CowDetailViewModel(
         }
     }
 
-    fun updateName(name: String) { 
+    fun updateName(name: String) {
         _uiState.update { 
             if (it.isNameTagLinked) {
-                it.copy(name = name, tagNumber = name)
+                it.copy(name = name, tagNumber = name, error = if (name.isBlank() && it.tagNumber.isBlank()) it.error else null)
             } else {
-                it.copy(name = name)
+                it.copy(name = name, error = if (name.isBlank() && it.tagNumber.isBlank()) it.error else null)
             }
         }
     }
-    
-    fun updateTagNumber(tagNumber: String) { 
+
+    fun updateTagNumber(tagNumber: String) {
         _uiState.update { 
             if (it.isNameTagLinked) {
-                it.copy(name = tagNumber, tagNumber = tagNumber)
+                it.copy(name = tagNumber, tagNumber = tagNumber, error = if (tagNumber.isBlank() && it.name.isBlank()) it.error else null)
             } else {
-                it.copy(tagNumber = tagNumber)
+                it.copy(tagNumber = tagNumber, error = if (tagNumber.isBlank() && it.name.isBlank()) it.error else null)
             }
         }
     }
-    
+
     fun toggleNameTagLink() {
+        val newLinkedState = !_uiState.value.isNameTagLinked
         _uiState.update { currentState ->
-            val newLinkedState = !currentState.isNameTagLinked
-            if (newLinkedState) {
-                // When linking, sync the non-empty field to the empty one, or name to tag if both have values
+            val updatedState = if (newLinkedState) {
                 when {
                     currentState.name.isNotBlank() && currentState.tagNumber.isBlank() -> 
                         currentState.copy(isNameTagLinked = true, tagNumber = currentState.name)
-                    currentState.tagNumber.isNotBlank() && currentState.name.isBlank() -> 
+                    currentState.name.isBlank() && currentState.tagNumber.isNotBlank() -> 
                         currentState.copy(isNameTagLinked = true, name = currentState.tagNumber)
                     else -> 
                         currentState.copy(isNameTagLinked = true, tagNumber = currentState.name)
@@ -165,11 +194,24 @@ class CowDetailViewModel(
             } else {
                 currentState.copy(isNameTagLinked = false)
             }
+            // Clear name/tag error if either is now populated due to linking
+            if (updatedState.name.isNotBlank() || updatedState.tagNumber.isNotBlank()) {
+                updatedState.copy(error = if (updatedState.error == "Please enter a Name or a Tag Number.") null else updatedState.error)
+            } else {
+                updatedState
+            }
+        }
+        viewModelScope.launch {
+            tipsDataStore.edit { settings ->
+                settings[PreferencesKeys.NAME_TAG_LINKED_KEY] = newLinkedState
+            }
         }
     }
+
     fun updateTagColor(tagColor: String?) { _uiState.update { it.copy(tagColor = tagColor) } }
     fun updateBirthDate(birthDate: LocalDate?) { _uiState.update { it.copy(birthDate = birthDate) } }
-    fun updateGender(gender: Gender?) { 
+    
+    fun updateGender(gender: Gender?) {
         _uiState.update { currentState ->
             val newClassification = when (gender) {
                 Gender.FEMALE -> when (currentState.classification) {
@@ -182,24 +224,25 @@ class CowDetailViewModel(
                 }
                 else -> currentState.classification
             }
-            currentState.copy(gender = gender, classification = newClassification)
+            currentState.copy(gender = gender, classification = newClassification, error = if (gender != null) null else currentState.error)
         }
     }
-    
-    fun updateClassification(classification: Classification?) { 
+
+    fun updateClassification(classification: Classification?) {
         _uiState.update { currentState ->
             val newGender = when (classification) {
                 Classification.COW, Classification.HEIFER -> Gender.FEMALE
                 Classification.BULL, Classification.STEER -> Gender.MALE
                 else -> currentState.gender
             }
-            currentState.copy(classification = classification, gender = newGender)
+            currentState.copy(classification = classification, gender = newGender, error = if (classification != null) null else currentState.error)
         }
     }
+
     fun updateColorMarkings(colorMarkings: String) { _uiState.update { it.copy(colorMarkings = colorMarkings) } }
     fun updateRegistrationNumber(registrationNumber: String) { _uiState.update { it.copy(registrationNumber = registrationNumber) } }
     fun updateBreed(breed: String?) { _uiState.update { it.copy(breed = breed) } }
-    fun updateStatus(status: Status) { _uiState.update { it.copy(status = status) } }
+    fun updateStatus(status: Status) { _uiState.update { it.copy(status = status, error = null) } } // Status always has a value, so error for status nullity isn't needed here.
     fun updateIsWatched(isWatched: Boolean) { _uiState.update { it.copy(isWatched = isWatched) } }
 
     fun updateMother(motherId: Long?) {
@@ -222,24 +265,25 @@ class CowDetailViewModel(
     }
 
     fun saveCow() {
-        viewModelScope.launch { 
+        _saveAttemptSignal.tryEmit(Unit) // Signal save attempt to UI
+        
+        viewModelScope.launch {
+            _uiState.update { it.copy(error = null) } // Clear previous general error messages
             val currentState = _uiState.value
-            // Validation: Either name OR tag number is required
+            
             if (currentState.name.isBlank() && currentState.tagNumber.isBlank()) {
                 _uiState.update { it.copy(error = "Please enter a Name or a Tag Number.") }
                 return@launch
             }
-            
-            // Validation: Gender and Classification are required
             if (currentState.gender == null) {
                 _uiState.update { it.copy(error = "Please select a Gender.") }
                 return@launch
             }
-            
             if (currentState.classification == null) {
                 _uiState.update { it.copy(error = "Please select a Classification.") }
                 return@launch
             }
+            // Removed incorrect status == null check as status is non-nullable and defaults to ACTIVE
 
             val application = getApplication<CattleApplication>()
             val currentUser = application.authService.currentUser.first()
@@ -257,11 +301,11 @@ class CowDetailViewModel(
                 isNewCow = true
                 val newFirestoreId = UUID.randomUUID().toString()
                 cowToSave = Cow(
-                    id = 0L, // Room will auto-generate
+                    id = 0L, 
                     name = currentState.name.takeIf { it.isNotBlank() },
                     tagNumber = currentState.tagNumber,
                     tagColor = currentState.tagColor,
-                    birthDate = currentState.birthDate ?: LocalDate.now(),
+                    birthDate = currentState.birthDate,
                     gender = currentState.gender!!,
                     classification = currentState.classification!!,
                     colorMarkings = currentState.colorMarkings.takeIf { it.isNotBlank() },
@@ -269,7 +313,7 @@ class CowDetailViewModel(
                     breed = currentState.breed,
                     motherId = currentState.motherId,
                     fatherId = currentState.fatherId,
-                    status = currentState.status,
+                    status = currentState.status, // status is non-null
                     pastureId = currentState.pastureId,
                     photos = currentState.photos,
                     isWatched = currentState.isWatched,
@@ -280,7 +324,7 @@ class CowDetailViewModel(
                     updatedAt = LocalDate.now(),
                     createdBy = currentUserId,
                     updatedBy = currentUserId,
-                    herdId = null // TODO: Determine herdId for new cows if not part of birth screen
+                    herdId = null 
                 )
             } else { // Existing Cow
                 val existingCow = repository.getCowById(currentState.id)
@@ -292,7 +336,7 @@ class CowDetailViewModel(
                     name = currentState.name.takeIf { it.isNotBlank() },
                     tagNumber = currentState.tagNumber,
                     tagColor = currentState.tagColor,
-                    birthDate = currentState.birthDate ?: existingCow.birthDate,
+                    birthDate = currentState.birthDate,
                     gender = currentState.gender!!,
                     classification = currentState.classification!!,
                     colorMarkings = currentState.colorMarkings.takeIf { it.isNotBlank() },
@@ -300,16 +344,14 @@ class CowDetailViewModel(
                     breed = currentState.breed,
                     motherId = currentState.motherId,
                     fatherId = currentState.fatherId,
-                    status = currentState.status,
+                    status = currentState.status, // status is non-null
                     pastureId = currentState.pastureId,
-                    photos = currentState.photos, // Assuming photos are managed and updated in UI state
+                    photos = currentState.photos, 
                     isWatched = currentState.isWatched,
-                    // firestoreId, createdAt, createdBy are preserved from existingCow
                     updatedAt = LocalDate.now(),
                     updatedBy = currentUserId,
-                    lastSyncAt = 0L, // Mark for re-sync
-                    isDeleted = existingCow.isDeleted // Preserve soft delete status
-                    // herdId is preserved from existingCow
+                    lastSyncAt = 0L, 
+                    isDeleted = existingCow.isDeleted 
                 )
             }
 
@@ -326,16 +368,15 @@ class CowDetailViewModel(
                 _uiState.update { it.copy(isSaved = true, error = null, isLoading = false) }
 
                 if (!currentUser.isLocalUser) {
-                    viewModelScope.launch(Dispatchers.IO) { 
+                    viewModelScope.launch(Dispatchers.IO) {
                         application.syncService.syncItemImmediately(currentUserId, savedCowForSync)
                             .onFailure {
-                                // Handle immediate sync failure if necessary on a background thread
                                 println("CowDetailViewModel: Error immediately syncing cow ${savedCowForSync.id}: ${it.message}")
                             }
                     }
                 }
 
-            } catch (e: Exception) { 
+            } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Failed to save cow: ${e.message}", isSaved = false, isLoading = false) }
             }
         }

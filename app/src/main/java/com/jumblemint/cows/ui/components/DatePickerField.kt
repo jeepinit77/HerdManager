@@ -1,8 +1,6 @@
 package com.jumblemint.cows.ui.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,7 +9,6 @@ import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
@@ -24,23 +21,34 @@ fun DatePickerField(
     modifier: Modifier = Modifier
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
-    
+
     Column(modifier = modifier) {
-        OutlinedTextField(
-            value = value?.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) ?: "",
-            onValueChange = { },
-            label = { Text(label) },
-            readOnly = true,
-            trailingIcon = {
-                IconButton(onClick = { showDatePicker = true }) {
-                    Icon(Icons.Default.DateRange, contentDescription = "Select date")
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { showDatePicker = true }
-        )
-        
+        Box(
+            modifier = Modifier.clickable { showDatePicker = true }
+        ) {
+            OutlinedTextField(
+                value = value?.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")) ?: "",
+                onValueChange = { },
+                label = { Text(label) },
+                readOnly = true,
+                enabled = false, // Make the TextField non-interactive
+                colors = OutlinedTextFieldDefaults.colors(
+                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
+                    disabledBorderColor = MaterialTheme.colorScheme.outline,
+                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    // Ensure other states like placeholder, prefix/suffix also look enabled if you use them
+                ),
+                trailingIcon = {
+                    // IconButton is still clickable itself, which is fine.
+                    IconButton(onClick = { showDatePicker = true }) {
+                        Icon(Icons.Default.DateRange, contentDescription = "Select date")
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         if (showDatePicker) {
             DatePickerDialog(
                 onDateSelected = { selectedDate ->
@@ -60,8 +68,8 @@ fun DatePickerDialog(
     onDismiss: () -> Unit
 ) {
     val datePickerState = rememberDatePickerState()
-    
-    DatePickerDialog(
+
+    androidx.compose.material3.DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(
