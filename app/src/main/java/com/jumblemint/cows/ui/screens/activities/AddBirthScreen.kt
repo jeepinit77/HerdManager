@@ -6,10 +6,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Save
-// import androidx.compose.material.icons.outlined.Lightbulb // Removed, using WobblingLightbulbIcon
-import com.jumblemint.cows.data.preferences.TipsManager // Added for coaching tips
-import com.jumblemint.cows.ui.components.TipOverlay // Added for coaching tips
-import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Added for coaching tips
+import com.jumblemint.cows.data.preferences.TipsManager 
+import com.jumblemint.cows.ui.components.TipOverlay 
+import com.jumblemint.cows.ui.components.WobblingLightbulbIcon 
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,7 +19,6 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-// import androidx.compose.ui.unit.sp // Removed if not used by other text elements
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
@@ -72,6 +70,11 @@ fun AddBirthScreen(
         }
     }
 
+    val tipsManager = remember { TipsManager(context) }
+    val tipId = "add_birth_screen_info_tip" 
+    val tipIconVisible by tipsManager.isTipVisible(tipId).collectAsState(initial = true)
+    var showTipOverlay by remember { mutableStateOf(false) }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -111,19 +114,55 @@ fun AddBirthScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Coaching Tip System Integration
-                val tipsManager = remember { TipsManager(context) }
-                val tipId = "add_birth_screen_info_tip" // Unique ID for this tip
-                val tipIconVisible by tipsManager.isTipVisible(tipId).collectAsState(initial = true)
-                var showTipOverlay by remember { mutableStateOf(false) }
-
-                if (tipIconVisible) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), // Added padding
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = { showTipOverlay = true }) {
+                // Birth Details Card with Coaching Tip Icon
+                Box(modifier = Modifier.fillMaxWidth()) { // Wrap Card in Box for tip icon positioning
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "Birth Details",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            DatePickerField(
+                                value = uiState.birthDate,
+                                onValueChange = viewModel::updateBirthDate,
+                                label = "Birth Date",
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                            DropdownField(
+                                value = uiState.motherName ?: "",
+                                onValueChange = { name ->
+                                    val mother = uiState.availableMothers.find { it.name == name || it.tagNumber == name }
+                                    viewModel.updateMother(mother?.id)
+                                },
+                                label = "Mother*",
+                                options = uiState.availableMothers.mapNotNull { it.name?.takeIf { n -> n.isNotBlank() } ?: it.tagNumber },
+                                modifier = Modifier.fillMaxWidth(),
+                                isError = uiState.error?.contains("Mother") == true
+                            )
+                            DropdownField(
+                                value = uiState.fatherName ?: "",
+                                onValueChange = { name ->
+                                    val father = uiState.availableFathers.find { it.name == name || it.tagNumber == name }
+                                    viewModel.updateFather(father?.id)
+                                },
+                                label = "Father (Optional)",
+                                options = listOf("") + uiState.availableFathers.mapNotNull { it.name?.takeIf { n -> n.isNotBlank() } ?: it.tagNumber },
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+                    }
+                    // Coaching Tip Icon Button - overlaid on top-right of the Card
+                    if (tipIconVisible) {
+                        IconButton(
+                            onClick = { showTipOverlay = true },
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 18.dp, y = (-18).dp) // Offset to extend past the edge
+                        ) {
                             WobblingLightbulbIcon()
                         }
                     }
@@ -133,53 +172,10 @@ fun AddBirthScreen(
                     TipOverlay(
                         tipId = tipId,
                         tipText = "• Calves are auto assigned to the same pasture as the mother.\n" +
-                                  "• Birth activity will be recorded for calf.\n" +
-                                  "• Calved activity will be recorded for cow.",
+                                  "• After selecting mother, if the name field is blank, a default calf name is calculated and prefilled (Mother Name/Tag plus birth year).",
                         onClosed = { showTipOverlay = false },
                         tipsManager = tipsManager
                     )
-                }
-                // End of Coaching Tip System Integration
-
-                // Birth Details Card
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Text(
-                            text = "Birth Details",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        DatePickerField(
-                            value = uiState.birthDate,
-                            onValueChange = viewModel::updateBirthDate,
-                            label = "Birth Date",
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        DropdownField(
-                            value = uiState.motherName ?: "",
-                            onValueChange = { name ->
-                                val mother = uiState.availableMothers.find { it.name == name || it.tagNumber == name }
-                                viewModel.updateMother(mother?.id)
-                            },
-                            label = "Mother*",
-                            options = uiState.availableMothers.mapNotNull { it.name?.takeIf { n -> n.isNotBlank() } ?: it.tagNumber },
-                            modifier = Modifier.fillMaxWidth(),
-                            isError = uiState.error?.contains("Mother") == true
-                        )
-                        DropdownField(
-                            value = uiState.fatherName ?: "",
-                            onValueChange = { name ->
-                                val father = uiState.availableFathers.find { it.name == name || it.tagNumber == name }
-                                viewModel.updateFather(father?.id)
-                            },
-                            label = "Father (Optional)",
-                            options = listOf("") + uiState.availableFathers.mapNotNull { it.name?.takeIf { n -> n.isNotBlank() } ?: it.tagNumber },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
                 }
 
                 // Calf Details Card

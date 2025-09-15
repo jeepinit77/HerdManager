@@ -50,20 +50,43 @@ class AddBirthViewModel(
     }
     
     fun updateBirthDate(date: LocalDate?) {
+        val currentCalfName = _uiState.value.calfName
+        val previouslySelectedMotherId = _uiState.value.motherId
         _uiState.value = _uiState.value.copy(birthDate = date)
+
+        if (currentCalfName.isBlank() && previouslySelectedMotherId != null) {
+            val mother = _uiState.value.availableMothers.find { it.id == previouslySelectedMotherId }
+            if (mother != null) {
+                val motherIdentifier = mother.name?.takeIf { it.isNotBlank() } ?: mother.tagNumber ?: ""
+                if (motherIdentifier.isNotBlank()) {
+                    val birthYear = _uiState.value.birthDate?.year?.toString() ?: LocalDate.now().year.toString()
+                    val newCalfName = "$motherIdentifier $birthYear"
+                    _uiState.value = _uiState.value.copy(calfName = newCalfName)
+                }
+            }
+        } else {
+            // If calfName was not blank, or no mother selected, keep existing calfName
+            // (which is already done as calfName wasn't changed in the initial copy)
+        }
     }
     
     fun updateMother(motherId: Long?) {
         val mother = _uiState.value.availableMothers.find { it.id == motherId }
-        var newCalfName = _uiState.value.calfName // Preserve existing name if mother is deselected or not found
+        var newCalfName = _uiState.value.calfName // Start with current name
 
-        if (mother != null) {
-            val motherIdentifier = mother.name?.takeIf { it.isNotBlank() } ?: mother.tagNumber ?: ""
-            if (motherIdentifier.isNotBlank()) { // Only update if we have a valid mother identifier
-                val currentYear = LocalDate.now().year.toString()
-                newCalfName = "$motherIdentifier $currentYear"
+        if (_uiState.value.calfName.isBlank()) { // Only auto-set if currently blank
+            if (mother != null) {
+                val motherIdentifier = mother.name?.takeIf { it.isNotBlank() } ?: mother.tagNumber ?: ""
+                if (motherIdentifier.isNotBlank()) {
+                    val birthYear = _uiState.value.birthDate?.year?.toString() ?: LocalDate.now().year.toString()
+                    newCalfName = "$motherIdentifier $birthYear"
+                }
+            } else {
+                 // Mother deselected and calf name was blank, so ensure newCalfName is blank
+                newCalfName = ""
             }
         }
+        // If calfName was not blank, newCalfName remains as the original _uiState.value.calfName
 
         _uiState.value = _uiState.value.copy(
             motherId = motherId,
@@ -93,7 +116,7 @@ class AddBirthViewModel(
     }
     
     fun updateCalfTagColor(tagColor: String) {
-        _uiState.value = _uiState.value.copy(calfTagColor = tagColor) // Corrected field name
+        _uiState.value = _uiState.value.copy(calfTagColor = tagColor)
     }
     
     fun updateCalfColorMarkings(colorMarkings: String) {
@@ -115,7 +138,7 @@ class AddBirthViewModel(
                 _uiState.value = state.copy(error = "Please select a mother")
                 return@launch
             }
-            if (state.birthDate == null) {
+            if (state.birthDate == null) { 
                 _uiState.value = state.copy(error = "Please select a birth date")
                 return@launch
             }
