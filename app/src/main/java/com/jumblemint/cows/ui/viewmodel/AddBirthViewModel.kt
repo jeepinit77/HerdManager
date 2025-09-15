@@ -4,20 +4,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
-import com.jumblemint.cows.auth.AuthService // Corrected import
-import com.jumblemint.cows.sync.SyncService // Correct import
+import com.jumblemint.cows.auth.AuthService
+import com.jumblemint.cows.sync.SyncService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.util.UUID // Added import
+import java.util.UUID
 
 class AddBirthViewModel(
     private val repository: CattleRepository,
-    private val authService: AuthService,      // Added dependency
-    private val syncService: SyncService       // Added dependency
+    private val authService: AuthService,
+    private val syncService: SyncService
 ) : ViewModel() {
     
     private val _uiState = MutableStateFlow(AddBirthUiState())
@@ -31,7 +31,6 @@ class AddBirthViewModel(
         viewModelScope.launch {
             try {
                 val tagColors = repository.getAllTagColors().first().map { it.name }
-
                 val mothers = repository.getActiveFemales().first()
                 val fathers = repository.getActiveMales().first()
                 
@@ -56,9 +55,20 @@ class AddBirthViewModel(
     
     fun updateMother(motherId: Long?) {
         val mother = _uiState.value.availableMothers.find { it.id == motherId }
+        var newCalfName = _uiState.value.calfName // Preserve existing name if mother is deselected or not found
+
+        if (mother != null) {
+            val motherIdentifier = mother.name?.takeIf { it.isNotBlank() } ?: mother.tagNumber ?: ""
+            if (motherIdentifier.isNotBlank()) { // Only update if we have a valid mother identifier
+                val currentYear = LocalDate.now().year.toString()
+                newCalfName = "$motherIdentifier $currentYear"
+            }
+        }
+
         _uiState.value = _uiState.value.copy(
             motherId = motherId,
-            motherName = mother?.name
+            motherName = mother?.name, 
+            calfName = newCalfName
         )
     }
     
@@ -83,7 +93,7 @@ class AddBirthViewModel(
     }
     
     fun updateCalfTagColor(tagColor: String) {
-        _uiState.value = _uiState.value.copy(calfTagColor = tagColor)
+        _uiState.value = _uiState.value.copy(calfTagColor = tagColor) // Corrected field name
     }
     
     fun updateCalfColorMarkings(colorMarkings: String) {
@@ -101,7 +111,6 @@ class AddBirthViewModel(
             }
             val currentUserId = currentUser.uid
 
-            // Validation
             if (state.motherId == null) {
                 _uiState.value = state.copy(error = "Please select a mother")
                 return@launch
@@ -116,7 +125,7 @@ class AddBirthViewModel(
                 val selectedMother = state.availableMothers.find { it.id == state.motherId }
 
                 val newCalf = Cow(
-                    id = 0L, // Room will auto-generate this
+                    id = 0L, 
                     name = state.calfName.takeIf { it.isNotBlank() },
                     tagNumber = state.calfTagNumber.takeIf { it.isNotBlank() },
                     tagColor = state.calfTagColor.takeIf { it.isNotBlank() },
@@ -127,12 +136,12 @@ class AddBirthViewModel(
                     motherId = state.motherId,
                     fatherId = state.fatherId,
                     status = Status.ACTIVE,
-                    pastureId = selectedMother?.pastureId, // Calf starts in mother's pasture, or null
+                    pastureId = selectedMother?.pastureId,
                     photos = emptyList(),
                     isWatched = false,
                     createdAt = LocalDate.now(),
                     updatedAt = LocalDate.now(),
-                    herdId = selectedMother?.herdId, // Calf belongs to mother's herd
+                    herdId = selectedMother?.herdId,
                     firestoreId = newFirestoreId,
                     lastSyncAt = 0L,
                     isDeleted = false,
@@ -143,8 +152,7 @@ class AddBirthViewModel(
                 repository.insertCow(newCalf)
 
                 if (!currentUser.isLocalUser) {
-                    // Pass the newCalf itself, which already has the firestoreId set
-                    syncService.syncItemImmediately(currentUserId, newCalf) 
+                    syncService.syncItemImmediately(currentUserId, newCalf)
                         .onFailure {
                              _uiState.value = state.copy(error = "Failed to sync new calf: ${it.message}")
                              println("Error immediately syncing new calf: ${it.message}")

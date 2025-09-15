@@ -5,16 +5,22 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Save // Specific import for Save
-import androidx.compose.material.icons.outlined.Info // <<< IMPORT ADDED FOR OUTLINED INFO ICON
+import androidx.compose.material.icons.filled.Save
+// import androidx.compose.material.icons.outlined.Lightbulb // Removed, using WobblingLightbulbIcon
+import com.jumblemint.cows.data.preferences.TipsManager // Added for coaching tips
+import com.jumblemint.cows.ui.components.TipOverlay // Added for coaching tips
+import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Added for coaching tips
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+// import androidx.compose.ui.unit.sp // Removed if not used by other text elements
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
@@ -24,7 +30,6 @@ import com.jumblemint.cows.ui.components.DatePickerField
 import com.jumblemint.cows.ui.components.DropdownField
 import com.jumblemint.cows.ui.viewmodel.AddBirthViewModel
 import com.jumblemint.cows.ui.viewmodel.AddBirthViewModelFactory
-// import java.time.LocalDate // <<< REMOVED UNUSED IMPORT
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,7 +79,7 @@ fun AddBirthScreen(
                 title = { Text("Record Birth") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back") // Changed to Filled
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -82,7 +87,7 @@ fun AddBirthScreen(
                         onClick = { viewModel.recordBirth() },
                         enabled = !uiState.isLoading && uiState.motherId != null
                     ) {
-                        Icon(Icons.Filled.Save, contentDescription = "Save Birth Record") // Changed to Filled
+                        Icon(Icons.Filled.Save, contentDescription = "Save Birth Record")
                     }
                 }
             )
@@ -106,6 +111,36 @@ fun AddBirthScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
+                // Coaching Tip System Integration
+                val tipsManager = remember { TipsManager(context) }
+                val tipId = "add_birth_screen_info_tip" // Unique ID for this tip
+                val tipIconVisible by tipsManager.isTipVisible(tipId).collectAsState(initial = true)
+                var showTipOverlay by remember { mutableStateOf(false) }
+
+                if (tipIconVisible) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp), // Added padding
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { showTipOverlay = true }) {
+                            WobblingLightbulbIcon()
+                        }
+                    }
+                }
+
+                if (showTipOverlay) {
+                    TipOverlay(
+                        tipId = tipId,
+                        tipText = "• Calves are auto assigned to the same pasture as the mother.\n" +
+                                  "• Birth activity will be recorded for calf.\n" +
+                                  "• Calved activity will be recorded for cow.",
+                        onClosed = { showTipOverlay = false },
+                        tipsManager = tipsManager
+                    )
+                }
+                // End of Coaching Tip System Integration
+
                 // Birth Details Card
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(
@@ -158,20 +193,68 @@ fun AddBirthScreen(
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
+
+                        var calfNameTfv by remember { mutableStateOf(TextFieldValue(uiState.calfName)) }
+
+                        LaunchedEffect(uiState.calfName) {
+                            if (calfNameTfv.text != uiState.calfName) {
+                                calfNameTfv = TextFieldValue(
+                                    text = uiState.calfName,
+                                    selection = TextRange(uiState.calfName.length)
+                                )
+                            }
+                        }
+
                         OutlinedTextField(
-                            value = uiState.calfName,
-                            onValueChange = viewModel::updateCalfName,
+                            value = calfNameTfv,
+                            onValueChange = { newValue ->
+                                calfNameTfv = newValue
+                                viewModel.updateCalfName(newValue.text)
+                            },
                             label = { Text("Calf Name (Optional)") },
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onFocusChanged {
+                                    if (it.isFocused) {
+                                        calfNameTfv = calfNameTfv.copy(
+                                            selection = TextRange(0, calfNameTfv.text.length)
+                                        )
+                                    }
+                                },
                             singleLine = true
                         )
-                        DropdownField(
-                            value = uiState.calfGender.name,
-                            onValueChange = { viewModel.updateCalfGender(Gender.valueOf(it)) },
-                            label = "Calf Gender",
-                            options = Gender.entries.map { it.name },
-                            modifier = Modifier.fillMaxWidth()
+                        
+                        Text(
+                            text = "Calf Gender", 
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 4.dp)
                         )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Gender.entries.forEach { genderOption ->
+                                val isSelected = uiState.calfGender == genderOption
+                                OutlinedButton(
+                                    onClick = { viewModel.updateCalfGender(genderOption) },
+                                    modifier = Modifier.weight(1f),
+                                    shape = MaterialTheme.shapes.medium,
+                                    colors = if (isSelected) {
+                                        ButtonDefaults.buttonColors(
+                                            containerColor = MaterialTheme.colorScheme.primary,
+                                            contentColor = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    } else {
+                                        ButtonDefaults.outlinedButtonColors()
+                                    },
+                                    border = if (isSelected) null else ButtonDefaults.outlinedButtonBorder
+                                ) {
+                                    Text(text = genderOption.name.lowercase().replaceFirstChar { it.titlecase() })
+                                }
+                            }
+                        }
+                        
                         OutlinedTextField(
                             value = uiState.calfTagNumber,
                             onValueChange = viewModel::updateCalfTagNumber,
@@ -197,43 +280,6 @@ fun AddBirthScreen(
                     }
                 }
 
-                // Information Card
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
-                ) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Outlined.Info, // <<< CORRECTED ICON REFERENCE
-                                contentDescription = null, 
-                                tint = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Important Information",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                        Text(
-                            text = "• The calf will be automatically assigned to the 'Calf Pasture' (if it exists, otherwise unassigned).\n" +
-                                   "• Birth activities will be recorded for both the mother and the calf.\n" +
-                                   "• The calf's classification will be set to 'CALF'.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer,
-                            lineHeight = 20.sp
-                        )
-                    }
-                }
-
-                // Error message display
                 uiState.error?.let { error ->
                     Card(
                         modifier = Modifier.fillMaxWidth(),
