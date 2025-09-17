@@ -1,5 +1,6 @@
 package com.jumblemint.cows.ui.theme
 
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.jumblemint.cows.data.model.Settings
@@ -28,6 +29,8 @@ data class CustomColors(
     val cardBackgroundLight: Color = Color(0xFFE8E8E8),
     val cardBackgroundDark: Color = Color(0xFF2C2B2F)
 )
+
+val LocalCustomColors = staticCompositionLocalOf { CustomColors() }
 
 enum class PresetTheme(val displayName: String) {
     DEFAULT("Default"),
