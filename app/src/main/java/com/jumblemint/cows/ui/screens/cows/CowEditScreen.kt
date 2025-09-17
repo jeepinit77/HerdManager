@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -17,9 +20,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -77,27 +83,101 @@ fun CowEditScreen(
     val pagerState = rememberPagerState { tabTitles.size }
     val scope = rememberCoroutineScope()
 
+    // Focus/scroll helpers for error focusing
+    val nameFocusRequester = remember { FocusRequester() }
+    val tagFocusRequester = remember { FocusRequester() }
+    val genderBringRequester = remember { BringIntoViewRequester() }
+    val classificationBringRequester = remember { BringIntoViewRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+
     LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
         if (!pagerState.isScrollInProgress) {
             selectedTabIndex = pagerState.currentPage
         }
     }
 
+    // React to a Save attempt: mark attempted, and navigate to the first tab with errors
+    LaunchedEffect(viewModel) {
+        viewModel.saveAttemptSignal.collect {
+            saveAttempted = true
+            val current = uiState
+            val missingOnProfile = (current.name.isBlank() && current.tagNumber.isBlank()) ||
+                    (current.gender == null) ||
+                    (current.classification == null)
+
+            if (missingOnProfile) {
+                // Errors are on the Profile tab (index 0).
+                if (selectedTabIndex != 0) {
+                    // Not currently on the Profile tab. Switch to it.
+                    selectedTabIndex = 0 // Update TabRow indicator
+                    scope.launch {
+                        pagerState.animateScrollToPage(0) // Wait for scroll to complete
+                        // Now that the Profile tab (page 0) is visible, request focus.
+                        when {
+                            current.name.isBlank() && current.tagNumber.isBlank() -> {
+                                nameFocusRequester.requestFocus()
+                                keyboardController?.show()
+                            }
+                            current.gender == null -> {
+                                genderBringRequester.bringIntoView()
+                            }
+                            current.classification == null -> {
+                                classificationBringRequester.bringIntoView()
+                            }
+                        }
+                    }
+                } else {
+                    // Already on the Profile tab. Just handle focus/bringIntoView.
+                    scope.launch {
+                        when {
+                            current.name.isBlank() && current.tagNumber.isBlank() -> {
+                                nameFocusRequester.requestFocus()
+                                keyboardController?.show()
+                            }
+                            current.gender == null -> {
+                                genderBringRequester.bringIntoView()
+                            }
+                            current.classification == null -> {
+                                classificationBringRequester.bringIntoView()
+                            }
+                        }
+                    }
+                }
+            }
+            // Add handling for errors on other tabs here if needed.
+        }
+    }
+
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        if (uiState.error != null && saveAttempted) {
+        // Build a list of validation errors to show all at once
+        val validationErrors = if (saveAttempted) {
+            buildList {
+                if (uiState.name.isBlank() && uiState.tagNumber.isBlank()) add("Please enter a Name or a Tag Number.")
+                if (uiState.gender == null) add("Please select a Gender.")
+                if (uiState.classification == null) add("Please select a Classification.")
+            }
+        } else emptyList()
+        if (validationErrors.isNotEmpty() || uiState.error != null) {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
             ) {
-                Text(
-                    text = uiState.error ?: "An unknown error occurred.",
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.padding(16.dp)
-                )
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    if (validationErrors.isNotEmpty()) {
+                        validationErrors.forEach { msg ->
+                            Text(text = "• $msg", color = MaterialTheme.colorScheme.onErrorContainer)
+                        }
+                    } else {
+                        Text(
+                            text = uiState.error ?: "An unknown error occurred.",
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
             }
         }
 
@@ -106,6 +186,11 @@ fun CowEditScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             tabTitles.forEachIndexed { index, title ->
+                val profileHasError = saveAttempted && (
+                    (uiState.name.isBlank() && uiState.tagNumber.isBlank()) ||
+                    uiState.gender == null ||
+                    uiState.classification == null
+                )
                 Tab(
                     selected = selectedTabIndex == index,
                     onClick = { 
@@ -115,7 +200,20 @@ fun CowEditScreen(
                         }
                         saveAttempted = false 
                     },
-                    text = { Text(title) }
+                    text = {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(title)
+                            if (index == 0 && profileHasError) {
+                                Spacer(Modifier.height(2.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(6.dp)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.error)
+                                )
+                            }
+                        }
+                    }
                 )
             }
         }
@@ -134,7 +232,16 @@ fun CowEditScreen(
                     .padding(horizontal = 16.dp, vertical = 16.dp) 
             ) {
                 when (page) {
-                    0 -> ProfileTabContent(viewModel, uiState, tagColorMap, saveAttempted)
+                    0 -> ProfileTabContent(
+                        viewModel = viewModel,
+                        uiState = uiState,
+                        tagColorMap = tagColorMap,
+                        saveAttempted = saveAttempted,
+                        nameFocusRequester = nameFocusRequester,
+                        tagFocusRequester = tagFocusRequester,
+                        genderBringRequester = genderBringRequester,
+                        classificationBringRequester = classificationBringRequester
+                    )
                     1 -> PedigreeTabContent(viewModel, uiState)
                     2 -> ManagementTabContent(viewModel, uiState)
                 }
@@ -143,14 +250,19 @@ fun CowEditScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 private fun ProfileTabContent(
     viewModel: CowDetailViewModel,
     uiState: CowDetailUiState,
     tagColorMap: Map<String, Color>,
-    saveAttempted: Boolean
-) {
+    saveAttempted: Boolean,
+    nameFocusRequester: FocusRequester,
+    tagFocusRequester: FocusRequester,
+    genderBringRequester: BringIntoViewRequester,
+    classificationBringRequester: BringIntoViewRequester
+)
+{
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Identification", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         val fieldsBlankError = saveAttempted && uiState.name.isBlank() && uiState.tagNumber.isBlank()
@@ -167,7 +279,9 @@ private fun ProfileTabContent(
                     value = uiState.name,
                     onValueChange = viewModel::updateName,
                     label = { Text("Name*") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(nameFocusRequester),
                     isError = fieldsBlankError,
                     supportingText = if (fieldsBlankError && uiState.tagNumber.isBlank()) { 
                         { Text("Name or Tag Number must be provided.") } 
@@ -182,7 +296,9 @@ private fun ProfileTabContent(
                         value = uiState.tagNumber,
                         onValueChange = viewModel::updateTagNumber,
                         label = { Text("Tag Number*") },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusRequester(tagFocusRequester),
                         enabled = !uiState.isNameTagLinked,
                         isError = fieldsBlankError,
                         supportingText = null, 
@@ -274,7 +390,10 @@ private fun ProfileTabContent(
         )
 
         Text("Gender*", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 8.dp))
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        SingleChoiceSegmentedButtonRow(modifier = Modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(genderBringRequester)
+        ) {
             Gender.entries.forEachIndexed { index, genderOption ->
                 SegmentedButton(
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = Gender.entries.size),
@@ -289,6 +408,14 @@ private fun ProfileTabContent(
                 }
             }
         }
+        if (saveAttempted && uiState.gender == null) {
+            Text(
+                text = "Please select a Gender.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+            )
+        }
 
         Text("Type*", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 8.dp))
         val availableClassifications = remember(uiState.gender) {
@@ -301,7 +428,10 @@ private fun ProfileTabContent(
         }
 
         if (availableClassifications.isNotEmpty()) {
-            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            SingleChoiceSegmentedButtonRow(modifier = Modifier
+                .fillMaxWidth()
+                .bringIntoViewRequester(classificationBringRequester)
+            ) {
                 availableClassifications.forEachIndexed { index, classificationOption ->
                     SegmentedButton(
                         shape = SegmentedButtonDefaults.itemShape(index = index, count = availableClassifications.size),
@@ -321,6 +451,14 @@ private fun ProfileTabContent(
                 "Select a gender to see types", 
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(start = 8.dp, top = 4.dp, bottom = 4.dp)
+            )
+        }
+        if (saveAttempted && uiState.classification == null) {
+            Text(
+                text = "Please select a Classification.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(start = 8.dp, top = 4.dp)
             )
         }
 

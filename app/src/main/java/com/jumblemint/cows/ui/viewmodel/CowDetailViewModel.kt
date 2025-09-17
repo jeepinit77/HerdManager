@@ -59,7 +59,8 @@ class CowDetailViewModel(
     private val _uiState = MutableStateFlow(CowDetailUiState())
     val uiState: StateFlow<CowDetailUiState> = _uiState.asStateFlow()
 
-    private val _saveAttemptSignal = MutableSharedFlow<Unit>() // No replay needed, fires once per attempt
+    // Buffer 1 event to avoid losing the save-attempt signal if UI hasn't started collecting yet
+    private val _saveAttemptSignal = MutableSharedFlow<Unit>(replay = 0, extraBufferCapacity = 1)
     val saveAttemptSignal: SharedFlow<Unit> = _saveAttemptSignal.asSharedFlow()
 
     private object PreferencesKeys {
