@@ -3,6 +3,7 @@ package com.jumblemint.cows.ui.screens.cows
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -20,11 +21,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -41,6 +44,8 @@ import com.jumblemint.cows.ui.components.DatePickerField
 import com.jumblemint.cows.ui.components.DropdownField
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
+import com.jumblemint.cows.ui.theme.CustomColors
+import com.jumblemint.cows.ui.theme.ThemeManager
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.CowDetailUiState
@@ -64,6 +69,10 @@ fun CowEditScreen(
             database.activityTypeConfigDao(), database.breedDao()
         )
     }
+    val themeManager = remember { ThemeManager(repository) }
+    val customColors by themeManager.getCustomColors().collectAsState(initial = CustomColors())
+    val isDarkTheme = isSystemInDarkTheme()
+
     val viewModel: CowDetailViewModel = viewModel(
         factory = CowDetailViewModelFactory(application, repository, cowId)
     )
@@ -100,10 +109,11 @@ fun CowEditScreen(
     LaunchedEffect(viewModel) {
         viewModel.saveAttemptSignal.collect {
             saveAttempted = true
-            val current = uiState
-            val missingOnProfile = (current.name.isBlank() && current.tagNumber.isBlank()) ||
-                    (current.gender == null) ||
-                    (current.classification == null)
+            // Use the uiState captured at the moment of the signal for initial error check
+            val uiStateAtSignalTime = uiState 
+            val missingOnProfile = (uiStateAtSignalTime.name.isBlank() && uiStateAtSignalTime.tagNumber.isBlank()) ||
+                    (uiStateAtSignalTime.gender == null) ||
+                    (uiStateAtSignalTime.classification == null)
 
             if (missingOnProfile) {
                 // Errors are on the Profile tab (index 0).
@@ -112,32 +122,34 @@ fun CowEditScreen(
                     selectedTabIndex = 0 // Update TabRow indicator
                     scope.launch {
                         pagerState.animateScrollToPage(0) // Wait for scroll to complete
-                        // Now that the Profile tab (page 0) is visible, request focus.
+                        // Now that the Profile tab (page 0) is visible, request focus based on LATEST uiState.
+                        val latestUiState = viewModel.uiState.value
                         when {
-                            current.name.isBlank() && current.tagNumber.isBlank() -> {
+                            latestUiState.name.isBlank() && latestUiState.tagNumber.isBlank() -> {
                                 nameFocusRequester.requestFocus()
                                 keyboardController?.show()
                             }
-                            current.gender == null -> {
+                            latestUiState.gender == null -> {
                                 genderBringRequester.bringIntoView()
                             }
-                            current.classification == null -> {
+                            latestUiState.classification == null -> {
                                 classificationBringRequester.bringIntoView()
                             }
                         }
                     }
                 } else {
-                    // Already on the Profile tab. Just handle focus/bringIntoView.
+                    // Already on the Profile tab. Just handle focus/bringIntoView based on LATEST uiState.
                     scope.launch {
+                        val latestUiState = viewModel.uiState.value
                         when {
-                            current.name.isBlank() && current.tagNumber.isBlank() -> {
+                            latestUiState.name.isBlank() && latestUiState.tagNumber.isBlank() -> {
                                 nameFocusRequester.requestFocus()
                                 keyboardController?.show()
                             }
-                            current.gender == null -> {
+                            latestUiState.gender == null -> {
                                 genderBringRequester.bringIntoView()
                             }
-                            current.classification == null -> {
+                            latestUiState.classification == null -> {
                                 classificationBringRequester.bringIntoView()
                             }
                         }
@@ -240,7 +252,9 @@ fun CowEditScreen(
                         nameFocusRequester = nameFocusRequester,
                         tagFocusRequester = tagFocusRequester,
                         genderBringRequester = genderBringRequester,
-                        classificationBringRequester = classificationBringRequester
+                        classificationBringRequester = classificationBringRequester,
+                        customColors = customColors,
+                        isDarkTheme = isDarkTheme
                     )
                     1 -> PedigreeTabContent(viewModel, uiState)
                     2 -> ManagementTabContent(viewModel, uiState)
@@ -260,9 +274,14 @@ private fun ProfileTabContent(
     nameFocusRequester: FocusRequester,
     tagFocusRequester: FocusRequester,
     genderBringRequester: BringIntoViewRequester,
-    classificationBringRequester: BringIntoViewRequester
+    classificationBringRequester: BringIntoViewRequester,
+    customColors: CustomColors, 
+    isDarkTheme: Boolean
 )
 {
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Identification", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         val fieldsBlankError = saveAttempted && uiState.name.isBlank() && uiState.tagNumber.isBlank()
@@ -372,7 +391,11 @@ private fun ProfileTabContent(
 
         DropdownField(
             value = uiState.tagColor ?: "",
-            onValueChange = viewModel::updateTagColor,
+            onValueChange = { 
+                viewModel.updateTagColor(it)
+                keyboardController?.hide()
+                focusManager.clearFocus()
+            },
             label = "Tag Color", 
             options = uiState.tagColors,
             modifier = Modifier.fillMaxWidth(),
@@ -384,7 +407,11 @@ private fun ProfileTabContent(
 
         DatePickerField(
             value = uiState.birthDate,
-            onValueChange = viewModel::updateBirthDate,
+            onValueChange = {
+                viewModel.updateBirthDate(it)
+                keyboardController?.hide()
+                focusManager.clearFocus()
+            },
             label = "Birth Date", // Removed asterisk
             modifier = Modifier.fillMaxWidth()
         )
@@ -395,13 +422,27 @@ private fun ProfileTabContent(
             .bringIntoViewRequester(genderBringRequester)
         ) {
             Gender.entries.forEachIndexed { index, genderOption ->
+                val currentActiveContainerColor = when (genderOption) {
+                    Gender.MALE -> if (isDarkTheme) customColors.maleColorDark else customColors.maleColorLight
+                    Gender.FEMALE -> if (isDarkTheme) customColors.femaleColorDark else customColors.femaleColorLight
+                    Gender.TBD -> if (isDarkTheme) customColors.tbdColorDark else customColors.tbdColorLight
+                }
+                val currentActiveContentColor = when (genderOption) {
+                    Gender.MALE -> if (isDarkTheme) Color.Black else Color.White
+                    Gender.FEMALE -> if (isDarkTheme) Color.Black else Color.White
+                    Gender.TBD -> if (isDarkTheme) Color.Black else Color.White
+                }
                 SegmentedButton(
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = Gender.entries.size),
-                    onClick = { viewModel.updateGender(genderOption) },
+                    onClick = { 
+                        viewModel.updateGender(genderOption)
+                        keyboardController?.hide()
+                        focusManager.clearFocus()
+                    },
                     selected = uiState.gender == genderOption,
                     colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = MaterialTheme.colorScheme.primary,
-                        activeContentColor = MaterialTheme.colorScheme.onPrimary
+                        activeContainerColor = currentActiveContainerColor,
+                        activeContentColor = currentActiveContentColor
                     )
                 ) {
                     Text(text = genderOption.name.lowercase().replaceFirstChar { it.titlecase() })
@@ -428,6 +469,17 @@ private fun ProfileTabContent(
         }
 
         if (availableClassifications.isNotEmpty()) {
+            val classificationActiveContainerColor = when (uiState.gender) {
+                Gender.MALE -> if (isDarkTheme) customColors.maleColorDark else customColors.maleColorLight
+                Gender.FEMALE -> if (isDarkTheme) customColors.femaleColorDark else customColors.femaleColorLight
+                else -> if (isDarkTheme) customColors.tbdColorDark else customColors.tbdColorLight
+            }
+            val classificationActiveContentColor = when (uiState.gender) {
+                Gender.MALE -> if (isDarkTheme) Color.Black else Color.White
+                Gender.FEMALE -> if (isDarkTheme) Color.Black else Color.White
+                else -> if (isDarkTheme) Color.Black else Color.White
+            }
+
             SingleChoiceSegmentedButtonRow(modifier = Modifier
                 .fillMaxWidth()
                 .bringIntoViewRequester(classificationBringRequester)
@@ -435,11 +487,15 @@ private fun ProfileTabContent(
                 availableClassifications.forEachIndexed { index, classificationOption ->
                     SegmentedButton(
                         shape = SegmentedButtonDefaults.itemShape(index = index, count = availableClassifications.size),
-                        onClick = { viewModel.updateClassification(classificationOption) },
+                        onClick = { 
+                            viewModel.updateClassification(classificationOption)
+                            keyboardController?.hide()
+                            focusManager.clearFocus()
+                        },
                         selected = uiState.classification == classificationOption,
                         colors = SegmentedButtonDefaults.colors(
-                            activeContainerColor = MaterialTheme.colorScheme.primary,
-                            activeContentColor = MaterialTheme.colorScheme.onPrimary
+                            activeContainerColor = classificationActiveContainerColor,
+                            activeContentColor = classificationActiveContentColor
                         )
                     ) {
                         Text(text = classificationOption.name.lowercase().replaceFirstChar { it.titlecase() })

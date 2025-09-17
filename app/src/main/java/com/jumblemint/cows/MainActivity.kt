@@ -169,9 +169,9 @@ fun CattleManagerApp() {
                         TopAppBarWithMenu(currentScreenForUI, { navController.navigate(Screen.Settings.route) }, navController)
                     } else if (showSimpleTopAppBar) {
                         SimpleTopAppBar(
-                            title = if (topAppBarController.title.isNotEmpty()) topAppBarController.title else (currentScreenForUI?.title ?: "Cattle Manager"),
+                            title = if (topAppBarController.overrideActive && topAppBarController.title.isNotEmpty()) topAppBarController.title else (currentScreenForUI?.title ?: "Cattle Manager"),
                             onBack = { navController.popBackStack() },
-                            actions = topAppBarController.actions
+                            actions = if (topAppBarController.overrideActive) topAppBarController.actions else TopAppBarActions()
                         )
                     }
                 },

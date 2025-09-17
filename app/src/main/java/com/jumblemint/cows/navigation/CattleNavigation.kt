@@ -359,6 +359,11 @@ fun CattleNavigation(
         }
 
         composable(Screen.Settings.route) {
+            // Ensure top app bar shows correct title/actions when on Settings
+            LaunchedEffect(Unit) {
+                topAppBarController.updateTitle("Settings")
+                topAppBarController.updateActions(TopAppBarActions())
+            }
             SettingsScreen(
                 modifier = screenModifierWithPadding,
                 onNavigateBack = { navController.popBackStack() },
@@ -489,6 +494,11 @@ fun CattleNavigation(
                 factory = PasturesViewModelFactory(applicationContext, repository)
             )
             
+            // Set top app bar for Add Pasture overlay
+            LaunchedEffect(Unit) {
+                topAppBarController.updateTitle("Add Pasture")
+                topAppBarController.updateActions(TopAppBarActions())
+            }
             AddPastureScreen(
                 modifier = screenModifierWithPadding,
                 onAddPasture = { pasture ->
@@ -537,6 +547,11 @@ fun CattleNavigation(
             
             val pasture by repository.getPastureById(pastureId).collectAsState(initial = null)
             
+            // Set top app bar for Edit Pasture overlay
+            LaunchedEffect(pasture?.id) {
+                topAppBarController.updateTitle("Edit Pasture")
+                topAppBarController.updateActions(TopAppBarActions())
+            }
             AddPastureScreen(
                 modifier = screenModifierWithPadding,
                 editPasture = pasture,
