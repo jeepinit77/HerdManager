@@ -20,6 +20,7 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModel
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
 import com.jumblemint.cows.ui.theme.getCardColors
+import com.jumblemint.cows.util.AgeRangeKeys // Import the centralized keys
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,7 +60,6 @@ fun ReportsScreen(
 
     Scaffold(
         modifier = modifier,
-        // snackbarHost has been removed
         contentWindowInsets = WindowInsets(0, 0, 0, 0)
     ) { paddingValues ->
         if (uiState.isLoading) {
@@ -152,8 +152,6 @@ fun ClickableStatItem(label: String, count: Int, color: androidx.compose.ui.grap
     }
 }
 
-// WobbleTextHint composable has been removed
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClassificationBreakdownCard(classifications: Map<String, Int>, onRowClick: (String) -> Unit) {
@@ -222,10 +220,10 @@ fun AgeBasedReportsCard(under1Year: Int, between1And5Years: Int, between5And10Ye
             val ageGroups = listOf("Under 1 year" to under1Year, "1-5 years" to between1And5Years, "5-10 years" to between5And10Years, "Over 10 years" to over10Years)
             ageGroups.forEach { (ageGroup, count) ->
                 val key = when (ageGroup) {
-                    "Under 1 year" -> "UNDER_1"
-                    "1-5 years" -> "1_5"
-                    "5-10 years" -> "5_10"
-                    else -> "10_PLUS"
+                    "Under 1 year" -> AgeRangeKeys.LEGACY_UNDER_1
+                    "1-5 years" -> AgeRangeKeys.LEGACY_1_5
+                    "5-10 years" -> AgeRangeKeys.LEGACY_5_10
+                    else -> AgeRangeKeys.LEGACY_10_PLUS
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth().clickable { onRowClick(key) }.padding(vertical = 8.dp, horizontal = 4.dp),
