@@ -1,23 +1,19 @@
 package com.jumblemint.cows.ui.screens.cows
 
 import android.app.Application // Required for ViewModelFactory
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-// import androidx.compose.foundation.lazy.LazyRow // No longer needed by FilterSection
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Clear
-// import androidx.compose.material.icons.filled.Check // No longer needed by FilterSection
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
@@ -45,7 +41,7 @@ import java.util.Locale
 fun CowListScreen(
     type: String? = null,
     value: String? = null,
-    pastureId: Long? = null, // This might be String according to Cow.pastureId
+    pastureId: String? = null, // Changed from Long? based on Cow.kt
     onCowClick: (Long) -> Unit,
     onCowEdit: ((Long) -> Unit)? = null,
     onAddCowClick: (() -> Unit)? = null,
@@ -118,12 +114,12 @@ fun CowListScreen(
                     }
                 }
                 "classification" -> active.filter { it.classification.name == value }
-                "pasture" -> active.filter { it.pastureId == value } // Assuming value is String or null
+                "pasture" -> active.filter { it.pastureId == value } 
                 "pastureName" -> {
                     if (value == "Unassigned") {
                         active.filter { it.pastureId == null }
                     } else {
-                        active // Needs refinement as in original
+                        active 
                     }
                 }
                 "unassigned" -> active.filter { it.pastureId == null }
@@ -171,12 +167,7 @@ fun CowListScreen(
                 newTitle = value?.let { "Classification: $it" } ?: "Cows by Classification"
             }
             "pasture" -> {
-                if (value != null) {
-                     // Assuming value is pasture Name, not ID here for title consistency with pastureName type
-                    newTitle = "Pasture: $value"
-                } else {
-                    newTitle = "Cows by Pasture"
-                }
+                newTitle = value?.let { "Pasture: $it" } ?: "Cows by Pasture"
             }
             "pastureName" -> { 
                 newTitle = if (value == "Unassigned") {
@@ -210,49 +201,78 @@ fun CowListScreen(
     }
 
     if (showSearchAndFilters && cowsViewModel != null && cowsUiState?.value != null) {
+        val currentUiState = cowsUiState.value
         if (showAnimalFilterSheet) {
             AnimalFilterScreen(
                 initialFilterState = AnimalFilterState(
-                    searchTerm = cowsUiState.value.searchQuery,
-                    classifications = cowsUiState.value.selectedClassifications.toList(),
-                    gender = cowsUiState.value.selectedGenders.firstOrNull(),
-                    pasture = cowsUiState.value.selectedPastures.firstOrNull()
+                    searchTerm = currentUiState.searchQuery,
+                    classifications = currentUiState.selectedClassifications.toList(),
+                    genders = currentUiState.selectedGenders.toList(),
+                    pastures = currentUiState.selectedPastures.toList(),
+                    breeds = currentUiState.selectedBreeds.toList(), // Assuming selectedBreeds exists in UiState
+                    statuses = currentUiState.selectedStatuses.toList()
                 ),
-                availablePastures = cowsUiState.value.availablePastures,
+                availablePastures = currentUiState.availablePastures,
+                availableBreeds = currentUiState.availableBreeds, // Assuming availableBreeds exists in UiState
                 onApplyFilters = { newState ->
                     cowsViewModel.updateSearchQuery(newState.searchTerm)
 
-                    val currentVmGenders = cowsUiState.value.selectedGenders
-                    if (newState.gender == null) { // "Any Gender" selected
-                        currentVmGenders.forEach { cowsViewModel.toggleGenderFilter(it) }
-                    } else {
-                        currentVmGenders.forEach { if (it != newState.gender) cowsViewModel.toggleGenderFilter(it) }
-                        if (!currentVmGenders.contains(newState.gender)) {
-                            newState.gender?.let { cowsViewModel.toggleGenderFilter(it) }
+                    // Update Statuses
+                    val currentVmStatuses = currentUiState.selectedStatuses
+                    Status.entries.forEach { status ->
+                        val shouldBeSelected = newState.statuses.contains(status)
+                        if (currentVmStatuses.contains(status) != shouldBeSelected) {
+                            cowsViewModel.toggleStatusFilter(status)
                         }
                     }
 
-                    val currentVmClassifications = cowsUiState.value.selectedClassifications
-                    newState.classifications.forEach { classif ->
-                        if (!currentVmClassifications.contains(classif)) {
-                            cowsViewModel.toggleClassificationFilter(classif)
-                        }
-                    }
-                    currentVmClassifications.forEach { classif ->
-                        if (!newState.classifications.contains(classif)) {
-                            cowsViewModel.toggleClassificationFilter(classif)
+                    // Update Genders
+                    val currentVmGenders = currentUiState.selectedGenders
+                    Gender.entries.forEach { gender ->
+                        val shouldBeSelected = newState.genders.contains(gender)
+                        if (currentVmGenders.contains(gender) != shouldBeSelected) {
+                            cowsViewModel.toggleGenderFilter(gender)
                         }
                     }
 
-                    val currentVmPastures = cowsUiState.value.selectedPastures
-                    if (newState.pasture == null) { // "Any Pasture" selected
-                        currentVmPastures.forEach { cowsViewModel.togglePastureFilter(it) }
-                    } else {
-                        currentVmPastures.forEach { if (it != newState.pasture) cowsViewModel.togglePastureFilter(it) }
-                        if (!currentVmPastures.contains(newState.pasture)) {
-                            newState.pasture?.let { cowsViewModel.togglePastureFilter(it) }
+                    // Update Classifications
+                    val currentVmClassifications = currentUiState.selectedClassifications
+                    Classification.entries.forEach { classification ->
+                        val shouldBeSelected = newState.classifications.contains(classification)
+                        if (currentVmClassifications.contains(classification) != shouldBeSelected) {
+                            cowsViewModel.toggleClassificationFilter(classification)
                         }
                     }
+
+                    // Update Pastures
+                    val currentVmPastures = currentUiState.selectedPastures
+                    currentUiState.availablePastures.forEach { pasture -> // Iterate over available to cover all possibilities
+                        val shouldBeSelected = newState.pastures.contains(pasture)
+                        if (currentVmPastures.contains(pasture) != shouldBeSelected) {
+                            cowsViewModel.togglePastureFilter(pasture)
+                        }
+                    }
+                     // Handle any pastures in newState that might not be in availablePastures (if that's possible)
+                    newState.pastures.forEach { pasture ->
+                        if (!currentUiState.availablePastures.contains(pasture) && !currentVmPastures.contains(pasture)) {
+                             cowsViewModel.togglePastureFilter(pasture) // Add if not known and newly selected
+                        }
+                    }
+
+                    // Update Breeds
+                    val currentVmBreeds = currentUiState.selectedBreeds
+                    currentUiState.availableBreeds.forEach { breed ->
+                        val shouldBeSelected = newState.breeds.contains(breed)
+                        if (currentVmBreeds.contains(breed) != shouldBeSelected) {
+                            cowsViewModel.toggleBreedFilter(breed) // Assuming toggleBreedFilter exists
+                        }
+                    }
+                    newState.breeds.forEach { breed ->
+                        if (!currentUiState.availableBreeds.contains(breed) && !currentVmBreeds.contains(breed)) {
+                             cowsViewModel.toggleBreedFilter(breed) // Add if not known and newly selected
+                        }
+                    }
+
                     showAnimalFilterSheet = false
                 },
                 onDismiss = { showAnimalFilterSheet = false }
@@ -277,7 +297,7 @@ fun CowListScreen(
             CowListContent(
                 modifier = modifier.padding(paddingValues),
                 showSearchAndFilters = showSearchAndFilters,
-                onShowAnimalFilterSheet = { showAnimalFilterSheet = true }, // Updated here
+                onShowAnimalFilterSheet = { showAnimalFilterSheet = true },
                 cowsUiState = cowsUiState?.value,
                 cowsViewModel = cowsViewModel,
                 list = list,
@@ -293,7 +313,7 @@ fun CowListScreen(
         CowListContent(
             modifier = modifier,
             showSearchAndFilters = showSearchAndFilters,
-            onShowAnimalFilterSheet = { showAnimalFilterSheet = true }, // Updated here
+            onShowAnimalFilterSheet = { showAnimalFilterSheet = true }, 
             cowsUiState = cowsUiState?.value,
             cowsViewModel = cowsViewModel,
             list = list,
@@ -311,7 +331,7 @@ fun CowListScreen(
 private fun CowListContent(
     modifier: Modifier,
     showSearchAndFilters: Boolean,
-    onShowAnimalFilterSheet: () -> Unit, // Changed from onShowFiltersChange and showFilters
+    onShowAnimalFilterSheet: () -> Unit,
     cowsUiState: com.jumblemint.cows.ui.viewmodel.CowsUiState?,
     cowsViewModel: CowsViewModel?,
     list: List<Cow>,
@@ -329,7 +349,7 @@ private fun CowListContent(
     ) {
         if (showSearchAndFilters && cowsUiState != null && cowsViewModel != null) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp), // Added padding for the row
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -341,16 +361,16 @@ private fun CowListContent(
                     modifier = Modifier.weight(1f)
                 )
                 FilterChip(
-                    onClick = { onShowAnimalFilterSheet() }, // Changed here
+                    onClick = { onShowAnimalFilterSheet() },
                     label = {
-                        val activeFilterCount = getActiveFilterCount(cowsUiState) // This function should still work
+                        val activeFilterCount = getActiveFilterCount(cowsUiState)
                         if (activeFilterCount > 0) {
                             Text("($activeFilterCount)")
                         } else {
-                            Text("Filters") // Default text when no filters active
+                            Text("Filters")
                         }
                     },
-                    selected = hasActiveFilters(cowsUiState), // This function should still work
+                    selected = hasActiveFilters(cowsUiState),
                     leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") }
                 )
                 if (hasActiveFilters(cowsUiState)) {
@@ -359,7 +379,6 @@ private fun CowListContent(
                     }
                 }
             }
-            // Removed the old inline filter Card and FilterSection calls
             Spacer(modifier = Modifier.height(8.dp))
         }
         if (isLoading) {
@@ -408,28 +427,29 @@ private fun CowListContent(
     }
 }
 
-// hasActiveFilters and getActiveFilterCount should still work as they reflect the ViewModel's state.
 private fun hasActiveFilters(uiState: com.jumblemint.cows.ui.viewmodel.CowsUiState): Boolean {
-    // Consider if default status filter (ACTIVE) should count if user hasn't explicitly opened filters.
-    // For now, matching original logic.
     val hasNonDefaultStatus = uiState.selectedStatuses.isNotEmpty() && (uiState.selectedStatuses.size > 1 || !uiState.selectedStatuses.contains(Status.ACTIVE))
-    return hasNonDefaultStatus || uiState.selectedClassifications.isNotEmpty() || uiState.selectedGenders.isNotEmpty() || uiState.selectedPastures.isNotEmpty() || uiState.searchQuery.isNotBlank()
+    // Assuming selectedBreeds exists in uiState
+    return hasNonDefaultStatus || 
+           uiState.selectedClassifications.isNotEmpty() || 
+           uiState.selectedGenders.isNotEmpty() || 
+           uiState.selectedPastures.isNotEmpty() || 
+           uiState.selectedBreeds.isNotEmpty() || // Added selectedBreeds check
+           uiState.searchQuery.isNotBlank()
 }
 
 private fun getActiveFilterCount(uiState: com.jumblemint.cows.ui.viewmodel.CowsUiState): Int {
     var count = 0
-    // Count status if it's not just 'ACTIVE' or if it's empty (meaning user cleared it, which is a filter action)
     if (uiState.selectedStatuses.isNotEmpty() && (uiState.selectedStatuses.size > 1 || !uiState.selectedStatuses.contains(Status.ACTIVE))) {
         count++
     }
     if (uiState.selectedClassifications.isNotEmpty()) count++
     if (uiState.selectedGenders.isNotEmpty()) count++
     if (uiState.selectedPastures.isNotEmpty()) count++
+    if (uiState.selectedBreeds.isNotEmpty()) count++ // Added selectedBreeds count
     if (uiState.searchQuery.isNotBlank()) count++
     return count
 }
-
-// FilterSection composable is no longer used here.
 
 private fun filterByAgeGroup(active: List<Cow>, value: String?): List<Cow> {
     val today = LocalDate.now()

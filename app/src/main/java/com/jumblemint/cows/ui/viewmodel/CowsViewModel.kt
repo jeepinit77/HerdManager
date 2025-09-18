@@ -25,8 +25,6 @@ class CowsViewModel(
     
     init {
         loadCowsWithFilters()
-        // Note: Removed initializeDefaultData() call from ViewModel init
-        // Initialization should happen at app startup, not in ViewModels
     }
     
     private fun loadCowsWithFilters() {
@@ -37,21 +35,18 @@ class CowsViewModel(
                 _uiState // Add UI state to the combine so filtering reacts to state changes
             ) { allCows, pastures, currentState ->
                 val pastureNames = pastures.map { it.name }
+                val availableBreeds = allCows.mapNotNull { it.breed }.distinct().sorted()
                 
                 // Apply filters
                 val filteredCows = allCows.filter { cow ->
-                    // Status filter - always apply since we always have at least ACTIVE selected
                     val statusMatch = currentState.selectedStatuses.contains(cow.status)
                     
-                    // Classification filter
                     val classificationMatch = currentState.selectedClassifications.isEmpty() || 
                                             currentState.selectedClassifications.contains(cow.classification)
                     
-                    // Gender filter
                     val genderMatch = currentState.selectedGenders.isEmpty() || 
                                     currentState.selectedGenders.contains(cow.gender)
                     
-                    // Pasture filter
                     val pastureMatch = if (currentState.selectedPastures.isEmpty()) {
                         true
                     } else {
@@ -60,8 +55,10 @@ class CowsViewModel(
                         }
                         cowPastureName?.let { currentState.selectedPastures.contains(it) } ?: false
                     }
+
+                    val breedMatch = currentState.selectedBreeds.isEmpty() ||
+                                     cow.breed?.let { currentState.selectedBreeds.contains(it) } == true
                     
-                    // Search query filter
                     val searchMatch = if (currentState.searchQuery.isBlank()) {
                         true
                     } else {
@@ -69,26 +66,25 @@ class CowsViewModel(
                         (cow.name?.lowercase()?.contains(query) == true) ||
                         (cow.tagNumber?.lowercase()?.contains(query) == true) ||
                         cow.classification.name.lowercase().contains(query) ||
-                        cow.gender.name.lowercase().contains(query)
+                        cow.gender.name.lowercase().contains(query) ||
+                        (cow.breed?.lowercase()?.contains(query) == true)
                     }
                     
-                    statusMatch && classificationMatch && genderMatch && pastureMatch && searchMatch
+                    statusMatch && classificationMatch && genderMatch && pastureMatch && breedMatch && searchMatch
                 }
-                
-                Triple(filteredCows, pastureNames, false) // Return filtered data
-            }.collect { (filteredCows, pastureNames, isLoading) ->
+                // Pass availableBreeds to the Triple, and then to uiState.copy
+                Triple(filteredCows, pastureNames, availableBreeds) 
+            }.collect { (filteredCows, pastureNames, availableBreeds) ->
                 _uiState.value = _uiState.value.copy(
                     cows = filteredCows,
                     availablePastures = pastureNames,
-                    isLoading = isLoading
+                    availableBreeds = availableBreeds,
+                    isLoading = false // Set isLoading to false once data is processed
                 )
             }
         }
     }
-    
-    // Note: initializeDefaultData() moved to CattleApplication.onCreate()
-    // to ensure it only runs once when the app starts, not every time a ViewModel is created
-    
+        
     fun toggleStatusFilter(status: Status) {
         val currentStatuses = _uiState.value.selectedStatuses.toMutableSet()
         if (currentStatuses.contains(status)) {
@@ -128,6 +124,16 @@ class CowsViewModel(
         }
         _uiState.value = _uiState.value.copy(selectedPastures = currentPastures)
     }
+
+    fun toggleBreedFilter(breed: String) {
+        val currentBreeds = _uiState.value.selectedBreeds.toMutableSet()
+        if (currentBreeds.contains(breed)) {
+            currentBreeds.remove(breed)
+        } else {
+            currentBreeds.add(breed)
+        }
+        _uiState.value = _uiState.value.copy(selectedBreeds = currentBreeds)
+    }
     
     fun updateSearchQuery(query: String) {
         _uiState.value = _uiState.value.copy(searchQuery = query)
@@ -135,24 +141,22 @@ class CowsViewModel(
     
     fun clearAllFilters() {
         _uiState.value = _uiState.value.copy(
-            selectedStatuses = setOf(Status.ACTIVE), // Reset to ACTIVE only
+            selectedStatuses = setOf(Status.ACTIVE), 
             selectedClassifications = emptySet(),
             selectedGenders = emptySet(),
             selectedPastures = emptySet(),
+            selectedBreeds = emptySet(), // Clear selected breeds
             searchQuery = ""
         )
     }
 
-    // Deletion with undo helpers
     suspend fun deleteCow(cow: Cow) {
-        // Soft delete: mark as deleted instead of hard delete
         val deletedCow = cow.copy(
             isDeleted = true,
-            lastSyncAt = 0L // Mark for sync
+            lastSyncAt = 0L 
         )
         repository.updateCow(deletedCow)
         
-        // If user is signed in, immediately sync the deletion to cloud
         viewModelScope.launch {
             val application = getApplication<CattleApplication>()
             application.authService.currentUser.first()?.let { user ->
@@ -168,14 +172,12 @@ class CowsViewModel(
     }
 
     suspend fun undoDeleteCow(cow: Cow) {
-        // Undo soft delete: mark as not deleted
         val restoredCow = cow.copy(
             isDeleted = false,
-            lastSyncAt = 0L // Mark for sync
+            lastSyncAt = 0L
         )
         repository.updateCow(restoredCow)
         
-        // If user is signed in, immediately sync the restoration to cloud
         viewModelScope.launch {
             val application = getApplication<CattleApplication>()
             application.authService.currentUser.first()?.let { user ->
@@ -201,10 +203,12 @@ data class CowsUiState(
     val cows: List<Cow> = emptyList(),
     val isLoading: Boolean = true,
     val searchQuery: String = "",
-    val selectedStatuses: Set<Status> = setOf(Status.ACTIVE), // Default to ACTIVE selected
-    val selectedClassifications: Set<Classification> = emptySet(), // Multi-select classifications
-    val selectedGenders: Set<Gender> = emptySet(), // Multi-select genders
-    val selectedPastures: Set<String> = emptySet(), // Multi-select pastures
-    val availablePastures: List<String> = emptyList(), // Available pasture names for filtering
+    val selectedStatuses: Set<Status> = setOf(Status.ACTIVE),
+    val selectedClassifications: Set<Classification> = emptySet(),
+    val selectedGenders: Set<Gender> = emptySet(), 
+    val selectedPastures: Set<String> = emptySet(),
+    val availablePastures: List<String> = emptyList(),
+    val selectedBreeds: Set<String> = emptySet(), // Added selectedBreeds
+    val availableBreeds: List<String> = emptyList(), // Added availableBreeds
     val error: String? = null
 )
