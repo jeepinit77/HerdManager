@@ -23,6 +23,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -593,20 +594,50 @@ fun ThemeSettingsScreen(
 }
 
 @Composable
+private fun ThemePreviewItem(
+    modifier: Modifier = Modifier,
+    backgroundColor: Color,
+    text: String,
+    textColor: Color,
+    isOutlined: Boolean = false,
+    borderColor: Color = Color.Transparent // Used if isOutlined is true
+) {
+    Surface(
+        modifier = modifier.height(IntrinsicSize.Min),
+        shape = RoundedCornerShape(6.dp), // Slightly more rounded
+        color = backgroundColor,
+        border = if (isOutlined) BorderStroke(1.dp, borderColor) else null,
+        shadowElevation = 1.dp // Add a little depth
+    ) {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp) // Adjusted padding
+        ) {
+            Text(text, fontSize = 9.sp, color = textColor, maxLines = 1, overflow = TextOverflow.Ellipsis) // Slightly larger font
+        }
+    }
+}
+
+@Composable
 private fun PresetThemeCard(
     preset: PresetTheme,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
     val colors = preset.getColors()
-    
+    // Helper to determine text color for "Other" card based on background luminance
+    val otherTextColorLight = if (colors.cardBackgroundLight.luminance() > 0.5f) Color(0xFF191C1E) else Color.White
+    val otherTextColorDark = if (colors.cardBackgroundDark.luminance() > 0.5f) Color(0xFF191C1E) else Color.White
+
     Card(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
         ),
-        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null
+        border = if (isSelected) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (isSelected) 4.dp else 1.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
@@ -619,162 +650,133 @@ private fun PresetThemeCard(
                 Text(
                     preset.displayName,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium
+                    fontWeight = FontWeight.Bold // Bolder title
                 )
                 if (isSelected) {
                     Icon(
-                        Icons.Default.Check,
+                        Icons.Default.CheckCircle, // Changed to filled check circle
                         contentDescription = "Selected",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
             }
-            
+
             Spacer(modifier = Modifier.height(12.dp))
-            
+
+            // Preview Section
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(120.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+                    .height(130.dp), // Slightly increased height
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(2.dp)
             ) {
                 Row(modifier = Modifier.fillMaxSize()) {
                     // Light mode preview (left half)
-                    Row(
+                    Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
                             .background(colors.backgroundLight)
-                            .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            .padding(6.dp), // Increased padding
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Button(
-                                onClick = { },
-                                modifier = Modifier.fillMaxWidth().weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = colors.primaryLight),
-                                contentPadding = PaddingValues(0.dp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                             Column(
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp) // Increased spacing
                             ) {
-                                Text("Primary", fontSize = 8.sp, color = Color.White)
+                                ThemePreviewItem(
+                                    modifier = Modifier.fillMaxWidth().weight(1f),
+                                    backgroundColor = colors.primaryLight,
+                                    text = "Primary",
+                                    textColor = if (colors.primaryLight.luminance() > 0.5f) Color.Black else Color.White
+                                )
+                                ThemePreviewItem(
+                                    modifier = Modifier.fillMaxWidth().weight(1f),
+                                    backgroundColor = colors.surfaceLight, // Use surface for outlined bg
+                                    text = "Secondary",
+                                    textColor = colors.secondaryLight,
+                                    isOutlined = true,
+                                    borderColor = colors.secondaryLight
+                                )
                             }
-                            OutlinedButton(
-                                onClick = { },
-                                modifier = Modifier.fillMaxWidth().weight(1f),
-                                border = BorderStroke(0.5.dp, colors.secondaryLight),
-                                contentPadding = PaddingValues(0.dp)
+                            Column(
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                verticalArrangement = Arrangement.spacedBy(4.dp) // spacing for smaller items
                             ) {
-                                Text("Secondary", fontSize = 8.sp, color = colors.secondaryLight)
-                            }
-                        }
-                        Column(
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().weight(1f),
-                                colors = CardDefaults.cardColors(containerColor = colors.maleColorLight)
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize().padding(2.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("Male", fontSize = 7.sp, color = Color.White)
-                                }
-                            }
-                            Card(
-                                modifier = Modifier.fillMaxWidth().weight(1f),
-                                colors = CardDefaults.cardColors(containerColor = colors.femaleColorLight)
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize().padding(2.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("Female", fontSize = 7.sp, color = Color.White)
-                                }
-                            }
-                            Card(
-                                modifier = Modifier.fillMaxWidth().weight(1f),
-                                colors = CardDefaults.cardColors(containerColor = colors.cardBackgroundLight)
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize().padding(2.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("Other", fontSize = 7.sp)
-                                }
+                                ThemePreviewItem(
+                                    modifier = Modifier.fillMaxWidth().weight(1f),
+                                    backgroundColor = colors.maleColorLight,
+                                    text = "Male",
+                                    textColor = if (colors.maleColorLight.luminance() > 0.5f) Color.Black else Color.White
+                                )
+                                ThemePreviewItem(
+                                    modifier = Modifier.fillMaxWidth().weight(1f),
+                                    backgroundColor = colors.femaleColorLight,
+                                    text = "Female",
+                                    textColor = if (colors.femaleColorLight.luminance() > 0.5f) Color.Black else Color.White
+                                )
+                                ThemePreviewItem(
+                                    modifier = Modifier.fillMaxWidth().weight(1f),
+                                    backgroundColor = colors.cardBackgroundLight,
+                                    text = "Card",
+                                    textColor = otherTextColorLight
+                                )
                             }
                         }
                     }
-                    
+
                     // Dark mode preview (right half)
-                    Row(
+                    Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
                             .background(colors.backgroundDark)
-                            .padding(4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            .padding(6.dp), // Increased padding
                     ) {
-                        Column(
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Button(
-                                onClick = { },
-                                modifier = Modifier.fillMaxWidth().weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = colors.primaryDark),
-                                contentPadding = PaddingValues(0.dp)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Column(
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                verticalArrangement = Arrangement.spacedBy(6.dp) // Increased spacing
                             ) {
-                                Text("Primary", fontSize = 8.sp, color = Color.White)
+                                ThemePreviewItem(
+                                    modifier = Modifier.fillMaxWidth().weight(1f),
+                                    backgroundColor = colors.primaryDark,
+                                    text = "Primary",
+                                    textColor = if (colors.primaryDark.luminance() > 0.5f) Color.Black else Color.White
+                                )
+                                ThemePreviewItem(
+                                    modifier = Modifier.fillMaxWidth().weight(1f),
+                                    backgroundColor = colors.surfaceDark, // Use surface for outlined bg
+                                    text = "Secondary",
+                                    textColor = colors.secondaryDark,
+                                    isOutlined = true,
+                                    borderColor = colors.secondaryDark
+                                )
                             }
-                            OutlinedButton(
-                                onClick = { },
-                                modifier = Modifier.fillMaxWidth().weight(1f),
-                                border = BorderStroke(0.5.dp, colors.secondaryDark),
-                                contentPadding = PaddingValues(0.dp)
+                            Column(
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
-                                Text("Secondary", fontSize = 8.sp, color = colors.secondaryDark)
-                            }
-                        }
-                        Column(
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Card(
-                                modifier = Modifier.fillMaxWidth().weight(1f),
-                                colors = CardDefaults.cardColors(containerColor = colors.maleColorDark)
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize().padding(2.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("Male", fontSize = 7.sp, color = Color.White)
-                                }
-                            }
-                            Card(
-                                modifier = Modifier.fillMaxWidth().weight(1f),
-                                colors = CardDefaults.cardColors(containerColor = colors.femaleColorDark)
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize().padding(2.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("Female", fontSize = 7.sp, color = Color.White)
-                                }
-                            }
-                            Card(
-                                modifier = Modifier.fillMaxWidth().weight(1f),
-                                colors = CardDefaults.cardColors(containerColor = colors.cardBackgroundDark)
-                            ) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize().padding(2.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text("Other", fontSize = 7.sp, color = Color.White)
-                                }
+                                ThemePreviewItem(
+                                    modifier = Modifier.fillMaxWidth().weight(1f),
+                                    backgroundColor = colors.maleColorDark,
+                                    text = "Male",
+                                    textColor = if (colors.maleColorDark.luminance() > 0.5f) Color.Black else Color.White
+                                )
+                                ThemePreviewItem(
+                                    modifier = Modifier.fillMaxWidth().weight(1f),
+                                    backgroundColor = colors.femaleColorDark,
+                                    text = "Female",
+                                    textColor = if (colors.femaleColorDark.luminance() > 0.5f) Color.Black else Color.White
+                                )
+                                ThemePreviewItem(
+                                    modifier = Modifier.fillMaxWidth().weight(1f),
+                                    backgroundColor = colors.cardBackgroundDark,
+                                    text = "Card",
+                                    textColor = otherTextColorDark
+                                )
                             }
                         }
                     }
@@ -783,7 +785,6 @@ private fun PresetThemeCard(
         }
     }
 }
-
 
 
 @Composable
