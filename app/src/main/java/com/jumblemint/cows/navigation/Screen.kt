@@ -21,7 +21,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
     data object CowInfo : Screen("cow_info_route/{cowId}?returnToRoute={returnToRoute}", "Cow Info", false) {
         fun createRoute(cowId: Long, returnToRoute: String?): String {
             val baseRoute = route.replace("{cowId}", cowId.toString())
-            return returnToRoute?.let { "$baseRoute?returnToRoute=$it" } ?: baseRoute
+            return returnToRoute?.let { "$baseRoute?returnToRoute=${android.net.Uri.encode(it)}" } ?: baseRoute
         }
     }
     data object CowDetail : Screen("cow_detail_route/{cowId}", "Cow Details", false) {

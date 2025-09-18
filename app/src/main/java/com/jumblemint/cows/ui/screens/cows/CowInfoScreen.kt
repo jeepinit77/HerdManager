@@ -67,7 +67,6 @@ fun CowInfoScreen(
     val uiState by viewModel.uiState.collectAsState()
     val tagColorMap = rememberTagColorMap(repository)
     
-    // Update TopAppBar when cow data changes
     LaunchedEffect(uiState.cow) {
         topAppBarController.updateTitle(uiState.cow?.name ?: "Cow Information")
         topAppBarController.updateActions(
@@ -103,14 +102,14 @@ fun CowInfoScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(16.dp),
-                                verticalAlignment = Alignment.Top, // Adjusted as per CowCard
-                                horizontalArrangement = Arrangement.spacedBy(12.dp) // Adjusted as per CowCard
+                                verticalAlignment = Alignment.Top, 
+                                horizontalArrangement = Arrangement.spacedBy(12.dp) 
                             ) {
                                 if (cow.tagNumber != null || cow.tagColor != null) {
                                     CattleTagBadge(
                                         tagNumber = cow.tagNumber,
                                         tagColor = cow.tagColor,
-                                        modifier = Modifier.size(width = 72.dp, height = 96.dp), // Adjusted as per CowCard
+                                        modifier = Modifier.size(width = 72.dp, height = 96.dp), 
                                         backgroundColor = resolveTagColor(cow.tagColor, tagColorMap)
                                     )
                                 }
@@ -136,25 +135,33 @@ fun CowInfoScreen(
                             }
                         }
 
-                        // Basic Information Card
+                        // Physical Details Card
                         Card {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                SectionTitle("Basic Information")
+                                SectionTitle("Physical Details")
                                 cow.birthDate?.let {
                                     InfoRow("Birth Date", it.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")))
                                 }
-                                InfoRow("Status", cow.status.name.lowercase().replaceFirstChar { it.uppercase() })
-                                uiState.pastureName?.let { InfoRow("Pasture", it) }
+                                cow.colorMarkings?.takeIf { it.isNotBlank() }?.let { InfoRow("Color/Markings", it) }
                                 cow.breed?.takeIf { it.isNotBlank() }?.let { InfoRow("Breed", it) }
                                 cow.registrationNumber?.takeIf { it.isNotBlank() }?.let { InfoRow("Registration #", it) }
-                                cow.colorMarkings?.takeIf { it.isNotBlank() }?.let { InfoRow("Color/Markings", it) }
-                                if (cow.isWatched) {
-                                    InfoRow("Status", "⭐ Watched")
-                                }
+                            }
+                        }
+                        
+                        // Management Details Card
+                        Card {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                SectionTitle("Management Details")
+                                InfoRow("Status", cow.status.name.lowercase().replaceFirstChar { it.uppercase() })
+                                uiState.pastureName?.let { InfoRow("Pasture", it) }
                                 cow.herdId?.takeIf { it.isNotBlank() }?.let { InfoRow("Herd ID", it) }
+                                InfoRow("Watched", if (cow.isWatched) "⭐ Yes" else "No")
                             }
                         }
 
@@ -176,10 +183,10 @@ fun CowInfoScreen(
                             }
                         }
 
-                        // Children Card
+                        // Progeny Card (Children)
                         if (uiState.children.isNotEmpty()) {
                             CollapsibleLazyColumnCard(
-                                title = "Children (${uiState.children.size})",
+                                title = "Progeny (${uiState.children.size})",
                                 items = uiState.children,
                                 onNavigateToCow = onNavigateToCow,
                                 initiallyExpanded = uiState.children.size <= 3
@@ -188,15 +195,12 @@ fun CowInfoScreen(
 
                         // Maternal Siblings Card
                         if (uiState.maternalSiblings.isNotEmpty()) {
-                            Card {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    SectionTitle("Maternal Siblings (${uiState.maternalSiblings.size})")
-                                    uiState.maternalSiblings.forEach { sibling ->
-                                        RelatedCowRow(cow = sibling, onNavigateToCow = onNavigateToCow)
-                                    }
+                            CollapsibleDetailCard(
+                                title = "Maternal Siblings (${uiState.maternalSiblings.size})",
+                                initiallyExpanded = uiState.maternalSiblings.size <= 3
+                            ) {
+                                uiState.maternalSiblings.forEach { sibling ->
+                                    RelatedCowRow(cow = sibling, onNavigateToCow = onNavigateToCow)
                                 }
                             }
                         }
@@ -210,45 +214,42 @@ fun CowInfoScreen(
                                 initiallyExpanded = false
                             )
                         }
-                        // Activities Card
+
+                        // Recent Activities Card
                         if (uiState.activities.isNotEmpty()) {
-                            Card {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    SectionTitle("Recent Activities (${uiState.activities.size})")
-                                    uiState.activities.take(5).forEach { activity ->
-                                        val dateStr = activity.date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
-                                        InfoRow(activity.activityType.name, "$dateStr - ${activity.notes ?: "No notes"}")
-                                    }
-                                    if (uiState.activities.size > 5) {
-                                        Text(
-                                            text = "... and ${uiState.activities.size - 5} more",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(start = 16.dp, top = 4.dp)
-                                        )
-                                    }
+                            CollapsibleDetailCard(
+                                title = "Recent Activities (${uiState.activities.size})",
+                                initiallyExpanded = true 
+                            ) {
+                                uiState.activities.take(5).forEach { activity ->
+                                    val dateStr = activity.date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy"))
+                                    InfoRow(activity.activityType.name.lowercase().replaceFirstChar { it.uppercase() }, "$dateStr - ${activity.notes ?: "No notes"}")
+                                }
+                                if (uiState.activities.size > 5) {
+                                    Text(
+                                        text = "... and ${uiState.activities.size - 5} more",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                                    )
                                 }
                             }
                         }
 
-                        // Error Message Card
-                        uiState.error?.let { error ->
+                        uiState.error?.let {
                             Card(
                                 colors = CardDefaults.cardColors(
                                     containerColor = MaterialTheme.colorScheme.errorContainer
                                 )
                             ) {
                                 Text(
-                                    text = error,
+                                    text = it,
                                     color = MaterialTheme.colorScheme.onErrorContainer,
                                     modifier = Modifier.padding(16.dp)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(16.dp)) // Bottom spacer
+                        Spacer(modifier = Modifier.height(16.dp))
                     }
                 } ?: run {
                     if (!uiState.isLoading) {
@@ -348,7 +349,7 @@ private fun RelatedCowRow(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class) // Keep for Card and Icon usage
 @Composable
 private fun CollapsibleLazyColumnCard(
     title: String,
@@ -380,11 +381,50 @@ private fun CollapsibleLazyColumnCard(
                         .padding(horizontal = 16.dp)
                         .fillMaxWidth()
                         .heightIn(max = 200.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp) // Spacing between RelatedCowRow items
                 ) {
                     items(items, key = { it.id }) { relatedCow ->
                         RelatedCowRow(cow = relatedCow, onNavigateToCow = onNavigateToCow)
                     }
+                }
+            }
+        }
+    }
+}
+
+// New CollapsibleDetailCard Composable
+@Composable
+private fun CollapsibleDetailCard(
+    title: String,
+    initiallyExpanded: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    var expanded by remember { mutableStateOf(initiallyExpanded) }
+
+    Card {
+        Column(modifier = Modifier.fillMaxWidth().padding(bottom = if (expanded) 8.dp else 0.dp)) { // Adjust bottom padding when expanded
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 16.dp, vertical = 12.dp), // Consistent padding for clickable area
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                SectionTitle(text = title)
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) "Collapse" else "Expand"
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column(
+                    modifier = Modifier
+                        .padding(start = 16.dp, end = 16.dp, bottom = 12.dp) // Padding for the content itself
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp) // Spacing for InfoRows inside
+                ) {
+                    content()
                 }
             }
         }

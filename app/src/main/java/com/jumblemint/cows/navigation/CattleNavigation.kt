@@ -217,7 +217,7 @@ fun CattleNavigation(
             popExitTransition = { slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth }) }
         ) { backStackEntry ->
             val cowId = backStackEntry.arguments?.getLong("cowId") ?: 0L
-            val returnToRouteArg = backStackEntry.arguments?.getString("returnToRoute")
+            val returnToRouteArg = backStackEntry.arguments?.getString("returnToRoute")?.let { android.net.Uri.decode(it) }
 
             CowInfoScreen(
                 modifier = screenModifierWithPadding,
@@ -231,10 +231,14 @@ fun CattleNavigation(
                     }
                 },
                 onCloseFlow = {
-                    if (!returnToRouteArg.isNullOrEmpty()) {
-                        navController.navigate(returnToRouteArg)
-                    } else {
-                        navController.navigate(mainPagerRoute(COWS_PAGE_INDEX))
+                    val targetRoute = returnToRouteArg ?: mainPagerRoute(COWS_PAGE_INDEX)
+                    navController.navigate(targetRoute) {
+                        popUpTo(navController.graph.findStartDestination().id) {
+                            inclusive = false
+                            saveState = true
+                        }
+                        launchSingleTop = true
+                        restoreState = true
                     }
                 },
                 topAppBarController = topAppBarController
@@ -347,6 +351,11 @@ fun CattleNavigation(
         composable(Screen.CowList.route) { backStackEntry ->
             val type = backStackEntry.arguments?.getString("type")
             val valueString = backStackEntry.arguments?.getString("value")
+            LaunchedEffect(type, valueString) {
+                // Ensure title/actions reset when entering stand-alone CowList
+                topAppBarController.updateTitle("Cow List")
+                topAppBarController.updateActions(TopAppBarActions())
+            }
             CowListScreen(
                 modifier = screenModifierWithPadding,
                 type = type,
