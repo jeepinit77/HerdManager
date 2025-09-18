@@ -20,18 +20,30 @@ import com.jumblemint.cows.data.repository.CattleRepository
 
 private fun createDarkColorScheme(customColors: CustomColors) = darkColorScheme(
     primary = customColors.primaryDark,
+    onPrimary = customColors.onPrimaryDark,
     secondary = customColors.secondaryDark,
+    onSecondary = customColors.onSecondaryDark,
     tertiary = customColors.tertiaryDark,
+    onTertiary = customColors.onTertiaryDark,
     background = customColors.backgroundDark,
-    surface = customColors.surfaceDark
+    onBackground = customColors.onBackgroundDark,
+    surface = customColors.surfaceDark,
+    onSurface = customColors.onSurfaceDark
+    // Add other dark theme specific "on" colors if defined in CustomColors and needed
 )
 
 private fun createLightColorScheme(customColors: CustomColors) = lightColorScheme(
     primary = customColors.primaryLight,
+    onPrimary = customColors.onPrimaryLight,
     secondary = customColors.secondaryLight,
+    onSecondary = customColors.onSecondaryLight,
     tertiary = customColors.tertiaryLight,
+    onTertiary = customColors.onTertiaryLight,
     background = customColors.backgroundLight,
-    surface = customColors.surfaceLight
+    onBackground = customColors.onBackgroundLight,
+    surface = customColors.surfaceLight,
+    onSurface = customColors.onSurfaceLight
+    // Add other light theme specific "on" colors if defined in CustomColors and needed
 )
 
 // Modern-sharp shapes across the app
