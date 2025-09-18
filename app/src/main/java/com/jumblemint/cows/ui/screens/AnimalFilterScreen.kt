@@ -1,28 +1,33 @@
 package com.jumblemint.cows.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+// import androidx.compose.ui.unit.Dp // Not strictly needed as a param type if using dp directly
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import com.jumblemint.cows.data.model.Classification
-import com.jumblemint.cows.data.model.Gender
-import com.jumblemint.cows.data.model.Status
-import com.jumblemint.cows.util.AgeRange // Import for type
-import com.jumblemint.cows.util.AgeUtils // Import centralized AgeUtils
-
-// Local AgeRangeOptions object removed
+import com.jumblemint.cows.data.model.Classification // Ensure this import and class exists
+import com.jumblemint.cows.data.model.Gender // Ensure this import and class exists
+import com.jumblemint.cows.data.model.Status // Ensure this import and class exists
+import com.jumblemint.cows.util.AgeRange // Ensure this import and class exists
+import com.jumblemint.cows.util.AgeUtils // Ensure this import and class exists
+import kotlinx.coroutines.launch
 
 const val CHIP_DISPLAY_THRESHOLD = 6
 
@@ -33,7 +38,7 @@ data class AnimalFilterState(
     val breeds: List<String> = emptyList(),
     val statuses: List<Status> = emptyList(),
     val tagColors: List<String> = emptyList(),
-    val isWatched: Boolean? = null,
+    val isWatched: Boolean? = null, 
     val selectedAgeRanges: List<String> = emptyList() 
 )
 
@@ -49,6 +54,7 @@ fun AnimalFilterScreen(
 ) {
     var currentFilterState by remember { mutableStateOf(initialFilterState) }
     val scrollState = rememberScrollState()
+    val dialogContentPadding = 16.dp // Standard padding for the dialog content area
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -60,63 +66,106 @@ fun AnimalFilterScreen(
                 .fillMaxHeight(0.9f),
             shape = MaterialTheme.shapes.large
         ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "Filter Animals",
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(bottom = 16.dp).align(Alignment.CenterHorizontally)
-                )
+            Column(modifier = Modifier.padding(dialogContentPadding)) { // Main content area padding
+                Box(modifier = Modifier.fillMaxWidth()) { 
+                    Text(
+                        "Filter Animals",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.align(Alignment.Center) 
+                    )
+                    // Close button as per commit message
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.align(Alignment.CenterEnd) 
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Close Filters")
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp)) 
 
                 Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
+                    // Gender Filter
                     MultiSelectChipGroup(
                         title = "Gender",
-                        options = Gender.entries.toList(),
+                        options = Gender.entries.toList(), // Assumes Gender enum exists
                         selectedOptions = currentFilterState.genders,
                         onSelectionChanged = { currentFilterState = currentFilterState.copy(genders = it) },
                         itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.titlecase() } }
                     )
 
+                    // Type (Classification) Filter
                     MultiSelectChipGroup(
                         title = "Type", 
-                        options = Classification.entries.toList(),
+                        options = Classification.entries.toList(), // Assumes Classification enum exists
                         selectedOptions = currentFilterState.classifications,
                         onSelectionChanged = { currentFilterState = currentFilterState.copy(classifications = it) },
                         itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.titlecase() } }
                     )
 
+                    // Age Range Filter
                     MultiSelectChipGroup(
                         title = "Age Range",
-                        options = AgeUtils.ageRanges, // Use centralized AgeUtils.ageRanges
-                        // Map selected keys back to AgeRange objects for the chip group
+                        options = AgeUtils.ageRanges, // Assumes AgeUtils.ageRanges is defined
                         selectedOptions = currentFilterState.selectedAgeRanges.mapNotNull { key -> 
                             AgeUtils.ageRanges.find { it.key == key } 
                         },
                         onSelectionChanged = { selectedAgeRangeObjects -> 
                             currentFilterState = currentFilterState.copy(selectedAgeRanges = selectedAgeRangeObjects.map { it.key })
                         },
-                        itemLabel = { it.label } // Use the label from AgeRange object
+                        itemLabel = { it.label }
                     )
                     
-                    Text("Watched Status", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(top=8.dp))
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp)) {
-                        val watchedOptions = listOf(null, true, false)
-                        val watchedLabels = listOf("Any", "Yes", "No")
-                        watchedOptions.forEachIndexed { index, option ->
-                            SegmentedButton(
-                                shape = SegmentedButtonDefaults.itemShape(index = index, count = watchedOptions.size),
-                                onClick = { currentFilterState = currentFilterState.copy(isWatched = option) },
-                                selected = currentFilterState.isWatched == option,
-                                icon = { 
-                                    if (currentFilterState.isWatched == option && option != null) {
-                                        Icon(Icons.Default.Check, contentDescription = "Selected", modifier = Modifier.size(18.dp))
+                    // Watched Status Filter (Checkbox as per commit message)
+                    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) {
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = {
+                                    // Cycle through: null (Any) -> true (Yes) -> false (No) -> null (Any)
+                                    val nextState = when (currentFilterState.isWatched) {
+                                        null -> true
+                                        true -> false
+                                        false -> null
                                     }
-                                }
-                            ) {
-                                Text(text = watchedLabels[index])
-                            }
+                                    currentFilterState = currentFilterState.copy(isWatched = nextState)
+                                })
+                                .padding(vertical = 2.dp), // Compact title row padding
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("Watched Status", style = MaterialTheme.typography.titleMedium)
+                            Checkbox(
+                                checked = currentFilterState.isWatched ?: false, 
+                                onCheckedChange = { // Click is handled by Row, but provide for accessibility if needed
+                                     val nextState = when (currentFilterState.isWatched) {
+                                        null -> true
+                                        true -> false
+                                        false -> null
+                                    }
+                                    currentFilterState = currentFilterState.copy(isWatched = nextState)
+                                },
+                                colors = CheckboxDefaults.colors(
+                                    checkedColor = MaterialTheme.colorScheme.primary,
+                                )
+                            )
                         }
+                         Text(
+                            text = when (currentFilterState.isWatched) {
+                                true -> "Only showing watched"
+                                false -> "Only showing not watched"
+                                null -> "Showing all (watched & not watched)"
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(start = 8.dp, bottom = 0.dp)
+                        )
+                        Divider(
+                            modifier = Modifier
+                                .padding(top = 2.dp) 
+                                .fillMaxWidth() // Divider fills width within parent's padding
+                        )
                     }
 
+                    // Pasture Filter
                     ConditionalMultiSelectFilter(
                         title = "Pasture",
                         options = availablePastures,
@@ -126,6 +175,7 @@ fun AnimalFilterScreen(
                         chipDisplayThreshold = CHIP_DISPLAY_THRESHOLD
                     )
 
+                    // Breed Filter
                     ConditionalMultiSelectFilter(
                         title = "Breed",
                         options = availableBreeds,
@@ -135,14 +185,17 @@ fun AnimalFilterScreen(
                         chipDisplayThreshold = CHIP_DISPLAY_THRESHOLD
                     )
 
+                    // Collapsible Section for More Filters (as per commit message)
                     CollapsibleFilterSection(title = "More Filters") {
+                        // Status Filter
                         MultiSelectChipGroup(
                             title = "Status",
-                            options = Status.entries.toList(),
+                            options = Status.entries.toList(), // Assumes Status enum exists
                             selectedOptions = currentFilterState.statuses,
                             onSelectionChanged = { currentFilterState = currentFilterState.copy(statuses = it) },
                             itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.titlecase() } }
                         )
+                        // Tag Color Filter
                         ConditionalMultiSelectFilter(
                             title = "Tag Color",
                             options = availableTagColors,
@@ -161,7 +214,7 @@ fun AnimalFilterScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp) 
                 ) {
                     OutlinedButton(
-                        onClick = { currentFilterState = AnimalFilterState() }, 
+                        onClick = { currentFilterState = AnimalFilterState() }, // Clear All
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Clear All")
@@ -181,15 +234,22 @@ fun AnimalFilterScreen(
     } 
 }
 
+@OptIn(ExperimentalFoundationApi::class) // For BringIntoViewRequester
 @Composable
-private fun CollapsibleFilterSection(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun CollapsibleFilterSection(
+    title: String, 
+    content: @Composable ColumnScope.() -> Unit
+) {
     var isExpanded by remember { mutableStateOf(false) }
-    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope() // For launching bringIntoView
+
+    Column(modifier = Modifier.padding(vertical = 0.dp)) { // Compact layout for the section
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { isExpanded = !isExpanded }
-                .padding(vertical = 8.dp),
+                .clickable { isExpanded = !isExpanded } 
+                .padding(vertical = 2.dp), // Compact title row
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -199,12 +259,26 @@ private fun CollapsibleFilterSection(title: String, content: @Composable ColumnS
                 contentDescription = if (isExpanded) "Collapse" else "Expand"
             )
         }
+
+        // BringIntoViewRequester logic as per commit message
+        LaunchedEffect(isExpanded) {
+            if (isExpanded) {
+                scope.launch { 
+                    bringIntoViewRequester.bringIntoView()
+                }
+            }
+        }
+
         AnimatedVisibility(visible = isExpanded) {
-            Column {
+            Column(Modifier.bringIntoViewRequester(bringIntoViewRequester)) {
                 content()
             }
         }
-        Divider(modifier=Modifier.padding(top=8.dp))
+        Divider(
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .fillMaxWidth() // Divider fills width within parent's padding
+        )
     }
 }
 
@@ -218,17 +292,26 @@ private fun <T> MultiSelectChipGroup(
     onSelectionChanged: (List<T>) -> Unit,
     itemLabel: (T) -> String
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp, top = 4.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) { // Compact section layout
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp), // Compact title row
+            verticalAlignment = Alignment.CenterVertically, 
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Text(title, style = MaterialTheme.typography.titleMedium)
-            if (selectedOptions.isNotEmpty()) {
-                 TextButton(onClick = { onSelectionChanged(emptyList()) }) {
-                    Text("Clear")
-                }
+            // Clear button visibility logic as per commit message
+            TextButton(
+                onClick = { onSelectionChanged(emptyList()) },
+                enabled = selectedOptions.isNotEmpty(),
+                modifier = Modifier.alpha(if (selectedOptions.isNotEmpty()) 1f else 0f) 
+            ) {
+                Text("Clear")
             }
         }
         FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 0.dp), // Compact chip row
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -247,14 +330,20 @@ private fun <T> MultiSelectChipGroup(
                     },
                     label = { Text(itemLabel(option)) },
                     leadingIcon = if (isSelected) { { Icon(Icons.Filled.Check, "Selected", modifier = Modifier.size(FilterChipDefaults.IconSize)) } } else null,
+                    // Chip colors using primary theme as per commit message
                     colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                        selectedContainerColor = MaterialTheme.colorScheme.primary, 
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary, 
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary 
                     )
                 )
             }
         }
+        Divider(
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .fillMaxWidth() // Divider fills width within parent's padding
+        )
     }
 }
 
@@ -270,25 +359,42 @@ private fun <T> ConditionalMultiSelectFilter(
 ) {
     if (options.isEmpty()) return
 
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp, top = 4.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) { // Compact section layout
         var showDialog by remember { mutableStateOf(false) }
 
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp), // Compact title row
+            verticalAlignment = Alignment.CenterVertically, 
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
             Text(title, style = MaterialTheme.typography.titleMedium)
-            if (selectedOptions.isNotEmpty() && options.size <= chipDisplayThreshold) {
-                 TextButton(onClick = { onSelectionChanged(emptyList()) }) {
-                    Text("Clear")
-                }
-            } else if (options.size > chipDisplayThreshold) {
-                 TextButton(onClick = { showDialog = true }) { 
-                    Text(if (selectedOptions.isEmpty()) "Select" else "Edit")
-                }
+            // Select/Edit/Clear button logic as per commit message
+            val showClearButton = selectedOptions.isNotEmpty() && options.size <= chipDisplayThreshold
+            val showSelectEditButton = options.size > chipDisplayThreshold
+
+            TextButton(
+                onClick = { 
+                    if (showClearButton) onSelectionChanged(emptyList()) 
+                    else if (showSelectEditButton) showDialog = true 
+                },
+                enabled = showClearButton || showSelectEditButton,
+                modifier = Modifier.alpha(if (showClearButton || showSelectEditButton) 1f else 0f) 
+            ) {
+                Text(
+                    if (showSelectEditButton) {
+                        if (selectedOptions.isEmpty()) "Select" else "Edit"
+                    } else {
+                        "Clear" // This case is for when options.size <= chipDisplayThreshold
+                    }
+                )
             }
         }
 
         if (options.size <= chipDisplayThreshold) {
             FlowRow(
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 0.dp), // Compact chip row
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -308,17 +414,17 @@ private fun <T> ConditionalMultiSelectFilter(
                         label = { Text(itemLabel(option)) },
                         leadingIcon = if (isSelected) { { Icon(Icons.Filled.Check, "Selected", modifier = Modifier.size(FilterChipDefaults.IconSize)) } } else null,
                         colors = FilterChipDefaults.filterChipColors(
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            selectedContainerColor = MaterialTheme.colorScheme.primary, 
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary, 
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary 
                         )
                     )
                 }
             }
-        } else {
+        } else { // options.size > chipDisplayThreshold, show button to open dialog
             OutlinedButton(
                 onClick = { showDialog = true },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp) // Give button some space
             ) {
                 Text(if (selectedOptions.isEmpty()) "Select $title..." else "${selectedOptions.size} selected - Edit")
             }
@@ -334,6 +440,11 @@ private fun <T> ConditionalMultiSelectFilter(
                 )
             }
         }
+        Divider(
+            modifier = Modifier
+                .padding(top = 2.dp)
+                .fillMaxWidth() // Divider fills width within parent's padding
+        )
     }
 }
 
@@ -364,7 +475,14 @@ private fun <T> MultiSelectDropdownDialog(
                             .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Checkbox(checked = isSelected, onCheckedChange = null) 
+                        Checkbox(
+                            checked = isSelected, 
+                            onCheckedChange = null, // Click handled by Row
+                            // Checkbox color in dialog as per commit message
+                            colors = CheckboxDefaults.colors( 
+                                checkedColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) 
                         Spacer(Modifier.width(8.dp))
                         Text(itemLabel(option))
                     }
@@ -376,7 +494,7 @@ private fun <T> MultiSelectDropdownDialog(
         },
         dismissButton = {
             TextButton(onClick = { 
-                onSelectionChanged(emptyList())
+                onSelectionChanged(emptyList()) // Clear selection in dialog
             }) { Text("Clear Selected") }
         }
     )
