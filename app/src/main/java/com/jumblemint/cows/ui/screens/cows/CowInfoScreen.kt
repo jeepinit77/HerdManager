@@ -103,18 +103,18 @@ fun CowInfoScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(16.dp),
-                                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.Top, // Adjusted as per CowCard
+                                horizontalArrangement = Arrangement.spacedBy(12.dp) // Adjusted as per CowCard
                             ) {
                                 if (cow.tagNumber != null || cow.tagColor != null) {
                                     CattleTagBadge(
                                         tagNumber = cow.tagNumber,
                                         tagColor = cow.tagColor,
-                                        modifier = Modifier.height(80.dp).widthIn(min = 60.dp),
+                                        modifier = Modifier.size(width = 72.dp, height = 96.dp), // Adjusted as per CowCard
                                         backgroundColor = resolveTagColor(cow.tagColor, tagColorMap)
                                     )
                                 }
-                                Column(modifier = Modifier.weight(1f)) {
+                                Column(modifier = Modifier.weight(1f)) { 
                                     Text(
                                         text = cow.name ?: "Unnamed Animal",
                                         style = MaterialTheme.typography.headlineSmall,
@@ -267,7 +267,7 @@ private fun SectionTitle(text: String) {
         text = text,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(bottom = 4.dp)
+        modifier = Modifier.padding(bottom = 4.dp) 
     )
 }
 
