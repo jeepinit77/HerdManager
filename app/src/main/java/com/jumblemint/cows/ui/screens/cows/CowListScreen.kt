@@ -268,10 +268,9 @@ fun CowListScreen(
         }
     }
 
-    // Simplified Scaffold logic for brevity (assuming it was correct before)
-    val commonListContent = @Composable { paddingModifier: Modifier ->
-         CowListContent(
-            modifier = paddingModifier,
+    Box(modifier = modifier) { // Use the modifier passed to CowListScreen, which includes outer padding
+        CowListContent(
+            modifier = Modifier.fillMaxSize(), // CowListContent will fill this Box
             showSearchAndFilters = showSearchAndFilters,
             onShowAnimalFilterDialog = { showAnimalFilterDialog = true }, 
             cowsUiState = cowsUiState?.value,
@@ -282,26 +281,26 @@ fun CowListScreen(
             onCowEdit = onCowEdit,
             tagColorMap = tagColorMap,
             scope = scope,
-            snackbarHostState = snackbarHostState
+            snackbarHostState = snackbarHostState // Pass state for showing snackbars
         )
-    }
 
-    if (showSearchAndFilters && showFab) {
-        Scaffold(
-            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-            floatingActionButton = {
-                if (onAddCowClick != null) {
-                    FloatingActionButton(onClick = onAddCowClick) {
-                        Icon(Icons.Default.Add, contentDescription = "Add Cow")
-                    }
+        // Conditionally display FAB and SnackbarHost if they are part of this screen's features
+        if (showSearchAndFilters && showFab) {
+            if (onAddCowClick != null) {
+                FloatingActionButton(
+                    onClick = onAddCowClick,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(16.dp) // Standard FAB padding from the edges of the Box
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Cow")
                 }
-            },
-            contentWindowInsets = WindowInsets(0, 0, 0, 0)
-        ) { paddingValues ->
-            commonListContent(modifier.padding(paddingValues))
+            }
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.align(Alignment.BottomCenter) // Position SnackbarHost at the bottom center of the Box
+            )
         }
-    } else {
-        commonListContent(modifier)
     }
 }
 
@@ -321,9 +320,8 @@ private fun CowListContent(
     snackbarHostState: SnackbarHostState
 ) {
     Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp)
+        modifier = modifier // This modifier is Modifier.fillMaxSize() from the Box above
+            .padding(horizontal = 16.dp) // Apply specific horizontal padding for content within CowListContent
     ) {
         if (showSearchAndFilters && cowsUiState != null && cowsViewModel != null) {
             Row(
@@ -378,7 +376,7 @@ private fun CowListContent(
             }
         } else {
             LazyColumn(
-                contentPadding = PaddingValues(vertical = 12.dp),
+                contentPadding = PaddingValues(vertical = 12.dp), // Vertical padding for list items
                 verticalArrangement = Arrangement.spacedBy(if (showSearchAndFilters) 8.dp else 12.dp)
             ) {
                 items(list, key = { it.id }) { cow ->

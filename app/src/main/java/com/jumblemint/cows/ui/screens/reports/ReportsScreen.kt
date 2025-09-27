@@ -58,26 +58,26 @@ fun ReportsScreen(
     val pastures by pasturesFlow.collectAsState(initial = emptyList())
     val pastureIdByName = remember(pastures) { pastures.associate { it.name to it.id } }
 
-    Scaffold(
-        modifier = modifier,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues ->
-        if (uiState.isLoading) {
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(paddingValues).padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                item { HerdOverviewCard(uiState.totalCows, uiState.watchedCowsCount, { type -> onShowList("status", type) }, { onShowList("watching", null) }) }
-                item { ToolsCard(onNavigateToAddBirth, { onShowList("workingList", null) }) }
-                item { ClassificationBreakdownCard(uiState.classificationBreakdown) { classification -> onShowList("classification", classification) } }
-                item { PastureBreakdownCard(uiState.pastureBreakdown) { pastureName -> val id = pastureIdByName[pastureName]; if (id != null) onShowList("pasture", id.toString()) else onShowList("pastureName", pastureName) } }
-                item { AgeBasedReportsCard(uiState.cowsUnder1Year, uiState.cowsBetween1And5Years, uiState.cowsBetween5And10Years, uiState.cowsOver10Years) { rangeKey -> onShowList("age", rangeKey) } }
-                item { BreedingReportsCard(uiState.cowsNotCalvedIn9Months, uiState.cowsCalvedInPast9Months, { onShowList("notCalved", null) }, { onShowList("calved", null) }) }
-            }
+    if (uiState.isLoading) {
+        Box(
+            modifier = modifier.fillMaxSize(), // Use the modifier passed to ReportsScreen
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+    } else {
+        LazyColumn(
+            modifier = modifier // Use the modifier passed to ReportsScreen
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 8.dp), // Add specific padding for this screen's content
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item { HerdOverviewCard(uiState.totalCows, uiState.watchedCowsCount, { type -> onShowList("status", type) }, { onShowList("watching", null) }) }
+            item { ToolsCard(onNavigateToAddBirth, { onShowList("workingList", null) }) }
+            item { ClassificationBreakdownCard(uiState.classificationBreakdown) { classification -> onShowList("classification", classification) } }
+            item { PastureBreakdownCard(uiState.pastureBreakdown) { pastureName -> val id = pastureIdByName[pastureName]; if (id != null) onShowList("pasture", id.toString()) else onShowList("pastureName", pastureName) } }
+            item { AgeBasedReportsCard(uiState.cowsUnder1Year, uiState.cowsBetween1And5Years, uiState.cowsBetween5And10Years, uiState.cowsOver10Years) { rangeKey -> onShowList("age", rangeKey) } }
+            item { BreedingReportsCard(uiState.cowsNotCalvedIn9Months, uiState.cowsCalvedInPast9Months, { onShowList("notCalved", null) }, { onShowList("calved", null) }) }
         }
     }
 }
