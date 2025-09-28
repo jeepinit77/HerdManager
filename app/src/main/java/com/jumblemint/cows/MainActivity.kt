@@ -8,8 +8,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.ExperimentalFoundationApi
 // import androidx.compose.foundation.layout.Box // No longer needed after Scaffold refactor
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-// import androidx.compose.foundation.layout.padding // Used via Modifier.padding implicitly
+import androidx.compose.foundation.layout.padding // Uncommented: Used via Modifier.padding
 import androidx.compose.foundation.pager.PagerState 
 import androidx.compose.foundation.pager.rememberPagerState 
 import androidx.compose.material.icons.Icons
@@ -20,8 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp
-// import androidx.compose.ui.unit.dp // Used via 4.dp implicitly
+import androidx.compose.ui.unit.dp // Uncommented: Used via 4.dp
 // import androidx.navigation.NavGraph.Companion.findStartDestination // Potentially unused
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
