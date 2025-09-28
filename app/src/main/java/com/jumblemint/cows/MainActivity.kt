@@ -6,12 +6,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.layout.Box
+// import androidx.compose.foundation.layout.Box // No longer needed after Scaffold refactor
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.pager.PagerState // New Import
-import androidx.compose.foundation.pager.rememberPagerState // New Import
+// import androidx.compose.foundation.layout.padding // Used via Modifier.padding implicitly
+import androidx.compose.foundation.pager.PagerState 
+import androidx.compose.foundation.pager.rememberPagerState 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,13 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.navigation.NavGraph.Companion.findStartDestination
+// import androidx.compose.ui.unit.dp // Used via 4.dp implicitly
+// import androidx.navigation.NavGraph.Companion.findStartDestination // Potentially unused
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.jumblemint.cows.navigation.* // Import all from navigation for constants and Screen
+import com.jumblemint.cows.navigation.* 
 import com.jumblemint.cows.ui.components.*
 import com.jumblemint.cows.ui.theme.CowsTheme
-import kotlinx.coroutines.launch // New Import
+import kotlinx.coroutines.launch 
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -61,7 +64,7 @@ fun getScreenForPageIndex(index: Int): Screen? = when (index) {
     else -> null
 }
 
-// New helper function to determine if the screen is one of the main tab screens
+// Helper function to determine if the screen is one of the main tab screens
 fun isMainTabScreen(screen: Screen?): Boolean {
     return screen == Screen.Dashboard ||
            screen == Screen.Cows ||
@@ -112,19 +115,9 @@ fun CattleManagerApp() {
 
     val context = LocalContext.current
     val app = context.applicationContext as CattleApplication
-    val currentUser by app.authService.currentUser.collectAsState(initial = null)
+    // val currentUser by app.authService.currentUser.collectAsState(initial = null) // Consider if needed here or just in TopAppBar
     val coroutineScope = rememberCoroutineScope()
     
-    // TopAppBar controller
-    val topAppBarController = rememberTopAppBarController()
-    
-    // Reset TopAppBar when navigating to main screens
-    LaunchedEffect(currentScreenFromNav) {
-        if (isMainTabScreen(currentScreenFromNav)) {
-            topAppBarController.reset()
-        }
-    }
-
     val initialPageForPagerState = if (currentScreenFromNav == Screen.MainPager) {
         navBackStackEntry?.arguments?.getInt("initialPage", DASHBOARD_PAGE_INDEX) ?: DASHBOARD_PAGE_INDEX
     } else {
@@ -149,114 +142,77 @@ fun CattleManagerApp() {
     }
 
     val bottomNavItems = listOf(
-        BottomNavItem(Screen.Dashboard, Icons.Default.Home, "Home"),
-        BottomNavItem(Screen.Cows, Icons.Default.GroupWork, "Cows"),
-        BottomNavItem(Screen.Pastures, Icons.Default.Landscape, "Fields"),
-        BottomNavItem(Screen.Activities, Icons.Default.Assignment, "Activity"),
-        BottomNavItem(Screen.Notes, Icons.Default.Note, "Notes")
+        BottomNavItem(Screen.Dashboard, Icons.Filled.Home, "Home"),
+        BottomNavItem(Screen.Cows, Icons.Filled.GroupWork, "Cows"),
+        BottomNavItem(Screen.Pastures, Icons.Filled.Landscape, "Fields"),
+        BottomNavItem(Screen.Activities, Icons.Filled.Assignment, "Activity"),
+        BottomNavItem(Screen.Notes, Icons.Filled.Note, "Notes")
     )
 
-    // Centralized TopAppBar logic
     val showMainTopAppBar = isMainTabScreen(currentScreenForUI)
-    val showSimpleTopAppBar = !showMainTopAppBar
+    // Only show simple top app bar if screen is not null and not a main tab screen
+    val showSimpleTopAppBar = !showMainTopAppBar && currentScreenForUI != null 
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        if (showMainTopAppBar || showSimpleTopAppBar) {
-            Scaffold(
-                modifier = Modifier.fillMaxSize(),
-                topBar = {
-                    if (showMainTopAppBar) {
-                        TopAppBarWithMenu(currentScreenForUI, { navController.navigate(Screen.Settings.route) }, navController)
-                    } else if (showSimpleTopAppBar) {
-                        SimpleTopAppBar(
-                            title = if (topAppBarController.overrideActive && topAppBarController.title.isNotEmpty()) topAppBarController.title else (currentScreenForUI?.title ?: "Cattle Manager"),
-                            onBack = { navController.popBackStack() },
-                            actions = if (topAppBarController.overrideActive) topAppBarController.actions else TopAppBarActions()
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        topBar = {
+            if (showMainTopAppBar) {
+                TopAppBarWithMenu(
+                    currentScreenForTitle = currentScreenForUI,
+                    onNavigateSettings = { navController.navigate(Screen.Settings.route) }, 
+                    navController = navController
+                )
+            } else if (showSimpleTopAppBar) {
+                CenterAlignedTopAppBar(
+                    title = { Text(currentScreenForUI?.title ?: "Cattle Manager") },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                )
+            }
+            // Else, no top bar is rendered by Scaffold if this block is empty or returns Unit
+        },
+        bottomBar = {
+            if (currentScreenFromNav == Screen.MainPager) { // Show bottom bar only on main pager screens
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) {
+                    bottomNavItems.forEach { item ->
+                        val pageIndex = getPageIndexForScreen(item.screen)
+                        NavigationBarItem(
+                            icon = { Icon(item.icon, item.label) },
+                            label = { Text(item.label) },
+                            selected = pagerState.currentPage == pageIndex,
+                            onClick = {
+                                if (pageIndex != -1) {
+                                    coroutineScope.launch {
+                                        pagerState.scrollToPage(pageIndex)
+                                    }
+                                }
+                            }
                         )
                     }
-                },
-                bottomBar = {
-                    if (currentScreenFromNav == Screen.MainPager) {
-                        NavigationBar(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ) {
-                            bottomNavItems.forEach { item ->
-                                val pageIndex = getPageIndexForScreen(item.screen)
-                                NavigationBarItem(
-                                    icon = { Icon(item.icon, item.label) },
-                                    label = { Text(item.label) },
-                                    selected = pagerState.currentPage == pageIndex,
-                                    onClick = {
-                                        if (pageIndex != -1) {
-                                            coroutineScope.launch {
-                                                pagerState.scrollToPage(pageIndex)
-                                            }
-                                        }
-                                    }
-                                )
+                    NavigationBarItem(
+                        selected = currentScreenForUI == Screen.Settings, // Changed to currentScreenForUI
+                        onClick = {
+                            navController.navigate(Screen.Settings.route) {
+                                // Optional: Configure navigation (e.g., launchSingleTop = true)
                             }
-                            NavigationBarItem(
-                                selected = currentScreenFromNav == Screen.Settings,
-                                onClick = {
-                                    navController.navigate(Screen.Settings.route)
-                                },
-                                icon = { Icon(Icons.Default.Settings, "Settings") },
-                                label = { Text("Settings") }
-                            )
-                        }
-                    }
+                        },
+                        icon = { Icon(Icons.Filled.Settings, "Settings") }, // Changed from Icons.Default
+                        label = { Text("Settings") }
+                    )
                 }
-            ) { innerPadding ->
-                CattleNavigation(
-                    navController = navController,
-                    mainScaffoldPadding = innerPadding,
-                    pagerState = pagerState,
-                    topAppBarController = topAppBarController
-                )
-            }
-        } else {
-            Scaffold(
-                modifier = Modifier.fillMaxSize(),
-                bottomBar = {
-                    if (currentScreenFromNav == Screen.MainPager) {
-                        NavigationBar(
-                            containerColor = MaterialTheme.colorScheme.surface
-                        ) {
-                            bottomNavItems.forEach { item ->
-                                val pageIndex = getPageIndexForScreen(item.screen)
-                                NavigationBarItem(
-                                    icon = { Icon(item.icon, item.label) },
-                                    label = { Text(item.label) },
-                                    selected = pagerState.currentPage == pageIndex,
-                                    onClick = {
-                                        if (pageIndex != -1) {
-                                            coroutineScope.launch {
-                                                pagerState.scrollToPage(pageIndex)
-                                            }
-                                        }
-                                    }
-                                )
-                            }
-                            NavigationBarItem(
-                                selected = currentScreenFromNav == Screen.Settings,
-                                onClick = {
-                                    navController.navigate(Screen.Settings.route)
-                                },
-                                icon = { Icon(Icons.Default.Settings, "Settings") },
-                                label = { Text("Settings") }
-                            )
-                        }
-                    }
-                }
-            ) { innerPadding ->
-                CattleNavigation(
-                    navController = navController,
-                    mainScaffoldPadding = innerPadding,
-                    pagerState = pagerState,
-                    topAppBarController = topAppBarController
-                )
             }
         }
+    ) { innerPadding ->
+        CattleNavigation(
+            navController = navController,
+            mainScaffoldPadding = innerPadding,
+            pagerState = pagerState
+        )
     }
 }
 

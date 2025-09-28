@@ -31,7 +31,6 @@ import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.repository.CattleRepository
-import com.jumblemint.cows.ui.components.SimpleTopAppBar
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.viewmodel.WorkingListUiState
@@ -72,20 +71,9 @@ fun WorkingListScreen(
 
     val tagColorMap = rememberTagColorMap(repository)
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-//        topBar = {
-//            SimpleTopAppBar(
-//                title = "Working List",
-//                onBack = onNavigateBack
-//            )
-//        }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+    Column(
+        modifier = modifier.fillMaxSize()
+    ) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -199,7 +187,7 @@ fun WorkingListScreen(
             }
         }
     }
-}
+// Removed extra closing brace here
 
 private fun hasActiveFilters(uiState: WorkingListUiState): Boolean {
     val hasNonDefaultStatusFilters = uiState.selectedStatuses.isNotEmpty() && (uiState.selectedStatuses.size != 1 || !uiState.selectedStatuses.contains(Status.ACTIVE))

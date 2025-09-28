@@ -26,8 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.ui.screens.activities.ActivityInfoUiState
-import com.jumblemint.cows.ui.components.TopAppBarController
-import com.jumblemint.cows.ui.components.TopAppBarActions
 import com.jumblemint.cows.ui.components.CowCard
 import com.jumblemint.cows.ui.viewmodel.ActivityInfoViewModel
 import com.jumblemint.cows.ui.viewmodel.ActivityInfoViewModelFactory
@@ -40,7 +38,6 @@ fun ActivityInfoScreen(
     onNavigateBack: () -> Unit,
     onNavigateToCow: (Long) -> Unit,
     onEditActivity: (Long) -> Unit,
-    topAppBarController: TopAppBarController,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -49,18 +46,6 @@ fun ActivityInfoScreen(
         factory = ActivityInfoViewModelFactory(application.repository, activityId)
     )
     val uiState: ActivityInfoUiState by viewModel.uiState.collectAsState()
-
-    LaunchedEffect(uiState.activity, uiState.error) { 
-        topAppBarController.updateTitle(uiState.activity?.activityType?.displayName ?: "Activity Details")
-        val editEnabled = uiState.activity != null && uiState.error == null
-        topAppBarController.updateActions(
-            TopAppBarActions(
-                onEdit = { uiState.activity?.id?.let { id -> onEditActivity(id) } }, 
-                editEnabled = editEnabled,
-                onClose = onNavigateBack
-            )
-        )
-    }
 
     Column(modifier = modifier.padding(PaddingValues(16.dp))) {
         if (uiState.isLoading) {

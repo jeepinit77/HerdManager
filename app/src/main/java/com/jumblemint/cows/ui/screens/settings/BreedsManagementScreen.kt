@@ -57,58 +57,19 @@ fun BreedsManagementScreen(
     val scope = rememberCoroutineScope()
     var lastDeleted by remember { mutableStateOf<Breed?>(null) }
 
-    Scaffold(
-        modifier = modifier,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Manage Breeds") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { editingBreed = null; showAddDialog = true }) {
-                        Icon(Icons.Default.AddCircleOutline, contentDescription = "Add New Breed")
-                    }
-                    var showResetConfirm by remember { mutableStateOf(false) }
-                    IconButton(onClick = { showResetConfirm = true }) {
-                        Icon(Icons.Default.Restore, contentDescription = "Reset to Default Breeds")
-                    }
-                    if (showResetConfirm) {
-                        AlertDialog(
-                            onDismissRequest = { showResetConfirm = false },
-                            icon = { Icon(Icons.Default.WarningAmber, contentDescription = "Warning") },
-                            title = { Text("Reset Breeds?") },
-                            text = { Text("This will remove all custom breeds and reinstall the default set. This action cannot be undone.") },
-                            confirmButton = {
-                                TextButton(
-                                    onClick = {
-                                        showResetConfirm = false
-                                        viewModel.resetToDefaults()
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Breeds reset to defaults.")
-                                        }
-                                    },
-                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                                ) { Text("Reset") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
-                            }
-                        )
-                    }
-                }
-            )
-        },
-        contentWindowInsets = WindowInsets(0,0,0,0)
-    ) { paddingValues ->
+    Box(modifier = modifier.fillMaxSize()) {
+        // Snackbar Host positioned manually
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+
+        var showResetConfirm by remember { mutableStateOf(false) }
+
         if (breeds.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -122,7 +83,6 @@ fun BreedsManagementScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -130,7 +90,7 @@ fun BreedsManagementScreen(
                 items(breeds, key = { it.id }) { breed ->
                     BreedItem(
                         breed = breed,
-                        onEdit = { editingBreed = it },
+                        onEdit = { editingBreed = it; showAddDialog = true },
                         onDelete = { breedToDelete ->
                             lastDeleted = breedToDelete
                             viewModel.deleteBreed(breedToDelete)
@@ -149,6 +109,30 @@ fun BreedsManagementScreen(
                     )
                 }
             }
+        }
+
+        if (showResetConfirm) {
+            AlertDialog(
+                onDismissRequest = { showResetConfirm = false },
+                icon = { Icon(Icons.Default.WarningAmber, contentDescription = "Warning") },
+                title = { Text("Reset Breeds?") },
+                text = { Text("This will remove all custom breeds and reinstall the default set. This action cannot be undone.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showResetConfirm = false
+                            viewModel.resetToDefaults()
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Breeds reset to defaults.")
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Reset") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
+                }
+            )
         }
     }
 

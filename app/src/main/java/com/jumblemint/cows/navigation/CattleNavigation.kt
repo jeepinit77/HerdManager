@@ -167,8 +167,7 @@ fun MainScreensViewPager(
 fun CattleNavigation(
     navController: NavHostController,
     mainScaffoldPadding: PaddingValues,
-    pagerState: PagerState,
-    topAppBarController: TopAppBarController
+    pagerState: PagerState
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -240,8 +239,7 @@ fun CattleNavigation(
                         launchSingleTop = true
                         restoreState = true
                     }
-                },
-                topAppBarController = topAppBarController
+                }
             )
         }
 
@@ -276,15 +274,6 @@ fun CattleNavigation(
             )
             val uiState by viewModel.uiState.collectAsState()
             
-            LaunchedEffect(cowId, uiState.isLoading) { // Combined LaunchedEffect
-                topAppBarController.updateTitle(if (cowId == 0L) "Add Animal" else "Edit Animal")
-                topAppBarController.updateActions(
-                    TopAppBarActions(
-                        onSave = { viewModel.saveCow() },
-                        saveEnabled = !uiState.isLoading
-                    )
-                )
-            }
             
             CowEditScreen(
                 modifier = screenModifierWithPadding,
@@ -294,15 +283,10 @@ fun CattleNavigation(
         }
 
         composable(Screen.AddActivity.route) {
-            LaunchedEffect(Unit) {
-                topAppBarController.updateTitle("Add Activity")
-                topAppBarController.updateActions(TopAppBarActions())
-            }
             AddActivityScreen(
                 modifier = screenModifierWithPadding,
                 editId = null,
-                onNavigateBack = { navController.popBackStack() },
-                topAppBarController = topAppBarController
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
@@ -310,15 +294,10 @@ fun CattleNavigation(
             arguments = listOf(navArgument("activityId") { type = NavType.LongType }) // Ensure argument is defined
         ) { backStackEntry ->
             val activityId = backStackEntry.arguments?.getLong("activityId")
-            LaunchedEffect(activityId) {
-                topAppBarController.updateTitle("Edit Activity")
-                topAppBarController.updateActions(TopAppBarActions()) // Consider adding save action here too
-            }
             AddActivityScreen(
                 modifier = screenModifierWithPadding,
                 editId = activityId,
-                onNavigateBack = { navController.popBackStack() },
-                topAppBarController = topAppBarController
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         
@@ -343,19 +322,13 @@ fun CattleNavigation(
                 },
                 onEditActivity = { currentActivityId ->
                     navController.navigate(Screen.AddActivityWithId.createRoute(currentActivityId))
-                },
-                topAppBarController = topAppBarController
+                }
             )
         }
 
         composable(Screen.CowList.route) { backStackEntry ->
             val type = backStackEntry.arguments?.getString("type")
             val valueString = backStackEntry.arguments?.getString("value")
-            LaunchedEffect(type, valueString) {
-                // Ensure title/actions reset when entering stand-alone CowList
-                topAppBarController.updateTitle("Cow List")
-                topAppBarController.updateActions(TopAppBarActions())
-            }
             CowListScreen(
                 modifier = screenModifierWithPadding,
                 type = type,
@@ -368,11 +341,6 @@ fun CattleNavigation(
         }
 
         composable(Screen.Settings.route) {
-            // Ensure top app bar shows correct title/actions when on Settings
-            LaunchedEffect(Unit) {
-                topAppBarController.updateTitle("Settings")
-                topAppBarController.updateActions(TopAppBarActions())
-            }
             SettingsScreen(
                 modifier = screenModifierWithPadding,
                 onNavigateBack = { navController.popBackStack() },
@@ -431,8 +399,7 @@ fun CattleNavigation(
                 },
                 onEditPasture = {
                     navController.navigate(Screen.EditPasture.createRoute(pastureId))
-                },
-                topAppBarController = topAppBarController
+                }
             )
         }
 
@@ -462,17 +429,6 @@ fun CattleNavigation(
                     application.syncService
                 )
             )
-            val uiState by addBirthViewModel.uiState.collectAsState()
-
-            LaunchedEffect(uiState.isLoading, uiState.motherId) {
-                topAppBarController.updateTitle("Record Birth")
-                topAppBarController.updateActions(
-                    TopAppBarActions(
-                        onSave = { addBirthViewModel.recordBirth() },
-                        saveEnabled = !uiState.isLoading && uiState.motherId != null
-                    )
-                )
-            }
 
             AddBirthScreen(
                 modifier = screenModifierWithPadding,
@@ -503,11 +459,6 @@ fun CattleNavigation(
                 factory = PasturesViewModelFactory(applicationContext, repository)
             )
             
-            // Set top app bar for Add Pasture overlay
-            LaunchedEffect(Unit) {
-                topAppBarController.updateTitle("Add Pasture")
-                topAppBarController.updateActions(TopAppBarActions())
-            }
             AddPastureScreen(
                 modifier = screenModifierWithPadding,
                 onAddPasture = { pasture ->
@@ -556,11 +507,6 @@ fun CattleNavigation(
             
             val pasture by repository.getPastureById(pastureId).collectAsState(initial = null)
             
-            // Set top app bar for Edit Pasture overlay
-            LaunchedEffect(pasture?.id) {
-                topAppBarController.updateTitle("Edit Pasture")
-                topAppBarController.updateActions(TopAppBarActions())
-            }
             AddPastureScreen(
                 modifier = screenModifierWithPadding,
                 editPasture = pasture,

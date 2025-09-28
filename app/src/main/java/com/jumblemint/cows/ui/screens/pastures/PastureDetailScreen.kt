@@ -28,8 +28,7 @@ fun PastureDetailScreen(
     onNavigateBack: () -> Unit,
     onCowClick: (Long) -> Unit,
     onCowEdit: (Long) -> Unit,
-    onEditPasture: () -> Unit = {},
-    topAppBarController: TopAppBarController,
+    onEditPasture: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -58,23 +57,6 @@ fun PastureDetailScreen(
     val tagColorMap = rememberTagColorMap(repository)
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    
-    // Update TopAppBar when pasture data changes
-    LaunchedEffect(uiState.pasture) {
-        topAppBarController.updateTitle(uiState.pasture?.name ?: "Pasture Details")
-        topAppBarController.updateActions(
-            TopAppBarActions(
-                onEdit = onEditPasture
-            )
-        )
-    }
-
-    // TODO: Communicate pasture name (uiState.pasture?.name) to MainActivity's TopAppBar.
-    // This could be done via a callback to update a shared state or ViewModel.
-    // Example: LaunchedEffect(uiState.pasture?.name) { newName -> /* update MainActivity's title */ }
-
-    // TODO: Ensure MainActivity's TopAppBar shows an Edit icon that calls `onEditPasture`
-    // when this screen is active and uiState.pasture is not null.
 
     Box(modifier = modifier) {
         SnackbarHost(

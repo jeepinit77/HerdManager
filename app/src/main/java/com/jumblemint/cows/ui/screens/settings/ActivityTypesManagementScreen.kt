@@ -69,35 +69,17 @@ fun ActivityTypesManagementScreen(
     val scope = rememberCoroutineScope()
     var lastDeleted by remember { mutableStateOf<ActivityTypeConfig?>(null) }
 
-    Scaffold(
-        modifier = modifier,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Manage Activity Types") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showResetConfirm = true }) {
-                        Icon(Icons.Default.Restore, contentDescription = "Reset to Default Activity Types")
-                    }
-                    IconButton(onClick = { editingType = null; showAddDialog = true }) {
-                        Icon(Icons.Default.AddCircleOutline, contentDescription = "Add New Activity Type")
-                    }
-                }
-            )
-        },
-        contentWindowInsets = WindowInsets(0,0,0,0)
-    ) { paddingValues ->
+    Box(modifier = modifier.fillMaxSize()) {
+        // Snackbar Host positioned manually
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
 
         if (activityTypes.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -123,7 +105,6 @@ fun ActivityTypesManagementScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .padding(horizontal = 16.dp),
                 contentPadding = PaddingValues(vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -131,7 +112,7 @@ fun ActivityTypesManagementScreen(
                 items(activityTypes, key = { it.id }) { activityType ->
                     ActivityTypeItem(
                         activityType = activityType,
-                        onEdit = { editingType = it },
+                        onEdit = { editingType = it; showAddDialog = true },
                         onDelete = { typeToDelete ->
                             lastDeleted = typeToDelete
                             viewModel.deleteActivityType(typeToDelete)

@@ -28,10 +28,10 @@ import com.jumblemint.cows.ui.viewmodel.AddActivityViewModelFactory
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddActivityScreen(
-    modifier: Modifier = Modifier,
     editId: Long? = null,
     onNavigateBack: () -> Unit,
-    topAppBarController: TopAppBarController
+    onEditPasture: () -> Unit = {},
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
@@ -55,19 +55,6 @@ fun AddActivityScreen(
     )
 
     val uiState by viewModel.uiState.collectAsState()
-    
-    // Update TopAppBar save button state
-    LaunchedEffect(uiState.isLoading, uiState.selectedCows.size, uiState.activityType, uiState.notes) {
-        val canSave = !uiState.isLoading && 
-                     uiState.selectedCows.isNotEmpty() && 
-                     (uiState.activityType != ActivityType.WORKED || uiState.notes.isNotBlank())
-        topAppBarController.updateActions(
-            TopAppBarActions(
-                onSave = { viewModel.saveActivity() },
-                saveEnabled = canSave
-            )
-        )
-    }
 
     var showFilters by remember { mutableStateOf(false) }
     var selectedGender by remember { mutableStateOf<Gender?>(null) }

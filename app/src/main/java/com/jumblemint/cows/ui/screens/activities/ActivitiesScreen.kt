@@ -67,21 +67,24 @@ fun ActivitiesScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    Scaffold(
-        modifier = modifier,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        floatingActionButton = {
-            FloatingActionButton(onClick = onAddActivityClick) {
-                Icon(Icons.Filled.Add, contentDescription = "Add Activity")
-            }
-        },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues -> 
-        Column(
+    Box(modifier = modifier.fillMaxSize()) {
+        // Floating Action Button positioned manually
+        FloatingActionButton(
+            onClick = onAddActivityClick,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
         ) {
+            Icon(Icons.Filled.Add, contentDescription = "Add Activity")
+        }
+
+        // Snackbar Host positioned manually
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+
+        Column(modifier = Modifier.fillMaxSize()) {
             if (uiState.isLoading) {
                 Box(
                     modifier = Modifier.fillMaxSize(),

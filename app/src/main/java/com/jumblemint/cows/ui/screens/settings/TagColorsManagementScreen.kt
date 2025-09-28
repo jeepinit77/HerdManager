@@ -69,58 +69,19 @@ fun TagColorsManagementScreen(
     val scope = rememberCoroutineScope()
     var lastDeleted by remember { mutableStateOf<TagColor?>(null) }
 
-    Scaffold(
-        modifier = modifier, // <<< APPLIED MODIFIER HERE
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text("Manage Tag Colors") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { editingColor = null; showAddDialog = true }) { // Clear editingColor for add
-                        Icon(Icons.Default.AddCircleOutline, contentDescription = "Add New Color") // Changed Icon
-                    }
-                    var showResetConfirm by remember { mutableStateOf(false) }
-                    IconButton(onClick = { showResetConfirm = true }) {
-                        Icon(Icons.Default.Restore, contentDescription = "Reset to Default Colors") // Changed Icon
-                    }
-                    if (showResetConfirm) {
-                        AlertDialog(
-                            onDismissRequest = { showResetConfirm = false },
-                            icon = { Icon(Icons.Default.WarningAmber, contentDescription = "Warning") }, // Changed Icon
-                            title = { Text("Reset Tag Colors?") },
-                            text = { Text("This will remove all custom tag colors and reinstall the default set. This action cannot be undone.") },
-                            confirmButton = {
-                                TextButton(
-                                    onClick = {
-                                        showResetConfirm = false
-                                        viewModel.resetToDefaults()
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Tag colors reset to defaults.")
-                                        }
-                                    },
-                                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                                ) { Text("Reset") }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
-                            }
-                        )
-                    }
-                }
-            )
-        },
-        contentWindowInsets = WindowInsets(0,0,0,0) // Kept as is, can be reviewed
-    ) { paddingValues ->
+    Box(modifier = modifier.fillMaxSize()) {
+        // Snackbar Host positioned manually
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
+
+        var showResetConfirm by remember { mutableStateOf(false) }
+        
         if (tagColors.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -134,7 +95,6 @@ fun TagColorsManagementScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues)
                     .padding(horizontal = 16.dp), // Only horizontal for list items
                 contentPadding = PaddingValues(vertical = 16.dp), // Vertical padding for overall list
                 verticalArrangement = Arrangement.spacedBy(10.dp) // Spacing between items
@@ -142,7 +102,7 @@ fun TagColorsManagementScreen(
                 items(tagColors, key = { it.id }) { tagColor -> // Added key for better performance
                     TagColorItem(
                         tagColor = tagColor,
-                        onEdit = { editingColor = it },
+                        onEdit = { editingColor = it; showAddDialog = true },
                         onDelete = { color ->
                             lastDeleted = color // Store for potential undo
                             viewModel.deleteTagColor(color)
@@ -161,6 +121,30 @@ fun TagColorsManagementScreen(
                     )
                 }
             }
+        }
+
+        if (showResetConfirm) {
+            AlertDialog(
+                onDismissRequest = { showResetConfirm = false },
+                icon = { Icon(Icons.Default.WarningAmber, contentDescription = "Warning") },
+                title = { Text("Reset Tag Colors?") },
+                text = { Text("This will remove all custom tag colors and reinstall the default set. This action cannot be undone.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showResetConfirm = false
+                            viewModel.resetToDefaults()
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Tag colors reset to defaults.")
+                            }
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text("Reset") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
+                }
+            )
         }
     }
 

@@ -41,7 +41,6 @@ fun CowInfoScreen(
     onEditCow: () -> Unit,
     onNavigateToCow: (Long) -> Unit,
     onCloseFlow: () -> Unit,
-    topAppBarController: TopAppBarController,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -66,16 +65,6 @@ fun CowInfoScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val tagColorMap = rememberTagColorMap(repository)
-    
-    LaunchedEffect(uiState.cow) {
-        topAppBarController.updateTitle(uiState.cow?.name ?: "Cow Information")
-        topAppBarController.updateActions(
-            TopAppBarActions(
-                onEdit = onEditCow,
-                onClose = onCloseFlow
-            )
-        )
-    }
 
     Column(
         modifier = modifier

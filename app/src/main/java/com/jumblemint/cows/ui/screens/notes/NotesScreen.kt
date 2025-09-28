@@ -55,32 +55,33 @@ fun NotesScreen(
     // TODO: Communicate screen title "Notes" to MainActivity's TopAppBar if needed.
     // LaunchedEffect(Unit) { /* call to update MainActivity's title */ }
 
-    Scaffold(
-        modifier = modifier, // This modifier includes padding from MainActivity's Scaffold and fillMaxSize
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showAdd = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Note")
-            }
-        },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0) // <<< UNCOMMENTED THIS LINE
-    ) { localScaffoldPadding -> // Renamed from 'padding' to 'localScaffoldPadding' for clarity
-                               // This padding is from THIS screen's Scaffold (for FAB, etc.)
+    Box(modifier = modifier.fillMaxSize()) {
+        // Floating Action Button positioned manually
+        FloatingActionButton(
+            onClick = { showAdd = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add Note")
+        }
+
+        // Snackbar Host positioned manually
+        SnackbarHost(
+            hostState = snackbarHostState,
+            modifier = Modifier.align(Alignment.BottomCenter)
+        )
 
         if (uiState.isLoading) {
             Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(localScaffoldPadding), // Apply this screen's Scaffold's padding
+                Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
         } else if (uiState.notes.isEmpty()) {
             Box(
-                Modifier
-                    .fillMaxSize()
-                    .padding(localScaffoldPadding), // Apply this screen's Scaffold's padding
+                Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -91,10 +92,8 @@ fun NotesScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(localScaffoldPadding), // Apply this screen's Scaffold's padding
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp), // Specific padding for list items
+                modifier = Modifier.fillMaxSize(),
+//                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp, bottom = 80.dp), // Extra bottom padding for FAB
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(uiState.notes, key = { it.id }) { note ->
