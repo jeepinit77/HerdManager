@@ -169,6 +169,13 @@ fun CattleManagerApp() {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
+                    },
+                    actions = {
+                        if (currentScreenForUI == Screen.CowInfo) {
+                            IconButton(onClick = { navController.popBackStack(Screen.MainPager.route, inclusive = false) }) {
+                                Icon(Icons.Filled.Close, contentDescription = "Close")
+                            }
+                        }
                     }
                 )
             }
