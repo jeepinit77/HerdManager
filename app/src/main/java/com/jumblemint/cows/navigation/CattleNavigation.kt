@@ -85,15 +85,7 @@ fun MainScreensViewPager(
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
 
-    // Read initialPage argument from navController's currentBackStackEntry
-    val initialPage = navController.currentBackStackEntry?.arguments?.getInt("initialPage") ?: DASHBOARD_PAGE_INDEX
 
-    // Set pager to correct tab when shown
-    LaunchedEffect(initialPage) {
-        if (pagerState.currentPage != initialPage) {
-            pagerState.scrollToPage(initialPage)
-        }
-    }
 
     HorizontalPager(
         state = pagerState,

@@ -115,12 +115,10 @@ fun CattleManagerApp() {
     val app = context.applicationContext as CattleApplication
     // val currentUser by app.authService.currentUser.collectAsState(initial = null) // Consider if needed here or just in TopAppBar
     val coroutineScope = rememberCoroutineScope()
-    
-    val initialPageForPagerState = if (currentScreenFromNav == Screen.MainPager) {
-        navBackStackEntry?.arguments?.getInt("initialPage", DASHBOARD_PAGE_INDEX) ?: DASHBOARD_PAGE_INDEX
-    } else {
-        DASHBOARD_PAGE_INDEX 
-    }
+
+    val lastPagerPage = remember { mutableStateOf(DASHBOARD_PAGE_INDEX) }
+
+    val initialPageForPagerState = lastPagerPage.value
 
     val pagerState = rememberPagerState(
         initialPage = initialPageForPagerState,
@@ -131,6 +129,10 @@ fun CattleManagerApp() {
         if (currentScreenFromNav == Screen.MainPager && pagerState.currentPage != initialPageForPagerState) {
             pagerState.scrollToPage(initialPageForPagerState)
         }
+    }
+
+    LaunchedEffect(pagerState.currentPage) {
+        lastPagerPage.value = pagerState.currentPage
     }
     
     val currentScreenForUI = if (currentScreenFromNav == Screen.MainPager) {
