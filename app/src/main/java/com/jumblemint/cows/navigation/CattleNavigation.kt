@@ -157,7 +157,9 @@ fun MainScreensViewPager(
 fun CattleNavigation(
     navController: NavHostController,
     mainScaffoldPadding: PaddingValues,
-    pagerState: PagerState
+    pagerState: PagerState,
+    saveTriggered: Boolean = false,
+    onSaveHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -459,7 +461,9 @@ fun CattleNavigation(
                     navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
                         popUpTo(Screen.AddPasture.route) { inclusive = true }
                     }
-                }
+                },
+                saveTriggered = saveTriggered,
+                onSaveHandled = onSaveHandled
             )
         }
         composable(
@@ -508,7 +512,9 @@ fun CattleNavigation(
                     navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
                         popUpTo(Screen.EditPasture.route) { inclusive = true }
                     }
-                }
+                },
+                saveTriggered = saveTriggered,
+                onSaveHandled = onSaveHandled
             )
         }
         composable(Screen.AccountManagement.route){

@@ -82,6 +82,9 @@ fun CattleManagerApp() {
 
     val coroutineScope = rememberCoroutineScope()
 
+    // State for triggering save from top bar
+    var saveTriggered by remember { mutableStateOf(false) }
+
     val lastPagerPage = remember { mutableStateOf(DASHBOARD_PAGE_INDEX) }
     val initialPageForPagerState = lastPagerPage.value
 
@@ -179,6 +182,14 @@ fun CattleManagerApp() {
                                 Log.w("EditButtonDebug", "Could not retrieve cowId from arguments for Edit button.")
                             }
                         }
+                        // Add save button for pasture screens
+                        if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture) {
+                            IconButton(onClick = { 
+                                saveTriggered = true
+                            }) {
+                                Icon(Icons.Filled.Done, contentDescription = "Save")
+                            }
+                        }
                         if (currentScreenForUI == Screen.CowInfo || 
                             currentScreenForUI == Screen.PastureDetail || 
                             currentScreenForUI == Screen.CowList ||
@@ -229,7 +240,9 @@ fun CattleManagerApp() {
         CattleNavigation(
             navController = navController,
             mainScaffoldPadding = innerPadding,
-            pagerState = pagerState
+            pagerState = pagerState,
+            saveTriggered = saveTriggered,
+            onSaveHandled = { saveTriggered = false }
         )
     }
 }
