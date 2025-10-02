@@ -9,8 +9,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 // import androidx.compose.foundation.layout.Box // No longer needed after Scaffold refactor
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding // Uncommented: Used via Modifier.padding
-import androidx.compose.foundation.pager.PagerState 
-import androidx.compose.foundation.pager.rememberPagerState 
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -23,10 +23,10 @@ import androidx.compose.ui.unit.dp // Uncommented: Used via 4.dp
 // import androidx.navigation.NavGraph.Companion.findStartDestination // Potentially unused
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.jumblemint.cows.navigation.* 
+import com.jumblemint.cows.navigation.*
 import com.jumblemint.cows.ui.components.*
 import com.jumblemint.cows.ui.theme.CowsTheme
-import kotlinx.coroutines.launch 
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -114,21 +114,17 @@ fun CattleManagerApp() {
         BottomNavItem(Screen.Notes, Icons.Filled.Note, "Notes")
     )
 
-    val showMainTopAppBar = isMainTabScreen(currentScreenForUI)
-    // Only show simple top app bar if screen is not null and not a main tab screen
-    val showSimpleTopAppBar = !showMainTopAppBar && currentScreenForUI != null 
-
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             val titleText = currentScreenForUI?.title ?: "Cattle Manager"
-            if (showMainTopAppBar) {
+            if (isMainTabScreen(currentScreenForUI)) {
                 CenterAlignedTopAppBar(
                     title = { Text(titleText) }
                     // No navigationIcon
                     // No actions
                 )
-            } else if (showSimpleTopAppBar) {
+            } else if (currentScreenForUI != null) {
                 CenterAlignedTopAppBar(
                     title = { Text(titleText) },
                     navigationIcon = {
@@ -137,7 +133,11 @@ fun CattleManagerApp() {
                         }
                     },
                     actions = {
-                        if (currentScreenForUI == Screen.CowInfo || currentScreenForUI == Screen.PastureDetail || currentScreenForUI == Screen.CowList || currentScreenForUI == Screen.ActivityInfo || currentScreenForUI == Screen.WorkingList) {
+                        if (currentScreenForUI == Screen.CowInfo || 
+                            currentScreenForUI == Screen.PastureDetail || 
+                            currentScreenForUI == Screen.CowList ||
+                            currentScreenForUI == Screen.ActivityInfo ||
+                            currentScreenForUI == Screen.WorkingList) {
                             IconButton(onClick = { navController.popBackStack(Screen.MainPager.route, inclusive = false) }) {
                                 Icon(Icons.Filled.Close, contentDescription = "Close")
                             }
@@ -190,3 +190,4 @@ fun CattleManagerApp() {
 }
 
 data class BottomNavItem(val screen: Screen, val icon: ImageVector, val label: String)
+
