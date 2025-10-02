@@ -5,11 +5,8 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.ExperimentalFoundationApi
-// import androidx.compose.foundation.layout.Box // No longer needed after Scaffold refactor
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding // Uncommented: Used via Modifier.padding
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -20,13 +17,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.unit.dp // Uncommented: Used via 4.dp
-// import androidx.navigation.NavGraph.Companion.findStartDestination // Potentially unused
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.jumblemint.cows.data.database.CattleDatabase
+import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.navigation.*
-import com.jumblemint.cows.ui.components.*
 import com.jumblemint.cows.ui.theme.CowsTheme
+import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
+import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -77,13 +77,12 @@ fun isMainTabScreen(screen: Screen?): Boolean {
 fun CattleManagerApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRouteFromNav = navBackStackEntry?.destination?.route // Keep for Screen.fromRoute if needed elsewhere
+    val currentRouteFromNav = navBackStackEntry?.destination?.route
     val currentScreenFromNav = Screen.fromRoute(currentRouteFromNav)
 
     val coroutineScope = rememberCoroutineScope()
 
     val lastPagerPage = remember { mutableStateOf(DASHBOARD_PAGE_INDEX) }
-
     val initialPageForPagerState = lastPagerPage.value
 
     val pagerState = rememberPagerState(
@@ -118,16 +117,50 @@ fun CattleManagerApp() {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
-            val titleText = currentScreenForUI?.title ?: "Cattle Manager"
             if (isMainTabScreen(currentScreenForUI)) {
                 CenterAlignedTopAppBar(
-                    title = { Text(titleText) }
-                    // No navigationIcon
-                    // No actions
+                    title = { Text(currentScreenForUI?.title ?: "Cattle Manager") }
                 )
-            } else if (currentScreenForUI != null) {
+            } else if (currentScreenForUI == Screen.CowDetail) {
+                val cowId = navBackStackEntry?.arguments?.getLong("cowId")
                 CenterAlignedTopAppBar(
-                    title = { Text(titleText) },
+                    title = {
+                        if (cowId == null) { // Should not happen based on route definition
+                            Text(Screen.CowDetail.title ?: "Cow Details")
+                        } else if (cowId == 0L) {
+                            Text("Add Animal")
+                        } else {
+                            val context = LocalContext.current
+                            val application = context.applicationContext as CattleApplication
+                            val database = CattleDatabase.getDatabase(context)
+                            val repository = remember(database) { // Keyed remember for repository
+                                CattleRepository(
+                                    database.cowDao(), database.pastureDao(), database.activityDao(),
+                                    database.settingsDao(), database.noteDao(), database.userDao(),
+                                    database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
+                                    database.activityTypeConfigDao(), database.breedDao()
+                                )
+                            }
+                            // Use a key for the viewModel to ensure it's specific to the cowId
+                            val viewModel: CowDetailViewModel = viewModel(
+                                key = "CowDetailTitleVM_$cowId", 
+                                factory = CowDetailViewModelFactory(application, repository, cowId)
+                            )
+                            val uiState by viewModel.uiState.collectAsState()
+                            val name = uiState.name
+                            Text(if (name.isNotBlank()) "Edit $name" else "Edit Animal")
+                        }
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { navController.popBackStack() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                    // Actions for CowDetail are intentionally omitted here as per previous logic
+                )
+            } else if (currentScreenForUI != null) { // Other non-main, non-CowDetail screens
+                CenterAlignedTopAppBar(
+                    title = { Text(currentScreenForUI.title ?: "Cattle Manager") },
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -135,10 +168,8 @@ fun CattleManagerApp() {
                     },
                     actions = {
                         if (currentScreenForUI == Screen.CowInfo) {
-                            // Correct way to get cowId from arguments
                             val cowIdFromArgs = navBackStackEntry?.arguments?.getLong("cowId")
                             cowIdFromArgs?.let { idVal ->
-                                // Ensure it's a valid ID for editing (e.g., not 0L if 0L means 'new')
                                 if (idVal != 0L) { 
                                     IconButton(onClick = { 
                                         Log.d("EditButtonDebug", "Navigating to CowDetail with ID: $idVal")
@@ -148,11 +179,9 @@ fun CattleManagerApp() {
                                     }
                                 } else {
                                      Log.w("EditButtonDebug", "CowId is 0L, Edit button not shown or disabled.")
-                                     // Optionally, show a disabled button or no button
                                 }
                             } ?: run {
                                 Log.w("EditButtonDebug", "Could not retrieve cowId from arguments for Edit button.")
-                                // Optionally, show a disabled button or no button
                             }
                         }
                         if (currentScreenForUI == Screen.CowInfo || 
@@ -167,10 +196,9 @@ fun CattleManagerApp() {
                     }
                 )
             }
-            // Else, no top bar is rendered by Scaffold if this block is empty or returns Unit
         },
         bottomBar = {
-            if (currentScreenFromNav == Screen.MainPager) { // Show bottom bar only on main pager screens
+            if (currentScreenFromNav == Screen.MainPager) { 
                 NavigationBar(
                     containerColor = MaterialTheme.colorScheme.surface
                 ) {
@@ -190,13 +218,13 @@ fun CattleManagerApp() {
                         )
                     }
                     NavigationBarItem(
-                        selected = currentScreenForUI == Screen.Settings, // Changed to currentScreenForUI
+                        selected = currentScreenForUI == Screen.Settings, 
                         onClick = {
                             navController.navigate(Screen.Settings.route) {
                                 // Optional: Configure navigation (e.g., launchSingleTop = true)
                             }
                         },
-                        icon = { Icon(Icons.Filled.Settings, "Settings") }, // Changed from Icons.Default
+                        icon = { Icon(Icons.Filled.Settings, "Settings") }, 
                         label = { Text("Settings") }
                     )
                 }
@@ -212,4 +240,3 @@ fun CattleManagerApp() {
 }
 
 data class BottomNavItem(val screen: Screen, val icon: ImageVector, val label: String)
-
