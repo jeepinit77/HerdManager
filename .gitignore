@@ -18,3 +18,4 @@ local.properties
 /.idea/ChatHistory_schema_v3.xml
 /.idea/copilot.data.migration.ask.xml
 /.idea/copilot.data.migration.ask2agent.xml
+/.idea/copilotDiffState.xml

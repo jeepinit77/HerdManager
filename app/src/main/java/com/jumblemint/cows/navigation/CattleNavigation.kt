@@ -29,7 +29,6 @@ import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.model.Activity // Corrected: Import for Activity model
 import com.jumblemint.cows.ui.screens.account.AccountManagementScreen
 import com.jumblemint.cows.ui.screens.activities.ActivitiesScreen
-// Import for ActivityInfoScreen
 import com.jumblemint.cows.ui.screens.activities.ActivityInfoScreen
 import com.jumblemint.cows.ui.screens.activities.AddActivityScreen
 import com.jumblemint.cows.ui.screens.activities.AddBirthScreen
@@ -264,12 +263,10 @@ fun CattleNavigation(
             val viewModel: CowDetailViewModel = viewModel(
                 factory = CowDetailViewModelFactory(application, repository, cowId)
             )
-            val uiState by viewModel.uiState.collectAsState()
-            
-            
             CowEditScreen(
                 modifier = screenModifierWithPadding,
                 cowId = cowId,
+                viewModel = viewModel,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

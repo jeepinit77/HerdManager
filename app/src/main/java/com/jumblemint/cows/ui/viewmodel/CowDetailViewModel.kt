@@ -46,7 +46,8 @@ data class CowDetailUiState(
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
     val error: String? = null,
-    val isNameTagLinked: Boolean = false
+    val isNameTagLinked: Boolean = false,
+    val hasUnsavedChanges: Boolean = false
 )
 
 class CowDetailViewModel(
@@ -163,9 +164,9 @@ class CowDetailViewModel(
     fun updateName(name: String) {
         _uiState.update { 
             if (it.isNameTagLinked) {
-                it.copy(name = name, tagNumber = name, error = if (name.isBlank() && it.tagNumber.isBlank()) it.error else null)
+                it.copy(name = name, tagNumber = name, error = if (name.isBlank() && it.tagNumber.isBlank()) it.error else null, hasUnsavedChanges = true)
             } else {
-                it.copy(name = name, error = if (name.isBlank() && it.tagNumber.isBlank()) it.error else null)
+                it.copy(name = name, error = if (name.isBlank() && it.tagNumber.isBlank()) it.error else null, hasUnsavedChanges = true)
             }
         }
     }
@@ -173,9 +174,9 @@ class CowDetailViewModel(
     fun updateTagNumber(tagNumber: String) {
         _uiState.update { 
             if (it.isNameTagLinked) {
-                it.copy(name = tagNumber, tagNumber = tagNumber, error = if (tagNumber.isBlank() && it.name.isBlank()) it.error else null)
+                it.copy(name = tagNumber, tagNumber = tagNumber, error = if (tagNumber.isBlank() && it.name.isBlank()) it.error else null, hasUnsavedChanges = true)
             } else {
-                it.copy(tagNumber = tagNumber, error = if (tagNumber.isBlank() && it.name.isBlank()) it.error else null)
+                it.copy(tagNumber = tagNumber, error = if (tagNumber.isBlank() && it.name.isBlank()) it.error else null, hasUnsavedChanges = true)
             }
         }
     }
@@ -209,9 +210,9 @@ class CowDetailViewModel(
         }
     }
 
-    fun updateTagColor(tagColor: String?) { _uiState.update { it.copy(tagColor = tagColor) } }
-    fun updateBirthDate(birthDate: LocalDate?) { _uiState.update { it.copy(birthDate = birthDate) } }
-    
+    fun updateTagColor(tagColor: String?) { _uiState.update { it.copy(tagColor = tagColor, hasUnsavedChanges = true) } }
+    fun updateBirthDate(birthDate: LocalDate?) { _uiState.update { it.copy(birthDate = birthDate, hasUnsavedChanges = true) } }
+
     fun updateGender(gender: Gender?) {
         _uiState.update { currentState ->
             val newClassification = when (gender) {
@@ -225,7 +226,7 @@ class CowDetailViewModel(
                 }
                 else -> currentState.classification
             }
-            currentState.copy(gender = gender, classification = newClassification, error = if (gender != null) null else currentState.error)
+            currentState.copy(gender = gender, classification = newClassification, error = if (gender != null) null else currentState.error, hasUnsavedChanges = true)
         }
     }
 
@@ -236,33 +237,34 @@ class CowDetailViewModel(
                 Classification.BULL, Classification.STEER -> Gender.MALE
                 else -> currentState.gender
             }
-            currentState.copy(classification = classification, gender = newGender, error = if (classification != null) null else currentState.error)
+            currentState.copy(classification = classification, gender = newGender, error = if (classification != null) null else currentState.error, hasUnsavedChanges = true)
         }
     }
 
-    fun updateColorMarkings(colorMarkings: String) { _uiState.update { it.copy(colorMarkings = colorMarkings) } }
-    fun updateRegistrationNumber(registrationNumber: String) { _uiState.update { it.copy(registrationNumber = registrationNumber) } }
-    fun updateBreed(breed: String?) { _uiState.update { it.copy(breed = breed) } }
-    fun updateStatus(status: Status) { _uiState.update { it.copy(status = status, error = null) } } // Status always has a value, so error for status nullity isn't needed here.
-    fun updateIsWatched(isWatched: Boolean) { _uiState.update { it.copy(isWatched = isWatched) } }
+    fun updateColorMarkings(colorMarkings: String) { _uiState.update { it.copy(colorMarkings = colorMarkings, hasUnsavedChanges = true) } }
+    fun updateRegistrationNumber(registrationNumber: String) { _uiState.update { it.copy(registrationNumber = registrationNumber, hasUnsavedChanges = true) } }
+    fun updateBreed(breed: String?) { _uiState.update { it.copy(breed = breed, hasUnsavedChanges = true) } }
+    fun updateStatus(status: Status) { _uiState.update { it.copy(status = status, error = null, hasUnsavedChanges = true) } } // Status always has a value, so error for status nullity isn't needed here.
+    fun updateIsWatched(isWatched: Boolean) { _uiState.update { it.copy(isWatched = isWatched, hasUnsavedChanges = true) } }
+    fun updatePhotos(photos: List<String>) { _uiState.update { it.copy(photos = photos, hasUnsavedChanges = true) } }
 
     fun updateMother(motherId: Long?) {
         viewModelScope.launch {
             val motherName = motherId?.let { repository.getCowById(it)?.name }
-            _uiState.update { it.copy(motherId = motherId, motherName = motherName) }
+            _uiState.update { it.copy(motherId = motherId, motherName = motherName, hasUnsavedChanges = true) }
         }
     }
 
     fun updateFather(fatherId: Long?) {
         viewModelScope.launch {
             val fatherName = fatherId?.let { repository.getCowById(it)?.name }
-            _uiState.update { it.copy(fatherId = fatherId, fatherName = fatherName) }
+            _uiState.update { it.copy(fatherId = fatherId, fatherName = fatherName, hasUnsavedChanges = true) }
         }
     }
 
     fun updatePasture(pastureId: String?) {
         val pasture = _uiState.value.availablePastures.find { it.id == pastureId }
-        _uiState.update { it.copy(pastureId = pastureId, pastureName = pasture?.name) }
+        _uiState.update { it.copy(pastureId = pastureId, pastureName = pasture?.name, hasUnsavedChanges = true) }
     }
 
     fun saveCow() {
@@ -366,7 +368,7 @@ class CowDetailViewModel(
                     savedCowForSync = cowToSave
                 }
                 
-                _uiState.update { it.copy(isSaved = true, error = null, isLoading = false) }
+                _uiState.update { it.copy(isSaved = true, error = null, isLoading = false, hasUnsavedChanges = false) }
 
                 if (!currentUser.isLocalUser) {
                     viewModelScope.launch(Dispatchers.IO) {

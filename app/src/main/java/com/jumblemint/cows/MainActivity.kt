@@ -122,31 +122,27 @@ fun CattleManagerApp() {
                     title = { Text(currentScreenForUI?.title ?: "Cattle Manager") }
                 )
             } else if (currentScreenForUI == Screen.CowDetail) {
-                val cowId = navBackStackEntry?.arguments?.getLong("cowId")
+                val cowId = navBackStackEntry?.arguments?.getLong("cowId") ?: 0L
+                val context = LocalContext.current
+                val application = context.applicationContext as CattleApplication
+                val database = CattleDatabase.getDatabase(context)
+                val repository = remember(database) {
+                    CattleRepository(
+                        database.cowDao(), database.pastureDao(), database.activityDao(),
+                        database.settingsDao(), database.noteDao(), database.userDao(),
+                        database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
+                        database.activityTypeConfigDao(), database.breedDao()
+                    )
+                }
+                val viewModel: CowDetailViewModel = viewModel(
+                    factory = CowDetailViewModelFactory(application, repository, cowId)
+                )
+                val uiState by viewModel.uiState.collectAsState()
                 CenterAlignedTopAppBar(
                     title = {
-                        if (cowId == null) { // Should not happen based on route definition
-                            Text(Screen.CowDetail.title ?: "Cow Details")
-                        } else if (cowId == 0L) {
+                        if (cowId == 0L) {
                             Text("Add Animal")
                         } else {
-                            val context = LocalContext.current
-                            val application = context.applicationContext as CattleApplication
-                            val database = CattleDatabase.getDatabase(context)
-                            val repository = remember(database) { // Keyed remember for repository
-                                CattleRepository(
-                                    database.cowDao(), database.pastureDao(), database.activityDao(),
-                                    database.settingsDao(), database.noteDao(), database.userDao(),
-                                    database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
-                                    database.activityTypeConfigDao(), database.breedDao()
-                                )
-                            }
-                            // Use a key for the viewModel to ensure it's specific to the cowId
-                            val viewModel: CowDetailViewModel = viewModel(
-                                key = "CowDetailTitleVM_$cowId", 
-                                factory = CowDetailViewModelFactory(application, repository, cowId)
-                            )
-                            val uiState by viewModel.uiState.collectAsState()
                             val name = uiState.name
                             Text(if (name.isNotBlank()) "Edit $name" else "Edit Animal")
                         }
@@ -156,7 +152,6 @@ fun CattleManagerApp() {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     }
-                    // Actions for CowDetail are intentionally omitted here as per previous logic
                 )
             } else if (currentScreenForUI != null) { // Other non-main, non-CowDetail screens
                 CenterAlignedTopAppBar(

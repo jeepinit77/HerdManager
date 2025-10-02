@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,7 +36,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.*
@@ -55,6 +55,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun CowEditScreen(
     cowId: Long,
+    viewModel: CowDetailViewModel,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -72,10 +73,6 @@ fun CowEditScreen(
     val themeManager = remember { ThemeManager(repository) }
     val customColors by themeManager.getCustomColors().collectAsState(initial = CustomColors())
     val isDarkTheme = isSystemInDarkTheme()
-
-    val viewModel: CowDetailViewModel = viewModel(
-        factory = CowDetailViewModelFactory(application, repository, cowId)
-    )
 
     val uiState by viewModel.uiState.collectAsState()
     val tagColorMap: Map<String, Color> = rememberTagColorMap(repository)
@@ -160,105 +157,115 @@ fun CowEditScreen(
         }
     }
 
-    Column(
-        modifier = modifier.fillMaxSize()
-    ) {
-        // Build a list of validation errors to show all at once
-        val validationErrors = if (saveAttempted) {
-            buildList {
-                if (uiState.name.isBlank() && uiState.tagNumber.isBlank()) add("Please enter a Name or a Tag Number.")
-                if (uiState.gender == null) add("Please select a Gender.")
-                if (uiState.classification == null) add("Please select a Classification.")
-            }
-        } else emptyList()
-        if (validationErrors.isNotEmpty() || uiState.error != null) {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    if (validationErrors.isNotEmpty()) {
-                        validationErrors.forEach { msg ->
-                            Text(text = "• $msg", color = MaterialTheme.colorScheme.onErrorContainer)
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Build a list of validation errors to show all at once
+            val validationErrors = if (saveAttempted) {
+                buildList {
+                    if (uiState.name.isBlank() && uiState.tagNumber.isBlank()) add("Please enter a Name or a Tag Number.")
+                    if (uiState.gender == null) add("Please select a Gender.")
+                    if (uiState.classification == null) add("Please select a Classification.")
+                }
+            } else emptyList()
+            if (validationErrors.isNotEmpty() || uiState.error != null) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (validationErrors.isNotEmpty()) {
+                            validationErrors.forEach { msg ->
+                                Text(text = "• $msg", color = MaterialTheme.colorScheme.onErrorContainer)
+                            }
+                        } else {
+                            Text(
+                                text = uiState.error ?: "An unknown error occurred.",
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
                         }
-                    } else {
-                        Text(
-                            text = uiState.error ?: "An unknown error occurred.",
-                            color = MaterialTheme.colorScheme.onErrorContainer
-                        )
                     }
                 }
             }
-        }
 
-        TabRow(
-            selectedTabIndex = selectedTabIndex,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            tabTitles.forEachIndexed { index, title ->
-                val profileHasError = saveAttempted && (
-                    (uiState.name.isBlank() && uiState.tagNumber.isBlank()) ||
-                    uiState.gender == null ||
-                    uiState.classification == null
-                )
-                Tab(
-                    selected = selectedTabIndex == index,
-                    onClick = { 
-                        selectedTabIndex = index
-                        scope.launch {
-                            pagerState.animateScrollToPage(index)
-                        }
-                        saveAttempted = false 
-                    },
-                    text = {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(title)
-                            if (index == 0 && profileHasError) {
-                                Spacer(Modifier.height(2.dp))
-                                Box(
-                                    modifier = Modifier
-                                        .size(6.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.error)
-                                )
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                tabTitles.forEachIndexed { index, title ->
+                    val profileHasError = saveAttempted && (
+                        (uiState.name.isBlank() && uiState.tagNumber.isBlank()) ||
+                        uiState.gender == null ||
+                        uiState.classification == null
+                    )
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = {
+                            selectedTabIndex = index
+                            scope.launch {
+                                pagerState.animateScrollToPage(index)
+                            }
+                            saveAttempted = false
+                        },
+                        text = {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(title)
+                                if (index == 0 && profileHasError) {
+                                    Spacer(Modifier.height(2.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.error)
+                                    )
+                                }
                             }
                         }
+                    )
+                }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) { page ->
+                val pageScrollState = rememberScrollState()
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(pageScrollState)
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                ) {
+                    when (page) {
+                        0 -> ProfileTabContent(
+                            viewModel = viewModel,
+                            uiState = uiState,
+                            tagColorMap = tagColorMap,
+                            saveAttempted = saveAttempted,
+                            nameFocusRequester = nameFocusRequester,
+                            tagFocusRequester = tagFocusRequester,
+                            genderBringRequester = genderBringRequester,
+                            classificationBringRequester = classificationBringRequester,
+                            customColors = customColors,
+                            isDarkTheme = isDarkTheme
+                        )
+                        1 -> PedigreeTabContent(viewModel, uiState)
+                        2 -> ManagementTabContent(viewModel, uiState)
                     }
-                )
+                }
             }
         }
-
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f) 
-        ) { page ->
-            val pageScrollState = rememberScrollState()
-            Column(
+        if (uiState.hasUnsavedChanges) {
+            FloatingActionButton(
+                onClick = { viewModel.saveCow() },
                 modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(pageScrollState)
-                    .padding(horizontal = 16.dp, vertical = 16.dp) 
+                    .align(Alignment.BottomEnd)
+                    .padding(24.dp)
             ) {
-                when (page) {
-                    0 -> ProfileTabContent(
-                        viewModel = viewModel,
-                        uiState = uiState,
-                        tagColorMap = tagColorMap,
-                        saveAttempted = saveAttempted,
-                        nameFocusRequester = nameFocusRequester,
-                        tagFocusRequester = tagFocusRequester,
-                        genderBringRequester = genderBringRequester,
-                        classificationBringRequester = classificationBringRequester,
-                        customColors = customColors,
-                        isDarkTheme = isDarkTheme
-                    )
-                    1 -> PedigreeTabContent(viewModel, uiState)
-                    2 -> ManagementTabContent(viewModel, uiState)
-                }
+                Icon(Icons.Filled.Save, contentDescription = "Save")
             }
         }
     }
