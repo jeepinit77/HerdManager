@@ -71,38 +71,6 @@ fun isMainTabScreen(screen: Screen?): Boolean {
            screen == Screen.Notes
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun TopAppBarWithMenu(currentScreenForTitle: Screen?, onNavigateSettings: () -> Unit, navController: androidx.navigation.NavController) {
-    val title = currentScreenForTitle?.title ?: "Cattle Manager"
-    val context = LocalContext.current
-    val app = context.applicationContext as CattleApplication
-    val currentUser by app.authService.currentUser.collectAsState(initial = null)
-
-    TopAppBar(
-        title = {
-            androidx.compose.foundation.layout.Row(
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = {
-                        val targetRoute = if (currentUser == null || currentUser?.isLocalUser == true) {
-                            Screen.SignIn.route
-                        } else {
-                            Screen.Sync.route
-                        }
-                        navController.navigate(targetRoute)
-                    },
-                    modifier = androidx.compose.ui.Modifier.padding(end = 4.dp)
-                ) {
-                    com.jumblemint.cows.ui.components.SyncStatusNavIcon()
-                }
-                Text(title)
-            }
-        }
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun CattleManagerApp() {
@@ -111,9 +79,6 @@ fun CattleManagerApp() {
     val currentRouteFromNav = navBackStackEntry?.destination?.route
     val currentScreenFromNav = Screen.fromRoute(currentRouteFromNav)
 
-    val context = LocalContext.current
-    val app = context.applicationContext as CattleApplication
-    // val currentUser by app.authService.currentUser.collectAsState(initial = null) // Consider if needed here or just in TopAppBar
     val coroutineScope = rememberCoroutineScope()
 
     val lastPagerPage = remember { mutableStateOf(DASHBOARD_PAGE_INDEX) }
@@ -156,22 +121,23 @@ fun CattleManagerApp() {
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
+            val titleText = currentScreenForUI?.title ?: "Cattle Manager"
             if (showMainTopAppBar) {
-                TopAppBarWithMenu(
-                    currentScreenForTitle = currentScreenForUI,
-                    onNavigateSettings = { navController.navigate(Screen.Settings.route) }, 
-                    navController = navController
+                CenterAlignedTopAppBar(
+                    title = { Text(titleText) }
+                    // No navigationIcon
+                    // No actions
                 )
             } else if (showSimpleTopAppBar) {
                 CenterAlignedTopAppBar(
-                    title = { Text(currentScreenForUI?.title ?: "Cattle Manager") },
+                    title = { Text(titleText) },
                     navigationIcon = {
                         IconButton(onClick = { navController.popBackStack() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
                     actions = {
-                        if (currentScreenForUI == Screen.CowInfo || currentScreenForUI == Screen.PastureDetail || currentScreenForUI == Screen.CowList) {
+                        if (currentScreenForUI == Screen.CowInfo || currentScreenForUI == Screen.PastureDetail || currentScreenForUI == Screen.CowList || currentScreenForUI == Screen.ActivityInfo || currentScreenForUI == Screen.WorkingList) {
                             IconButton(onClick = { navController.popBackStack(Screen.MainPager.route, inclusive = false) }) {
                                 Icon(Icons.Filled.Close, contentDescription = "Close")
                             }
