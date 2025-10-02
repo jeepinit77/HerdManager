@@ -40,7 +40,6 @@ import com.jumblemint.cows.ui.screens.cows.CowListScreen
 
 import com.jumblemint.cows.ui.screens.herds.HerdSelectionScreen // सुनिश्चित किया गया आयात
 import com.jumblemint.cows.ui.screens.notes.NotesScreen
-import com.jumblemint.cows.ui.screens.pastures.AddPastureScreen
 import com.jumblemint.cows.ui.screens.pastures.PastureDetailScreen
 import com.jumblemint.cows.ui.screens.pastures.PasturesScreen
 import com.jumblemint.cows.ui.screens.reports.ReportsScreen
@@ -448,9 +447,9 @@ fun CattleNavigation(
                 factory = PasturesViewModelFactory(applicationContext, repository)
             )
             
-            AddPastureScreen(
+            PastureDetailScreen(
                 modifier = screenModifierWithPadding,
-                onAddPasture = { pasture ->
+                onSave = { pasture ->
                     pasturesViewModel.insertNewPasture(pasture)
                     navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
                         popUpTo(Screen.AddPasture.route) { inclusive = true }
@@ -496,10 +495,10 @@ fun CattleNavigation(
             
             val pasture by repository.getPastureById(pastureId).collectAsState(initial = null)
             
-            AddPastureScreen(
+            PastureDetailScreen(
                 modifier = screenModifierWithPadding,
                 editPasture = pasture,
-                onAddPasture = { updatedPasture ->
+                onSave = { updatedPasture ->
                     pasturesViewModel.insertNewPasture(updatedPasture)
                     navController.navigate(mainPagerRoute(PASTURES_PAGE_INDEX)) {
                         popUpTo(Screen.EditPasture.route) { inclusive = true }
