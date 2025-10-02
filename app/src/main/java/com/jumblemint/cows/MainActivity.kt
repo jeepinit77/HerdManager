@@ -171,7 +171,7 @@ fun CattleManagerApp() {
                         }
                     },
                     actions = {
-                        if (currentScreenForUI == Screen.CowInfo || currentScreenForUI == Screen.PastureDetail) {
+                        if (currentScreenForUI == Screen.CowInfo || currentScreenForUI == Screen.PastureDetail || currentScreenForUI == Screen.CowList) {
                             IconButton(onClick = { navController.popBackStack(Screen.MainPager.route, inclusive = false) }) {
                                 Icon(Icons.Filled.Close, contentDescription = "Close")
                             }
