@@ -33,9 +33,12 @@ import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
+import com.jumblemint.cows.ui.screens.AnimalFilterScreen
+import com.jumblemint.cows.ui.screens.AnimalFilterState
 import com.jumblemint.cows.ui.viewmodel.WorkingListUiState
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModel
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModelFactory
+import com.jumblemint.cows.util.AgeUtils
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -67,166 +70,143 @@ fun WorkingListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val filteredCows by viewModel.filteredCows.collectAsState()
     val checkedItems by viewModel.checkedItems.collectAsState()
-    var showFiltersState by remember { mutableStateOf(false) }
+    var showFilterScreen by remember { mutableStateOf(false) }
 
     val tagColorMap = rememberTagColorMap(repository)
+
+    if (showFilterScreen) {
+        AnimalFilterScreen(
+            initialFilterState = AnimalFilterState(
+                classifications = uiState.selectedClassifications.toList(),
+                genders = uiState.selectedGenders.toList(),
+                pastures = uiState.selectedPastures.toList(),
+                breeds = uiState.selectedBreeds.toList(),
+                statuses = uiState.selectedStatuses.toList(),
+                tagColors = uiState.selectedTagColors.toList(),
+                isWatched = uiState.selectedIsWatched,
+                selectedAgeRanges = uiState.selectedAgeRanges.toList()
+            ),
+            availablePastures = uiState.availablePastures,
+            availableBreeds = uiState.availableBreeds,
+            availableTagColors = uiState.availableTagColors,
+            onApplyFilters = { newState ->
+                viewModel.applyFilterState(newState)
+                showFilterScreen = false
+            },
+            onDismiss = { showFilterScreen = false }
+        )
+    }
 
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)
-            ) {
-                if (showFiltersState) {
-                    item {
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Filters",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    TextButton(onClick = { showFiltersState = false }) {
-                                        Text("Done")
-                                    }
-                                }
-                                FilterSection(
-                                    title = "Status",
-                                    items = Status.values().toList(),
-                                    selectedItems = uiState.selectedStatuses,
-                                    onToggle = { viewModel.toggleStatusFilter(it) },
-                                    itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
-                                )
-                                FilterSection(
-                                    title = "Animal Type",
-                                    items = Classification.values().toList(),
-                                    selectedItems = uiState.selectedClassifications,
-                                    onToggle = { viewModel.toggleClassificationFilter(it) },
-                                    itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
-                                )
-                                FilterSection(
-                                    title = "Gender",
-                                    items = Gender.values().toList(), selectedItems = uiState.selectedGenders,
-                                    onToggle = { viewModel.toggleGenderFilter(it) },
-                                    itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
-                                )
-                                if (uiState.availablePastures.isNotEmpty()) {
-                                    FilterSection(
-                                        title = "Pasture",
-                                        items = uiState.availablePastures, 
-                                        selectedItems = uiState.selectedPastures,
-                                        onToggle = { viewModel.togglePastureFilter(it) },
-                                        itemLabel = { it }
-                                    )
-                                }
-                            }
-                        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp, horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilterChip(
+                onClick = { showFilterScreen = true },
+                label = {
+                    val activeFilterCount = getActiveFilterCount(uiState)
+                    if (activeFilterCount > 0) {
+                        Text("($activeFilterCount) Filters")
+                    } else {
+                        Text("Filters")
                     }
-                }
-
-                if (filteredCows.isNotEmpty()) {
-                    stickyHeader {
-                        val checkedCount = checkedItems.size
-                        val totalCount = filteredCows.size
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(MaterialTheme.colorScheme.surface) 
-                                .padding(top = 8.dp, bottom = 8.dp) 
-                        ) {
-                            LinearProgressIndicator(
-                                progress = if (totalCount > 0) checkedCount.toFloat() / totalCount else 0f,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            Text(
-                                text = "$checkedCount of $totalCount checked",
-                                style = MaterialTheme.typography.bodySmall,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                        }
-                    }
-                } else if (!showFiltersState) {
-                    item {
-                        Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                            Text("No cows match the current criteria.", style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-
-                items(filteredCows, key = { it.id }) { cow ->
-                    WorkingListItem(
-                        cow = cow,
-                        isChecked = checkedItems.contains(cow.id),
-                        onCheckedChange = { isChecked ->
-                            if (isChecked) {
-                                viewModel.checkItem(cow.id)
-                            } else {
-                                viewModel.uncheckItem(cow.id)
-                            }
-                        },
-                        resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap),
-                        onCowClick = { onCowClick(cow.id) }
-                    )
+                },
+                selected = hasActiveFilters(uiState),
+                leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") }
+            )
+            if (hasActiveFilters(uiState)) {
+                IconButton(onClick = { viewModel.clearAllFilters() }) {
+                    Icon(Icons.Default.Clear, contentDescription = "Clear All Filters")
                 }
             }
         }
-    }
-// Removed extra closing brace here
-
-private fun hasActiveFilters(uiState: WorkingListUiState): Boolean {
-    val hasNonDefaultStatusFilters = uiState.selectedStatuses.isNotEmpty() && (uiState.selectedStatuses.size != 1 || !uiState.selectedStatuses.contains(Status.ACTIVE))
-    return hasNonDefaultStatusFilters ||
-           uiState.selectedClassifications.isNotEmpty() ||
-           uiState.selectedGenders.isNotEmpty() ||
-           uiState.selectedPastures.isNotEmpty()
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun <T> FilterSection(
-    title: String,
-    items: List<T>,
-    selectedItems: Set<T>,
-    onToggle: (T) -> Unit,
-    itemLabel: (T) -> String
-) {
-    Column {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Medium
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)
         ) {
-            items(items) { item ->
-                FilterChip(
-                    onClick = { onToggle(item) },
-                    label = { Text(itemLabel(item)) },
-                    selected = selectedItems.contains(item)
+            if (filteredCows.isNotEmpty()) {
+                stickyHeader {
+                    val checkedCount = checkedItems.size
+                    val totalCount = filteredCows.size
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(top = 8.dp, bottom = 8.dp)
+                    ) {
+                        LinearProgressIndicator(
+                            progress = if (totalCount > 0) checkedCount.toFloat() / totalCount else 0f,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = "$checkedCount of $totalCount checked",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    }
+                }
+            } else {
+                item {
+                    Box(
+                        modifier = Modifier.fillParentMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No cows match the current criteria.", style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+
+            items(filteredCows, key = { it.id }) { cow ->
+                WorkingListItem(
+                    cow = cow,
+                    isChecked = checkedItems.contains(cow.id),
+                    onCheckedChange = { isChecked ->
+                        if (isChecked) {
+                            viewModel.checkItem(cow.id)
+                        } else {
+                            viewModel.uncheckItem(cow.id)
+                        }
+                    },
+                    resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap),
+                    onCowClick = { onCowClick(cow.id) }
                 )
             }
         }
     }
 }
 
+private fun hasActiveFilters(uiState: WorkingListUiState): Boolean {
+    return uiState.selectedStatuses.isNotEmpty() ||
+            uiState.selectedClassifications.isNotEmpty() ||
+            uiState.selectedGenders.isNotEmpty() ||
+            uiState.selectedPastures.isNotEmpty() ||
+            uiState.selectedBreeds.isNotEmpty() ||
+            uiState.selectedTagColors.isNotEmpty() ||
+            uiState.selectedIsWatched != null ||
+            uiState.selectedAgeRanges.isNotEmpty()
+}
+
+private fun getActiveFilterCount(uiState: WorkingListUiState): Int {
+    var count = 0
+    if (uiState.selectedStatuses.isNotEmpty()) count++
+    if (uiState.selectedClassifications.isNotEmpty()) count++
+    if (uiState.selectedGenders.isNotEmpty()) count++
+    if (uiState.selectedPastures.isNotEmpty()) count++
+    if (uiState.selectedBreeds.isNotEmpty()) count++
+    if (uiState.selectedTagColors.isNotEmpty()) count++
+    if (uiState.selectedIsWatched != null) count++
+    if (uiState.selectedAgeRanges.isNotEmpty()) count++
+    return count
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
