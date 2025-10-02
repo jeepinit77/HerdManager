@@ -2,12 +2,17 @@ package com.jumblemint.cows.ui.screens.pastures
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,18 +30,49 @@ fun PastureDetailScreen(
     editPasture: Pasture? = null,
     modifier: Modifier = Modifier,
     saveTriggered: Boolean = false,
-    onSaveHandled: () -> Unit = {}
+    onSaveHandled: () -> Unit = {},
+    onUnsavedChangesChanged: (Boolean) -> Unit = {},
+    backPressed: Boolean = false,
+    onBackHandled: () -> Unit = {}
 ) {
     var name by remember { mutableStateOf("") }
     var sizeAcres by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var nameError by remember { mutableStateOf<String?>(null) }
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
+
+    // Track initial values to detect changes
+    val initialName = remember(editPasture) { editPasture?.name ?: "" }
+    val initialSizeAcres = remember(editPasture) { editPasture?.sizeAcres?.toString() ?: "" }
+    val initialDescription = remember(editPasture) { editPasture?.description ?: "" }
 
     LaunchedEffect(editPasture) {
         editPasture?.let { pasture ->
             name = pasture.name
             sizeAcres = pasture.sizeAcres?.toString() ?: ""
             description = pasture.description ?: ""
+        }
+    }
+
+    // Calculate if there are unsaved changes
+    val currentHasUnsavedChanges = name.trim() != initialName.trim() ||
+            sizeAcres.trim() != initialSizeAcres.trim() ||
+            description.trim() != initialDescription.trim()
+
+    // Notify parent about unsaved changes
+    LaunchedEffect(currentHasUnsavedChanges) {
+        onUnsavedChangesChanged(currentHasUnsavedChanges)
+    }
+
+    // Handle back press with unsaved changes warning
+    LaunchedEffect(backPressed) {
+        if (backPressed) {
+            if (currentHasUnsavedChanges) {
+                showUnsavedChangesDialog = true
+            } else {
+                onCancel()
+            }
+            onBackHandled()
         }
     }
 
@@ -73,12 +109,49 @@ fun PastureDetailScreen(
         }
     }
 
-    // Handle save trigger from top bar
+    // Handle save trigger from top bar (only when there are changes)
     LaunchedEffect(saveTriggered) {
-        if (saveTriggered) {
+        if (saveTriggered && currentHasUnsavedChanges) {
             handleSave()
             onSaveHandled()
         }
+    }
+
+    // Unsaved changes dialog
+    if (showUnsavedChangesDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedChangesDialog = false },
+            title = { Text("Unsaved Changes") },
+            text = { Text("You have unsaved changes. What would you like to do?") },
+            confirmButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            showUnsavedChangesDialog = false
+                            handleSave()
+                        }
+                    ) {
+                        Text("Save")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        onClick = {
+                            showUnsavedChangesDialog = false
+                            onCancel()
+                        }
+                    ) {
+                        Text("Discard")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showUnsavedChangesDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Column(

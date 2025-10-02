@@ -6,7 +6,6 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.material3.Text
@@ -16,6 +15,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -159,7 +159,10 @@ fun CattleNavigation(
     mainScaffoldPadding: PaddingValues,
     pagerState: PagerState,
     saveTriggered: Boolean = false,
-    onSaveHandled: () -> Unit = {}
+    onSaveHandled: () -> Unit = {},
+    onUnsavedChangesChanged: (Boolean) -> Unit = {},
+    backPressed: Boolean = false,
+    onBackHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -264,11 +267,22 @@ fun CattleNavigation(
             val viewModel: CowDetailViewModel = viewModel(
                 factory = CowDetailViewModelFactory(application, repository, cowId)
             )
+            var hasUnsavedChanges by remember { mutableStateOf(false) }
+            
+            LaunchedEffect(hasUnsavedChanges) {
+                onUnsavedChangesChanged(hasUnsavedChanges)
+            }
+            
             CowEditScreen(
                 modifier = screenModifierWithPadding,
                 cowId = cowId,
                 viewModel = viewModel,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                saveTriggered = saveTriggered,
+                onSaveHandled = onSaveHandled,
+                onUnsavedChangesChanged = { hasUnsavedChanges = it },
+                backPressed = backPressed,
+                onBackHandled = onBackHandled
             )
         }
 
@@ -449,6 +463,12 @@ fun CattleNavigation(
                 factory = PasturesViewModelFactory(applicationContext, repository)
             )
             
+            var hasUnsavedChanges by remember { mutableStateOf(false) }
+            
+            LaunchedEffect(hasUnsavedChanges) {
+                onUnsavedChangesChanged(hasUnsavedChanges)
+            }
+            
             PastureDetailScreen(
                 modifier = screenModifierWithPadding,
                 onSave = { pasture ->
@@ -463,7 +483,10 @@ fun CattleNavigation(
                     }
                 },
                 saveTriggered = saveTriggered,
-                onSaveHandled = onSaveHandled
+                onSaveHandled = onSaveHandled,
+                onUnsavedChangesChanged = { hasUnsavedChanges = it },
+                backPressed = backPressed,
+                onBackHandled = onBackHandled
             )
         }
         composable(
@@ -498,6 +521,11 @@ fun CattleNavigation(
             )
             
             val pasture by repository.getPastureById(pastureId).collectAsState(initial = null)
+            var hasUnsavedChanges by remember { mutableStateOf(false) }
+            
+            LaunchedEffect(hasUnsavedChanges) {
+                onUnsavedChangesChanged(hasUnsavedChanges)
+            }
             
             PastureDetailScreen(
                 modifier = screenModifierWithPadding,
@@ -514,7 +542,10 @@ fun CattleNavigation(
                     }
                 },
                 saveTriggered = saveTriggered,
-                onSaveHandled = onSaveHandled
+                onSaveHandled = onSaveHandled,
+                onUnsavedChangesChanged = { hasUnsavedChanges = it },
+                backPressed = backPressed,
+                onBackHandled = onBackHandled
             )
         }
         composable(Screen.AccountManagement.route){

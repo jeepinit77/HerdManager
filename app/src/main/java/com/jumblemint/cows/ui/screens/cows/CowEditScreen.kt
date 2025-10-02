@@ -57,7 +57,12 @@ fun CowEditScreen(
     cowId: Long,
     viewModel: CowDetailViewModel,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    saveTriggered: Boolean = false,
+    onSaveHandled: () -> Unit = {},
+    onUnsavedChangesChanged: (Boolean) -> Unit = {},
+    backPressed: Boolean = false,
+    onBackHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -77,10 +82,41 @@ fun CowEditScreen(
     val uiState by viewModel.uiState.collectAsState()
     val tagColorMap: Map<String, Color> = rememberTagColorMap(repository)
     var saveAttempted by remember { mutableStateOf(false) }
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
             onNavigateBack()
+        }
+    }
+
+    // Notify parent about unsaved changes
+    LaunchedEffect(uiState.hasUnsavedChanges) {
+        onUnsavedChangesChanged(uiState.hasUnsavedChanges)
+    }
+
+    // Handle back press with unsaved changes warning
+    LaunchedEffect(backPressed) {
+        if (backPressed) {
+            if (uiState.hasUnsavedChanges) {
+                showUnsavedChangesDialog = true
+            } else {
+                onNavigateBack()
+            }
+            onBackHandled()
+        }
+    }
+
+    // Function to handle save logic
+    val handleSave = {
+        viewModel.saveCow()
+    }
+
+    // Handle save trigger from top bar (only when there are changes)
+    LaunchedEffect(saveTriggered) {
+        if (saveTriggered && uiState.hasUnsavedChanges) {
+            handleSave()
+            onSaveHandled()
         }
     }
 
@@ -155,6 +191,43 @@ fun CowEditScreen(
             }
             // Add handling for errors on other tabs here if needed.
         }
+    }
+
+    // Unsaved changes dialog
+    if (showUnsavedChangesDialog) {
+        AlertDialog(
+            onDismissRequest = { showUnsavedChangesDialog = false },
+            title = { Text("Unsaved Changes") },
+            text = { Text("You have unsaved changes. What would you like to do?") },
+            confirmButton = {
+                Row {
+                    TextButton(
+                        onClick = {
+                            showUnsavedChangesDialog = false
+                            handleSave()
+                        }
+                    ) {
+                        Text("Save")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(
+                        onClick = {
+                            showUnsavedChangesDialog = false
+                            onNavigateBack()
+                        }
+                    ) {
+                        Text("Discard")
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showUnsavedChangesDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -256,16 +329,6 @@ fun CowEditScreen(
                         2 -> ManagementTabContent(viewModel, uiState)
                     }
                 }
-            }
-        }
-        if (uiState.hasUnsavedChanges) {
-            FloatingActionButton(
-                onClick = { viewModel.saveCow() },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(24.dp)
-            ) {
-                Icon(Icons.Filled.Save, contentDescription = "Save")
             }
         }
     }

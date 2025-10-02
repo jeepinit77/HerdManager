@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.PagerState
@@ -84,6 +85,10 @@ fun CattleManagerApp() {
 
     // State for triggering save from top bar
     var saveTriggered by remember { mutableStateOf(false) }
+    // State to track if there are unsaved changes
+    var hasUnsavedChanges by remember { mutableStateOf(false) }
+    // State for triggering back press handling
+    var backPressed by remember { mutableStateOf(false) }
 
     val lastPagerPage = remember { mutableStateOf(DASHBOARD_PAGE_INDEX) }
     val initialPageForPagerState = lastPagerPage.value
@@ -151,8 +156,20 @@ fun CattleManagerApp() {
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = { 
+                            backPressed = true
+                        }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    actions = {
+                        // Add save button for cow edit screen (only when there are unsaved changes)
+                        if (hasUnsavedChanges) {
+                            IconButton(onClick = { 
+                                saveTriggered = true
+                            }) {
+                                Icon(Icons.Filled.Done, contentDescription = "Save")
+                            }
                         }
                     }
                 )
@@ -160,7 +177,13 @@ fun CattleManagerApp() {
                 CenterAlignedTopAppBar(
                     title = { Text(currentScreenForUI.title ?: "Cattle Manager") },
                     navigationIcon = {
-                        IconButton(onClick = { navController.popBackStack() }) {
+                        IconButton(onClick = { 
+                            if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture) {
+                                backPressed = true
+                            } else {
+                                navController.popBackStack()
+                            }
+                        }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
@@ -182,8 +205,8 @@ fun CattleManagerApp() {
                                 Log.w("EditButtonDebug", "Could not retrieve cowId from arguments for Edit button.")
                             }
                         }
-                        // Add save button for pasture screens
-                        if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture) {
+                        // Add save button for pasture screens (only when there are unsaved changes)
+                        if ((currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture) && hasUnsavedChanges) {
                             IconButton(onClick = { 
                                 saveTriggered = true
                             }) {
@@ -237,12 +260,22 @@ fun CattleManagerApp() {
             }
         }
     ) { innerPadding ->
+        // Handle system back button for pasture and cow edit screens
+        if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.CowDetail) {
+            BackHandler {
+                backPressed = true
+            }
+        }
+        
         CattleNavigation(
             navController = navController,
             mainScaffoldPadding = innerPadding,
             pagerState = pagerState,
             saveTriggered = saveTriggered,
-            onSaveHandled = { saveTriggered = false }
+            onSaveHandled = { saveTriggered = false },
+            onUnsavedChangesChanged = { hasUnsavedChanges = it },
+            backPressed = backPressed,
+            onBackHandled = { backPressed = false }
         )
     }
 }
