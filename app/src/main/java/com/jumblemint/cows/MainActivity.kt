@@ -1,6 +1,7 @@
 package com.jumblemint.cows
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -76,7 +77,7 @@ fun isMainTabScreen(screen: Screen?): Boolean {
 fun CattleManagerApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentRouteFromNav = navBackStackEntry?.destination?.route
+    val currentRouteFromNav = navBackStackEntry?.destination?.route // Keep for Screen.fromRoute if needed elsewhere
     val currentScreenFromNav = Screen.fromRoute(currentRouteFromNav)
 
     val coroutineScope = rememberCoroutineScope()
@@ -133,6 +134,27 @@ fun CattleManagerApp() {
                         }
                     },
                     actions = {
+                        if (currentScreenForUI == Screen.CowInfo) {
+                            // Correct way to get cowId from arguments
+                            val cowIdFromArgs = navBackStackEntry?.arguments?.getLong("cowId")
+                            cowIdFromArgs?.let { idVal ->
+                                // Ensure it's a valid ID for editing (e.g., not 0L if 0L means 'new')
+                                if (idVal != 0L) { 
+                                    IconButton(onClick = { 
+                                        Log.d("EditButtonDebug", "Navigating to CowDetail with ID: $idVal")
+                                        navController.navigate(Screen.CowDetail.createRoute(idVal)) 
+                                    }) {
+                                        Icon(Icons.Filled.Edit, contentDescription = "Edit")
+                                    }
+                                } else {
+                                     Log.w("EditButtonDebug", "CowId is 0L, Edit button not shown or disabled.")
+                                     // Optionally, show a disabled button or no button
+                                }
+                            } ?: run {
+                                Log.w("EditButtonDebug", "Could not retrieve cowId from arguments for Edit button.")
+                                // Optionally, show a disabled button or no button
+                            }
+                        }
                         if (currentScreenForUI == Screen.CowInfo || 
                             currentScreenForUI == Screen.PastureDetail || 
                             currentScreenForUI == Screen.CowList ||
