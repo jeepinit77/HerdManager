@@ -64,7 +64,7 @@ fun ActivitiesScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showFilters by remember { mutableStateOf(false) }
 
-    val snackbarHostState = remember { SnackbarHostState() }
+    val globalSnackbarState = com.jumblemint.cows.ui.components.LocalGlobalSnackbarState.current
     val scope = rememberCoroutineScope()
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -77,12 +77,6 @@ fun ActivitiesScreen(
         ) {
             Icon(Icons.Filled.Add, contentDescription = "Add Activity")
         }
-
-        // Snackbar Host positioned manually
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
 
         Column(modifier = Modifier.fillMaxSize()) {
             if (uiState.isLoading) {
@@ -189,7 +183,7 @@ fun ActivitiesScreen(
                                 onDelete = {
                                     scope.launch {
                                         viewModel.deleteActivities(group.activities)
-                                        val res = snackbarHostState.showSnackbar(
+                                        val res = globalSnackbarState?.showSnackbar(
                                             message = "Activity deleted",
                                             actionLabel = "UNDO",
                                             duration = SnackbarDuration.Long

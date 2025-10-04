@@ -61,12 +61,12 @@ fun PasturesScreen(
     )
 
     val uiState by pasturesViewModel.uiState.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
+    val globalSnackbarState = com.jumblemint.cows.ui.components.LocalGlobalSnackbarState.current
     val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {
-            snackbarHostState.showSnackbar(
+            globalSnackbarState?.showSnackbar(
                 message = it,
                 duration = SnackbarDuration.Long
             )
@@ -76,7 +76,6 @@ fun PasturesScreen(
 
     Scaffold(
         modifier = modifier,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onNavigateToAddPasture) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Pasture")
@@ -155,7 +154,7 @@ fun PasturesScreen(
                         onDelete = { pasture ->
                             coroutineScope.launch {
                                 pasturesViewModel.deletePasture(pasture)
-                                val snackbarResult = snackbarHostState.showSnackbar(
+                                val snackbarResult = globalSnackbarState?.showSnackbar(
                                     message = "${pasture.name} deleted",
                                     actionLabel = "UNDO",
                                     duration = SnackbarDuration.Long

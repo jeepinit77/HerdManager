@@ -14,6 +14,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -28,6 +31,9 @@ import com.jumblemint.cows.navigation.*
 import com.jumblemint.cows.ui.theme.CowsTheme
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
+import com.jumblemint.cows.ui.components.GlobalSnackbarState
+import com.jumblemint.cows.ui.components.LocalGlobalSnackbarState
+import com.jumblemint.cows.ui.components.rememberGlobalSnackbarState
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -44,17 +50,15 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Helper function to get page index for a screen (must match Pager content)
 fun getPageIndexForScreen(screen: Screen): Int = when (screen) {
     Screen.Dashboard -> DASHBOARD_PAGE_INDEX
     Screen.Cows -> COWS_PAGE_INDEX
     Screen.Pastures -> PASTURES_PAGE_INDEX
     Screen.Activities -> ACTIVITIES_PAGE_INDEX
     Screen.Notes -> NOTES_PAGE_INDEX
-    else -> -1 // Not a main pager screen
+    else -> -1
 }
 
-// Helper function to get screen for a page index
 fun getScreenForPageIndex(index: Int): Screen? = when (index) {
     DASHBOARD_PAGE_INDEX -> Screen.Dashboard
     COWS_PAGE_INDEX -> Screen.Cows
@@ -64,7 +68,6 @@ fun getScreenForPageIndex(index: Int): Screen? = when (index) {
     else -> null
 }
 
-// Helper function to determine if the screen is one of the main tab screens
 fun isMainTabScreen(screen: Screen?): Boolean {
     return screen == Screen.Dashboard ||
            screen == Screen.Cows ||
@@ -82,12 +85,10 @@ fun CattleManagerApp() {
     val currentScreenFromNav = Screen.fromRoute(currentRouteFromNav)
 
     val coroutineScope = rememberCoroutineScope()
+    val globalSnackbarState = rememberGlobalSnackbarState(coroutineScope)
 
-    // State for triggering save from top bar
     var saveTriggered by remember { mutableStateOf(false) }
-    // State to track if there are unsaved changes
     var hasUnsavedChanges by remember { mutableStateOf(false) }
-    // State for triggering back press handling
     var backPressed by remember { mutableStateOf(false) }
 
     val lastPagerPage = remember { mutableStateOf(DASHBOARD_PAGE_INDEX) }
@@ -122,161 +123,177 @@ fun CattleManagerApp() {
         BottomNavItem(Screen.Notes, Icons.Filled.Note, "Notes")
     )
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        topBar = {
-            if (isMainTabScreen(currentScreenForUI)) {
-                CenterAlignedTopAppBar(
-                    title = { Text(currentScreenForUI?.title ?: "Cattle Manager") }
+    CompositionLocalProvider(LocalGlobalSnackbarState provides globalSnackbarState) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            snackbarHost = {
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = { value ->
+                        if (value != SwipeToDismissBoxValue.Settled) {
+                            globalSnackbarState.snackbarHostState.currentSnackbarData?.dismiss()
+                            true
+                        } else false
+                    }
                 )
-            } else if (currentScreenForUI == Screen.CowDetail) {
-                val cowId = navBackStackEntry?.arguments?.getLong("cowId") ?: 0L
-                val context = LocalContext.current
-                val application = context.applicationContext as CattleApplication
-                val database = CattleDatabase.getDatabase(context)
-                val repository = remember(database) {
-                    CattleRepository(
-                        database.cowDao(), database.pastureDao(), database.activityDao(),
-                        database.settingsDao(), database.noteDao(), database.userDao(),
-                        database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
-                        database.activityTypeConfigDao(), database.breedDao()
+                SwipeToDismissBox(
+                    state = dismissState,
+                    backgroundContent = {},
+                    content = {
+                        SnackbarHost(hostState = globalSnackbarState.snackbarHostState)
+                    }
+                )
+            },
+            topBar = {
+                if (isMainTabScreen(currentScreenForUI)) {
+                    CenterAlignedTopAppBar(
+                        title = { Text(currentScreenForUI?.title ?: "Cattle Manager") }
                     )
-                }
-                val viewModel: CowDetailViewModel = viewModel(
-                    factory = CowDetailViewModelFactory(application, repository, cowId)
-                )
-                val uiState by viewModel.uiState.collectAsState()
-                CenterAlignedTopAppBar(
-                    title = {
-                        if (cowId == 0L) {
-                            Text("Add Animal")
-                        } else {
-                            val name = uiState.name
-                            Text(if (name.isNotBlank()) "Edit $name" else "Edit Animal")
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = { 
-                            backPressed = true
-                        }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    actions = {
-                        // Add save button for cow edit screen (only when there are unsaved changes)
-                        if (hasUnsavedChanges) {
-                            IconButton(onClick = { 
-                                saveTriggered = true
-                            }) {
-                                Icon(Icons.Filled.Done, contentDescription = "Save")
-                            }
-                        }
-                    }
-                )
-            } else if (currentScreenForUI != null) { // Other non-main, non-CowDetail screens
-                CenterAlignedTopAppBar(
-                    title = { Text(currentScreenForUI.title ?: "Cattle Manager") },
-                    navigationIcon = {
-                        IconButton(onClick = { 
-                            if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture) {
-                                backPressed = true
-                            } else {
-                                navController.popBackStack()
-                            }
-                        }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    },
-                    actions = {
-                        if (currentScreenForUI == Screen.CowInfo) {
-                            val cowIdFromArgs = navBackStackEntry?.arguments?.getLong("cowId")
-                            cowIdFromArgs?.let { idVal ->
-                                if (idVal != 0L) { 
-                                    IconButton(onClick = { 
-                                        Log.d("EditButtonDebug", "Navigating to CowDetail with ID: $idVal")
-                                        navController.navigate(Screen.CowDetail.createRoute(idVal)) 
-                                    }) {
-                                        Icon(Icons.Filled.Edit, contentDescription = "Edit")
-                                    }
-                                } else {
-                                     Log.w("EditButtonDebug", "CowId is 0L, Edit button not shown or disabled.")
-                                }
-                            } ?: run {
-                                Log.w("EditButtonDebug", "Could not retrieve cowId from arguments for Edit button.")
-                            }
-                        }
-                        // Add save button for pasture screens (only when there are unsaved changes)
-                        if ((currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture) && hasUnsavedChanges) {
-                            IconButton(onClick = { 
-                                saveTriggered = true
-                            }) {
-                                Icon(Icons.Filled.Done, contentDescription = "Save")
-                            }
-                        }
-                        if (currentScreenForUI == Screen.CowInfo || 
-                            currentScreenForUI == Screen.PastureDetail || 
-                            currentScreenForUI == Screen.CowList ||
-                            currentScreenForUI == Screen.ActivityInfo ||
-                            currentScreenForUI == Screen.WorkingList) {
-                            IconButton(onClick = { navController.popBackStack(Screen.MainPager.route, inclusive = false) }) {
-                                Icon(Icons.Filled.Close, contentDescription = "Close")
-                            }
-                        }
-                    }
-                )
-            }
-        },
-        bottomBar = {
-            if (currentScreenFromNav == Screen.MainPager) { 
-                NavigationBar(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ) {
-                    bottomNavItems.forEach { item ->
-                        val pageIndex = getPageIndexForScreen(item.screen)
-                        NavigationBarItem(
-                            icon = { Icon(item.icon, item.label) },
-                            label = { Text(item.label) },
-                            selected = pagerState.currentPage == pageIndex,
-                            onClick = {
-                                if (pageIndex != -1) {
-                                    coroutineScope.launch {
-                                        pagerState.scrollToPage(pageIndex)
-                                    }
-                                }
-                            }
+                } else if (currentScreenForUI == Screen.CowDetail) {
+                    val cowId = navBackStackEntry?.arguments?.getLong("cowId") ?: 0L
+                    val context = LocalContext.current
+                    val application = context.applicationContext as CattleApplication
+                    val database = CattleDatabase.getDatabase(context)
+                    val repository = remember(database) {
+                        CattleRepository(
+                            database.cowDao(), database.pastureDao(), database.activityDao(),
+                            database.settingsDao(), database.noteDao(), database.userDao(),
+                            database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
+                            database.activityTypeConfigDao(), database.breedDao()
                         )
                     }
-                    NavigationBarItem(
-                        selected = currentScreenForUI == Screen.Settings, 
-                        onClick = {
-                            navController.navigate(Screen.Settings.route) {
-                                // Optional: Configure navigation (e.g., launchSingleTop = true)
+                    val viewModel: CowDetailViewModel = viewModel(
+                        factory = CowDetailViewModelFactory(application, repository, cowId)
+                    )
+                    val uiState by viewModel.uiState.collectAsState()
+                    CenterAlignedTopAppBar(
+                        title = {
+                            if (cowId == 0L) {
+                                Text("Add Animal")
+                            } else {
+                                val name = uiState.name
+                                Text(if (name.isNotBlank()) "Edit $name" else "Edit Animal")
                             }
                         },
-                        icon = { Icon(Icons.Filled.Settings, "Settings") }, 
-                        label = { Text("Settings") }
+                        navigationIcon = {
+                            IconButton(onClick = { 
+                                backPressed = true
+                            }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        },
+                        actions = {
+                            if (hasUnsavedChanges) {
+                                IconButton(onClick = { 
+                                    saveTriggered = true
+                                }) {
+                                    Icon(Icons.Filled.Done, contentDescription = "Save")
+                                }
+                            }
+                        }
+                    )
+                } else if (currentScreenForUI != null) {
+                    CenterAlignedTopAppBar(
+                        title = { Text(currentScreenForUI.title ?: "Cattle Manager") },
+                        navigationIcon = {
+                            IconButton(onClick = { 
+                                if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture) {
+                                    backPressed = true
+                                } else {
+                                    navController.popBackStack()
+                                }
+                            }) {
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            }
+                        },
+                        actions = {
+                            if (currentScreenForUI == Screen.CowInfo) {
+                                val cowIdFromArgs = navBackStackEntry?.arguments?.getLong("cowId")
+                                cowIdFromArgs?.let { idVal ->
+                                    if (idVal != 0L) { 
+                                        IconButton(onClick = { 
+                                            Log.d("EditButtonDebug", "Navigating to CowDetail with ID: $idVal")
+                                            navController.navigate(Screen.CowDetail.createRoute(idVal)) 
+                                        }) {
+                                            Icon(Icons.Filled.Edit, contentDescription = "Edit")
+                                        }
+                                    } else {
+                                         Log.w("EditButtonDebug", "CowId is 0L, Edit button not shown or disabled.")
+                                    }
+                                } ?: run {
+                                    Log.w("EditButtonDebug", "Could not retrieve cowId from arguments for Edit button.")
+                                }
+                            }
+                            if ((currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture) && hasUnsavedChanges) {
+                                IconButton(onClick = { 
+                                    saveTriggered = true
+                                }) {
+                                    Icon(Icons.Filled.Done, contentDescription = "Save")
+                                }
+                            }
+                            if (currentScreenForUI == Screen.CowInfo || 
+                                currentScreenForUI == Screen.PastureDetail || 
+                                currentScreenForUI == Screen.CowList ||
+                                currentScreenForUI == Screen.ActivityInfo ||
+                                currentScreenForUI == Screen.WorkingList) {
+                                IconButton(onClick = { navController.popBackStack(Screen.MainPager.route, inclusive = false) }) {
+                                    Icon(Icons.Filled.Close, contentDescription = "Close")
+                                }
+                            }
+                        }
                     )
                 }
+            },
+            bottomBar = {
+                if (currentScreenFromNav == Screen.MainPager) { 
+                    NavigationBar(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    ) {
+                        bottomNavItems.forEach { item ->
+                            val pageIndex = getPageIndexForScreen(item.screen)
+                            NavigationBarItem(
+                                icon = { Icon(item.icon, item.label) },
+                                label = { Text(item.label) },
+                                selected = pagerState.currentPage == pageIndex,
+                                onClick = {
+                                    if (pageIndex != -1) {
+                                        coroutineScope.launch {
+                                            pagerState.scrollToPage(pageIndex)
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                        NavigationBarItem(
+                            selected = currentScreenForUI == Screen.Settings, 
+                            onClick = {
+                                navController.navigate(Screen.Settings.route) {
+                                }
+                            },
+                            icon = { Icon(Icons.Filled.Settings, "Settings") }, 
+                            label = { Text("Settings") }
+                        )
+                    }
+                }
             }
-        }
-    ) { innerPadding ->
-        // Handle system back button for pasture and cow edit screens
-        if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.CowDetail) {
-            BackHandler {
-                backPressed = true
+        ) { innerPadding ->
+            if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.CowDetail) {
+                BackHandler {
+                    backPressed = true
+                }
             }
+            
+            CattleNavigation(
+                navController = navController,
+                mainScaffoldPadding = innerPadding,
+                pagerState = pagerState,
+                saveTriggered = saveTriggered,
+                onSaveHandled = { saveTriggered = false },
+                onUnsavedChangesChanged = { hasUnsavedChanges = it },
+                backPressed = backPressed,
+                onBackHandled = { backPressed = false },
+                globalSnackbarState = globalSnackbarState
+            )
         }
-        
-        CattleNavigation(
-            navController = navController,
-            mainScaffoldPadding = innerPadding,
-            pagerState = pagerState,
-            saveTriggered = saveTriggered,
-            onSaveHandled = { saveTriggered = false },
-            onUnsavedChangesChanged = { hasUnsavedChanges = it },
-            backPressed = backPressed,
-            onBackHandled = { backPressed = false }
-        )
     }
 }
 

@@ -24,6 +24,7 @@ import com.jumblemint.cows.ui.components.CowCard
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.components.FocusAwareLiveSync
+import com.jumblemint.cows.ui.components.LocalGlobalSnackbarState
 import com.jumblemint.cows.ui.screens.AnimalFilterScreen 
 import com.jumblemint.cows.ui.screens.AnimalFilterState 
 import com.jumblemint.cows.util.AgeRangeKeys // Centralized
@@ -88,7 +89,7 @@ fun CowListScreen(
     val tagColorMap = rememberTagColorMap(repository)
     
     var showAnimalFilterDialog by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
+    val globalSnackbarState = LocalGlobalSnackbarState.current
     val scope = rememberCoroutineScope()
 
     if (showSearchAndFilters) {
@@ -281,7 +282,7 @@ fun CowListScreen(
             onCowEdit = onCowEdit,
             tagColorMap = tagColorMap,
             scope = scope,
-            snackbarHostState = snackbarHostState // Pass state for showing snackbars
+            globalSnackbarState = globalSnackbarState // Pass global snackbar state
         )
 
         // Conditionally display FAB and SnackbarHost if they are part of this screen's features
@@ -296,10 +297,6 @@ fun CowListScreen(
                     Icon(Icons.Default.Add, contentDescription = "Add Cow")
                 }
             }
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter) // Position SnackbarHost at the bottom center of the Box
-            )
         }
     }
 }
@@ -317,7 +314,7 @@ private fun CowListContent(
     onCowEdit: ((Long) -> Unit)?,
     tagColorMap: Map<String, androidx.compose.ui.graphics.Color>,
     scope: kotlinx.coroutines.CoroutineScope,
-    snackbarHostState: SnackbarHostState
+    globalSnackbarState: com.jumblemint.cows.ui.components.GlobalSnackbarState?
 ) {
     Column(
         modifier = modifier // This modifier is Modifier.fillMaxSize() from the Box above
@@ -385,10 +382,10 @@ private fun CowListContent(
                         onClick = { onCowClick(cow.id) },
                         onToggleWatch = if (showSearchAndFilters && cowsViewModel != null) {{ cowsViewModel.toggleWatch(cow) }} else null,
                         onEdit = onCowEdit?.let { { onCowEdit(cow.id) } },
-                        onDelete = if (showSearchAndFilters && cowsViewModel != null) {{
+                        onDelete = if (showSearchAndFilters && cowsViewModel != null && globalSnackbarState != null) {{
                             scope.launch {
                                 cowsViewModel.deleteCow(cow)
-                                val res = snackbarHostState.showSnackbar(
+                                val res = globalSnackbarState.showSnackbar(
                                     message = "Cow deleted",
                                     actionLabel = "UNDO",
                                     duration = SnackbarDuration.Long

@@ -78,7 +78,8 @@ const val MAIN_SCREEN_PAGE_COUNT = 5
 fun MainScreensViewPager(
     navController: NavHostController,
     mainScaffoldPadding: PaddingValues,
-    pagerState: PagerState
+    pagerState: PagerState,
+    globalSnackbarState: com.jumblemint.cows.ui.components.GlobalSnackbarState
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -89,7 +90,8 @@ fun MainScreensViewPager(
         state = pagerState,
         modifier = Modifier
             .padding(mainScaffoldPadding)
-            .fillMaxSize()
+            .fillMaxSize(),
+        userScrollEnabled = !globalSnackbarState.isSnackbarVisible
     ) { page ->
         when (page) {
             DASHBOARD_PAGE_INDEX -> {
@@ -162,7 +164,8 @@ fun CattleNavigation(
     onSaveHandled: () -> Unit = {},
     onUnsavedChangesChanged: (Boolean) -> Unit = {},
     backPressed: Boolean = false,
-    onBackHandled: () -> Unit = {}
+    onBackHandled: () -> Unit = {},
+    globalSnackbarState: com.jumblemint.cows.ui.components.GlobalSnackbarState
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -189,7 +192,8 @@ fun CattleNavigation(
             MainScreensViewPager(
                 navController = navController,
                 mainScaffoldPadding = mainScaffoldPadding,
-                pagerState = pagerState
+                pagerState = pagerState,
+                globalSnackbarState = globalSnackbarState
             )
         }
 

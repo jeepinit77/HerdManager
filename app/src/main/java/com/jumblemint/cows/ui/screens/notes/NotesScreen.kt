@@ -49,7 +49,7 @@ fun NotesScreen(
     var viewingNote by remember { mutableStateOf<Note?>(null) }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
-    val snackbarHostState = remember { SnackbarHostState() }
+    val globalSnackbarState = com.jumblemint.cows.ui.components.LocalGlobalSnackbarState.current
     val scope = rememberCoroutineScope()
 
     // TODO: Communicate screen title "Notes" to MainActivity's TopAppBar if needed.
@@ -65,12 +65,6 @@ fun NotesScreen(
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add Note")
         }
-
-        // Snackbar Host positioned manually
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
 
         if (uiState.isLoading) {
             Box(
@@ -111,7 +105,7 @@ fun NotesScreen(
                         onDelete = {
                             scope.launch {
                                 viewModel.deleteNote(note)
-                                val res = snackbarHostState.showSnackbar(
+                                val res = globalSnackbarState?.showSnackbar(
                                     message = "Note deleted",
                                     actionLabel = "UNDO",
                                     duration = SnackbarDuration.Long
@@ -129,7 +123,7 @@ fun NotesScreen(
         uiState.error?.let { error ->
             LaunchedEffect(error) { // error is the key here
                 scope.launch {
-                    snackbarHostState.showSnackbar(
+                    globalSnackbarState?.showSnackbar(
                         message = error,
                         duration = SnackbarDuration.Short
                     )
