@@ -144,29 +144,30 @@ class AddActivityViewModel(
         viewModelScope.launch {
             try {
                 val state = _uiState.value
+                val errors = mutableListOf<String>()
                 
                 if (state.activityType == null) {
-                    _uiState.value = state.copy(error = "Please select an activity type")
-                    return@launch
+                    errors.add("Please select an activity type")
                 }
                 
                 if (state.selectedCows.isEmpty()) {
-                    _uiState.value = state.copy(error = "Please select at least one cow")
-                    return@launch
+                    errors.add("Please select at least one animal")
                 }
                 
                 if (state.date == null) {
-                    _uiState.value = state.copy(error = "Please select a date")
-                    return@launch
+                    errors.add("Please select a date")
                 }
                 
                 if (state.activityType in listOf(ActivityType.WORKED, ActivityType.OTHER) && state.notes.isBlank()) {
-                    _uiState.value = state.copy(error = "Notes are required for this activity type")
-                    return@launch
+                    errors.add("Notes are required for this activity type")
                 }
                 
                 if (state.activityType == ActivityType.MOVED && state.toPastureId == null) {
-                    _uiState.value = state.copy(error = "Please select a destination pasture")
+                    errors.add("Please select a destination pasture")
+                }
+                
+                if (errors.isNotEmpty()) {
+                    _uiState.value = state.copy(error = errors.joinToString("\n• ", "• "))
                     return@launch
                 }
                 
@@ -195,8 +196,8 @@ class AddActivityViewModel(
                         // Create new activities with the same groupId
                         val createdActivities = repository.createBulkActivityWithGroupId(
                             cowIds = state.selectedCows.toList(),
-                            activityType = state.activityType,
-                            date = state.date,
+                            activityType = state.activityType!!,
+                            date = state.date!!,
                             notes = state.notes.takeIf { it.isNotBlank() },
                             toPastureId = state.toPastureId,
                             groupId = originalActivity.groupId
@@ -214,8 +215,8 @@ class AddActivityViewModel(
                     } else if (originalActivity != null) {
                         // Legacy activity without groupId, just update the single activity
                         val updatedActivity = originalActivity.copy(
-                            activityType = state.activityType,
-                            date = state.date,
+                            activityType = state.activityType!!,
+                            date = state.date!!,
                             notes = state.notes.takeIf { it.isNotBlank() },
                             toPastureId = state.toPastureId
                         )
@@ -233,8 +234,8 @@ class AddActivityViewModel(
                     // Creating new activity
                     val createdActivities = repository.createBulkActivity(
                         cowIds = state.selectedCows.toList(),
-                        activityType = state.activityType,
-                        date = state.date,
+                        activityType = state.activityType!!,
+                        date = state.date!!,
                         notes = state.notes.takeIf { it.isNotBlank() },
                         toPastureId = state.toPastureId
                     )
