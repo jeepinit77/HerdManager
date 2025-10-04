@@ -49,6 +49,7 @@ import com.jumblemint.cows.ui.theme.ThemeManager
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.CowDetailUiState
+import com.jumblemint.cows.ui.components.UnsavedChangesDialog
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -195,37 +196,15 @@ fun CowEditScreen(
 
     // Unsaved changes dialog
     if (showUnsavedChangesDialog) {
-        AlertDialog(
-            onDismissRequest = { showUnsavedChangesDialog = false },
-            title = { Text("Unsaved Changes") },
-            text = { Text("You have unsaved changes. What would you like to do?") },
-            confirmButton = {
-                Row {
-                    TextButton(
-                        onClick = {
-                            showUnsavedChangesDialog = false
-                            handleSave()
-                        }
-                    ) {
-                        Text("Save")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(
-                        onClick = {
-                            showUnsavedChangesDialog = false
-                            onNavigateBack()
-                        }
-                    ) {
-                        Text("Discard")
-                    }
-                }
+        UnsavedChangesDialog(
+            onDismiss = { showUnsavedChangesDialog = false },
+            onSave = {
+                showUnsavedChangesDialog = false
+                handleSave()
             },
-            dismissButton = {
-                TextButton(
-                    onClick = { showUnsavedChangesDialog = false }
-                ) {
-                    Text("Cancel")
-                }
+            onDiscard = {
+                showUnsavedChangesDialog = false
+                onNavigateBack()
             }
         )
     }

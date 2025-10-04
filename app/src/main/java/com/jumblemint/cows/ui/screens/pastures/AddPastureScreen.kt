@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.jumblemint.cows.data.model.Pasture
+import com.jumblemint.cows.ui.components.UnsavedChangesDialog
 
 @Composable
 fun PastureDetailScreen(
@@ -119,37 +120,15 @@ fun PastureDetailScreen(
 
     // Unsaved changes dialog
     if (showUnsavedChangesDialog) {
-        AlertDialog(
-            onDismissRequest = { showUnsavedChangesDialog = false },
-            title = { Text("Unsaved Changes") },
-            text = { Text("You have unsaved changes. What would you like to do?") },
-            confirmButton = {
-                Row {
-                    TextButton(
-                        onClick = {
-                            showUnsavedChangesDialog = false
-                            handleSave()
-                        }
-                    ) {
-                        Text("Save")
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(
-                        onClick = {
-                            showUnsavedChangesDialog = false
-                            onCancel()
-                        }
-                    ) {
-                        Text("Discard")
-                    }
-                }
+        UnsavedChangesDialog(
+            onDismiss = { showUnsavedChangesDialog = false },
+            onSave = {
+                showUnsavedChangesDialog = false
+                handleSave()
             },
-            dismissButton = {
-                TextButton(
-                    onClick = { showUnsavedChangesDialog = false }
-                ) {
-                    Text("Cancel")
-                }
+            onDiscard = {
+                showUnsavedChangesDialog = false
+                onCancel()
             }
         )
     }

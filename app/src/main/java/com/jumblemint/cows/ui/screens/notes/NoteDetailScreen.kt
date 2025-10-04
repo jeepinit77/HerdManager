@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.ui.viewmodel.NotesViewModel
+import com.jumblemint.cows.ui.components.UnsavedChangesDialog
 
 @Composable
 fun NoteDetailScreen(
@@ -102,26 +103,24 @@ fun NoteDetailScreen(
     }
 
     if (showUnsavedDialog) {
-        AlertDialog(
-            onDismissRequest = { showUnsavedDialog = false },
-            title = { Text("Unsaved Changes") },
-            text = { Text("You have unsaved changes. Are you sure you want to go back?") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showUnsavedDialog = false
-                        onNavigateBack()
+        UnsavedChangesDialog(
+            onDismiss = { showUnsavedDialog = false },
+            onSave = {
+                showUnsavedDialog = false
+                if (title.isNotBlank()) {
+                    if (note != null) {
+                        viewModel.updateNote(note, title, text)
+                    } else {
+                        viewModel.addNote(title, text)
                     }
-                ) {
-                    Text("Discard")
+                    onNavigateBack()
+                } else {
+                    titleError = "Title is required"
                 }
             },
-            dismissButton = {
-                TextButton(
-                    onClick = { showUnsavedDialog = false }
-                ) {
-                    Text("Cancel")
-                }
+            onDiscard = {
+                showUnsavedDialog = false
+                onNavigateBack()
             }
         )
     }
