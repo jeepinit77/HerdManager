@@ -23,7 +23,7 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.*
 import com.jumblemint.cows.ui.viewmodel.AddActivityViewModel
 import com.jumblemint.cows.ui.viewmodel.AddActivityViewModelFactory
-// import java.time.LocalDate // <<< REMOVED UNUSED IMPORT
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +31,12 @@ fun AddActivityScreen(
     editId: Long? = null,
     onNavigateBack: () -> Unit,
     onEditPasture: () -> Unit = {},
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    saveTriggered: Boolean = false,
+    onSaveHandled: () -> Unit = {},
+    onUnsavedChangesChanged: (Boolean) -> Unit = {},
+    backPressed: Boolean = false,
+    onBackHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as Application
@@ -47,7 +52,8 @@ fun AddActivityScreen(
             database.herdDao(),
             database.herdMemberDao(),
             database.tagColorDao(),
-            database.activityTypeConfigDao()
+            database.activityTypeConfigDao(),
+            database.breedDao()
         )
     }
     val viewModel: AddActivityViewModel = viewModel(
@@ -55,6 +61,7 @@ fun AddActivityScreen(
     )
 
     val uiState by viewModel.uiState.collectAsState()
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
     var showFilters by remember { mutableStateOf(false) }
     var selectedGender by remember { mutableStateOf<Gender?>(null) }
@@ -78,6 +85,46 @@ fun AddActivityScreen(
         if (uiState.isSaved) {
             onNavigateBack()
         }
+    }
+
+    // Notify parent about unsaved changes
+    LaunchedEffect(uiState.hasUnsavedChanges) {
+        onUnsavedChangesChanged(uiState.hasUnsavedChanges)
+    }
+
+    // Handle back press with unsaved changes warning
+    LaunchedEffect(backPressed) {
+        if (backPressed) {
+            if (uiState.hasUnsavedChanges) {
+                showUnsavedChangesDialog = true
+            } else {
+                onNavigateBack()
+            }
+            onBackHandled()
+        }
+    }
+
+    // Handle save trigger from top bar
+    LaunchedEffect(saveTriggered) {
+        if (saveTriggered) {
+            viewModel.saveActivity()
+            onSaveHandled()
+        }
+    }
+
+    // Unsaved changes dialog
+    if (showUnsavedChangesDialog) {
+        UnsavedChangesDialog(
+            onDismiss = { showUnsavedChangesDialog = false },
+            onSave = {
+                showUnsavedChangesDialog = false
+                viewModel.saveActivity()
+            },
+            onDiscard = {
+                showUnsavedChangesDialog = false
+                onNavigateBack()
+            }
+        )
     }
 
     if (uiState.isLoading && editId != null) {
@@ -388,6 +435,8 @@ fun AddActivityScreen(
                         }
                     }
                 }
+
+
             }
     }
 }

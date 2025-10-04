@@ -293,10 +293,21 @@ fun CattleNavigation(
         }
 
         composable(Screen.AddActivity.route) {
+            var hasUnsavedChanges by remember { mutableStateOf(false) }
+            
+            LaunchedEffect(hasUnsavedChanges) {
+                onUnsavedChangesChanged(hasUnsavedChanges)
+            }
+            
             AddActivityScreen(
                 modifier = screenModifierWithPadding,
                 editId = null,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                saveTriggered = saveTriggered,
+                onSaveHandled = onSaveHandled,
+                onUnsavedChangesChanged = { hasUnsavedChanges = it },
+                backPressed = backPressed,
+                onBackHandled = onBackHandled
             )
         }
 
@@ -304,10 +315,21 @@ fun CattleNavigation(
             arguments = listOf(navArgument("activityId") { type = NavType.LongType }) // Ensure argument is defined
         ) { backStackEntry ->
             val activityId = backStackEntry.arguments?.getLong("activityId")
+            var hasUnsavedChanges by remember { mutableStateOf(false) }
+            
+            LaunchedEffect(hasUnsavedChanges) {
+                onUnsavedChangesChanged(hasUnsavedChanges)
+            }
+            
             AddActivityScreen(
                 modifier = screenModifierWithPadding,
                 editId = activityId,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                saveTriggered = saveTriggered,
+                onSaveHandled = onSaveHandled,
+                onUnsavedChangesChanged = { hasUnsavedChanges = it },
+                backPressed = backPressed,
+                onBackHandled = onBackHandled
             )
         }
         

@@ -21,6 +21,8 @@ class AddActivityViewModel(
 
     private val _uiState = MutableStateFlow(AddActivityUiState())
     val uiState: StateFlow<AddActivityUiState> = _uiState.asStateFlow()
+    
+    private var originalState: AddActivityUiState? = null
 
     init {
         loadData()
@@ -58,10 +60,14 @@ class AddActivityViewModel(
                             toPastureId = act.toPastureId,
                             selectedCows = selectedCowIds
                         )
+                        originalState = baseState
                     }
                 }
 
                 _uiState.value = baseState
+                if (originalState == null) {
+                    originalState = baseState
+                }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     error = e.message,
@@ -73,14 +79,17 @@ class AddActivityViewModel(
 
     fun updateActivityType(activityType: ActivityType?) {
         _uiState.value = _uiState.value.copy(activityType = activityType)
+        updateUnsavedChanges()
     }
 
     fun updateDate(date: LocalDate?) {
         _uiState.value = _uiState.value.copy(date = date)
+        updateUnsavedChanges()
     }
 
     fun updateNotes(notes: String) {
         _uiState.value = _uiState.value.copy(notes = notes)
+        updateUnsavedChanges()
     }
 
     // Changed pastureId to String?
@@ -90,27 +99,45 @@ class AddActivityViewModel(
             toPastureId = pastureId,
             toPastureName = pasture?.name
         )
+        updateUnsavedChanges()
     }
 
     fun selectCow(cowId: Long) {
         val currentSelection = _uiState.value.selectedCows.toMutableSet()
         currentSelection.add(cowId)
         _uiState.value = _uiState.value.copy(selectedCows = currentSelection)
+        updateUnsavedChanges()
     }
 
     fun deselectCow(cowId: Long) {
         val currentSelection = _uiState.value.selectedCows.toMutableSet()
         currentSelection.remove(cowId)
         _uiState.value = _uiState.value.copy(selectedCows = currentSelection)
+        updateUnsavedChanges()
     }
 
     fun selectAllCows() {
         val allCowIds = _uiState.value.availableCows.map { it.id }.toSet()
         _uiState.value = _uiState.value.copy(selectedCows = allCowIds)
+        updateUnsavedChanges()
     }
 
     fun clearSelection() {
         _uiState.value = _uiState.value.copy(selectedCows = emptySet())
+        updateUnsavedChanges()
+    }
+    
+    private fun updateUnsavedChanges() {
+        val current = _uiState.value
+        val original = originalState ?: AddActivityUiState()
+        
+        val hasChanges = current.activityType != original.activityType ||
+                current.date != original.date ||
+                current.notes != original.notes ||
+                current.toPastureId != original.toPastureId ||
+                current.selectedCows != original.selectedCows
+        
+        _uiState.value = current.copy(hasUnsavedChanges = hasChanges)
     }
 
     fun saveActivity() {
@@ -243,5 +270,6 @@ data class AddActivityUiState(
     val availablePastures: List<Pasture> = emptyList(),
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val hasUnsavedChanges: Boolean = false
 )

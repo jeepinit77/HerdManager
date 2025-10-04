@@ -148,7 +148,7 @@ fun CattleManagerApp() {
                     CenterAlignedTopAppBar(
                         title = { Text(currentScreenForUI?.title ?: "Cattle Manager") }
                     )
-                } else if (currentScreenForUI == Screen.CowDetail || currentScreenForUI == Screen.NoteDetail) {
+                } else if (currentScreenForUI == Screen.CowDetail || currentScreenForUI == Screen.NoteDetail || currentScreenForUI == Screen.AddActivity || currentScreenForUI == Screen.AddActivityWithId) {
                     CenterAlignedTopAppBar(
                         title = {
                             when (currentScreenForUI) {
@@ -180,6 +180,8 @@ fun CattleManagerApp() {
                                     val noteId = navBackStackEntry?.arguments?.getLong("noteId") ?: 0L
                                     Text(if (noteId == 0L) "Add Note" else "Edit Note")
                                 }
+                                Screen.AddActivity -> Text("Add Activity")
+                                Screen.AddActivityWithId -> Text("Edit Activity")
                                 else -> Text("Details")
                             }
                         },
@@ -232,7 +234,7 @@ fun CattleManagerApp() {
                                     Log.w("EditButtonDebug", "Could not retrieve cowId from arguments for Edit button.")
                                 }
                             }
-                            if ((currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.NoteDetail) && hasUnsavedChanges) {
+                            if ((currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.NoteDetail || currentScreenForUI == Screen.AddActivity || currentScreenForUI == Screen.AddActivityWithId) && hasUnsavedChanges) {
                                 IconButton(onClick = { 
                                     saveTriggered = true
                                 }) {
@@ -285,7 +287,7 @@ fun CattleManagerApp() {
                 }
             }
         ) { innerPadding ->
-            if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.CowDetail || currentScreenForUI == Screen.NoteDetail) {
+            if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.CowDetail || currentScreenForUI == Screen.NoteDetail || currentScreenForUI == Screen.AddActivity || currentScreenForUI == Screen.AddActivityWithId) {
                 BackHandler {
                     backPressed = true
                 }

@@ -68,16 +68,6 @@ fun ActivitiesScreen(
     val scope = rememberCoroutineScope()
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Floating Action Button positioned manually
-        FloatingActionButton(
-            onClick = onAddActivityClick,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Filled.Add, contentDescription = "Add Activity")
-        }
-
         Column(modifier = Modifier.fillMaxSize()) {
             if (uiState.isLoading) {
                 Box(
@@ -103,7 +93,7 @@ fun ActivitiesScreen(
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 8.dp)
+                    contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
                 ) {
                     if (showFilters) {
                         item {
@@ -204,6 +194,16 @@ fun ActivitiesScreen(
                     }
                 }
             }
+        }
+        
+        // Floating Action Button positioned manually
+        FloatingActionButton(
+            onClick = onAddActivityClick,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Filled.Add, contentDescription = "Add Activity")
         }
     }
 }
