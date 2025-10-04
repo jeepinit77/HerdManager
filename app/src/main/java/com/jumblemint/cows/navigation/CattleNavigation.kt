@@ -106,7 +106,8 @@ fun MainScreensViewPager(
                             navController.navigate(Screen.CowList.createRoute(type = type, value = value))
                         }
                     },
-                    onNavigateToAddBirth = { navController.navigate(Screen.AddBirth.route) }
+                    onNavigateToAddBirth = { navController.navigate(Screen.AddBirth.route) },
+                    onNavigateToTodoList = { navController.navigate(Screen.TodoList.route) }
                 )
             }
             COWS_PAGE_INDEX -> CowListScreen(
@@ -644,6 +645,13 @@ fun CattleNavigation(
                 onUnsavedChangesChanged = onUnsavedChangesChanged,
                 backPressed = backPressed,
                 onBackHandled = onBackHandled
+            )
+        }
+        
+        composable(Screen.TodoList.route) {
+            com.jumblemint.cows.ui.screens.notes.TodoListScreen(
+                modifier = screenModifierWithPadding,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

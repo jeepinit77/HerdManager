@@ -40,13 +40,15 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
-    fun addNote(title: String, text: String) {
+    fun addNote(title: String, text: String, isTodo: Boolean = false, dueDate: Long? = null) {
         viewModelScope.launch {
             try {
                 val note = Note(
                     title = title,
                     text = text,
-                    timestamp = Date().time
+                    timestamp = Date().time,
+                    isTodo = isTodo,
+                    dueDate = dueDate
                 )
                 val noteId = noteDao.insert(note)
                 val savedNote = note.copy(id = noteId)
@@ -98,13 +100,15 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
-    fun updateNote(note: Note, newTitle: String, newText: String) {
+    fun updateNote(note: Note, newTitle: String, newText: String, isTodo: Boolean = false, dueDate: Long? = null) {
         viewModelScope.launch {
             try {
                 val updatedNote = note.copy(
                     title = newTitle,
                     text = newText,
-                    timestamp = Date().time // Update timestamp when edited
+                    timestamp = Date().time, // Update timestamp when edited
+                    isTodo = isTodo,
+                    dueDate = dueDate
                 )
                 noteDao.insert(updatedNote) // Using insert with REPLACE strategy
                 
@@ -120,6 +124,30 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+    
+    fun markTodoComplete(note: Note) {
+        viewModelScope.launch {
+            try {
+                val completedNote = note.copy(
+                    isCompleted = true,
+                    timestamp = Date().time
+                )
+                noteDao.insert(completedNote)
+                
+                // Sync the updated note immediately if user is signed in
+                val application = getApplication<CattleApplication>()
+                application.authService.currentUser.first()?.let { currentUser ->
+                    if (!currentUser.isLocalUser) {
+                        application.syncService.syncItemImmediately(currentUser.uid, completedNote)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
+    
+    fun getTodoNotes(): Flow<List<Note>> = noteDao.getTodoNotes()
 }
 
 data class NotesUiState(

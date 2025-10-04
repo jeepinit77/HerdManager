@@ -11,6 +11,11 @@ data class Note(
     val text: String,
     val timestamp: Long,
     
+    // Todo fields
+    val isTodo: Boolean = false,
+    val dueDate: Long? = null, // Optional due date for todos
+    val isCompleted: Boolean = false, // Mark todo as done
+    
     // Multi-user and sync fields
     val herdId: String? = null, // Which herd this note belongs to
     val firestoreId: String? = null, // Firestore document ID for sync

@@ -22,7 +22,7 @@ import com.jumblemint.cows.data.model.* // Assuming all models are here
 import com.jumblemint.cows.data.database.converters.ListLongConverter // <<< ADDED IMPORT
 
 // Modified the @Database annotation to include exportSchema = false
-@Database(entities = [Cow::class, Pasture::class, Activity::class, Settings::class, Note::class, User::class, Herd::class, HerdMember::class, TagColor::class, ActivityTypeConfig::class, Breed::class], version = 5, exportSchema = false)
+@Database(entities = [Cow::class, Pasture::class, Activity::class, Settings::class, Note::class, User::class, Herd::class, HerdMember::class, TagColor::class, ActivityTypeConfig::class, Breed::class], version = 6, exportSchema = false)
 @TypeConverters(Converters::class, ListLongConverter::class) // <<< MODIFIED THIS LINE
 abstract class CattleDatabase : RoomDatabase() {
     abstract fun cowDao(): CowDao
@@ -195,6 +195,15 @@ abstract class CattleDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Add todo fields to notes table
+                database.execSQL("ALTER TABLE notes ADD COLUMN isTodo INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE notes ADD COLUMN dueDate INTEGER")
+                database.execSQL("ALTER TABLE notes ADD COLUMN isCompleted INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getDatabase(context: Context): CattleDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -202,7 +211,7 @@ abstract class CattleDatabase : RoomDatabase() {
                     CattleDatabase::class.java,
                     "cattle_database"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .build()
                 INSTANCE = instance
                 instance

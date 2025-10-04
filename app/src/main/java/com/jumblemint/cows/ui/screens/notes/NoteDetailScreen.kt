@@ -3,11 +3,15 @@ package com.jumblemint.cows.ui.screens.notes
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.ui.viewmodel.NotesViewModel
 import com.jumblemint.cows.ui.components.UnsavedChangesDialog
+import com.jumblemint.cows.ui.components.DatePickerField
+import java.time.LocalDate
+import java.time.ZoneId
 
 @Composable
 fun NoteDetailScreen(
@@ -26,16 +30,28 @@ fun NoteDetailScreen(
     
     var title by remember { mutableStateOf("") }
     var text by remember { mutableStateOf("") }
+    var isTodo by remember { mutableStateOf(false) }
+    var dueDate by remember { mutableStateOf<LocalDate?>(null) }
     var titleError by remember { mutableStateOf<String?>(null) }
 
     val originalTitle = remember(note) { note?.title ?: "" }
     val originalText = remember(note) { note?.text ?: "" }
-    val hasChanges = title != originalTitle || text != originalText
+    val originalIsTodo = remember(note) { note?.isTodo ?: false }
+    val originalDueDate = remember(note) { 
+        note?.dueDate?.let { 
+            java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate() 
+        }
+    }
+    val hasChanges = title != originalTitle || text != originalText || isTodo != originalIsTodo || dueDate != originalDueDate
 
     LaunchedEffect(note) {
         note?.let {
             title = it.title
             text = it.text
+            isTodo = it.isTodo
+            dueDate = it.dueDate?.let { timestamp ->
+                java.time.Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
+            }
         }
     }
 
@@ -46,10 +62,11 @@ fun NoteDetailScreen(
     LaunchedEffect(saveTriggered) {
         if (saveTriggered) {
             if (title.isNotBlank()) {
+                val dueDateMillis = dueDate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
                 if (note != null) {
-                    viewModel.updateNote(note, title, text)
+                    viewModel.updateNote(note, title, text, isTodo, dueDateMillis)
                 } else {
-                    viewModel.addNote(title, text)
+                    viewModel.addNote(title, text, isTodo, dueDateMillis)
                 }
                 onNavigateBack()
             } else {
@@ -91,6 +108,30 @@ fun NoteDetailScreen(
             singleLine = true
         )
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = isTodo,
+                onCheckedChange = { 
+                    isTodo = it
+                    if (!it) dueDate = null
+                }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Mark as Todo")
+        }
+        
+        if (isTodo) {
+            DatePickerField(
+                value = dueDate,
+                onValueChange = { dueDate = it },
+                label = "Due Date (optional)",
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
         OutlinedTextField(
             value = text,
             onValueChange = { text = it },
@@ -108,10 +149,11 @@ fun NoteDetailScreen(
             onSave = {
                 showUnsavedDialog = false
                 if (title.isNotBlank()) {
+                    val dueDateMillis = dueDate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
                     if (note != null) {
-                        viewModel.updateNote(note, title, text)
+                        viewModel.updateNote(note, title, text, isTodo, dueDateMillis)
                     } else {
-                        viewModel.addNote(title, text)
+                        viewModel.addNote(title, text, isTodo, dueDateMillis)
                     }
                     onNavigateBack()
                 } else {

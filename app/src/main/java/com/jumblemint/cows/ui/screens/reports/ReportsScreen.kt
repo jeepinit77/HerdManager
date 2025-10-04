@@ -27,6 +27,7 @@ import com.jumblemint.cows.util.AgeRangeKeys // Import the centralized keys
 fun ReportsScreen(
     onShowList: (type: String, value: String?) -> Unit,
     onNavigateToAddBirth: () -> Unit,
+    onNavigateToTodoList: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -73,7 +74,7 @@ fun ReportsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item { HerdOverviewCard(uiState.totalCows, uiState.watchedCowsCount, { type -> onShowList("status", type) }, { onShowList("watching", null) }) }
-            item { ToolsCard(onNavigateToAddBirth, { onShowList("workingList", null) }) }
+            item { ToolsCard(onNavigateToAddBirth, { onShowList("workingList", null) }, onNavigateToTodoList) }
             item { ClassificationBreakdownCard(uiState.classificationBreakdown) { classification -> onShowList("classification", classification) } }
             item { PastureBreakdownCard(uiState.pastureBreakdown) { pastureName -> val id = pastureIdByName[pastureName]; if (id != null) onShowList("pasture", id.toString()) else onShowList("pastureName", pastureName) } }
             item { AgeBasedReportsCard(uiState.cowsUnder1Year, uiState.cowsBetween1And5Years, uiState.cowsBetween5And10Years, uiState.cowsOver10Years) { rangeKey -> onShowList("age", rangeKey) } }
@@ -84,7 +85,7 @@ fun ReportsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ToolsCard(onAddCalfClick: () -> Unit, onWorkingListClick: () -> Unit) {
+fun ToolsCard(onAddCalfClick: () -> Unit, onWorkingListClick: () -> Unit, onTodoListClick: () -> Unit) {
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -96,6 +97,7 @@ fun ToolsCard(onAddCalfClick: () -> Unit, onWorkingListClick: () -> Unit) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 ToolItem(Icons.Default.Add, "Add Calf", onAddCalfClick)
                 ToolItem(Icons.Default.List, "Working List", onWorkingListClick)
+                ToolItem(Icons.Default.CheckCircle, "ToDo List", onTodoListClick)
             }
         }
     }
