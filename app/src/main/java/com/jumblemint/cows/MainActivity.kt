@@ -25,6 +25,8 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import android.widget.Toast
+import kotlinx.coroutines.delay
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.navigation.*
@@ -90,6 +92,10 @@ fun CattleManagerApp() {
     var saveTriggered by remember { mutableStateOf(false) }
     var hasUnsavedChanges by remember { mutableStateOf(false) }
     var backPressed by remember { mutableStateOf(false) }
+    
+    // Double back to exit functionality
+    var backPressedTime by remember { mutableStateOf(0L) }
+    val context = LocalContext.current
 
     val lastPagerPage = remember { mutableStateOf(DASHBOARD_PAGE_INDEX) }
     val initialPageForPagerState = lastPagerPage.value
@@ -287,9 +293,25 @@ fun CattleManagerApp() {
                 }
             }
         ) { innerPadding ->
+            // Handle back button for specific screens with unsaved changes
             if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.CowDetail || currentScreenForUI == Screen.NoteDetail || currentScreenForUI == Screen.AddActivity || currentScreenForUI == Screen.AddActivityWithId) {
                 BackHandler {
                     backPressed = true
+                }
+            }
+            
+            // Handle double back to exit for MainPager screens
+            if (currentScreenFromNav == Screen.MainPager) {
+                BackHandler {
+                    val currentTime = System.currentTimeMillis()
+                    if (currentTime - backPressedTime < 2000) {
+                        // Second back press within 2 seconds - exit app
+                        (context as? ComponentActivity)?.finish()
+                    } else {
+                        // First back press - show toast and record time
+                        backPressedTime = currentTime
+                        Toast.makeText(context, "Press back again to exit", Toast.LENGTH_SHORT).show()
+                    }
                 }
             }
             
