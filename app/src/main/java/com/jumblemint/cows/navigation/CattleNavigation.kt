@@ -146,7 +146,9 @@ fun MainScreensViewPager(
             )
             NOTES_PAGE_INDEX -> NotesScreen(
                 modifier = Modifier.fillMaxSize(),
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onAddNote = { navController.navigate(Screen.NoteDetail.createRoute(0L)) },
+                onEditNote = { noteId -> navController.navigate(Screen.NoteDetail.createRoute(noteId)) }
             )
             else -> Text("Unknown Page")
         }
@@ -601,6 +603,25 @@ fun CattleNavigation(
                 onCreateHerd = { /* TODO: Implement create herd action */ },
                 onNavigateBack = { navController.popBackStack() },
                 onCowClick = { cowId: Long -> navController.navigate(Screen.CowInfo.createRoute(cowId, null)) }
+            )
+        }
+        
+        composable(
+            route = Screen.NoteDetail.route,
+            arguments = listOf(
+                navArgument("noteId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val noteId = backStackEntry.arguments?.getLong("noteId") ?: 0L
+            com.jumblemint.cows.ui.screens.notes.NoteDetailScreen(
+                modifier = screenModifierWithPadding,
+                noteId = noteId,
+                onNavigateBack = { navController.popBackStack() },
+                saveTriggered = saveTriggered,
+                onSaveHandled = onSaveHandled,
+                onUnsavedChangesChanged = onUnsavedChangesChanged,
+                backPressed = backPressed,
+                onBackHandled = onBackHandled
             )
         }
     }

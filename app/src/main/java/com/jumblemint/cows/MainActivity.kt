@@ -148,30 +148,39 @@ fun CattleManagerApp() {
                     CenterAlignedTopAppBar(
                         title = { Text(currentScreenForUI?.title ?: "Cattle Manager") }
                     )
-                } else if (currentScreenForUI == Screen.CowDetail) {
-                    val cowId = navBackStackEntry?.arguments?.getLong("cowId") ?: 0L
-                    val context = LocalContext.current
-                    val application = context.applicationContext as CattleApplication
-                    val database = CattleDatabase.getDatabase(context)
-                    val repository = remember(database) {
-                        CattleRepository(
-                            database.cowDao(), database.pastureDao(), database.activityDao(),
-                            database.settingsDao(), database.noteDao(), database.userDao(),
-                            database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
-                            database.activityTypeConfigDao(), database.breedDao()
-                        )
-                    }
-                    val viewModel: CowDetailViewModel = viewModel(
-                        factory = CowDetailViewModelFactory(application, repository, cowId)
-                    )
-                    val uiState by viewModel.uiState.collectAsState()
+                } else if (currentScreenForUI == Screen.CowDetail || currentScreenForUI == Screen.NoteDetail) {
                     CenterAlignedTopAppBar(
                         title = {
-                            if (cowId == 0L) {
-                                Text("Add Animal")
-                            } else {
-                                val name = uiState.name
-                                Text(if (name.isNotBlank()) "Edit $name" else "Edit Animal")
+                            when (currentScreenForUI) {
+                                Screen.CowDetail -> {
+                                    val cowId = navBackStackEntry?.arguments?.getLong("cowId") ?: 0L
+                                    val context = LocalContext.current
+                                    val application = context.applicationContext as CattleApplication
+                                    val database = CattleDatabase.getDatabase(context)
+                                    val repository = remember(database) {
+                                        CattleRepository(
+                                            database.cowDao(), database.pastureDao(), database.activityDao(),
+                                            database.settingsDao(), database.noteDao(), database.userDao(),
+                                            database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
+                                            database.activityTypeConfigDao(), database.breedDao()
+                                        )
+                                    }
+                                    val viewModel: CowDetailViewModel = viewModel(
+                                        factory = CowDetailViewModelFactory(application, repository, cowId)
+                                    )
+                                    val uiState by viewModel.uiState.collectAsState()
+                                    if (cowId == 0L) {
+                                        Text("Add Animal")
+                                    } else {
+                                        val name = uiState.name
+                                        Text(if (name.isNotBlank()) "Edit $name" else "Edit Animal")
+                                    }
+                                }
+                                Screen.NoteDetail -> {
+                                    val noteId = navBackStackEntry?.arguments?.getLong("noteId") ?: 0L
+                                    Text(if (noteId == 0L) "Add Note" else "Edit Note")
+                                }
+                                else -> Text("Details")
                             }
                         },
                         navigationIcon = {
@@ -196,7 +205,7 @@ fun CattleManagerApp() {
                         title = { Text(currentScreenForUI.title ?: "Cattle Manager") },
                         navigationIcon = {
                             IconButton(onClick = { 
-                                if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture) {
+                                if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.NoteDetail) {
                                     backPressed = true
                                 } else {
                                     navController.popBackStack()
@@ -223,7 +232,7 @@ fun CattleManagerApp() {
                                     Log.w("EditButtonDebug", "Could not retrieve cowId from arguments for Edit button.")
                                 }
                             }
-                            if ((currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture) && hasUnsavedChanges) {
+                            if ((currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.NoteDetail) && hasUnsavedChanges) {
                                 IconButton(onClick = { 
                                     saveTriggered = true
                                 }) {
@@ -276,7 +285,7 @@ fun CattleManagerApp() {
                 }
             }
         ) { innerPadding ->
-            if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.CowDetail) {
+            if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.CowDetail || currentScreenForUI == Screen.NoteDetail) {
                 BackHandler {
                     backPressed = true
                 }

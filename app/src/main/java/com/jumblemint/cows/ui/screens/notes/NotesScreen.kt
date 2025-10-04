@@ -37,45 +37,43 @@ import kotlin.math.min
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotesScreen(
+    onAddNote: () -> Unit,
+    onEditNote: (Long) -> Unit,
     viewModel: NotesViewModel = viewModel(),
-    onNavigateBack: (() -> Unit)? = null, // Used by MainActivity's TopAppBar
+    onNavigateBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    var showAdd by remember { mutableStateOf(false) }
-    var showEdit by remember { mutableStateOf(false) }
     var showFullScreen by remember { mutableStateOf(false) }
-    var editingNote by remember { mutableStateOf<Note?>(null) }
     var viewingNote by remember { mutableStateOf<Note?>(null) }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
     val globalSnackbarState = com.jumblemint.cows.ui.components.LocalGlobalSnackbarState.current
     val scope = rememberCoroutineScope()
 
-    // TODO: Communicate screen title "Notes" to MainActivity's TopAppBar if needed.
-    // LaunchedEffect(Unit) { /* call to update MainActivity's title */ }
-
-    Box(modifier = modifier.fillMaxSize()) {
-        // Floating Action Button positioned manually
-        FloatingActionButton(
-            onClick = { showAdd = true },
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Note")
-        }
-
+    Scaffold(
+        modifier = modifier,
+        floatingActionButton = {
+            FloatingActionButton(onClick = onAddNote) {
+                Icon(Icons.Default.Add, contentDescription = "Add Note")
+            }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { paddingValues ->
         if (uiState.isLoading) {
             Box(
-                Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
         } else if (uiState.notes.isEmpty()) {
             Box(
-                Modifier.fillMaxSize(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -86,8 +84,10 @@ fun NotesScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-//                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp, bottom = 80.dp), // Extra bottom padding for FAB
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(uiState.notes, key = { it.id }) { note ->
@@ -99,8 +99,7 @@ fun NotesScreen(
                             showFullScreen = true
                         },
                         onEdit = {
-                            editingNote = note
-                            showEdit = true
+                            onEditNote(note.id)
                         },
                         onDelete = {
                             scope.launch {
@@ -121,42 +120,18 @@ fun NotesScreen(
         }
 
         uiState.error?.let { error ->
-            LaunchedEffect(error) { // error is the key here
+            LaunchedEffect(error) {
                 scope.launch {
                     globalSnackbarState?.showSnackbar(
                         message = error,
                         duration = SnackbarDuration.Short
                     )
-                    // Consider calling viewModel.clearError() here or after a delay
                 }
             }
         }
     }
 
-    if (showAdd) {
-        AddNoteDialog(
-            onDismiss = { showAdd = false },
-            onConfirm = { title, text ->
-                viewModel.addNote(title, text)
-                showAdd = false
-            }
-        )
-    }
 
-    if (showEdit && editingNote != null) {
-        EditNoteDialog(
-            note = editingNote!!,
-            onDismiss = {
-                showEdit = false
-                editingNote = null
-            },
-            onConfirm = { title, text ->
-                viewModel.updateNote(editingNote!!, title, text)
-                showEdit = false
-                editingNote = null
-            }
-        )
-    }
 
     if (showFullScreen && viewingNote != null) {
         FullScreenNoteDialog(
@@ -236,121 +211,7 @@ private fun NoteCard(
     }
 }
 
-@Composable
-private fun AddNoteDialog(onDismiss: () -> Unit, onConfirm: (String, String) -> Unit) {
-    var title by remember { mutableStateOf("") }
-    var text by remember { mutableStateOf("") }
-    var titleError by remember { mutableStateOf<String?>(null) }
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Note") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = {
-                        title = it
-                        titleError = if (it.isBlank()) "Title is required" else null
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Title*") },
-                    isError = titleError != null,
-                    supportingText = titleError?.let { { Text(it) } },
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 120.dp), // Use defaultMinSize for better behavior
-                    label = { Text("Note (optional)") },
-                    minLines = 3
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (title.isNotBlank()) {
-                        onConfirm(title, text)
-                    } else {
-                        titleError = "Title is required"
-                    }
-                }
-            ) {
-                Text("Add")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-private fun EditNoteDialog(
-    note: Note,
-    onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
-) {
-    var title by remember { mutableStateOf(note.title) }
-    var text by remember { mutableStateOf(note.text) }
-    var titleError by remember { mutableStateOf<String?>(null) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Edit Note") },
-        text = {
-            Column {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = {
-                        title = it
-                        titleError = if (it.isBlank()) "Title is required" else null
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Title*") },
-                    isError = titleError != null,
-                    supportingText = titleError?.let { { Text(it) } },
-                    singleLine = true
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    modifier = Modifier.fillMaxWidth().defaultMinSize(minHeight = 120.dp), // Use defaultMinSize
-                    label = { Text("Note (optional)") },
-                    minLines = 3
-                )
-            }
-        },
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    if (title.isNotBlank()) {
-                        onConfirm(title, text)
-                    } else {
-                        titleError = "Title is required"
-                    }
-                }
-            ) {
-                Text("Save")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
