@@ -29,6 +29,9 @@ interface NoteDao {
     @Query("SELECT * FROM notes WHERE isDeleted = 0 AND isTodo = 1 AND isCompleted = 0 ORDER BY dueDate ASC, timestamp DESC")
     fun getTodoNotes(): Flow<List<Note>>
     
+    @Query("SELECT * FROM notes WHERE isDeleted = 0 AND isTodo = 1 AND isCompleted = 1 ORDER BY timestamp DESC")
+    fun getCompletedTodos(): Flow<List<Note>>
+    
     @Query("DELETE FROM notes")
     suspend fun deleteAllNotes()
 }

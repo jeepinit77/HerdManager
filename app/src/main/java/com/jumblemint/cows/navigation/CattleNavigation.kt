@@ -671,7 +671,8 @@ fun CattleNavigation(
         composable(Screen.TodoList.route) {
             com.jumblemint.cows.ui.screens.notes.TodoListScreen(
                 modifier = screenModifierWithPadding,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToDetail = { noteId -> navController.navigate(Screen.NoteInfo.createRoute(noteId)) }
             )
         }
     }

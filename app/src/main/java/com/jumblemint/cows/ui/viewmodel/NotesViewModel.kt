@@ -148,6 +148,30 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     fun getTodoNotes(): Flow<List<Note>> = noteDao.getTodoNotes()
+    
+    fun getCompletedTodos(): Flow<List<Note>> = noteDao.getCompletedTodos()
+    
+    fun markTodoIncomplete(note: Note) {
+        viewModelScope.launch {
+            try {
+                val incompleteNote = note.copy(
+                    isCompleted = false,
+                    timestamp = Date().time
+                )
+                noteDao.insert(incompleteNote)
+                
+                // Sync the updated note immediately if user is signed in
+                val application = getApplication<CattleApplication>()
+                application.authService.currentUser.first()?.let { currentUser ->
+                    if (!currentUser.isLocalUser) {
+                        application.syncService.syncItemImmediately(currentUser.uid, incompleteNote)
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(error = e.message)
+            }
+        }
+    }
 }
 
 data class NotesUiState(
