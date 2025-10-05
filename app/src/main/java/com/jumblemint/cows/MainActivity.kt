@@ -240,6 +240,16 @@ fun CattleManagerApp() {
                                     Log.w("EditButtonDebug", "Could not retrieve cowId from arguments for Edit button.")
                                 }
                             }
+                            if (currentScreenForUI == Screen.NoteInfo) {
+                                val noteIdFromArgs = navBackStackEntry?.arguments?.getLong("noteId")
+                                noteIdFromArgs?.let { idVal ->
+                                    IconButton(onClick = { 
+                                        navController.navigate(Screen.NoteDetail.createRoute(idVal)) 
+                                    }) {
+                                        Icon(Icons.Filled.Edit, contentDescription = "Edit")
+                                    }
+                                }
+                            }
                             if ((currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.NoteDetail || currentScreenForUI == Screen.AddActivity || currentScreenForUI == Screen.AddActivityWithId) && hasUnsavedChanges) {
                                 IconButton(onClick = { 
                                     saveTriggered = true
@@ -251,7 +261,8 @@ fun CattleManagerApp() {
                                 currentScreenForUI == Screen.PastureDetail || 
                                 currentScreenForUI == Screen.CowList ||
                                 currentScreenForUI == Screen.ActivityInfo ||
-                                currentScreenForUI == Screen.WorkingList) {
+                                currentScreenForUI == Screen.WorkingList ||
+                                currentScreenForUI == Screen.NoteInfo) {
                                 IconButton(onClick = { navController.popBackStack(Screen.MainPager.route, inclusive = false) }) {
                                     Icon(Icons.Filled.Close, contentDescription = "Close")
                                 }

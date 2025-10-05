@@ -14,7 +14,7 @@ import java.time.LocalDate
 import java.time.ZoneId
 
 @Composable
-fun NoteDetailScreen(
+fun NoteEditScreen(
     noteId: Long,
     onNavigateBack: () -> Unit,
     saveTriggered: Boolean = false,

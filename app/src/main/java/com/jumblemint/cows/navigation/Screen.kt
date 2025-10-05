@@ -67,6 +67,9 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
     data object NoteDetail : Screen("note_detail_route/{noteId}", "Note Details", false) {
         fun createRoute(noteId: Long): String = route.replace("{noteId}", noteId.toString())
     }
+    data object NoteInfo : Screen("note_info_route/{noteId}", "Note Info", false) {
+        fun createRoute(noteId: Long): String = route.replace("{noteId}", noteId.toString())
+    }
     data object TodoList : Screen("todo_list_route", "ToDo List", false)
 
     companion object {
@@ -91,7 +94,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
                 CowInfo, CowDetail, AddActivity, AddActivityWithId, ActivityInfo, // Added ActivityInfo here
                 CowList, Settings, PastureDetail,
                 AddPasture, EditPasture, AddBirth, AccountManagement, TagColorsManagement, ActivityTypesManagement,
-                BreedsManagement, ThemeSettings, Sync, WorkingList, HerdSelection, NoteDetail, TodoList
+                BreedsManagement, ThemeSettings, Sync, WorkingList, HerdSelection, NoteDetail, NoteInfo, TodoList
             ).distinct() // Ensure no duplicates if some routes are similar (e.g. AddActivity vs AddActivityWithId for fromRoute)
         }
     }

@@ -149,7 +149,8 @@ fun MainScreensViewPager(
                 modifier = Modifier.fillMaxSize(),
                 onNavigateBack = { navController.popBackStack() },
                 onAddNote = { navController.navigate(Screen.NoteDetail.createRoute(0L)) },
-                onEditNote = { noteId -> navController.navigate(Screen.NoteDetail.createRoute(noteId)) }
+                onEditNote = { noteId -> navController.navigate(Screen.NoteDetail.createRoute(noteId)) },
+                onViewNote = { noteId -> navController.navigate(Screen.NoteInfo.createRoute(noteId)) }
             )
             else -> Text("Unknown Page")
         }
@@ -636,7 +637,7 @@ fun CattleNavigation(
             )
         ) { backStackEntry ->
             val noteId = backStackEntry.arguments?.getLong("noteId") ?: 0L
-            com.jumblemint.cows.ui.screens.notes.NoteDetailScreen(
+            com.jumblemint.cows.ui.screens.notes.NoteEditScreen(
                 modifier = screenModifierWithPadding,
                 noteId = noteId,
                 onNavigateBack = { navController.popBackStack() },
@@ -645,6 +646,25 @@ fun CattleNavigation(
                 onUnsavedChangesChanged = onUnsavedChangesChanged,
                 backPressed = backPressed,
                 onBackHandled = onBackHandled
+            )
+        }
+        
+        composable(
+            route = Screen.NoteInfo.route,
+            arguments = listOf(
+                navArgument("noteId") { type = NavType.LongType }
+            ),
+            enterTransition = { slideInHorizontally(initialOffsetX = { fullWidth -> fullWidth }) },
+            exitTransition = { slideOutHorizontally(targetOffsetX = { fullWidth -> -fullWidth }) },
+            popEnterTransition = { slideInHorizontally(initialOffsetX = { fullWidth -> -fullWidth }) },
+            popExitTransition = { slideOutHorizontally(targetOffsetX = { fullWidth -> fullWidth }) }
+        ) { backStackEntry ->
+            val noteId = backStackEntry.arguments?.getLong("noteId") ?: 0L
+            com.jumblemint.cows.ui.screens.notes.NoteDetailScreen(
+                modifier = screenModifierWithPadding,
+                noteId = noteId,
+                onNavigateBack = { navController.popBackStack() },
+                onEditNote = { navController.navigate(Screen.NoteDetail.createRoute(noteId)) }
             )
         }
         
