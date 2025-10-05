@@ -5,13 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.ClearAll
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
@@ -26,19 +22,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.database.CattleDatabase
-import com.jumblemint.cows.data.model.Classification
 import com.jumblemint.cows.data.model.Cow
-import com.jumblemint.cows.data.model.Gender
-import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
-import com.jumblemint.cows.ui.screens.AnimalFilterScreen
-import com.jumblemint.cows.ui.screens.AnimalFilterState
+import com.jumblemint.cows.ui.components.AnimalFilterScreen
+import com.jumblemint.cows.ui.components.AnimalFilterState
 import com.jumblemint.cows.ui.viewmodel.WorkingListUiState
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModel
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModelFactory
-import com.jumblemint.cows.util.AgeUtils
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable

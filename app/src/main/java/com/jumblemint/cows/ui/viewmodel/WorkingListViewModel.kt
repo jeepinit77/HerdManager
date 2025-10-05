@@ -7,10 +7,9 @@ import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.repository.CattleRepository
-import com.jumblemint.cows.ui.screens.AnimalFilterState
+import com.jumblemint.cows.ui.components.AnimalFilterState
 import com.jumblemint.cows.util.AgeUtils
 import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 
 class WorkingListViewModel(

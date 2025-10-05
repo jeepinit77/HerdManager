@@ -25,9 +25,8 @@ import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 import com.jumblemint.cows.ui.components.LocalGlobalSnackbarState
-import com.jumblemint.cows.ui.screens.AnimalFilterScreen 
-import com.jumblemint.cows.ui.screens.AnimalFilterState 
-import com.jumblemint.cows.util.AgeRangeKeys // Centralized
+import com.jumblemint.cows.ui.components.AnimalFilterScreen
+import com.jumblemint.cows.ui.components.AnimalFilterState
 import com.jumblemint.cows.util.AgeUtils // Centralized
 import com.jumblemint.cows.ui.viewmodel.CowsViewModel
 import com.jumblemint.cows.ui.viewmodel.CowsViewModelFactory

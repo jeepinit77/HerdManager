@@ -3,11 +3,9 @@ package com.jumblemint.cows.ui.screens.activities
 import android.app.Application
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,11 +19,10 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.*
-import com.jumblemint.cows.ui.screens.AnimalFilterScreen
-import com.jumblemint.cows.ui.screens.AnimalFilterState
+import com.jumblemint.cows.ui.components.AnimalFilterScreen
+import com.jumblemint.cows.ui.components.AnimalFilterState
 import com.jumblemint.cows.ui.viewmodel.AddActivityViewModel
 import com.jumblemint.cows.ui.viewmodel.AddActivityViewModelFactory
-import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

@@ -1,4 +1,4 @@
-package com.jumblemint.cows.ui.screens
+package com.jumblemint.cows.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -25,7 +25,6 @@ import androidx.compose.ui.window.DialogProperties
 import com.jumblemint.cows.data.model.Classification // Ensure this import and class exists
 import com.jumblemint.cows.data.model.Gender // Ensure this import and class exists
 import com.jumblemint.cows.data.model.Status // Ensure this import and class exists
-import com.jumblemint.cows.util.AgeRange // Ensure this import and class exists
 import com.jumblemint.cows.util.AgeUtils // Ensure this import and class exists
 import kotlinx.coroutines.launch
 
