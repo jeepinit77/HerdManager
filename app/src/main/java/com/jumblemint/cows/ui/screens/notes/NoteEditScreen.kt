@@ -1,15 +1,31 @@
 package com.jumblemint.cows.ui.screens.notes
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.jumblemint.cows.ui.viewmodel.NotesViewModel
-import com.jumblemint.cows.ui.components.UnsavedChangesDialog
 import com.jumblemint.cows.ui.components.DatePickerField
+import com.jumblemint.cows.ui.components.UnsavedChangesDialog
+import com.jumblemint.cows.ui.viewmodel.NotesViewModel
 import java.time.LocalDate
 import java.time.ZoneId
 
@@ -27,7 +43,7 @@ fun NoteEditScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val note = if (noteId == 0L) null else uiState.notes.find { it.id == noteId }
-    
+
     var title by remember { mutableStateOf("") }
     var text by remember { mutableStateOf("") }
     var isTodo by remember { mutableStateOf(false) }
@@ -37,9 +53,9 @@ fun NoteEditScreen(
     val originalTitle = remember(note) { note?.title ?: "" }
     val originalText = remember(note) { note?.text ?: "" }
     val originalIsTodo = remember(note) { note?.isTodo ?: false }
-    val originalDueDate = remember(note) { 
-        note?.dueDate?.let { 
-            java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate() 
+    val originalDueDate = remember(note) {
+        note?.dueDate?.let {
+            java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
         }
     }
     val hasChanges = title != originalTitle || text != originalText || isTodo != originalIsTodo || dueDate != originalDueDate
@@ -92,7 +108,8 @@ fun NoteEditScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .imePadding(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         OutlinedTextField(
@@ -114,7 +131,7 @@ fun NoteEditScreen(
         ) {
             Checkbox(
                 checked = isTodo,
-                onCheckedChange = { 
+                onCheckedChange = {
                     isTodo = it
                     if (!it) dueDate = null
                 }
@@ -122,7 +139,7 @@ fun NoteEditScreen(
             Spacer(modifier = Modifier.width(8.dp))
             Text("Mark as Todo")
         }
-        
+
         if (isTodo) {
             DatePickerField(
                 value = dueDate,
