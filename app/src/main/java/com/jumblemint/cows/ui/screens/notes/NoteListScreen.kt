@@ -31,8 +31,6 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 // kotlin.math.max and kotlin.math.min are not directly used, can be removed if not needed by transformableState internals implicitly
 // For now, keeping them as they were in the original file.
-import kotlin.math.max
-import kotlin.math.min
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
