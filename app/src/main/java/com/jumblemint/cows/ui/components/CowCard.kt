@@ -34,6 +34,9 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
+import com.jumblemint.cows.ui.theme.getContrastingTextColor
+import com.jumblemint.cows.ui.theme.BackgroundColorProvider
+import com.jumblemint.cows.ui.theme.AutoText
 // import androidx.compose.material.icons.filled.Lightbulb // Removed
 import com.jumblemint.cows.R // Assuming your R file is here
 import com.jumblemint.cows.data.model.Cow
@@ -61,8 +64,7 @@ fun CowCard(
     val cardColors = CardDefaults.cardColors(
         containerColor = genderColor
     )
-    val textColor = if (genderColor.luminance() < 0.5f) Color.White else Color.Black
-    val secondaryTextColor = if (genderColor.luminance() < 0.5f) Color.White.copy(alpha = 0.7f) else Color.Black.copy(alpha = 0.7f)
+
 
     val context = LocalContext.current
     val tipsManager = remember { com.jumblemint.cows.data.preferences.TipsManager(context) }
@@ -79,9 +81,10 @@ fun CowCard(
             elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
         ) {
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+            BackgroundColorProvider(backgroundColor = genderColor) {
+                Column(
+                    modifier = Modifier.padding(16.dp)
+                ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -102,16 +105,14 @@ fun CowCard(
                             verticalAlignment = Alignment.Top
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(
+                                AutoText(
                                     text = cow.name ?: "Unnamed Cow",
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = textColor
+                                    fontWeight = FontWeight.Bold
                                 )
-                                Text(
+                                AutoText(
                                     text = cow.classification.name,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = secondaryTextColor
+                                    style = MaterialTheme.typography.bodyMedium
                                 )
                             }
                             // Action buttons (Star, Edit, Delete) - Tip icon is removed from here
@@ -121,7 +122,7 @@ fun CowCard(
                             ) {
                                 onToggleWatch?.let {
                                     IconButton(onClick = it) {
-                                        val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else secondaryTextColor
+                                        val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else getContrastingTextColor(genderColor).copy(alpha = 0.7f)
                                         Icon(
                                             imageVector = Icons.Filled.Star,
                                             contentDescription = if (cow.isWatched) "Unwatch" else "Watch",
@@ -134,7 +135,7 @@ fun CowCard(
                                         Icon(
                                             imageVector = Icons.Filled.Edit,
                                             contentDescription = "Edit Cow",
-                                            tint = textColor
+                                            tint = getContrastingTextColor(genderColor)
                                         )
                                     }
                                 }
@@ -158,15 +159,15 @@ fun CowCard(
                                 else -> "${age.days}d"
                             }
                             Spacer(modifier = Modifier.height(6.dp))
-                            Text(
+                            AutoText(
                                 text = "Age: $ageText",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = secondaryTextColor
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }
                 }
             }
+        } // End of BackgroundColorProvider
         } // End of Card content
 
         // Tip Icon Button - overlaid on top-right of the Card, extending out
@@ -240,30 +241,30 @@ fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = M
             colorFilter = ColorFilter.tint(bgColor),
             modifier = Modifier.fillMaxSize()
         )
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 4.dp, vertical = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Bottom
-        ) {
+        BackgroundColorProvider(backgroundColor = bgColor) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Bottom
+            ) {
             tagColor?.let {
-                Text(
+                AutoText(
                     text = it.lowercase().replaceFirstChar { char -> char.titlecase() },
                     style = MaterialTheme.typography.labelSmall,
-                    color = if (bgColor.luminance() < 0.5f) Color.White.copy(alpha = 0.8f) else Color.Black.copy(alpha = 0.7f),
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                 )
                 Spacer(modifier = Modifier.height(2.dp))
             }
-            Text(
+            AutoText(
                 text = (tagNumber ?: "—").uppercase(),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                softWrap = false,
-                color = if (bgColor.luminance() < 0.5f) Color.White else Color.Black
+                softWrap = false
             )
-        }
+            }
+        } // End of BackgroundColorProvider
     }
 }

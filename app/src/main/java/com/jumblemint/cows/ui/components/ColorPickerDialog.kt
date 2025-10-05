@@ -12,6 +12,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.github.skydoves.colorpicker.compose.*
+import com.jumblemint.cows.ui.theme.AutoText
+import com.jumblemint.cows.ui.theme.BackgroundColorProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

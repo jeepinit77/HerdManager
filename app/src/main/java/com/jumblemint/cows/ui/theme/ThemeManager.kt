@@ -12,8 +12,22 @@ import kotlinx.coroutines.flow.map
 
 // Helper to determine a contrasting color (dark for light bg, light for dark bg)
 private fun determineOnColor(backgroundColor: Color): Color {
-    return if (backgroundColor.luminance() > 0.5f) Color(0xFF191C1E) // Dark text for light background
-    else Color.White // Light text for dark background
+    val luminance = backgroundColor.luminance()
+    return if (luminance > 0.5f) {
+        Color(0xFF000000) // Pure black for light backgrounds
+    } else {
+        Color(0xFFFFFFFF) // Pure white for dark backgrounds
+    }
+}
+
+// Public utility function for app-wide luminance-based text color
+fun getContrastingTextColor(backgroundColor: Color): Color {
+    return determineOnColor(backgroundColor)
+}
+
+// Extension function for easier usage
+fun Color.contrastingTextColor(): Color {
+    return getContrastingTextColor(this)
 }
 
 // "On" colors are dynamically determined by default using the base colors.

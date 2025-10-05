@@ -32,6 +32,9 @@ import com.jumblemint.cows.ui.theme.CustomColors
 import com.jumblemint.cows.ui.theme.PresetTheme
 import com.jumblemint.cows.ui.theme.ThemeManager
 import com.jumblemint.cows.ui.theme.getColors
+import com.jumblemint.cows.ui.theme.SmartText
+import com.jumblemint.cows.ui.theme.AutoText
+import com.jumblemint.cows.ui.theme.BackgroundColorProvider
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -214,29 +217,28 @@ private fun PresetThemeCard(
         if (isDarkTheme) colors.primaryDark else colors.primaryLight
     } else Color.Transparent
     
+    val cardColor = if (isDarkTheme) colors.surfaceDark else colors.surfaceLight
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(
-            containerColor = if (isDarkTheme) colors.surfaceDark else colors.surfaceLight
-        ),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
         border = BorderStroke(2.dp, borderColor),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        BackgroundColorProvider(backgroundColor = cardColor) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    preset.displayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = if (isDarkTheme) colors.onSurfaceDark else colors.onSurfaceLight
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AutoText(
+                        preset.displayName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
                 
                 if (isSelected) {
                     Icon(
@@ -261,7 +263,8 @@ private fun PresetThemeCard(
                     )
                 }
             }
-        }
+            }
+        } // End BackgroundColorProvider
     }
 }
 
@@ -307,57 +310,54 @@ private fun InteractiveThemePreview(
     onColorChange: (String, Color) -> Unit,
     onOpenColorPicker: (String, Color, (Color) -> Unit) -> Unit
 ) {
+    val bgColor = if (isDarkTheme) customColors.backgroundDark else customColors.backgroundLight
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
                 val key = if (isDarkTheme) SettingsKeys.THEME_BACKGROUND_DARK else SettingsKeys.THEME_BACKGROUND_LIGHT
-                val current = if (isDarkTheme) customColors.backgroundDark else customColors.backgroundLight
-                onOpenColorPicker("Background Color\n• Main app background\n• Screen backgrounds\n• Base layer color", current) { color -> onColorChange(key, color) }
+                onOpenColorPicker("Background Color\n• Main app background\n• Screen backgrounds\n• Base layer color", bgColor) { color -> onColorChange(key, color) }
             }
-            .background(if (isDarkTheme) customColors.backgroundDark else customColors.backgroundLight)
+            .background(bgColor)
             .padding(16.dp)
     ) {
+        BackgroundColorProvider(backgroundColor = bgColor) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
+                AutoText(
                     "Tap anywhere to edit colors",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-                    color = if (isDarkTheme) customColors.onBackgroundDark else customColors.onBackgroundLight
+                    style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic)
                 )
                 Icon(
                     Icons.Default.TouchApp,
                     contentDescription = "Tap to edit",
-                    tint = if (isDarkTheme) customColors.onBackgroundDark else customColors.onBackgroundLight,
                     modifier = Modifier.size(16.dp)
                 )
             }
 
+            val cardColor = if (isDarkTheme) customColors.surfaceDark else customColors.surfaceLight
             Card(
                 onClick = {
                     val key = if (isDarkTheme) SettingsKeys.THEME_SURFACE_DARK else SettingsKeys.THEME_SURFACE_LIGHT
-                    val current = if (isDarkTheme) customColors.surfaceDark else customColors.surfaceLight
-                    onOpenColorPicker("Card Background\n• Card backgrounds\n• Dialog backgrounds\n• Surface containers", current) { color -> onColorChange(key, color) }
+                    onOpenColorPicker("Card Background\n• Card backgrounds\n• Dialog backgrounds\n• Surface containers", cardColor) { color -> onColorChange(key, color) }
                 },
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isDarkTheme) customColors.surfaceDark else customColors.surfaceLight
-                ),
+                colors = CardDefaults.cardColors(containerColor = cardColor),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        "Herd Overview",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkTheme) customColors.onSurfaceDark else customColors.onSurfaceLight
-                    )
+                BackgroundColorProvider(backgroundColor = cardColor) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        AutoText(
+                            "Herd Overview",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -378,43 +378,41 @@ private fun InteractiveThemePreview(
                                     fontWeight = FontWeight.Bold,
                                     color = if (isDarkTheme) customColors.primaryDark else customColors.primaryLight
                                 )
-                                Text(
+                                AutoText(
                                     label,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = if (isDarkTheme) customColors.onSurfaceDark else customColors.onSurfaceLight
+                                    style = MaterialTheme.typography.bodyMedium
                                 )
                             }
                         }
                     }
-                }
+                    }
+                } // End BackgroundColorProvider
             }
 
+            val buttonsCardColor = if (isDarkTheme) customColors.surfaceDark else customColors.surfaceLight
             Card(
                 onClick = {
                     val key = if (isDarkTheme) SettingsKeys.THEME_SURFACE_DARK else SettingsKeys.THEME_SURFACE_LIGHT
-                    val current = if (isDarkTheme) customColors.surfaceDark else customColors.surfaceLight
-                    onOpenColorPicker("Card Background\n• Card backgrounds\n• Dialog backgrounds\n• Surface containers", current) { color -> onColorChange(key, color) }
+                    onOpenColorPicker("Card Background\n• Card backgrounds\n• Dialog backgrounds\n• Surface containers", buttonsCardColor) { color -> onColorChange(key, color) }
                 },
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isDarkTheme) customColors.surfaceDark else customColors.surfaceLight
-                ),
+                colors = CardDefaults.cardColors(containerColor = buttonsCardColor),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        "Buttons",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkTheme) customColors.onSurfaceDark else customColors.onSurfaceLight,
-                        modifier = Modifier.clickable {
-                            val key = if (isDarkTheme) SettingsKeys.THEME_ON_SURFACE_DARK else SettingsKeys.THEME_ON_SURFACE_LIGHT
-                            val current = if (isDarkTheme) customColors.onSurfaceDark else customColors.onSurfaceLight
-                            onOpenColorPicker("Text on Cards\n• Card titles\n• Body text on cards\n• Labels on surfaces", current) { color -> onColorChange(key, color) }
-                        }
-                    )
+                BackgroundColorProvider(backgroundColor = buttonsCardColor) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        AutoText(
+                            "Buttons",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                val key = if (isDarkTheme) SettingsKeys.THEME_ON_SURFACE_DARK else SettingsKeys.THEME_ON_SURFACE_LIGHT
+                                val current = if (isDarkTheme) customColors.onSurfaceDark else customColors.onSurfaceLight
+                                onOpenColorPicker("Text on Cards\n• Card titles\n• Body text on cards\n• Labels on surfaces", current) { color -> onColorChange(key, color) }
+                            }
+                        )
                     
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -463,30 +461,29 @@ private fun InteractiveThemePreview(
                             contentDescription = null,
                             tint = if (isDarkTheme) customColors.secondaryDark else customColors.secondaryLight
                         )
-                        Text(
-                            "Settings & navigation icons",
-                            color = if (isDarkTheme) customColors.onSurfaceDark else customColors.onSurfaceLight
+                        AutoText(
+                            "Settings & navigation icons"
                         )
                     }
-                }
+                    }
+                } // End BackgroundColorProvider
             }
 
+            val genderCardColor = if (isDarkTheme) customColors.surfaceDark else customColors.surfaceLight
             Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isDarkTheme) customColors.surfaceDark else customColors.surfaceLight
-                ),
+                colors = CardDefaults.cardColors(containerColor = genderCardColor),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        "Gender Colors",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isDarkTheme) customColors.onSurfaceDark else customColors.onSurfaceLight
-                    )
+                BackgroundColorProvider(backgroundColor = genderCardColor) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        AutoText(
+                            "Gender Colors",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
                     
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -587,8 +584,10 @@ private fun InteractiveThemePreview(
                     }
                     
 
-                }
+                    }
+                } // End BackgroundColorProvider
             }
         }
+        } // End BackgroundColorProvider
     }
 }

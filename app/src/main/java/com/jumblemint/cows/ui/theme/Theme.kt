@@ -14,36 +14,52 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.text.TextStyle
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 
 private fun createDarkColorScheme(customColors: CustomColors) = darkColorScheme(
     primary = customColors.primaryDark,
-    onPrimary = customColors.onPrimaryDark,
+    onPrimary = getContrastingTextColor(customColors.primaryDark),
     secondary = customColors.secondaryDark,
-    onSecondary = customColors.onSecondaryDark,
+    onSecondary = getContrastingTextColor(customColors.secondaryDark),
     tertiary = customColors.tertiaryDark,
-    onTertiary = customColors.onTertiaryDark,
+    onTertiary = getContrastingTextColor(customColors.tertiaryDark),
     background = customColors.backgroundDark,
-    onBackground = customColors.onBackgroundDark,
+    onBackground = getContrastingTextColor(customColors.backgroundDark),
     surface = customColors.surfaceDark,
-    onSurface = customColors.onSurfaceDark
-    // Add other dark theme specific "on" colors if defined in CustomColors and needed
+    onSurface = getContrastingTextColor(customColors.surfaceDark),
+    surfaceVariant = customColors.cardBackgroundDark,
+    onSurfaceVariant = getContrastingTextColor(customColors.cardBackgroundDark)
 )
 
 private fun createLightColorScheme(customColors: CustomColors) = lightColorScheme(
     primary = customColors.primaryLight,
-    onPrimary = customColors.onPrimaryLight,
+    onPrimary = getContrastingTextColor(customColors.primaryLight),
     secondary = customColors.secondaryLight,
-    onSecondary = customColors.onSecondaryLight,
+    onSecondary = getContrastingTextColor(customColors.secondaryLight),
     tertiary = customColors.tertiaryLight,
-    onTertiary = customColors.onTertiaryLight,
+    onTertiary = getContrastingTextColor(customColors.tertiaryLight),
     background = customColors.backgroundLight,
-    onBackground = customColors.onBackgroundLight,
+    onBackground = getContrastingTextColor(customColors.backgroundLight),
     surface = customColors.surfaceLight,
-    onSurface = customColors.onSurfaceLight
-    // Add other light theme specific "on" colors if defined in CustomColors and needed
+    onSurface = getContrastingTextColor(customColors.surfaceLight),
+    surfaceVariant = customColors.cardBackgroundLight,
+    onSurfaceVariant = getContrastingTextColor(customColors.cardBackgroundLight)
 )
 
 // Modern-sharp shapes across the app
@@ -88,10 +104,23 @@ fun CowsTheme(
         else -> createLightColorScheme(customColors)
     }
 
+    // Handle status bar colors
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            val window = (view.context as ComponentActivity).window
+            val isDark = colorScheme.surface.luminance() < 0.5f
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDark
+        }
+    }
+
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
-        shapes = SharpShapes,
-        content = content
-    )
+        shapes = SharpShapes
+    ) {
+        content()
+    }
 }
+
+
