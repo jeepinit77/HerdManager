@@ -288,7 +288,12 @@ fun CattleManagerApp() {
                                             pagerState.scrollToPage(pageIndex)
                                         }
                                     }
-                                }
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    indicatorColor = MaterialTheme.colorScheme.primary
+                                )
                             )
                         }
                         NavigationBarItem(
@@ -298,7 +303,12 @@ fun CattleManagerApp() {
                                 }
                             },
                             icon = { Icon(Icons.Filled.Settings, "Settings") }, 
-                            label = { Text("Settings") }
+                            label = { Text("Settings") },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                                indicatorColor = MaterialTheme.colorScheme.primary
+                            )
                         )
                     }
                 }

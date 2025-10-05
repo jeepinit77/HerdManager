@@ -76,14 +76,22 @@ fun TodoListScreen(
                     SegmentedButton(
                         shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
                         onClick = { showCompleted = false },
-                        selected = !showCompleted
+                        selected = !showCompleted,
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = MaterialTheme.colorScheme.primary,
+                            activeContentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         Text("Active")
                     }
                     SegmentedButton(
                         shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
                         onClick = { showCompleted = true },
-                        selected = showCompleted
+                        selected = showCompleted,
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = MaterialTheme.colorScheme.primary,
+                            activeContentColor = MaterialTheme.colorScheme.onPrimary
+                        )
                     ) {
                         Text("Completed")
                     }
@@ -99,7 +107,11 @@ fun TodoListScreen(
                                 onClick = { filterType = filter },
                                 label = { Text(filter.label, maxLines = 1) },
                                 selected = filterType == filter,
-                                modifier = Modifier.height(32.dp)
+                                modifier = Modifier.height(32.dp),
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                                )
                             )
                         }
                     }

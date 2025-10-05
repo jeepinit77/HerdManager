@@ -291,7 +291,9 @@ fun CowListScreen(
                     onClick = onAddCowClick,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .padding(16.dp) // Standard FAB padding from the edges of the Box
+                        .padding(16.dp),
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Add Cow")
                 }

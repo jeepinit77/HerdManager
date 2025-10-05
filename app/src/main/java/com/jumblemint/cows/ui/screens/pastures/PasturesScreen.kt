@@ -77,7 +77,11 @@ fun PasturesScreen(
     Scaffold(
         modifier = modifier,
         floatingActionButton = {
-            FloatingActionButton(onClick = onNavigateToAddPasture) {
+            FloatingActionButton(
+                onClick = onNavigateToAddPasture,
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Pasture")
             }
         },
