@@ -22,53 +22,17 @@ fun getCardColors(): CardColors {
 
 @Composable
 fun getCardBackgroundColor(): Color {
-    val context = LocalContext.current
-    val application = context.applicationContext as CattleApplication
-    val database = CattleDatabase.getDatabase(context)
-    val repository = remember {
-        CattleRepository(
-            database.cowDao(),
-            database.pastureDao(),
-            database.activityDao(),
-            database.settingsDao(),
-            database.noteDao(),
-            database.userDao(),
-            database.herdDao(),
-            database.herdMemberDao(),
-            database.tagColorDao(),
-            database.activityTypeConfigDao()
-        )
-    }
-    val themeManager = remember { ThemeManager(repository) }
-    val customColors by themeManager.getCustomColors().collectAsState(initial = CustomColors())
+    val customColors = LocalCustomColors.current
     val isDarkTheme = isSystemInDarkTheme()
-    
+
     return if (isDarkTheme) customColors.cardBackgroundDark else customColors.cardBackgroundLight
 }
 
 @Composable
 fun getGenderColor(gender: Gender): Color {
-    val context = LocalContext.current
-    val application = context.applicationContext as CattleApplication
-    val database = CattleDatabase.getDatabase(context)
-    val repository = remember {
-        CattleRepository(
-            database.cowDao(),
-            database.pastureDao(),
-            database.activityDao(),
-            database.settingsDao(),
-            database.noteDao(),
-            database.userDao(),
-            database.herdDao(),
-            database.herdMemberDao(),
-            database.tagColorDao(),
-            database.activityTypeConfigDao()
-        )
-    }
-    val themeManager = remember { ThemeManager(repository) }
-    val customColors by themeManager.getCustomColors().collectAsState(initial = CustomColors())
+    val customColors = LocalCustomColors.current
     val isDarkTheme = isSystemInDarkTheme()
-    
+
     return when (gender) {
         Gender.MALE -> if (isDarkTheme) customColors.maleColorDark else customColors.maleColorLight
         Gender.FEMALE -> if (isDarkTheme) customColors.femaleColorDark else customColors.femaleColorLight

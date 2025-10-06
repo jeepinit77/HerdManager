@@ -114,12 +114,14 @@ fun CowsTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        shapes = SharpShapes
-    ) {
-        content()
+    CompositionLocalProvider(LocalCustomColors provides customColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            shapes = SharpShapes
+        ) {
+            content()
+        }
     }
 }
 
