@@ -38,33 +38,17 @@ fun NotesScreen(
     val globalSnackbarState = com.jumblemint.cows.ui.components.LocalGlobalSnackbarState.current
     val scope = rememberCoroutineScope()
 
-    Scaffold(
-        modifier = modifier,
-        floatingActionButton = {
-            FloatingActionButton(
-                onClick = onAddNote,
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Note")
-            }
-        },
-        contentWindowInsets = WindowInsets(0, 0, 0, 0)
-    ) { paddingValues ->
+    Box(modifier = modifier.fillMaxSize()) {
         if (uiState.isLoading) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
         } else if (uiState.notes.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
+                modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -75,10 +59,8 @@ fun NotesScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .padding(paddingValues)
-                    .fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(uiState.notes, key = { it.id }) { note ->
@@ -108,15 +90,27 @@ fun NotesScreen(
                 }
             }
         }
+        
+        FloatingActionButton(
+            onClick = onAddNote,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add Note")
+        }
 
-        uiState.error?.let { error ->
-            LaunchedEffect(error) {
-                scope.launch {
-                    globalSnackbarState?.showSnackbar(
-                        message = error,
-                        duration = SnackbarDuration.Short
-                    )
-                }
+    }
+    
+    uiState.error?.let { error ->
+        LaunchedEffect(error) {
+            scope.launch {
+                globalSnackbarState?.showSnackbar(
+                    message = error,
+                    duration = SnackbarDuration.Short
+                )
             }
         }
     }
