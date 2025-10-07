@@ -21,6 +21,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -124,7 +125,7 @@ fun CattleManagerApp() {
     val bottomNavItems = listOf(
         BottomNavItem(Screen.Dashboard, Icons.Filled.Home, "Home"),
         BottomNavItem(Screen.Cows, Icons.Filled.GroupWork, "Cattle"),
-        BottomNavItem(Screen.Pastures, Icons.Filled.Landscape, "Fields"),
+        BottomNavItem(Screen.Pastures, Icons.Filled.Landscape, "Pastures"),
         BottomNavItem(Screen.Activities, Icons.Filled.Assignment, "Activity"),
         BottomNavItem(Screen.Notes, Icons.Filled.Note, "Notes")
     )
@@ -280,7 +281,13 @@ fun CattleManagerApp() {
                             val pageIndex = getPageIndexForScreen(item.screen)
                             NavigationBarItem(
                                 icon = { Icon(item.icon, item.label) },
-                                label = { Text(item.label) },
+                                label = { 
+                                    Text(
+                                        text = item.label,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                },
                                 selected = pagerState.currentPage == pageIndex,
                                 onClick = {
                                     if (pageIndex != -1) {
