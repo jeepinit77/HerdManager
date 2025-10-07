@@ -37,6 +37,9 @@ import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import com.jumblemint.cows.ui.components.GlobalSnackbarState
 import com.jumblemint.cows.ui.components.LocalGlobalSnackbarState
 import com.jumblemint.cows.ui.components.rememberGlobalSnackbarState
+import com.jumblemint.cows.ui.theme.ThemeManager
+import com.jumblemint.cows.ui.theme.ThemeMode
+import com.jumblemint.cows.CattleApplication
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -46,7 +49,21 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         setContent {
-            CowsTheme {
+            val context = LocalContext.current
+            val application = context.applicationContext as CattleApplication
+            val database = CattleDatabase.getDatabase(context)
+            val repository = remember(database) {
+                CattleRepository(
+                    database.cowDao(), database.pastureDao(), database.activityDao(),
+                    database.settingsDao(), database.noteDao(), database.userDao(),
+                    database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
+                    database.activityTypeConfigDao(), database.breedDao()
+                )
+            }
+            val themeManager = remember(repository) { ThemeManager(repository) }
+            val themeMode by themeManager.getThemeModeFlow().collectAsState(initial = ThemeMode.SYSTEM)
+            
+            CowsTheme(themeMode = themeMode) {
                 CattleManagerApp()
             }
         }

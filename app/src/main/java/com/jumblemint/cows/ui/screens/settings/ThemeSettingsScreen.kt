@@ -31,6 +31,7 @@ import com.jumblemint.cows.ui.components.ColorPickerDialog
 import com.jumblemint.cows.ui.theme.CustomColors
 import com.jumblemint.cows.ui.theme.PresetTheme
 import com.jumblemint.cows.ui.theme.ThemeManager
+import com.jumblemint.cows.ui.theme.ThemeMode
 import com.jumblemint.cows.ui.theme.getColors
 import com.jumblemint.cows.ui.theme.SmartText
 import com.jumblemint.cows.ui.theme.AutoText
@@ -62,10 +63,17 @@ fun ThemeSettingsScreen(
     val tabs = listOf("Presets", "Custom Theme")
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     var currentPreset by remember { mutableStateOf(PresetTheme.DEFAULT) }
+    var currentThemeMode by remember { mutableStateOf(ThemeMode.SYSTEM) }
     var previewDarkMode by remember { mutableStateOf(isDarkTheme) }
 
     LaunchedEffect(Unit) {
         currentPreset = themeManager.getCurrentPreset()
+        currentThemeMode = themeManager.getThemeMode()
+        previewDarkMode = when (currentThemeMode) {
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+            ThemeMode.SYSTEM -> isDarkTheme
+        }
     }
 
     var showColorPicker by remember { mutableStateOf(false) }
@@ -78,33 +86,47 @@ fun ThemeSettingsScreen(
             tonalElevation = 2.dp,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    "Theme Settings",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    "App Theme",
+                    style = MaterialTheme.typography.bodyMedium
                 )
-
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Preview:", style = MaterialTheme.typography.bodyMedium)
-                    Icon(
-                        if (previewDarkMode) Icons.Outlined.DarkMode else Icons.Outlined.LightMode,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Switch(
-                        checked = previewDarkMode,
-                        onCheckedChange = { previewDarkMode = it }
-                    )
+                    val modes = listOf("Light", "Dark", "System")
+                    modes.forEachIndexed { index, mode ->
+                        SegmentedButton(
+                            shape = SegmentedButtonDefaults.itemShape(index = index, count = modes.size),
+                            onClick = {
+                                coroutineScope.launch {
+                                    val themeMode = when (mode) {
+                                        "Light" -> ThemeMode.LIGHT
+                                        "Dark" -> ThemeMode.DARK
+                                        else -> ThemeMode.SYSTEM
+                                    }
+                                    themeManager.setThemeMode(themeMode)
+                                    currentThemeMode = themeMode
+                                    previewDarkMode = when (themeMode) {
+                                        ThemeMode.LIGHT -> false
+                                        ThemeMode.DARK -> true
+                                        ThemeMode.SYSTEM -> isDarkTheme
+                                    }
+                                }
+                            },
+                            selected = currentThemeMode == when (mode) {
+                                "Light" -> ThemeMode.LIGHT
+                                "Dark" -> ThemeMode.DARK
+                                else -> ThemeMode.SYSTEM
+                            }
+                        ) {
+                            Text(mode)
+                        }
+                    }
                 }
             }
         }

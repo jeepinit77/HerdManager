@@ -73,6 +73,10 @@ data class CustomColors(
 
 val LocalCustomColors = staticCompositionLocalOf { CustomColors() }
 
+enum class ThemeMode {
+    LIGHT, DARK, SYSTEM
+}
+
 enum class PresetTheme(val displayName: String) {
     DEFAULT("Default"),
     BLUE("Blue Lagoon"),
@@ -243,6 +247,30 @@ fun PresetTheme.getColors(): CustomColors {
 }
 
 class ThemeManager(private val repository: CattleRepository) {
+
+    suspend fun getThemeMode(): ThemeMode {
+        val mode = repository.getSettingByKey(SettingsKeys.THEME_MODE)?.value
+        return try {
+            mode?.let { ThemeMode.valueOf(it.uppercase()) } ?: ThemeMode.SYSTEM
+        } catch (e: IllegalArgumentException) {
+            ThemeMode.SYSTEM
+        }
+    }
+
+    suspend fun setThemeMode(mode: ThemeMode) {
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.THEME_MODE, mode.name))
+    }
+
+    fun getThemeModeFlow(): Flow<ThemeMode> {
+        return repository.getAllSettings().map { settings ->
+            val mode = settings.find { it.key == SettingsKeys.THEME_MODE }?.value
+            try {
+                mode?.let { ThemeMode.valueOf(it.uppercase()) } ?: ThemeMode.SYSTEM
+            } catch (e: IllegalArgumentException) {
+                ThemeMode.SYSTEM
+            }
+        }
+    }
 
     fun getCustomColors(): Flow<CustomColors> {
         return repository.getAllSettings().map { settings ->

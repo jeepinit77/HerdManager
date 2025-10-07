@@ -24,6 +24,9 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
@@ -73,6 +76,7 @@ private val SharpShapes = Shapes(
 
 @Composable
 fun CowsTheme(
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Use brand palette consistently across devices
     dynamicColor: Boolean = false,
@@ -91,16 +95,23 @@ fun CowsTheme(
         database.herdDao(),
         database.herdMemberDao(),
         database.tagColorDao(),
-        database.activityTypeConfigDao()
+        database.activityTypeConfigDao(),
+        database.breedDao()
     )
     val themeManager = ThemeManager(repository)
     val customColors by themeManager.getCustomColors().collectAsState(initial = CustomColors())
     
+    val actualDarkTheme = when (themeMode) {
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+        ThemeMode.SYSTEM -> darkTheme
+    }
+    
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            if (actualDarkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-        darkTheme -> createDarkColorScheme(customColors)
+        actualDarkTheme -> createDarkColorScheme(customColors)
         else -> createLightColorScheme(customColors)
     }
 
