@@ -26,6 +26,7 @@ import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -78,7 +79,7 @@ fun CowEditScreen(
     }
     val themeManager = remember { ThemeManager(repository) }
     val customColors by themeManager.getCustomColors().collectAsState(initial = CustomColors())
-    val isDarkTheme = isSystemInDarkTheme()
+    val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
     val uiState by viewModel.uiState.collectAsState()
     val tagColorMap: Map<String, Color> = rememberTagColorMap(repository)
