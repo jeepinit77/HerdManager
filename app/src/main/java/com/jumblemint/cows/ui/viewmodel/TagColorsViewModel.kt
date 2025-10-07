@@ -60,16 +60,13 @@ class TagColorsViewModel(
 
     fun resetToDefaults() {
         viewModelScope.launch {
-            val existing = repository.getAllTagColorsSync()
-            // Delete all non-default custom colors
-            existing.filter { !it.isDefault }.forEach { custom ->
-                repository.deleteTagColor(custom)
-                syncService.syncItemImmediately(getUserId(), custom.copy(isDeleted = true, updatedAt = System.currentTimeMillis()))
-            }
-            // Ensure defaults exist (re-insert if missing)
-            repository.ensureDefaultTagColorsExist()
-            // Also sync default colors up
-            repository.getAllTagColorsSync().filter { it.isDefault }.forEach { def ->
+            // Delete ALL existing tag colors first
+            repository.deleteAllTagColors()
+            // Insert fresh default colors
+            val defaults = TagColor.getDefaultColors()
+            repository.insertTagColors(defaults)
+            // Sync the new defaults
+            defaults.forEach { def ->
                 syncService.syncItemImmediately(getUserId(), def)
             }
         }
