@@ -13,7 +13,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
         }
     }
     data object Dashboard : Screen("dashboard_route", "Dashboard") // Now a page in MainPager
-    data object Cows : Screen("cows_route", "Cows") // Now a page in MainPager
+    data object Cows : Screen("cows_route", "Cattle") // Now a page in MainPager
     data object Pastures : Screen("pastures_route", "Pastures") // Now a page in MainPager
     data object Activities : Screen("activities_route", "Activities") // Now a page in MainPager
     data object Notes : Screen("notes_route", "Notes") // Now a page in MainPager

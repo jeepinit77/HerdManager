@@ -153,10 +153,10 @@ fun CowListScreen(
         }
     }
 
-    var screenTitle by remember { mutableStateOf("Cows") }
+    var screenTitle by remember { mutableStateOf("Cattle") }
 
     LaunchedEffect(type, value) { // Removed repository dependency as it's not used for title
-        var newTitle = "Cows"
+        var newTitle = "Cattle"
         when (type) {
             "status" -> {
                 newTitle = value?.let {
@@ -164,28 +164,28 @@ fun CowListScreen(
                         if (char.isLowerCase()) char.titlecase(Locale.getDefault()) else char.toString()
                     }
                     "Status: $statusName"
-                } ?: "All Cows"
+                } ?: "All Cattle"
             }
             "classification" -> {
-                newTitle = value?.let { "Classification: $it" } ?: "Cows by Classification"
+                newTitle = value?.let { "Classification: $it" } ?: "Cattle by Classification"
             }
             "pasture" -> {
-                newTitle = value?.let { "Pasture: $it" } ?: "Cows by Pasture"
+                newTitle = value?.let { "Pasture: $it" } ?: "Cattle by Pasture"
             }
             "pastureName" -> { 
                 newTitle = if (value == "Unassigned") {
                     "Unassigned Animals"
                 } else {
-                    value?.let { "Pasture: $it" } ?: "Cows by Pasture"
+                    value?.let { "Pasture: $it" } ?: "Cattle by Pasture"
                 }
             }
             "unassigned" -> newTitle = "Unassigned Animals"
             "notCalved" -> newTitle = "Not Calved (9+ Months)"
-            "calved" -> newTitle = "Cows with Active Calves"
+            "calved" -> newTitle = "Cattle with Active Calves"
             "age" -> {
                 newTitle = "Age: ${AgeUtils.getLabel(value)}" // Use AgeUtils for label
             }
-            "watching" -> newTitle = "Watched Cows"
+            "watching" -> newTitle = "Watched Cattle"
         }
         screenTitle = newTitle
     }
@@ -295,7 +295,7 @@ fun CowListScreen(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = "Add Cow")
+                    Icon(Icons.Default.Add, contentDescription = "Add Animal")
                 }
             }
         }
@@ -330,7 +330,7 @@ private fun CowListContent(
                 OutlinedTextField(
                     value = cowsUiState.searchQuery, 
                     onValueChange = { cowsViewModel.updateSearchQuery(it) },
-                    label = { Text("Search cows...") },
+                    label = { Text("Search cattle...") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
                     modifier = Modifier.weight(1f)
                 )
@@ -365,10 +365,10 @@ private fun CowListContent(
         } else if (list.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if (showSearchAndFilters) "Nothing here yet" else "No cows match the criteria.", style = MaterialTheme.typography.headlineSmall)
+                    Text(if (showSearchAndFilters) "Nothing here yet" else "No cattle match the criteria.", style = MaterialTheme.typography.headlineSmall)
                     if (showSearchAndFilters) {
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text("Add cows using the + button to get started", style = MaterialTheme.typography.bodyMedium)
+                        Text("Add cattle using the + button to get started", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
@@ -387,7 +387,7 @@ private fun CowListContent(
                             scope.launch {
                                 cowsViewModel.deleteCow(cow)
                                 val res = globalSnackbarState.showSnackbar(
-                                    message = "Cow deleted",
+                                    message = "Animal deleted",
                                     actionLabel = "UNDO",
                                     duration = SnackbarDuration.Long
                                 )

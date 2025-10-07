@@ -123,7 +123,7 @@ fun CattleManagerApp() {
 
     val bottomNavItems = listOf(
         BottomNavItem(Screen.Dashboard, Icons.Filled.Home, "Home"),
-        BottomNavItem(Screen.Cows, Icons.Filled.GroupWork, "Cows"),
+        BottomNavItem(Screen.Cows, Icons.Filled.GroupWork, "Cattle"),
         BottomNavItem(Screen.Pastures, Icons.Filled.Landscape, "Fields"),
         BottomNavItem(Screen.Activities, Icons.Filled.Assignment, "Activity"),
         BottomNavItem(Screen.Notes, Icons.Filled.Note, "Notes")
