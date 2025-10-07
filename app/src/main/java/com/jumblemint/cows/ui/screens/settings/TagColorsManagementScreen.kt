@@ -66,7 +66,7 @@ fun TagColorsManagementScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingColor by remember { mutableStateOf<TagColor?>(null) }
 
-    val snackbarHostState = remember { SnackbarHostState() }
+
     val scope = rememberCoroutineScope()
     var lastDeleted by remember { mutableStateOf<TagColor?>(null) }
     var showResetConfirm by remember { mutableStateOf(false) }
@@ -79,66 +79,50 @@ fun TagColorsManagementScreen(
     }
 
     Box(modifier = modifier.fillMaxSize()) {
-            // Snackbar Host positioned manually
-            SnackbarHost(
-                hostState = snackbarHostState,
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
-            
-            // FAB for adding new tag color
-            FloatingActionButton(
-                onClick = { showAddDialog = true },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add Tag Color")
-            }
         
-            if (tagColors.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(Icons.Filled.Palette, contentDescription = "No colors", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text("No tag colors found.", style = MaterialTheme.typography.headlineSmall)
-                        Text("Add colors using the + button.", style = MaterialTheme.typography.bodyLarge)
-                    }
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp), // Only horizontal for list items
-                    contentPadding = PaddingValues(vertical = 16.dp), // Vertical padding for overall list
-                    verticalArrangement = Arrangement.spacedBy(10.dp) // Spacing between items
-                ) {
-                    items(tagColors, key = { it.id }) { tagColor -> // Added key for better performance
-                        TagColorItem(
-                            tagColor = tagColor,
-                            onEdit = { editingColor = it; showAddDialog = true },
-                            onDelete = { color ->
-                                lastDeleted = color // Store for potential undo
-                                viewModel.deleteTagColor(color)
-                                scope.launch {
-                                    val result = snackbarHostState.showSnackbar(
-                                        message = "Color '${color.name}' deleted",
-                                        actionLabel = "Undo",
-                                        duration = SnackbarDuration.Short
-                                    )
-                                    if (result == SnackbarResult.ActionPerformed) {
-                                        lastDeleted?.let { viewModel.restoreTagColor(it) }
-                                    }
-                                    lastDeleted = null // Clear after use
-                                }
-                            }
-                        )
-                    }
+        if (tagColors.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Filled.Palette, contentDescription = "No colors", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("No tag colors found.", style = MaterialTheme.typography.headlineSmall)
+                    Text("Add colors using the + button.", style = MaterialTheme.typography.bodyLarge)
                 }
             }
+        } else {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                items(tagColors, key = { it.id }) { tagColor ->
+                    TagColorItem(
+                        tagColor = tagColor,
+                        onEdit = { editingColor = it; showAddDialog = true },
+                        onDelete = { color ->
+                            lastDeleted = color
+                            viewModel.deleteTagColor(color)
+                            // Note: Undo functionality removed due to no snackbar in non-nested layout
+                        }
+                    )
+                }
+            }
+        }
+        
+        FloatingActionButton(
+            onClick = { showAddDialog = true },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add Tag Color")
+        }
     }
     
     if (showResetConfirm) {
@@ -152,9 +136,7 @@ fun TagColorsManagementScreen(
                     onClick = {
                         showResetConfirm = false
                         viewModel.resetToDefaults()
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Tag colors reset to defaults")
-                        }
+                        // Reset completed
                     },
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
                 ) { Text("Reset") }
