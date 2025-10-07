@@ -23,6 +23,12 @@ class TagColorsViewModel(
 
     fun addTagColor(name: String, argb: Int) {
         viewModelScope.launch {
+            // Check if this is a default color name and prevent duplicates
+            val defaultNames = TagColor.getDefaultColors().map { it.name }
+            if (name in defaultNames && repository.getTagColorByName(name) != null) {
+                return@launch // Don't create duplicate default colors
+            }
+            
             val tagColor = TagColor(
                 id = UUID.randomUUID().toString(),
                 name = name,
@@ -62,7 +68,7 @@ class TagColorsViewModel(
         viewModelScope.launch {
             // Delete ALL existing tag colors first
             repository.deleteAllTagColors()
-            // Insert fresh default colors
+            // Insert fresh default colors (each will be unique)
             val defaults = TagColor.getDefaultColors()
             repository.insertTagColors(defaults)
             // Sync the new defaults
