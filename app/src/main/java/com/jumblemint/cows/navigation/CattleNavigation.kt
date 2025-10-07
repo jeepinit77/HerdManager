@@ -169,6 +169,8 @@ fun CattleNavigation(
     onUnsavedChangesChanged: (Boolean) -> Unit = {},
     backPressed: Boolean = false,
     onBackHandled: () -> Unit = {},
+    resetTriggered: Boolean = false,
+    onResetHandled: () -> Unit = {},
     globalSnackbarState: com.jumblemint.cows.ui.components.GlobalSnackbarState
 ) {
     val context = LocalContext.current
@@ -587,7 +589,9 @@ fun CattleNavigation(
         composable(Screen.TagColorsManagement.route){
             TagColorsManagementScreen(
                 modifier = screenModifierWithPadding,
-                 onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                resetTriggered = resetTriggered,
+                onResetHandled = onResetHandled
             )
         }
         composable(Screen.ActivityTypesManagement.route){

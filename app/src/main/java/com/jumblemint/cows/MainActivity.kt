@@ -93,6 +93,7 @@ fun CattleManagerApp() {
     var saveTriggered by remember { mutableStateOf(false) }
     var hasUnsavedChanges by remember { mutableStateOf(false) }
     var backPressed by remember { mutableStateOf(false) }
+    var resetTriggered by remember { mutableStateOf(false) }
     
     // Double back to exit functionality
     var backPressedTime by remember { mutableStateOf(0L) }
@@ -258,6 +259,13 @@ fun CattleManagerApp() {
                                     Icon(Icons.Filled.Done, contentDescription = "Save")
                                 }
                             }
+                            if (currentScreenForUI == Screen.TagColorsManagement) {
+                                IconButton(onClick = { 
+                                    resetTriggered = true
+                                }) {
+                                    Icon(Icons.Filled.Refresh, contentDescription = "Reset to Defaults")
+                                }
+                            }
                             if (currentScreenForUI == Screen.CowInfo || 
                                 currentScreenForUI == Screen.PastureDetail || 
                                 currentScreenForUI == Screen.CowList ||
@@ -352,6 +360,8 @@ fun CattleManagerApp() {
                 onUnsavedChangesChanged = { hasUnsavedChanges = it },
                 backPressed = backPressed,
                 onBackHandled = { backPressed = false },
+                resetTriggered = resetTriggered,
+                onResetHandled = { resetTriggered = false },
                 globalSnackbarState = globalSnackbarState
             )
         }
