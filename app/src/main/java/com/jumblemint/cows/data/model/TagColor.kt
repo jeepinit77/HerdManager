@@ -56,16 +56,12 @@ data class TagColor(
         // Predefined colors that match common color names
         fun getDefaultColors(): List<TagColor> {
             return listOf(
-                TagColor(name = "Red", colorValue = Color.Red.toArgb(), isDefault = true),
                 TagColor(name = "Blue", colorValue = Color.Blue.toArgb(), isDefault = true),
                 TagColor(name = "Green", colorValue = Color.Green.toArgb(), isDefault = true),
-                TagColor(name = "Yellow", colorValue = Color.Yellow.toArgb(), isDefault = true),
                 TagColor(name = "Orange", colorValue = Color(0xFFFFA500).toArgb(), isDefault = true),
-                TagColor(name = "Purple", colorValue = Color(0xFF800080).toArgb(), isDefault = true),
-                TagColor(name = "Pink", colorValue = Color(0xFFFFC0CB).toArgb(), isDefault = true),
-                TagColor(name = "White", colorValue = Color.White.toArgb(), isDefault = true),
-                TagColor(name = "Black", colorValue = Color.Black.toArgb(), isDefault = true),
-                TagColor(name = "Brown", colorValue = Color(0xFF8B4513).toArgb(), isDefault = true)
+                TagColor(name = "Yellow", colorValue = Color.Yellow.toArgb(), isDefault = true),
+                TagColor(name = "Red", colorValue = Color.Red.toArgb(), isDefault = true),
+                TagColor(name = "White", colorValue = Color.White.toArgb(), isDefault = true)
             )
         }
     }

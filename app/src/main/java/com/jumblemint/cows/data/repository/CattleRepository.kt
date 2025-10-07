@@ -323,7 +323,7 @@ class CattleRepository(
             insertOrUpdateSetting(
                 Settings(
                     SettingsKeys.TAG_COLORS,
-                    "Red,Blue,Green,Yellow,Orange,White"
+                    "Blue,Green,Orange,Yellow,Red,White"
                 )
             )
         }
@@ -370,33 +370,41 @@ class CattleRepository(
     }
 
     private suspend fun createSampleCows(pastureIds: List<String>): List<Long> {
-        val baseDate = LocalDate.now().minusYears(2)
+        val baseDate = LocalDate.now()
         val cows = listOf(
-            Cow(name = "Thunder", tagNumber = "B001", tagColor = "Red", birthDate = baseDate.minusYears(8), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Black with white face", pastureId = pastureIds[2], status = Status.ACTIVE),
-            Cow(name = "Storm", tagNumber = "B002", tagColor = "Blue", birthDate = baseDate.minusYears(6), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Red Angus", pastureId = pastureIds[2], status = Status.ACTIVE),
-            Cow(name = "Titan", tagNumber = "B003", tagColor = "Silver", birthDate = baseDate.minusYears(4), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Charolais white", pastureId = pastureIds[2], status = Status.SOLD),
+            // Generation 1 - Foundation Bulls
+            Cow(name = "Thunder", tagNumber = "B001", tagColor = "Blue", birthDate = baseDate.minusYears(8), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Black Angus with white face", pastureId = pastureIds[2], status = Status.ACTIVE),
+            Cow(name = "Storm", tagNumber = "B002", tagColor = "Red", birthDate = baseDate.minusYears(6), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Red Angus solid", pastureId = pastureIds[2], status = Status.ACTIVE),
+            
+            // Generation 1 - Foundation Cows
             Cow(name = "Bessie", tagNumber = "C001", tagColor = "Yellow", birthDate = baseDate.minusYears(9), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Holstein black and white", pastureId = pastureIds[0], status = Status.ACTIVE, isWatched = true),
             Cow(name = "Daisy", tagNumber = "C002", tagColor = "Green", birthDate = baseDate.minusYears(8), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Brown Jersey", pastureId = pastureIds[0], status = Status.ACTIVE),
-            Cow(name = "Rosie", tagNumber = "C003", tagColor = "Purple", birthDate = baseDate.minusYears(7), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Black Angus", pastureId = pastureIds[1], status = Status.ACTIVE, isWatched = true),
-            Cow(name = "Molly", tagNumber = "C004", tagColor = "Gold", birthDate = baseDate.minusYears(6), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Red with white face", pastureId = pastureIds[0], status = Status.ACTIVE),
-            Cow(name = "Ruby", tagNumber = "C005", tagColor = "Maroon", birthDate = baseDate.minusYears(5), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Solid red", pastureId = pastureIds[1], status = Status.DECEASED),
-            Cow(name = "Pearl", tagNumber = "C006", tagColor = "White", birthDate = baseDate.minusYears(7), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "White with black spots", pastureId = pastureIds[0], status = Status.ACTIVE, isWatched = true),
-            Cow(name = "Luna", tagNumber = "C007", tagColor = "Pink", birthDate = baseDate.minusYears(4), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Red with white markings", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 4, fatherId = 1),
-            Cow(name = "Star", tagNumber = "C008", tagColor = "Orange", birthDate = baseDate.minusYears(3), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Charolais cream colored", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 5, fatherId = 2),
-            Cow(name = "Grace", tagNumber = "C009", tagColor = "Teal", birthDate = baseDate.minusYears(3), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Black with white stripe", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 6, fatherId = 1),
-            Cow(name = "Hope", tagNumber = "H001", tagColor = "Lime", birthDate = baseDate.minusYears(2), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Brown with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 7, fatherId = 2),
-            Cow(name = "Faith", tagNumber = "H002", tagColor = "Coral", birthDate = baseDate.minusYears(2), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Red and white spotted", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 9, fatherId = 1),
-            Cow(name = "Joy", tagNumber = "H003", tagColor = "Violet", birthDate = baseDate.minusMonths(20), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Black Angus solid", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 10, fatherId = 2),
-            Cow(name = "Max", tagNumber = "S001", tagColor = "Brown", birthDate = baseDate.minusYears(2), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Black with white stripe", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 4, fatherId = 1),
-            Cow(name = "Duke", tagNumber = "S002", tagColor = "Navy", birthDate = baseDate.minusYears(2), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Red with white markings", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 5, fatherId = 2),
-            Cow(name = "Rex", tagNumber = "S003", tagColor = "Gray", birthDate = baseDate.minusMonths(18), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Charolais cream", pastureId = pastureIds[3], status = Status.SOLD, motherId = 6, fatherId = 1),
-            Cow(name = "Buddy", tagNumber = "K001", tagColor = "Tan", birthDate = baseDate.plusMonths(3), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Brown and white spotted", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 10, fatherId = 2),
-            Cow(name = "Bella", tagNumber = "K002", tagColor = "Black", birthDate = baseDate.plusMonths(1), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "Solid black", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 11, fatherId = 1),
-            Cow(name = "Charlie", tagNumber = "K003", tagColor = "Yellow", birthDate = baseDate.plusMonths(2), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Red with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 12, fatherId = 2),
-            Cow(name = "Rosebud", tagNumber = "K004", tagColor = "Rose", birthDate = LocalDate.now().minusMonths(2), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "Brown Jersey coloring", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 4, fatherId = 2),
-            Cow(name = "Scout", tagNumber = "K005", tagColor = "Khaki", birthDate = LocalDate.now().minusMonths(1), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Black with white markings", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 9, fatherId = 1),
-            Cow(name = "Spirit", tagNumber = "Y001", tagColor = "Mint", birthDate = baseDate.minusMonths(14), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "White with black spots", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 7, fatherId = 1),
-            Cow(name = "Ranger", tagNumber = "Y002", tagColor = "Forest", birthDate = baseDate.minusMonths(16), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Red Angus solid", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 10, fatherId = 2)
+            Cow(name = "Rosie", tagNumber = "C003", tagColor = "Orange", birthDate = baseDate.minusYears(7), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Black Angus", pastureId = pastureIds[1], status = Status.ACTIVE, isWatched = true),
+            Cow(name = "Pearl", tagNumber = "C004", tagColor = "White", birthDate = baseDate.minusYears(7), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "White with black spots", pastureId = pastureIds[0], status = Status.ACTIVE, isWatched = true),
+            
+            // Generation 2 - Daughters of foundation stock
+            Cow(name = "Luna", tagNumber = "C005", tagColor = "Blue", birthDate = baseDate.minusYears(4), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Red with white markings", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 3, fatherId = 1),
+            Cow(name = "Star", tagNumber = "C006", tagColor = "Green", birthDate = baseDate.minusYears(3), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Brown with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 4, fatherId = 2),
+            Cow(name = "Grace", tagNumber = "C007", tagColor = "Yellow", birthDate = baseDate.minusYears(3), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Black with white stripe", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 5, fatherId = 1),
+            Cow(name = "Ruby", tagNumber = "C008", tagColor = "Red", birthDate = baseDate.minusYears(5), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Solid red", pastureId = pastureIds[1], status = Status.DECEASED, motherId = 6, fatherId = 1),
+            
+            // Generation 2 - Young breeding stock
+            Cow(name = "Hope", tagNumber = "H001", tagColor = "Orange", birthDate = baseDate.minusYears(2), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Brown with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 3, fatherId = 2),
+            Cow(name = "Faith", tagNumber = "H002", tagColor = "White", birthDate = baseDate.minusYears(2), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Red and white spotted", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 4, fatherId = 1),
+            Cow(name = "Joy", tagNumber = "H003", tagColor = "Blue", birthDate = baseDate.minusMonths(20), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Black Angus solid", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 5, fatherId = 2),
+            
+            // Generation 2 - Steers (castrated males)
+            Cow(name = "Max", tagNumber = "S001", tagColor = "Green", birthDate = baseDate.minusYears(2), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Black with white stripe", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 3, fatherId = 1),
+            Cow(name = "Duke", tagNumber = "S002", tagColor = "Yellow", birthDate = baseDate.minusYears(2), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Red with white markings", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 4, fatherId = 2),
+            Cow(name = "Rex", tagNumber = "S003", tagColor = "Red", birthDate = baseDate.minusMonths(18), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Brown and white", pastureId = pastureIds[3], status = Status.SOLD, motherId = 5, fatherId = 1),
+            
+            // Generation 3 - Current calves
+            Cow(name = "Buddy", tagNumber = "K001", tagColor = "Orange", birthDate = baseDate.minusMonths(8), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Brown and white spotted", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 7, fatherId = 2),
+            Cow(name = "Bella", tagNumber = "K002", tagColor = "White", birthDate = baseDate.minusMonths(10), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "Solid black", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 8, fatherId = 1),
+            Cow(name = "Charlie", tagNumber = "K003", tagColor = "Blue", birthDate = baseDate.minusMonths(6), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Red with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 9, fatherId = 2),
+            Cow(name = "Rosebud", tagNumber = "K004", tagColor = "Green", birthDate = baseDate.minusMonths(4), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "Brown Jersey coloring", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 11, fatherId = 2),
+            Cow(name = "Scout", tagNumber = "K005", tagColor = "Yellow", birthDate = baseDate.minusMonths(3), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Black with white markings", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 12, fatherId = 1),
+            Cow(name = "Spirit", tagNumber = "K006", tagColor = "Red", birthDate = baseDate.minusMonths(2), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "White with black spots", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 13, fatherId = 2)
         )
         
         val createdCowIds = mutableListOf<Long>()
