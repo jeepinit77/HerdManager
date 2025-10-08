@@ -425,23 +425,8 @@ private fun ThemePickerTab(
                                         },
                                         modifier = Modifier.weight(1f)
                                     )
-                                    
                                     PhoneStyleButton(
                                         title = "Gray Cards",
-                                        bgColor = if (isDarkTheme) Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 2f) else Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 0.5f),
-                                        cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF),
-                                        navColor = selectedColor,
-                                        isSelected = selectedStyle == ThemeStyle.GRAY_CARDS,
-                                        selectedColor = selectedColor,
-                                        onClick = {
-                                            selectedStyle = ThemeStyle.GRAY_CARDS
-                                            onThemeChange(selectedColor, ThemeStyle.GRAY_CARDS, intensity)
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    
-                                    PhoneStyleButton(
-                                        title = "Gray Background",
                                         bgColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF),
                                         cardColor = if (isDarkTheme) Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 2f) else Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 0.5f),
                                         navColor = selectedColor,
@@ -450,6 +435,20 @@ private fun ThemePickerTab(
                                         onClick = {
                                             selectedStyle = ThemeStyle.GRAY_BACKGROUND
                                             onThemeChange(selectedColor, ThemeStyle.GRAY_BACKGROUND, intensity)
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+
+                                    PhoneStyleButton(
+                                        title = "Gray Background",
+                                        bgColor = if (isDarkTheme) Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 2f) else Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 0.5f),
+                                        cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF),
+                                        navColor = selectedColor,
+                                        isSelected = selectedStyle == ThemeStyle.GRAY_CARDS,
+                                        selectedColor = selectedColor,
+                                        onClick = {
+                                            selectedStyle = ThemeStyle.GRAY_CARDS
+                                            onThemeChange(selectedColor, ThemeStyle.GRAY_CARDS, intensity)
                                         },
                                         modifier = Modifier.weight(1f)
                                     )
