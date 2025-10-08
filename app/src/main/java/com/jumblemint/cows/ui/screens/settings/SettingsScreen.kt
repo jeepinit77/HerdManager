@@ -34,6 +34,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.jumblemint.cows.ui.theme.getCardColors
+import com.jumblemint.cows.ui.theme.SmartText
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Added/Ensured import
 
@@ -433,15 +434,15 @@ fun SettingsCard(
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
+                SmartText(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant
                 )
-                Text(
+                SmartText(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant
                 )
             }
             content?.let {
