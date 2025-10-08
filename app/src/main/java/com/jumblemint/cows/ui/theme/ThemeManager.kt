@@ -84,24 +84,18 @@ enum class PresetTheme(val displayName: String) {
     PURPLE("Royal Amethyst"),
     WARM("Warm Autumn"),
     COOL("Cool Ocean"),
-    DARK("Deep Space"),
-    LIGHT("Light & Airy"),
     BRIGHT("Vibrant Citrus"),
     RAINBOW("Chromatic Burst"),
     BOLD_BLUE("Cobalt Depths"),
     BOLD_GREEN("Emerald Isle"),
     BOLD_ORANGE("Sunset Blaze"),
     BOLD_PINK("Magenta Pop"),
-    MONOCHROME_LIGHT("Monochrome Light"),
-    MONOCHROME_DARK("Monochrome Dark"),
+    MONOCHROME("Monochrome"),
     SLATE_GRAY("Industrial Slate"),
     SUNSET_GLOW("Sunset Glow"),
-    NEON_POP("Cyber Glow"),
-    HIGH_CONTRAST_CLASSIC_LIGHT("High Contrast (Light)"),
-    HIGH_CONTRAST_CLASSIC_DARK("High Contrast (Dark)"),
+    HIGH_CONTRAST("High Contrast"),
     PASTEL_GARDEN("Pastel Garden"),
     EARTHY_COMFORT("Earthy Comfort"),
-    INVERTED_DEFAULT("Inverted Default"),
     CUSTOM("Custom")
 }
 
@@ -137,16 +131,7 @@ fun PresetTheme.getColors(): CustomColors {
             val pd=Color(0xFF4DD0E1); val sd=Color(0xFF80DEEA); val td=Color(0xFFB2EBF2); val bd=Color(0xFF0A1F1F); val sud=Color(0xFF143333); val cbd=Color(0xFF1B3535); val mcd=Color(0xFF64B5F6); val fcd=Color(0xFFE91E63); val tcd=Color(0xFF78909C)
             return CustomColors(primaryLight=pl,secondaryLight=sl,tertiaryLight=tl,backgroundLight=bl,surfaceLight=sul,cardBackgroundLight=cbl,maleColorLight=mcl,femaleColorLight=fcl,tbdColorLight=tcl,onPrimaryLight=determineOnColor(pl),onSecondaryLight=determineOnColor(sl),onTertiaryLight=determineOnColor(tl),onBackgroundLight=determineOnColor(bl),onSurfaceLight=determineOnColor(sul),primaryDark=pd,secondaryDark=sd,tertiaryDark=td,backgroundDark=bd,surfaceDark=sud,cardBackgroundDark=cbd,maleColorDark=mcd,femaleColorDark=fcd,tbdColorDark=tcd,onPrimaryDark=determineOnColor(pd),onSecondaryDark=determineOnColor(sd),onTertiaryDark=determineOnColor(td),onBackgroundDark=determineOnColor(bd),onSurfaceDark=determineOnColor(sud))
         }
-        PresetTheme.DARK -> { // Deep Space
-            val pl=Color(0xFFBBBBBB); val sl=Color(0xFFAAAAAA); val tl=Color(0xFF999999); val bl=Color(0xFF121212); val sul=Color(0xFF1E1E1E); val cbl=Color(0xFF242424); val mcl=Color(0xFF64B5F6); val fcl=Color(0xFFF06292); val tcl=Color(0xFFBCAAA4)
-            val pd=Color(0xFFEEEEEE); val sd=Color(0xFFDDDDDD); val td=Color(0xFFCCCCCC); val bd=Color(0xFF000000); val sud=Color(0xFF121212); val cbd=Color(0xFF1E1E1E); val mcd=Color(0xFF64B5F6); val fcd=Color(0xFFF06292); val tcd=Color(0xFFBCAAA4)
-            return CustomColors(primaryLight=pl,secondaryLight=sl,tertiaryLight=tl,backgroundLight=bl,surfaceLight=sul,cardBackgroundLight=cbl,maleColorLight=mcl,femaleColorLight=fcl,tbdColorLight=tcl,onPrimaryLight=determineOnColor(pl),onSecondaryLight=determineOnColor(sl),onTertiaryLight=determineOnColor(tl),onBackgroundLight=determineOnColor(bl),onSurfaceLight=determineOnColor(sul),primaryDark=pd,secondaryDark=sd,tertiaryDark=td,backgroundDark=bd,surfaceDark=sud,cardBackgroundDark=cbd,maleColorDark=mcd,femaleColorDark=fcd,tbdColorDark=tcd,onPrimaryDark=determineOnColor(pd),onSecondaryDark=determineOnColor(sd),onTertiaryDark=determineOnColor(td),onBackgroundDark=determineOnColor(bd),onSurfaceDark=determineOnColor(sud))
-        }
-        PresetTheme.LIGHT -> { // Light & Airy
-            val pl=Color(0xFF0288D1); val sl=Color(0xFF0277BD); val tl=Color(0xFF01579B); val bl=Color(0xFFFAFAFA); val sul=Color(0xFFECEFF1); val cbl=Color(0xFFFCFCFC); val mcl=Color(0xFF1565C0); val fcl=Color(0xFFAD1457); val tcl=Color(0xFF37474F)
-            val pd=Color(0xFF4FC3F7); val sd=Color(0xFF29B6F6); val td=Color(0xFF03A9F4); val bd=Color(0xFFDFDDE1); val sud=Color(0xFFE9E4ED); val cbd=Color(0xFFF0EBF3); val mcd=Color(0xFF42A5F5); val fcd=Color(0xFFE91E63); val tcd=Color(0xFF607D8B)
-            return CustomColors(primaryLight=pl,secondaryLight=sl,tertiaryLight=tl,backgroundLight=bl,surfaceLight=sul,cardBackgroundLight=cbl,maleColorLight=mcl,femaleColorLight=fcl,tbdColorLight=tcl,onPrimaryLight=determineOnColor(pl),onSecondaryLight=determineOnColor(sl),onTertiaryLight=determineOnColor(tl),onBackgroundLight=determineOnColor(bl),onSurfaceLight=determineOnColor(sul),primaryDark=pd,secondaryDark=sd,tertiaryDark=td,backgroundDark=bd,surfaceDark=sud,cardBackgroundDark=cbd,maleColorDark=mcd,femaleColorDark=fcd,tbdColorDark=tcd,onPrimaryDark=determineOnColor(pd),onSecondaryDark=determineOnColor(sd),onTertiaryDark=determineOnColor(td),onBackgroundDark=determineOnColor(bd),onSurfaceDark=determineOnColor(sud))
-        }
+
         PresetTheme.BRIGHT -> { // Vibrant Citrus
             val pl=Color(0xFFFF6F00); val sl=Color(0xFFFF8F00); val tl=Color(0xFFFFA000); val bl=Color(0xFFFFF8E1); val sul=Color(0xFFFFF3C4); val cbl=Color(0xFFFFFDF5); val mcl=Color(0xFF3F51B5); val fcl=Color(0xFFE91E63); val tcl=Color(0xFF795548)
             val pd=Color(0xFFFFB74D); val sd=Color(0xFFFFCC02); val td=Color(0xFFFDD835); val bd=Color(0xFF2A210A); val sud=Color(0xFF3D321F); val cbd=Color(0xFF3F3521); val mcd=Color(0xFF7986CB); val fcd=Color(0xFFF06292); val tcd=Color(0xFFBCAAA4)
@@ -177,14 +162,9 @@ fun PresetTheme.getColors(): CustomColors {
             val pd=Color(0xFFF48FB1); val sd=Color(0xFFEC407A); val td=Color(0xFFE91E63); val bd=Color(0xFF170A10); val sud=Color(0xFF29141D); val cbd=Color(0xFF331C26); val mcd=Color(0xFF90CAF9); val fcd=Color(0xFFF8BBD0); val tcd=Color(0xFF9E9E9E)
             return CustomColors(primaryLight=pl,secondaryLight=sl,tertiaryLight=tl,backgroundLight=bl,surfaceLight=sul,cardBackgroundLight=cbl,maleColorLight=mcl,femaleColorLight=fcl,tbdColorLight=tcl,onPrimaryLight=determineOnColor(pl),onSecondaryLight=determineOnColor(sl),onTertiaryLight=determineOnColor(tl),onBackgroundLight=determineOnColor(bl),onSurfaceLight=determineOnColor(sul),primaryDark=pd,secondaryDark=sd,tertiaryDark=td,backgroundDark=bd,surfaceDark=sud,cardBackgroundDark=cbd,maleColorDark=mcd,femaleColorDark=fcd,tbdColorDark=tcd,onPrimaryDark=determineOnColor(pd),onSecondaryDark=determineOnColor(sd),onTertiaryDark=determineOnColor(td),onBackgroundDark=determineOnColor(bd),onSurfaceDark=determineOnColor(sud))
         }
-        PresetTheme.MONOCHROME_LIGHT -> {
+        PresetTheme.MONOCHROME -> {
             val pl=Color(0xFF525252); val sl=Color(0xFF737373); val tl=Color(0xFF8A8A8A); val bl=Color(0xFFFFFFFF); val sul=Color(0xFFF3F3F3); val cbl=Color(0xFFFAFAFA); val mcl=Color(0xFF4A4A4A); val fcl=Color(0xFF6E6E6E); val tcl=Color(0xFF7D7D7D)
-            val pd=Color(0xFFA3A3A3); val sd=Color(0xFFBDBDBD); val td=Color(0xFFD4D4D4); val bd=Color(0xFFE5E5E5); val sud=Color(0xFFDEDEDE); val cbd=Color(0xFFEAEAEA); val mcd=Color(0xFF8C8C8C); val fcd=Color(0xFFAFAFAF); val tcd=Color(0xFFC2C2C2)
-            return CustomColors(primaryLight=pl,secondaryLight=sl,tertiaryLight=tl,backgroundLight=bl,surfaceLight=sul,cardBackgroundLight=cbl,maleColorLight=mcl,femaleColorLight=fcl,tbdColorLight=tcl,onPrimaryLight=determineOnColor(pl),onSecondaryLight=determineOnColor(sl),onTertiaryLight=determineOnColor(tl),onBackgroundLight=determineOnColor(bl),onSurfaceLight=determineOnColor(sul),primaryDark=pd,secondaryDark=sd,tertiaryDark=td,backgroundDark=bd,surfaceDark=sud,cardBackgroundDark=cbd,maleColorDark=mcd,femaleColorDark=fcd,tbdColorDark=tcd,onPrimaryDark=determineOnColor(pd),onSecondaryDark=determineOnColor(sd),onTertiaryDark=determineOnColor(td),onBackgroundDark=determineOnColor(bd),onSurfaceDark=determineOnColor(sud))
-        }
-        PresetTheme.MONOCHROME_DARK -> {
-            val pl=Color(0xFF2A2A2A); val sl=Color(0xFF1E1E1E); val tl=Color(0xFF0D0D0D); val bl=Color(0xFF121212); val sul=Color(0xFF1E1E1E); val cbl=Color(0xFF2A2A2A); val mcl=Color(0xFF6E6E6E); val fcl=Color(0xFF4A4A4A); val tcl=Color(0xFF5A5A5A)
-            val pd=Color(0xFF737373); val sd=Color(0xFF525252); val td=Color(0xFF404040); val bd=Color(0xFF000000); val sud=Color(0xFF0D0D0D); val cbd=Color(0xFF171717); val mcd=Color(0xFFAFAFAF); val fcd=Color(0xFF8C8C8C); val tcd=Color(0xFF7D7D7D)
+            val pd=Color(0xFFA3A3A3); val sd=Color(0xFFBDBDBD); val td=Color(0xFFD4D4D4); val bd=Color(0xFF121212); val sud=Color(0xFF1E1E1E); val cbd=Color(0xFF2A2A2A); val mcd=Color(0xFF8C8C8C); val fcd=Color(0xFFAFAFAF); val tcd=Color(0xFFC2C2C2)
             return CustomColors(primaryLight=pl,secondaryLight=sl,tertiaryLight=tl,backgroundLight=bl,surfaceLight=sul,cardBackgroundLight=cbl,maleColorLight=mcl,femaleColorLight=fcl,tbdColorLight=tcl,onPrimaryLight=determineOnColor(pl),onSecondaryLight=determineOnColor(sl),onTertiaryLight=determineOnColor(tl),onBackgroundLight=determineOnColor(bl),onSurfaceLight=determineOnColor(sul),primaryDark=pd,secondaryDark=sd,tertiaryDark=td,backgroundDark=bd,surfaceDark=sud,cardBackgroundDark=cbd,maleColorDark=mcd,femaleColorDark=fcd,tbdColorDark=tcd,onPrimaryDark=determineOnColor(pd),onSecondaryDark=determineOnColor(sd),onTertiaryDark=determineOnColor(td),onBackgroundDark=determineOnColor(bd),onSurfaceDark=determineOnColor(sud))
         }
         PresetTheme.SLATE_GRAY -> { // Industrial Slate
@@ -197,19 +177,9 @@ fun PresetTheme.getColors(): CustomColors {
             val pd=Color(0xFFFB923C); val sd=Color(0xFFFBBF24); val td=Color(0xFFF87171); val bd=Color(0xFF26190D); val sud=Color(0xFF3F2A1A); val cbd=Color(0xFF452E1D); val mcd=Color(0xFFFDBA74); val fcd=Color(0xFFFDA4AF); val tcd=Color(0xFFFCA5A5)
             return CustomColors(primaryLight=pl,secondaryLight=sl,tertiaryLight=tl,backgroundLight=bl,surfaceLight=sul,cardBackgroundLight=cbl,maleColorLight=mcl,femaleColorLight=fcl,tbdColorLight=tcl,onPrimaryLight=determineOnColor(pl),onSecondaryLight=determineOnColor(sl),onTertiaryLight=determineOnColor(tl),onBackgroundLight=determineOnColor(bl),onSurfaceLight=determineOnColor(sul),primaryDark=pd,secondaryDark=sd,tertiaryDark=td,backgroundDark=bd,surfaceDark=sud,cardBackgroundDark=cbd,maleColorDark=mcd,femaleColorDark=fcd,tbdColorDark=tcd,onPrimaryDark=determineOnColor(pd),onSecondaryDark=determineOnColor(sd),onTertiaryDark=determineOnColor(td),onBackgroundDark=determineOnColor(bd),onSurfaceDark=determineOnColor(sud))
         }
-        PresetTheme.NEON_POP -> { // Cyber Glow
-            val pl=Color(0xFF39FF14); val sl=Color(0xFFFF1493); val tl=Color(0xFF14E7FF); val bl=Color(0xFF1A1A1A); val sul=Color(0xFF2A2A2A); val cbl=Color(0xFF3C3C3C); val mcl=Color(0xFF00FFFF); val fcl=Color(0xFFFF00FF); val tcl=Color(0xFFFFFF00)
-            val pd=Color(0xFFADFF2F); val sd=Color(0xFFFF69B4); val td=Color(0xFF7AFEFF); val bd=Color(0xFF0D0D0D); val sud=Color(0xFF1F1F1F); val cbd=Color(0xFF2E2E2E); val mcd=Color(0xFFAFFFFA); val fcd=Color(0xFFFFB5FF); val tcd=Color(0xFFFFFFB5)
-            return CustomColors(primaryLight=pl,secondaryLight=sl,tertiaryLight=tl,backgroundLight=bl,surfaceLight=sul,cardBackgroundLight=cbl,maleColorLight=mcl,femaleColorLight=fcl,tbdColorLight=tcl,onPrimaryLight=determineOnColor(pl),onSecondaryLight=determineOnColor(sl),onTertiaryLight=determineOnColor(tl),onBackgroundLight=determineOnColor(bl),onSurfaceLight=determineOnColor(sul),primaryDark=pd,secondaryDark=sd,tertiaryDark=td,backgroundDark=bd,surfaceDark=sud,cardBackgroundDark=cbd,maleColorDark=mcd,femaleColorDark=fcd,tbdColorDark=tcd,onPrimaryDark=determineOnColor(pd),onSecondaryDark=determineOnColor(sd),onTertiaryDark=determineOnColor(td),onBackgroundDark=determineOnColor(bd),onSurfaceDark=determineOnColor(sud))
-        }
-        PresetTheme.HIGH_CONTRAST_CLASSIC_LIGHT -> {
+        PresetTheme.HIGH_CONTRAST -> {
             val pl=Color(0xFF0000FF); val sl=Color(0xFF008000); val tl=Color(0xFF800080); val bl=Color(0xFFFFFFFF); val sul=Color(0xFFF0F0F0); val cbl=Color(0xFFFAFAFA); val mcl=Color(0xFF00008B); val fcl=Color(0xFF8B0000); val tcl=Color(0xFF2F4F4F)
-            val pd=Color(0xFF8080FF); val sd=Color(0xFF80C080); val td=Color(0xFFC080C0); val bd=Color(0xFFE0E0E0); val sud=Color(0xFFD0D0D0); val cbd=Color(0xFFC8C8C8); val mcd=Color(0xFFA0A0FF); val fcd=Color(0xFFC0A0A0); val tcd=Color(0xFF8FBC8F)
-            return CustomColors(primaryLight=pl,secondaryLight=sl,tertiaryLight=tl,backgroundLight=bl,surfaceLight=sul,cardBackgroundLight=cbl,maleColorLight=mcl,femaleColorLight=fcl,tbdColorLight=tcl,onPrimaryLight=determineOnColor(pl),onSecondaryLight=determineOnColor(sl),onTertiaryLight=determineOnColor(tl),onBackgroundLight=determineOnColor(bl),onSurfaceLight=determineOnColor(sul),primaryDark=pd,secondaryDark=sd,tertiaryDark=td,backgroundDark=bd,surfaceDark=sud,cardBackgroundDark=cbd,maleColorDark=mcd,femaleColorDark=fcd,tbdColorDark=tcd,onPrimaryDark=determineOnColor(pd),onSecondaryDark=determineOnColor(sd),onTertiaryDark=determineOnColor(td),onBackgroundDark=determineOnColor(bd),onSurfaceDark=determineOnColor(sud))
-        }
-        PresetTheme.HIGH_CONTRAST_CLASSIC_DARK -> {
-            val pl=Color(0xFFFFFF00); val sl=Color(0xFF00FF00); val tl=Color(0xFFFF00FF); val bl=Color(0xFF000000); val sul=Color(0xFF0D0D0D); val cbl=Color(0xFF1A1A1A); val mcl=Color(0xFFADD8E6); val fcl=Color(0xFF90EE90); val tcl=Color(0xFFDDA0DD)
-            val pd=Color(0xFF00FFFF); val sd=Color(0xFFADFF2F); val td=Color(0xFFFFA0FF); val bd=Color(0xFF0A0A0A); val sud=Color(0xFF141414); val cbd=Color(0xFF1E1E1E); val mcd=Color(0xFF00BFFF); val fcd=Color(0xFF32CD32); val tcd=Color(0xFFDA70D6)
+            val pd=Color(0xFFFFFF00); val sd=Color(0xFF00FF00); val td=Color(0xFFFF00FF); val bd=Color(0xFF000000); val sud=Color(0xFF0D0D0D); val cbd=Color(0xFF1A1A1A); val mcd=Color(0xFFADD8E6); val fcd=Color(0xFF90EE90); val tcd=Color(0xFFDDA0DD)
             return CustomColors(primaryLight=pl,secondaryLight=sl,tertiaryLight=tl,backgroundLight=bl,surfaceLight=sul,cardBackgroundLight=cbl,maleColorLight=mcl,femaleColorLight=fcl,tbdColorLight=tcl,onPrimaryLight=determineOnColor(pl),onSecondaryLight=determineOnColor(sl),onTertiaryLight=determineOnColor(tl),onBackgroundLight=determineOnColor(bl),onSurfaceLight=determineOnColor(sul),primaryDark=pd,secondaryDark=sd,tertiaryDark=td,backgroundDark=bd,surfaceDark=sud,cardBackgroundDark=cbd,maleColorDark=mcd,femaleColorDark=fcd,tbdColorDark=tcd,onPrimaryDark=determineOnColor(pd),onSecondaryDark=determineOnColor(sd),onTertiaryDark=determineOnColor(td),onBackgroundDark=determineOnColor(bd),onSurfaceDark=determineOnColor(sud))
         }
         PresetTheme.PASTEL_GARDEN -> {
@@ -222,26 +192,7 @@ fun PresetTheme.getColors(): CustomColors {
             val pd=Color(0xFFBCAAA4); val sd=Color(0xFFA1887F); val td=Color(0xFF8D6E63); val bd=Color(0xFF201D1C); val sud=Color(0xFF302B29); val cbd=Color(0xFF3A3432); val mcd=Color(0xFF8D6E63); val fcd=Color(0xFFFF5722); val tcd=Color(0xFF795548)
             return CustomColors(primaryLight=pl,secondaryLight=sl,tertiaryLight=tl,backgroundLight=bl,surfaceLight=sul,cardBackgroundLight=cbl,maleColorLight=mcl,femaleColorLight=fcl,tbdColorLight=tcl,onPrimaryLight=determineOnColor(pl),onSecondaryLight=determineOnColor(sl),onTertiaryLight=determineOnColor(tl),onBackgroundLight=determineOnColor(bl),onSurfaceLight=determineOnColor(sul),primaryDark=pd,secondaryDark=sd,tertiaryDark=td,backgroundDark=bd,surfaceDark=sud,cardBackgroundDark=cbd,maleColorDark=mcd,femaleColorDark=fcd,tbdColorDark=tcd,onPrimaryDark=determineOnColor(pd),onSecondaryDark=determineOnColor(sd),onTertiaryDark=determineOnColor(td),onBackgroundDark=determineOnColor(bd),onSurfaceDark=determineOnColor(sud))
         }
-        PresetTheme.INVERTED_DEFAULT -> {
-            val defaultColors = PresetTheme.DEFAULT.getColors() // Get fully resolved default
-            return CustomColors(
-                primaryLight = defaultColors.primaryDark, onPrimaryLight = defaultColors.onPrimaryDark,
-                secondaryLight = defaultColors.secondaryDark, onSecondaryLight = defaultColors.onSecondaryDark,
-                tertiaryLight = defaultColors.tertiaryDark, onTertiaryLight = defaultColors.onTertiaryDark,
-                backgroundLight = defaultColors.backgroundDark, onBackgroundLight = defaultColors.onBackgroundDark,
-                surfaceLight = defaultColors.surfaceDark, onSurfaceLight = defaultColors.onSurfaceDark,
-                cardBackgroundLight = defaultColors.cardBackgroundDark, // And its on color would be onSurfaceDark essentially
-                maleColorLight = defaultColors.maleColorDark, femaleColorLight = defaultColors.femaleColorDark, tbdColorLight = defaultColors.tbdColorDark,
 
-                primaryDark = defaultColors.primaryLight, onPrimaryDark = defaultColors.onPrimaryLight,
-                secondaryDark = defaultColors.secondaryLight, onSecondaryDark = defaultColors.onSecondaryLight,
-                tertiaryDark = defaultColors.tertiaryLight, onTertiaryDark = defaultColors.onTertiaryLight,
-                backgroundDark = defaultColors.backgroundLight, onBackgroundDark = defaultColors.onBackgroundLight,
-                surfaceDark = defaultColors.surfaceLight, onSurfaceDark = defaultColors.onSurfaceLight,
-                cardBackgroundDark = defaultColors.cardBackgroundLight,
-                maleColorDark = defaultColors.maleColorLight, femaleColorDark = defaultColors.femaleColorLight, tbdColorDark = defaultColors.tbdColorLight
-            )
-        }
         PresetTheme.CUSTOM -> return CustomColors() // Loaded from settings by ThemeManager
     }
 }

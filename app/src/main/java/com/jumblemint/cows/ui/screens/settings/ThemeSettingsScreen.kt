@@ -5,7 +5,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -20,6 +22,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontStyle
@@ -36,6 +40,7 @@ import com.jumblemint.cows.ui.theme.getColors
 import com.jumblemint.cows.ui.theme.SmartText
 import com.jumblemint.cows.ui.theme.AutoText
 import com.jumblemint.cows.ui.theme.BackgroundColorProvider
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -60,8 +65,6 @@ fun ThemeSettingsScreen(
     val coroutineScope = rememberCoroutineScope()
     val isDarkTheme = isSystemInDarkTheme()
 
-    val tabs = listOf("Presets", "Custom Theme")
-    val pagerState = rememberPagerState(pageCount = { tabs.size })
     var currentPreset by remember { mutableStateOf(PresetTheme.DEFAULT) }
     var currentThemeMode by remember { mutableStateOf(ThemeMode.SYSTEM) }
     var previewDarkMode by remember { mutableStateOf(isDarkTheme) }
@@ -122,7 +125,11 @@ fun ThemeSettingsScreen(
                                 "Light" -> ThemeMode.LIGHT
                                 "Dark" -> ThemeMode.DARK
                                 else -> ThemeMode.SYSTEM
-                            }
+                            },
+                            colors = SegmentedButtonDefaults.colors(
+                                activeContainerColor = if (isDarkTheme) customColors.primaryDark else customColors.primaryLight,
+                                activeContentColor = if (isDarkTheme) customColors.onPrimaryDark else customColors.onPrimaryLight
+                            )
                         ) {
                             Text(mode)
                         }
@@ -131,65 +138,17 @@ fun ThemeSettingsScreen(
             }
         }
 
-        TabRow(selectedTabIndex = pagerState.currentPage) {
-            tabs.forEachIndexed { index, title ->
-                Tab(
-                    selected = pagerState.currentPage == index,
-                    onClick = {
-                        coroutineScope.launch {
-                            pagerState.animateScrollToPage(index)
-                        }
-                    },
-                    icon = {
-                        Icon(
-                            if (index == 0) Icons.Outlined.Palette else Icons.Outlined.Edit,
-                            contentDescription = null
-                        )
-                    },
-                    text = { Text(title) }
-                )
-            }
-        }
-
-        HorizontalPager(
-            state = pagerState,
+        ThemePickerTab(
+            customColors = customColors,
+            isDarkTheme = previewDarkMode,
+            onThemeChange = { color, style, intensity ->
+                coroutineScope.launch {
+                    applyColorAndStyle(themeManager, color, style, intensity, previewDarkMode)
+                    currentPreset = PresetTheme.CUSTOM
+                }
+            },
             modifier = Modifier.weight(1f)
-        ) { page ->
-            when (page) {
-                0 -> PresetsTab(
-                    currentPreset = currentPreset,
-                    isDarkTheme = previewDarkMode,
-                    onPresetSelected = { preset ->
-                        coroutineScope.launch {
-                            themeManager.applyPresetTheme(preset)
-                            currentPreset = preset
-                        }
-                    }
-                )
-                1 -> CustomThemeTab(
-                    customColors = customColors,
-                    isDarkTheme = previewDarkMode,
-                    onColorChange = { key, color ->
-                        coroutineScope.launch {
-                            themeManager.updateColor(key, color)
-                            currentPreset = PresetTheme.CUSTOM
-                        }
-                    },
-                    onOpenColorPicker = { title, current, callback ->
-                        colorPickerTitle = title
-                        colorPickerCurrent = current
-                        colorPickerCallback = callback
-                        showColorPicker = true
-                    },
-                    onResetToDefaults = {
-                        coroutineScope.launch {
-                            themeManager.resetToDefaults()
-                            currentPreset = PresetTheme.DEFAULT
-                        }
-                    }
-                )
-            }
-        }
+        )
     }
     
     if (showColorPicker) {
@@ -205,411 +164,396 @@ fun ThemeSettingsScreen(
     }
 }
 
+enum class ThemeStyle { COLORED_CARDS, COLORED_BACKGROUND, GRAY_CARDS, GRAY_BACKGROUND }
+
+data class ColorScheme(
+    val primary: Color,
+    val secondary: Color,
+    val tertiary: Color,
+    val male: Color,
+    val female: Color,
+    val tbd: Color
+)
+
+private fun getColorScheme(baseColor: Color): ColorScheme {
+    return when (baseColor) {
+        Color(0xFF1565C0) -> ColorScheme(primary = baseColor, secondary = Color(0xFF64B5F6), tertiary = Color(0xFF0277BD), male = Color(0xFF0D47A1), female = Color(0xFFAD1457), tbd = Color(0xFF424242))
+        Color(0xFF2E7D32) -> ColorScheme(primary = baseColor, secondary = Color(0xFF81C784), tertiary = Color(0xFF00695C), male = Color(0xFF1565C0), female = Color(0xFFC2185B), tbd = Color(0xFF5D4037))
+        Color(0xFF7B1FA2) -> ColorScheme(primary = baseColor, secondary = Color(0xFFBA68C8), tertiary = Color(0xFF5E35B1), male = Color(0xFF3F51B5), female = Color(0xFFE91E63), tbd = Color(0xFF616161))
+        Color(0xFFD84315) -> ColorScheme(primary = baseColor, secondary = Color(0xFFFF8A65), tertiary = Color(0xFFBF360C), male = Color(0xFF1565C0), female = Color(0xFFE91E63), tbd = Color(0xFF5D4037))
+        Color(0xFFE91E63) -> ColorScheme(primary = baseColor, secondary = Color(0xFFF48FB1), tertiary = Color(0xFFAD1457), male = Color(0xFF1565C0), female = baseColor, tbd = Color(0xFF616161))
+        Color(0xFFD32F2F) -> ColorScheme(primary = baseColor, secondary = Color(0xFFEF5350), tertiary = Color(0xFFB71C1C), male = Color(0xFF1565C0), female = Color(0xFFE91E63), tbd = Color(0xFF424242))
+        Color(0xFFFBC02D) -> ColorScheme(primary = baseColor, secondary = Color(0xFFFFD54F), tertiary = Color(0xFFF57F17), male = Color(0xFF1565C0), female = Color(0xFFE91E63), tbd = Color(0xFF795548))
+        Color(0xFF00838F) -> ColorScheme(primary = baseColor, secondary = Color(0xFF4DD0E1), tertiary = Color(0xFF006064), male = Color(0xFF1976D2), female = Color(0xFFAD1457), tbd = Color(0xFF455A64))
+        Color(0xFF6D4C41) -> ColorScheme(primary = baseColor, secondary = Color(0xFFA1887F), tertiary = Color(0xFF3E2723), male = Color(0xFF1565C0), female = Color(0xFFE91E63), tbd = Color(0xFF5D4037))
+        Color(0xFF525252) -> ColorScheme(primary = baseColor, secondary = Color(0xFF9E9E9E), tertiary = Color(0xFF212121), male = Color(0xFF424242), female = Color(0xFF757575), tbd = Color(0xFF616161))
+        Color(0xFF4A5568) -> ColorScheme(primary = baseColor, secondary = Color(0xFFA0AEC0), tertiary = Color(0xFF2D3748), male = Color(0xFF2C5282), female = Color(0xFF742A2A), tbd = Color(0xFF718096))
+        Color(0xFF00FF41) -> ColorScheme(primary = baseColor, secondary = Color(0xFF00E5FF), tertiary = Color(0xFFFF1744), male = Color(0xFF00BCD4), female = Color(0xFFFF4081), tbd = Color(0xFF9E9E9E))
+        else -> ColorScheme(primary = baseColor, secondary = baseColor.copy(alpha = 0.4f), tertiary = baseColor.copy(alpha = 0.6f), male = Color(0xFF1565C0), female = Color(0xFFE91E63), tbd = Color(0xFF616161))
+    }
+}
+
+private suspend fun applyColorAndStyle(themeManager: ThemeManager, baseColor: Color, style: ThemeStyle, intensity: Float, isDarkTheme: Boolean) {
+    val colorScheme = getColorScheme(baseColor)
+    val colorIntensity = 0.05f + (intensity * 0.25f)
+    
+    themeManager.updateColor(SettingsKeys.THEME_PRIMARY_LIGHT, colorScheme.primary)
+    themeManager.updateColor(SettingsKeys.THEME_PRIMARY_DARK, colorScheme.primary)
+    themeManager.updateColor(SettingsKeys.THEME_SECONDARY_LIGHT, colorScheme.secondary)
+    themeManager.updateColor(SettingsKeys.THEME_SECONDARY_DARK, colorScheme.secondary)
+    themeManager.updateColor(SettingsKeys.THEME_TERTIARY_LIGHT, colorScheme.tertiary)
+    themeManager.updateColor(SettingsKeys.THEME_TERTIARY_DARK, colorScheme.tertiary)
+    themeManager.updateColor(SettingsKeys.THEME_MALE_COLOR_LIGHT, colorScheme.male)
+    themeManager.updateColor(SettingsKeys.THEME_MALE_COLOR_DARK, colorScheme.male)
+    themeManager.updateColor(SettingsKeys.THEME_FEMALE_COLOR_LIGHT, colorScheme.female)
+    themeManager.updateColor(SettingsKeys.THEME_FEMALE_COLOR_DARK, colorScheme.female)
+    themeManager.updateColor(SettingsKeys.THEME_TBD_COLOR_LIGHT, colorScheme.tbd)
+    themeManager.updateColor(SettingsKeys.THEME_TBD_COLOR_DARK, colorScheme.tbd)
+    
+    val (bgLight, cardLight, surfaceLight) = when (style) {
+        ThemeStyle.COLORED_CARDS -> Triple(Color(0xFFFFFFFF), colorScheme.primary.copy(alpha = colorIntensity), colorScheme.secondary)
+        ThemeStyle.COLORED_BACKGROUND -> Triple(colorScheme.primary.copy(alpha = colorIntensity), Color(0xFFFFFFFF), colorScheme.secondary)
+        ThemeStyle.GRAY_CARDS -> Triple(Color(0xFFF0F0F0), Color(0xFFFFFFFF), colorScheme.secondary)
+        ThemeStyle.GRAY_BACKGROUND -> Triple(Color(0xFFFFFFFF), Color(0xFFF0F0F0), colorScheme.secondary)
+    }
+    val (bgDark, cardDark, surfaceDark) = when (style) {
+        ThemeStyle.COLORED_CARDS -> Triple(Color(0xFF1A1A1A), colorScheme.primary.copy(alpha = colorIntensity * 1.5f), colorScheme.secondary)
+        ThemeStyle.COLORED_BACKGROUND -> Triple(colorScheme.primary.copy(alpha = colorIntensity * 2f), Color(0xFF1A1A1A), colorScheme.secondary)
+        ThemeStyle.GRAY_CARDS -> Triple(Color(0xFF2A2A2A), Color(0xFF1A1A1A), colorScheme.secondary)
+        ThemeStyle.GRAY_BACKGROUND -> Triple(Color(0xFF1A1A1A), Color(0xFF2A2A2A), colorScheme.secondary)
+    }
+    
+    themeManager.updateColor(SettingsKeys.THEME_BACKGROUND_LIGHT, bgLight)
+    themeManager.updateColor(SettingsKeys.THEME_BACKGROUND_DARK, bgDark)
+    themeManager.updateColor(SettingsKeys.THEME_CARD_BACKGROUND_LIGHT, cardLight)
+    themeManager.updateColor(SettingsKeys.THEME_CARD_BACKGROUND_DARK, cardDark)
+    themeManager.updateColor(SettingsKeys.THEME_SURFACE_LIGHT, surfaceLight)
+    themeManager.updateColor(SettingsKeys.THEME_SURFACE_DARK, surfaceDark)
+}
+
+private fun detectCurrentStyle(colors: CustomColors, isDarkTheme: Boolean): ThemeStyle {
+    val bgColor = if (isDarkTheme) colors.backgroundDark else colors.backgroundLight
+    val cardColor = if (isDarkTheme) colors.cardBackgroundDark else colors.cardBackgroundLight
+    
+    return when {
+        cardColor.alpha < 1f -> ThemeStyle.COLORED_CARDS
+        bgColor.alpha < 1f -> ThemeStyle.COLORED_BACKGROUND
+        (cardColor == (if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF))) -> ThemeStyle.GRAY_CARDS
+        else -> ThemeStyle.GRAY_BACKGROUND
+    }
+}
+
+private fun detectIntensity(colors: CustomColors, isDarkTheme: Boolean): Float {
+    val bgColor = if (isDarkTheme) colors.backgroundDark else colors.backgroundLight
+    val cardColor = if (isDarkTheme) colors.cardBackgroundDark else colors.cardBackgroundLight
+    val alpha = maxOf(bgColor.alpha, cardColor.alpha)
+    return when {
+        alpha < 0.1f -> 0.2f
+        alpha < 0.15f -> 0.4f
+        alpha < 0.2f -> 0.6f
+        alpha < 0.25f -> 0.8f
+        else -> 1.0f
+    }
+}
+
 @Composable
-private fun PresetsTab(
-    currentPreset: PresetTheme,
+private fun ThemePickerTab(
+    customColors: CustomColors,
     isDarkTheme: Boolean,
-    onPresetSelected: (PresetTheme) -> Unit
+    onThemeChange: (Color, ThemeStyle, Float) -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+    var selectedColor by remember { mutableStateOf(if (isDarkTheme) customColors.primaryDark else customColors.primaryLight) }
+    var selectedStyle by remember { mutableStateOf(detectCurrentStyle(customColors, isDarkTheme)) }
+    var intensity by remember { mutableStateOf(detectIntensity(customColors, isDarkTheme)) }
+    
+    LaunchedEffect(Unit) {
+        selectedColor = if (isDarkTheme) customColors.primaryDark else customColors.primaryLight
+        selectedStyle = detectCurrentStyle(customColors, isDarkTheme)
+        intensity = detectIntensity(customColors, isDarkTheme)
+    }
+    
+    val presetColors = listOf(
+        Color(0xFF1565C0) to "Blue",
+        Color(0xFF2E7D32) to "Green", 
+        Color(0xFF7B1FA2) to "Purple",
+        Color(0xFFD84315) to "Orange",
+        Color(0xFFE91E63) to "Pink",
+        Color(0xFFD32F2F) to "Red",
+        Color(0xFFFBC02D) to "Yellow",
+        Color(0xFF00838F) to "Teal",
+        Color(0xFF6D4C41) to "Brown",
+        Color(0xFF525252) to "Gray",
+        Color(0xFF4A5568) to "Slate",
+        Color(0xFF00FF41) to "Neon"
+    )
+    
+    val bgColor = if (isDarkTheme) customColors.backgroundDark else customColors.backgroundLight
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(bgColor)
     ) {
-        items(PresetTheme.values()) { preset ->
-            PresetThemeCard(
-                preset = preset,
-                isSelected = currentPreset == preset,
-                isDarkTheme = isDarkTheme,
-                onClick = { onPresetSelected(preset) }
-            )
+        BackgroundColorProvider(backgroundColor = bgColor) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isDarkTheme) customColors.cardBackgroundDark else customColors.cardBackgroundLight
+                        ),
+                        border = null
+                    ) {
+                        val cardBg = if (isDarkTheme) customColors.cardBackgroundDark else customColors.cardBackgroundLight
+                        BackgroundColorProvider(backgroundColor = cardBg) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    "Choose Color",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    presetColors.chunked(6).forEach { rowColors ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            rowColors.forEach { (color, name) ->
+                                                Column(
+                                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .clickable {
+                                                            selectedColor = color
+                                                            onThemeChange(color, selectedStyle, intensity)
+                                                        }
+                                                ) {
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(40.dp)
+                                                            .clip(CircleShape)
+                                                            .background(color)
+                                                            .then(
+                                                                if (selectedColor == color) Modifier.padding(2.dp)
+                                                                else Modifier
+                                                            )
+                                                    ) {
+                                                        if (selectedColor == color) {
+                                                            Icon(
+                                                                Icons.Default.Check,
+                                                                contentDescription = null,
+                                                                tint = color.contrastingTextColor(),
+                                                                modifier = Modifier.align(Alignment.Center)
+                                                            )
+                                                        }
+                                                    }
+                                                    Text(
+                                                        name,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        modifier = Modifier.padding(top = 4.dp)
+                                                    )
+                                                }
+                                            }
+                                            repeat(6 - rowColors.size) {
+                                                Spacer(modifier = Modifier.weight(1f))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (isDarkTheme) customColors.cardBackgroundDark else customColors.cardBackgroundLight
+                        ),
+                        border = null
+                    ) {
+                        val cardBg = if (isDarkTheme) customColors.cardBackgroundDark else customColors.cardBackgroundLight
+                        BackgroundColorProvider(backgroundColor = cardBg) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    "Theme Style",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    PhoneStyleButton(
+                                        title = "Colored Cards",
+                                        bgColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF),
+                                        cardColor = selectedColor.copy(alpha = 0.15f),
+                                        navColor = selectedColor,
+                                        isSelected = selectedStyle == ThemeStyle.COLORED_CARDS,
+                                        selectedColor = selectedColor,
+                                        onClick = {
+                                            selectedStyle = ThemeStyle.COLORED_CARDS
+                                            onThemeChange(selectedColor, ThemeStyle.COLORED_CARDS, intensity)
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    
+                                    PhoneStyleButton(
+                                        title = "Colored Background",
+                                        bgColor = selectedColor.copy(alpha = 0.15f),
+                                        cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF),
+                                        navColor = selectedColor,
+                                        isSelected = selectedStyle == ThemeStyle.COLORED_BACKGROUND,
+                                        selectedColor = selectedColor,
+                                        onClick = {
+                                            selectedStyle = ThemeStyle.COLORED_BACKGROUND
+                                            onThemeChange(selectedColor, ThemeStyle.COLORED_BACKGROUND, intensity)
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    
+                                    PhoneStyleButton(
+                                        title = "Gray Cards",
+                                        bgColor = if (isDarkTheme) Color(0xFF2A2A2A) else Color(0xFFF0F0F0),
+                                        cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF),
+                                        navColor = selectedColor,
+                                        isSelected = selectedStyle == ThemeStyle.GRAY_CARDS,
+                                        selectedColor = selectedColor,
+                                        onClick = {
+                                            selectedStyle = ThemeStyle.GRAY_CARDS
+                                            onThemeChange(selectedColor, ThemeStyle.GRAY_CARDS, intensity)
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    
+                                    PhoneStyleButton(
+                                        title = "Gray Background",
+                                        bgColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF),
+                                        cardColor = if (isDarkTheme) Color(0xFF2A2A2A) else Color(0xFFF0F0F0),
+                                        navColor = selectedColor,
+                                        isSelected = selectedStyle == ThemeStyle.GRAY_BACKGROUND,
+                                        selectedColor = selectedColor,
+                                        onClick = {
+                                            selectedStyle = ThemeStyle.GRAY_BACKGROUND
+                                            onThemeChange(selectedColor, ThemeStyle.GRAY_BACKGROUND, intensity)
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                                
+                                Column {
+                                    Text(
+                                        "Theme Intensity",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Slider(
+                                        value = intensity,
+                                        onValueChange = { 
+                                            intensity = it
+                                            onThemeChange(selectedColor, selectedStyle, it)
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = selectedColor,
+                                            activeTrackColor = selectedColor
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun PresetThemeCard(
-    preset: PresetTheme,
+private fun PhoneStyleButton(
+    title: String,
+    bgColor: Color,
+    cardColor: Color,
+    navColor: Color,
     isSelected: Boolean,
-    isDarkTheme: Boolean,
-    onClick: () -> Unit
+    selectedColor: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val colors = preset.getColors()
-    val borderColor = if (isSelected) {
-        if (isDarkTheme) colors.primaryDark else colors.primaryLight
-    } else Color.Transparent
-    
-    val cardColor = if (isDarkTheme) colors.surfaceDark else colors.surfaceLight
-    Card(
-        onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = cardColor),
-        border = BorderStroke(2.dp, borderColor),
-        modifier = Modifier.fillMaxWidth()
+    Column(
+        modifier = modifier
+            .clickable { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        BackgroundColorProvider(backgroundColor = cardColor) {
+        Box(
+            modifier = Modifier
+                .width(60.dp)
+                .height(90.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(if (isSelected) selectedColor else Color.Black.copy(alpha = 0.1f))
+                .padding(if (isSelected) 3.dp else 2.dp)
+        ) {
             Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(bgColor)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AutoText(
-                        preset.displayName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(12.dp)
+                        .background(navColor)
+                )
                 
-                if (isSelected) {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = "Selected",
-                        tint = if (isDarkTheme) colors.primaryDark else colors.primaryLight
-                    )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    repeat(3) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(12.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(cardColor)
+                        )
+                    }
                 }
             }
             
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    if (isDarkTheme) colors.primaryDark else colors.primaryLight,
-                    if (isDarkTheme) colors.secondaryDark else colors.secondaryLight,
-                    if (isDarkTheme) colors.tertiaryDark else colors.tertiaryLight
-                ).forEach { color ->
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(color)
-                    )
-                }
+            if (isSelected) {
+                Icon(
+                    Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(2.dp)
+                        .size(12.dp)
+                )
             }
-            }
-        } // End BackgroundColorProvider
-    }
-}
-
-@Composable
-private fun CustomThemeTab(
-    customColors: CustomColors,
-    isDarkTheme: Boolean,
-    onColorChange: (String, Color) -> Unit,
-    onOpenColorPicker: (String, Color, (Color) -> Unit) -> Unit,
-    onResetToDefaults: () -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        item {
-            InteractiveThemePreview(
-                customColors = customColors,
-                isDarkTheme = isDarkTheme,
-                onColorChange = onColorChange,
-                onOpenColorPicker = onOpenColorPicker
-            )
         }
         
-        item {
-            Button(
-                onClick = onResetToDefaults,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(Icons.Default.Refresh, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Reset to Defaults")
-            }
-        }
-    }
-}
-
-@Composable
-private fun InteractiveThemePreview(
-    customColors: CustomColors,
-    isDarkTheme: Boolean,
-    onColorChange: (String, Color) -> Unit,
-    onOpenColorPicker: (String, Color, (Color) -> Unit) -> Unit
-) {
-    val bgColor = if (isDarkTheme) customColors.backgroundDark else customColors.backgroundLight
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable {
-                val key = if (isDarkTheme) SettingsKeys.THEME_BACKGROUND_DARK else SettingsKeys.THEME_BACKGROUND_LIGHT
-                onOpenColorPicker("Background Color\n• Main app background\n• Screen backgrounds\n• Base layer color", bgColor) { color -> onColorChange(key, color) }
-            }
-            .background(bgColor)
-            .padding(16.dp)
-    ) {
-        BackgroundColorProvider(backgroundColor = bgColor) {
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                AutoText(
-                    "Tap anywhere to edit colors",
-                    style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic)
-                )
-                Icon(
-                    Icons.Default.TouchApp,
-                    contentDescription = "Tap to edit",
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-
-            val cardColor = if (isDarkTheme) customColors.surfaceDark else customColors.surfaceLight
-            Card(
-                onClick = {
-                    val key = if (isDarkTheme) SettingsKeys.THEME_SURFACE_DARK else SettingsKeys.THEME_SURFACE_LIGHT
-                    onOpenColorPicker("Card Background\n• Card backgrounds\n• Dialog backgrounds\n• Surface containers", cardColor) { color -> onColorChange(key, color) }
-                },
-                colors = CardDefaults.cardColors(containerColor = cardColor),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                BackgroundColorProvider(backgroundColor = cardColor) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        AutoText(
-                            "Herd Overview",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        listOf("Active" to "42", "Calves" to "8", "Bulls" to "3").forEach { (label, count) ->
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.clickable {
-                                    val key = if (isDarkTheme) SettingsKeys.THEME_PRIMARY_DARK else SettingsKeys.THEME_PRIMARY_LIGHT
-                                    val current = if (isDarkTheme) customColors.primaryDark else customColors.primaryLight
-                                    onOpenColorPicker("Primary Color\n• Primary buttons\n• Selected tabs\n• Progress indicators\n• Important numbers", current) { color -> onColorChange(key, color) }
-                                }
-                            ) {
-                                Text(
-                                    count,
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (isDarkTheme) customColors.primaryDark else customColors.primaryLight
-                                )
-                                AutoText(
-                                    label,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
-                    }
-                } // End BackgroundColorProvider
-            }
-
-            val buttonsCardColor = if (isDarkTheme) customColors.surfaceDark else customColors.surfaceLight
-            Card(
-                onClick = {
-                    val key = if (isDarkTheme) SettingsKeys.THEME_SURFACE_DARK else SettingsKeys.THEME_SURFACE_LIGHT
-                    onOpenColorPicker("Card Background\n• Card backgrounds\n• Dialog backgrounds\n• Surface containers", buttonsCardColor) { color -> onColorChange(key, color) }
-                },
-                colors = CardDefaults.cardColors(containerColor = buttonsCardColor),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                BackgroundColorProvider(backgroundColor = buttonsCardColor) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        AutoText(
-                            "Buttons",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.clickable {
-                                val key = if (isDarkTheme) SettingsKeys.THEME_ON_SURFACE_DARK else SettingsKeys.THEME_ON_SURFACE_LIGHT
-                                val current = if (isDarkTheme) customColors.onSurfaceDark else customColors.onSurfaceLight
-                                onOpenColorPicker("Text on Cards\n• Card titles\n• Body text on cards\n• Labels on surfaces", current) { color -> onColorChange(key, color) }
-                            }
-                        )
-                    
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(top = 8.dp)
-                    ) {
-                        Button(
-                            onClick = {
-                                val key = if (isDarkTheme) SettingsKeys.THEME_PRIMARY_DARK else SettingsKeys.THEME_PRIMARY_LIGHT
-                                val current = if (isDarkTheme) customColors.primaryDark else customColors.primaryLight
-                                onOpenColorPicker("Add Cow Button\n• Add/Save buttons\n• Selected tabs\n• Progress bars\n• Important numbers", current) { color -> onColorChange(key, color) }
-                            },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Add Cow")
-                        }
-                        OutlinedButton(
-                            onClick = {
-                                val key = if (isDarkTheme) SettingsKeys.THEME_SECONDARY_DARK else SettingsKeys.THEME_SECONDARY_LIGHT
-                                val current = if (isDarkTheme) customColors.secondaryDark else customColors.secondaryLight
-                                onOpenColorPicker("Cancel Button\n• Cancel/Back buttons\n• Icon tints\n• Accent elements\n• Toggle switches", current) { color -> onColorChange(key, color) }
-                            },
-                            colors = ButtonDefaults.outlinedButtonColors(
-                                contentColor = if (isDarkTheme) customColors.secondaryDark else customColors.secondaryLight
-                            ),
-                            border = BorderStroke(1.dp, if (isDarkTheme) customColors.secondaryDark else customColors.secondaryLight),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text("Cancel")
-                        }
-                    }
-                    
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val key = if (isDarkTheme) SettingsKeys.THEME_SECONDARY_DARK else SettingsKeys.THEME_SECONDARY_LIGHT
-                                val current = if (isDarkTheme) customColors.secondaryDark else customColors.secondaryLight
-                                onOpenColorPicker("Secondary Color\n• Secondary buttons\n• Icon tints\n• Accent elements\n• Toggle switches", current) { color -> onColorChange(key, color) }
-                            }
-                            .padding(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Settings,
-                            contentDescription = null,
-                            tint = if (isDarkTheme) customColors.secondaryDark else customColors.secondaryLight
-                        )
-                        AutoText(
-                            "Settings & navigation icons"
-                        )
-                    }
-                    }
-                } // End BackgroundColorProvider
-            }
-
-            val genderCardColor = if (isDarkTheme) customColors.surfaceDark else customColors.surfaceLight
-            Card(
-                colors = CardDefaults.cardColors(containerColor = genderCardColor),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                BackgroundColorProvider(backgroundColor = genderCardColor) {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        AutoText(
-                            "Gender Colors",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Card(
-                            onClick = {
-                                val current = if (isDarkTheme) customColors.maleColorDark else customColors.maleColorLight
-                                onOpenColorPicker("Male Gender Color\n• Male cow cards\n• Bull indicators\n• Male-specific backgrounds", current) { color ->
-                                    val key = if (isDarkTheme) SettingsKeys.THEME_MALE_COLOR_DARK else SettingsKeys.THEME_MALE_COLOR_LIGHT
-                                    onColorChange(key, color)
-                                }
-                            },
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isDarkTheme) customColors.maleColorDark else customColors.maleColorLight
-                            ),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(12.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Male,
-                                    contentDescription = "Male",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Text(
-                                    "Male",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                        
-                        Card(
-                            onClick = {
-                                val current = if (isDarkTheme) customColors.femaleColorDark else customColors.femaleColorLight
-                                onOpenColorPicker("Female Gender Color\n• Female cow cards\n• Cow indicators\n• Female-specific backgrounds", current) { color ->
-                                    val key = if (isDarkTheme) SettingsKeys.THEME_FEMALE_COLOR_DARK else SettingsKeys.THEME_FEMALE_COLOR_LIGHT
-                                    onColorChange(key, color)
-                                }
-                            },
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isDarkTheme) customColors.femaleColorDark else customColors.femaleColorLight
-                            ),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(12.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Female,
-                                    contentDescription = "Female",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Text(
-                                    "Female",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                        
-                        Card(
-                            onClick = {
-                                val current = if (isDarkTheme) customColors.tbdColorDark else customColors.tbdColorLight
-                                onOpenColorPicker("Unknown Gender Color\n• TBD cow cards\n• Unknown status indicators\n• Neutral backgrounds", current) { color ->
-                                    val key = if (isDarkTheme) SettingsKeys.THEME_TBD_COLOR_DARK else SettingsKeys.THEME_TBD_COLOR_LIGHT
-                                    onColorChange(key, color)
-                                }
-                            },
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isDarkTheme) customColors.tbdColorDark else customColors.tbdColorLight
-                            ),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(12.dp)
-                            ) {
-                                Icon(
-                                    Icons.Default.Help,
-                                    contentDescription = "TBD",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                                Text(
-                                    "TBD",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
-                    
-
-                    }
-                } // End BackgroundColorProvider
-            }
-        }
-        } // End BackgroundColorProvider
+        Text(
+            title,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (isSelected) selectedColor else LocalContentColor.current,
+            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+            modifier = Modifier.padding(top = 6.dp)
+        )
     }
 }
