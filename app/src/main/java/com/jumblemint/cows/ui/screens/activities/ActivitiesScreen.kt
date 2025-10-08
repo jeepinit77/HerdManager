@@ -28,6 +28,7 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModel
 import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModelFactory
 import com.jumblemint.cows.ui.theme.getCardColors
+import com.jumblemint.cows.ui.theme.SmartText
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -234,25 +235,26 @@ fun ActivityCard(
                 verticalAlignment = Alignment.Top
             ) {
                 Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
-                    Text(
+                    SmartText(
                         text = activity.activityType.displayName, // Using displayName
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        backgroundColor = MaterialTheme.colorScheme.surfaceVariant
                     )
 
                     if (cowNames.isNotEmpty()) {
-                        Text(
+                        SmartText(
                             text = cowNames.joinToString(separator = ", "),
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            backgroundColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     }
 
                     activity.notes?.takeIf { it.isNotBlank() }?.let { notes ->
-                        Text(
+                        SmartText(
                             text = notes,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
                             maxLines = 2, // Limit notes preview if needed
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis // Added for long notes
                         )
@@ -260,10 +262,10 @@ fun ActivityCard(
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
-                    Text(
+                    SmartText(
                         text = activity.date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
                         style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        backgroundColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                     Row {
                         onEdit?.let {

@@ -20,6 +20,7 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModel
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
 import com.jumblemint.cows.ui.theme.getCardColors
+import com.jumblemint.cows.ui.theme.SmartText
 import com.jumblemint.cows.util.AgeRangeKeys // Import the centralized keys
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,7 +92,8 @@ fun ToolsCard(onAddCalfClick: () -> Unit, onWorkingListClick: () -> Unit, onTodo
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Tools", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                SmartText("Tools", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
+                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant)
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
