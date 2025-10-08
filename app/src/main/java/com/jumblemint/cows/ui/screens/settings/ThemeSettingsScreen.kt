@@ -210,17 +210,18 @@ private suspend fun applyColorAndStyle(themeManager: ThemeManager, baseColor: Co
     themeManager.updateColor(SettingsKeys.THEME_TBD_COLOR_LIGHT, colorScheme.tbd)
     themeManager.updateColor(SettingsKeys.THEME_TBD_COLOR_DARK, colorScheme.tbd)
     
+    val grayIntensity = colorIntensity * 0.5f
     val (bgLight, cardLight, surfaceLight) = when (style) {
         ThemeStyle.COLORED_CARDS -> Triple(Color(0xFFFFFFFF), colorScheme.primary.copy(alpha = colorIntensity), colorScheme.secondary)
         ThemeStyle.COLORED_BACKGROUND -> Triple(colorScheme.primary.copy(alpha = colorIntensity), Color(0xFFFFFFFF), colorScheme.secondary)
-        ThemeStyle.GRAY_CARDS -> Triple(Color(0xFFF0F0F0), Color(0xFFFFFFFF), colorScheme.secondary)
-        ThemeStyle.GRAY_BACKGROUND -> Triple(Color(0xFFFFFFFF), Color(0xFFF0F0F0), colorScheme.secondary)
+        ThemeStyle.GRAY_CARDS -> Triple(Color(0xFF000000).copy(alpha = grayIntensity), Color(0xFFFFFFFF), colorScheme.secondary)
+        ThemeStyle.GRAY_BACKGROUND -> Triple(Color(0xFFFFFFFF), Color(0xFF000000).copy(alpha = grayIntensity), colorScheme.secondary)
     }
     val (bgDark, cardDark, surfaceDark) = when (style) {
         ThemeStyle.COLORED_CARDS -> Triple(Color(0xFF1A1A1A), colorScheme.primary.copy(alpha = colorIntensity * 1.5f), colorScheme.secondary)
         ThemeStyle.COLORED_BACKGROUND -> Triple(colorScheme.primary.copy(alpha = colorIntensity * 2f), Color(0xFF1A1A1A), colorScheme.secondary)
-        ThemeStyle.GRAY_CARDS -> Triple(Color(0xFF2A2A2A), Color(0xFF1A1A1A), colorScheme.secondary)
-        ThemeStyle.GRAY_BACKGROUND -> Triple(Color(0xFF1A1A1A), Color(0xFF2A2A2A), colorScheme.secondary)
+        ThemeStyle.GRAY_CARDS -> Triple(Color(0xFF000000).copy(alpha = grayIntensity * 2f), Color(0xFF1A1A1A), colorScheme.secondary)
+        ThemeStyle.GRAY_BACKGROUND -> Triple(Color(0xFF1A1A1A), Color(0xFF000000).copy(alpha = grayIntensity * 2f), colorScheme.secondary)
     }
     
     themeManager.updateColor(SettingsKeys.THEME_BACKGROUND_LIGHT, bgLight)
@@ -425,7 +426,7 @@ private fun ThemePickerTab(
                                     
                                     PhoneStyleButton(
                                         title = "Gray Cards",
-                                        bgColor = if (isDarkTheme) Color(0xFF2A2A2A) else Color(0xFFF0F0F0),
+                                        bgColor = if (isDarkTheme) Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 2f) else Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 0.5f),
                                         cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF),
                                         navColor = selectedColor,
                                         isSelected = selectedStyle == ThemeStyle.GRAY_CARDS,
@@ -440,7 +441,7 @@ private fun ThemePickerTab(
                                     PhoneStyleButton(
                                         title = "Gray Background",
                                         bgColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF),
-                                        cardColor = if (isDarkTheme) Color(0xFF2A2A2A) else Color(0xFFF0F0F0),
+                                        cardColor = if (isDarkTheme) Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 2f) else Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 0.5f),
                                         navColor = selectedColor,
                                         isSelected = selectedStyle == ThemeStyle.GRAY_BACKGROUND,
                                         selectedColor = selectedColor,
