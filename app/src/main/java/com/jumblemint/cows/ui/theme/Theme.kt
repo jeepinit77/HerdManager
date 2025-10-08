@@ -35,34 +35,47 @@ import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 
+fun blend(fg: Color, bg: Color): Color {
+    val alpha = fg.alpha
+    if (alpha == 1f) return fg
+
+    val invAlpha = 1f - alpha
+
+    val r = (fg.red * alpha) + (bg.red * invAlpha)
+    val g = (fg.green * alpha) + (bg.green * invAlpha)
+    val b = (fg.blue * alpha) + (bg.blue * invAlpha)
+
+    return Color(red = r, green = g, blue = b)
+}
+
 private fun createDarkColorScheme(customColors: CustomColors) = darkColorScheme(
     primary = customColors.primaryDark,
-    onPrimary = getContrastingTextColor(customColors.primaryDark),
+    onPrimary = determineOnColor(customColors.primaryDark),
     secondary = customColors.secondaryDark,
-    onSecondary = getContrastingTextColor(customColors.secondaryDark),
+    onSecondary = determineOnColor(customColors.secondaryDark),
     tertiary = customColors.tertiaryDark,
-    onTertiary = getContrastingTextColor(customColors.tertiaryDark),
-    background = customColors.backgroundDark,
-    onBackground = getContrastingTextColor(customColors.backgroundDark),
-    surface = customColors.surfaceDark,
-    onSurface = getContrastingTextColor(customColors.surfaceDark),
-    surfaceVariant = customColors.cardBackgroundDark,
-    onSurfaceVariant = getContrastingTextColor(customColors.cardBackgroundDark)
+    onTertiary = determineOnColor(customColors.tertiaryDark),
+    background = blend(customColors.backgroundDark, Color.Black),
+    onBackground = determineOnColor(blend(customColors.backgroundDark, Color.Black)),
+    surface = blend(customColors.surfaceDark, Color.Black),
+    onSurface = determineOnColor(blend(customColors.surfaceDark, Color.Black)),
+    surfaceVariant = blend(customColors.cardBackgroundDark, blend(customColors.backgroundDark, Color.Black)),
+    onSurfaceVariant = determineOnColor(blend(customColors.cardBackgroundDark, blend(customColors.backgroundDark, Color.Black)))
 )
 
 private fun createLightColorScheme(customColors: CustomColors) = lightColorScheme(
     primary = customColors.primaryLight,
-    onPrimary = getContrastingTextColor(customColors.primaryLight),
+    onPrimary = determineOnColor(customColors.primaryLight),
     secondary = customColors.secondaryLight,
-    onSecondary = getContrastingTextColor(customColors.secondaryLight),
+    onSecondary = determineOnColor(customColors.secondaryLight),
     tertiary = customColors.tertiaryLight,
-    onTertiary = getContrastingTextColor(customColors.tertiaryLight),
-    background = customColors.backgroundLight,
-    onBackground = getContrastingTextColor(customColors.backgroundLight),
-    surface = customColors.surfaceLight,
-    onSurface = getContrastingTextColor(customColors.surfaceLight),
-    surfaceVariant = customColors.cardBackgroundLight,
-    onSurfaceVariant = getContrastingTextColor(customColors.cardBackgroundLight)
+    onTertiary = determineOnColor(customColors.tertiaryLight),
+    background = blend(customColors.backgroundLight, Color.White),
+    onBackground = determineOnColor(blend(customColors.backgroundLight, Color.White)),
+    surface = blend(customColors.surfaceLight, Color.White),
+    onSurface = determineOnColor(blend(customColors.surfaceLight, Color.White)),
+    surfaceVariant = blend(customColors.cardBackgroundLight, blend(customColors.backgroundLight, Color.White)),
+    onSurfaceVariant = determineOnColor(blend(customColors.cardBackgroundLight, blend(customColors.backgroundLight, Color.White)))
 )
 
 // Modern-sharp shapes across the app
@@ -135,5 +148,3 @@ fun CowsTheme(
         }
     }
 }
-
-

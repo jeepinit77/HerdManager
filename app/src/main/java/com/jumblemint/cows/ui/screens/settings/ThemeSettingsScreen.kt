@@ -56,7 +56,8 @@ fun ThemeSettingsScreen(
             database.cowDao(), database.pastureDao(), database.activityDao(),
             database.settingsDao(), database.noteDao(), database.userDao(),
             database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
-            database.activityTypeConfigDao()
+            database.activityTypeConfigDao(),
+            database.breedDao()
         )
     }
     
@@ -127,8 +128,8 @@ fun ThemeSettingsScreen(
                                 else -> ThemeMode.SYSTEM
                             },
                             colors = SegmentedButtonDefaults.colors(
-                                activeContainerColor = if (isDarkTheme) customColors.primaryDark else customColors.primaryLight,
-                                activeContentColor = if (isDarkTheme) customColors.onPrimaryDark else customColors.onPrimaryLight
+                                activeContainerColor = MaterialTheme.colorScheme.primary,
+                                activeContentColor = MaterialTheme.colorScheme.onPrimary
                             )
                         ) {
                             Text(mode)
@@ -304,12 +305,11 @@ private fun ThemePickerTab(
                 item {
                     Card(
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isDarkTheme) customColors.cardBackgroundDark else customColors.cardBackgroundLight
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
                         border = null
                     ) {
-                        val cardBg = if (isDarkTheme) customColors.cardBackgroundDark else customColors.cardBackgroundLight
-                        BackgroundColorProvider(backgroundColor = cardBg) {
+                        BackgroundColorProvider(backgroundColor = MaterialTheme.colorScheme.surfaceVariant) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -317,7 +317,8 @@ private fun ThemePickerTab(
                                 Text(
                                     "Choose Color",
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 
                                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -358,7 +359,8 @@ private fun ThemePickerTab(
                                                     Text(
                                                         name,
                                                         style = MaterialTheme.typography.bodySmall,
-                                                        modifier = Modifier.padding(top = 4.dp)
+                                                        modifier = Modifier.padding(top = 4.dp),
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                 }
                                             }
@@ -376,12 +378,11 @@ private fun ThemePickerTab(
                 item {
                     Card(
                         colors = CardDefaults.cardColors(
-                            containerColor = if (isDarkTheme) customColors.cardBackgroundDark else customColors.cardBackgroundLight
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
                         ),
                         border = null
                     ) {
-                        val cardBg = if (isDarkTheme) customColors.cardBackgroundDark else customColors.cardBackgroundLight
-                        BackgroundColorProvider(backgroundColor = cardBg) {
+                        BackgroundColorProvider(backgroundColor = MaterialTheme.colorScheme.surfaceVariant) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -389,7 +390,8 @@ private fun ThemePickerTab(
                                 Text(
                                     "Theme Style",
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 
                                 Row(
@@ -457,7 +459,8 @@ private fun ThemePickerTab(
                                     Text(
                                         "Theme Intensity",
                                         style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Slider(
                                         value = intensity,
