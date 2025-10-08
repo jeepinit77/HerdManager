@@ -207,6 +207,17 @@ class ThemeManager(private val repository: CattleRepository) {
         }
     }
 
+    suspend fun updateIntensity(intensity: Float) {
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.THEME_INTENSITY, intensity.toString()))
+    }
+
+    fun getCurrentIntensity(): Flow<Float> {
+        return repository.getAllSettings().map { settings ->
+            val intensity = settings.find { it.key == SettingsKeys.THEME_INTENSITY }?.value?.toFloatOrNull()
+            intensity ?: 0.2f  // Default to minimum intensity
+        }
+    }
+
     fun getCustomColors(): Flow<CustomColors> {
         return repository.getAllSettings().map { settings ->
             val settingsMap = settings.associate { it.key to it.value }
@@ -292,6 +303,9 @@ class ThemeManager(private val repository: CattleRepository) {
 
         // Also update the current theme name setting
         repository.insertOrUpdateSetting(Settings(SettingsKeys.CURRENT_THEME_NAME, theme.name))
+
+        // Set a default intensity for presets (medium intensity)
+        updateIntensity(0.5f)
     }
     suspend fun getCurrentPreset(): PresetTheme {
         val currentThemeName = repository.getSettingByKey(SettingsKeys.CURRENT_THEME_NAME)?.value

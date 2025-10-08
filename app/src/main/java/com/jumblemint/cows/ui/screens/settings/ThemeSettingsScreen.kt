@@ -140,6 +140,7 @@ fun ThemeSettingsScreen(
         }
 
         ThemePickerTab(
+            themeManager = themeManager,
             customColors = customColors,
             isDarkTheme = previewDarkMode,
             onThemeChange = { color, style, intensity ->
@@ -197,7 +198,7 @@ private fun getColorScheme(baseColor: Color): ColorScheme {
 private suspend fun applyColorAndStyle(themeManager: ThemeManager, baseColor: Color, style: ThemeStyle, intensity: Float, isDarkTheme: Boolean) {
     val colorScheme = getColorScheme(baseColor)
     val colorIntensity = 0.05f + (intensity * 0.25f)
-    
+
     themeManager.updateColor(SettingsKeys.THEME_PRIMARY_LIGHT, colorScheme.primary)
     themeManager.updateColor(SettingsKeys.THEME_PRIMARY_DARK, colorScheme.primary)
     themeManager.updateColor(SettingsKeys.THEME_SECONDARY_LIGHT, colorScheme.secondary)
@@ -210,7 +211,7 @@ private suspend fun applyColorAndStyle(themeManager: ThemeManager, baseColor: Co
     themeManager.updateColor(SettingsKeys.THEME_FEMALE_COLOR_DARK, colorScheme.female)
     themeManager.updateColor(SettingsKeys.THEME_TBD_COLOR_LIGHT, colorScheme.tbd)
     themeManager.updateColor(SettingsKeys.THEME_TBD_COLOR_DARK, colorScheme.tbd)
-    
+
     val grayIntensity = colorIntensity * 0.5f
     val (bgLight, cardLight, surfaceLight) = when (style) {
         ThemeStyle.COLORED_CARDS -> Triple(Color(0xFFFFFFFF), colorScheme.primary.copy(alpha = colorIntensity), colorScheme.secondary)
@@ -224,13 +225,15 @@ private suspend fun applyColorAndStyle(themeManager: ThemeManager, baseColor: Co
         ThemeStyle.GRAY_CARDS -> Triple(Color(0xFF000000).copy(alpha = grayIntensity * 2f), Color(0xFF1A1A1A), colorScheme.secondary)
         ThemeStyle.GRAY_BACKGROUND -> Triple(Color(0xFF1A1A1A), Color(0xFF000000).copy(alpha = grayIntensity * 2f), colorScheme.secondary)
     }
-    
+
     themeManager.updateColor(SettingsKeys.THEME_BACKGROUND_LIGHT, bgLight)
     themeManager.updateColor(SettingsKeys.THEME_BACKGROUND_DARK, bgDark)
     themeManager.updateColor(SettingsKeys.THEME_CARD_BACKGROUND_LIGHT, cardLight)
     themeManager.updateColor(SettingsKeys.THEME_CARD_BACKGROUND_DARK, cardDark)
     themeManager.updateColor(SettingsKeys.THEME_SURFACE_LIGHT, surfaceLight)
     themeManager.updateColor(SettingsKeys.THEME_SURFACE_DARK, surfaceDark)
+
+    themeManager.updateIntensity(intensity)
 }
 
 private fun detectCurrentStyle(colors: CustomColors, isDarkTheme: Boolean): ThemeStyle {
@@ -249,35 +252,37 @@ private fun detectIntensity(colors: CustomColors, isDarkTheme: Boolean): Float {
     val bgColor = if (isDarkTheme) colors.backgroundDark else colors.backgroundLight
     val cardColor = if (isDarkTheme) colors.cardBackgroundDark else colors.cardBackgroundLight
     val alpha = maxOf(bgColor.alpha, cardColor.alpha)
-    return when {
-        alpha < 0.1f -> 0.2f
-        alpha < 0.15f -> 0.4f
-        alpha < 0.2f -> 0.6f
-        alpha < 0.25f -> 0.8f
-        else -> 1.0f
-    }
+    return ((alpha - 0.05f) / 0.25f).coerceIn(0.2f, 1.0f)
 }
 
 @Composable
 private fun ThemePickerTab(
+    themeManager: ThemeManager,
     customColors: CustomColors,
     isDarkTheme: Boolean,
     onThemeChange: (Color, ThemeStyle, Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedColor by remember { mutableStateOf(if (isDarkTheme) customColors.primaryDark else customColors.primaryLight) }
-    var selectedStyle by remember { mutableStateOf(detectCurrentStyle(customColors, isDarkTheme)) }
-    var intensity by remember { mutableStateOf(detectIntensity(customColors, isDarkTheme)) }
-    
-    LaunchedEffect(Unit) {
+    val currentIntensity by themeManager.getCurrentIntensity().collectAsState(initial = 0.2f)
+
+    var selectedColor by remember { mutableStateOf(Color.White) }
+    var selectedStyle by remember { mutableStateOf(ThemeStyle.COLORED_CARDS) }
+    var intensity by remember { mutableStateOf(0.2f) }
+
+    LaunchedEffect(customColors, isDarkTheme) {
         selectedColor = if (isDarkTheme) customColors.primaryDark else customColors.primaryLight
         selectedStyle = detectCurrentStyle(customColors, isDarkTheme)
-        intensity = detectIntensity(customColors, isDarkTheme)
     }
-    
+
+    LaunchedEffect(currentIntensity) {
+        intensity = currentIntensity
+    }
+
+    val defaultColors = PresetTheme.DEFAULT.getColors()
     val presetColors = listOf(
+        defaultColors.primaryLight to "Default",
         Color(0xFF1565C0) to "Blue",
-        Color(0xFF2E7D32) to "Green", 
+        Color(0xFF2E7D32) to "Green",
         Color(0xFF7B1FA2) to "Purple",
         Color(0xFFD84315) to "Orange",
         Color(0xFFE91E63) to "Pink",
@@ -286,10 +291,9 @@ private fun ThemePickerTab(
         Color(0xFF00838F) to "Teal",
         Color(0xFF6D4C41) to "Brown",
         Color(0xFF525252) to "Gray",
-        Color(0xFF4A5568) to "Slate",
-        Color(0xFF00FF41) to "Neon"
+        Color(0xFF4A5568) to "Slate"
     )
-    
+
     val bgColor = if (isDarkTheme) customColors.backgroundDark else customColors.backgroundLight
     Box(
         modifier = modifier
@@ -430,11 +434,11 @@ private fun ThemePickerTab(
                                         bgColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF),
                                         cardColor = if (isDarkTheme) Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 2f) else Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 0.5f),
                                         navColor = selectedColor,
-                                        isSelected = selectedStyle == ThemeStyle.GRAY_BACKGROUND,
+                                        isSelected = selectedStyle == ThemeStyle.GRAY_CARDS,
                                         selectedColor = selectedColor,
                                         onClick = {
-                                            selectedStyle = ThemeStyle.GRAY_BACKGROUND
-                                            onThemeChange(selectedColor, ThemeStyle.GRAY_BACKGROUND, intensity)
+                                            selectedStyle = ThemeStyle.GRAY_CARDS
+                                            onThemeChange(selectedColor, ThemeStyle.GRAY_CARDS, intensity)
                                         },
                                         modifier = Modifier.weight(1f)
                                     )
@@ -444,11 +448,11 @@ private fun ThemePickerTab(
                                         bgColor = if (isDarkTheme) Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 2f) else Color(0xFF000000).copy(alpha = (0.05f + (intensity * 0.25f)) * 0.5f),
                                         cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color(0xFFFFFFFF),
                                         navColor = selectedColor,
-                                        isSelected = selectedStyle == ThemeStyle.GRAY_CARDS,
+                                        isSelected = selectedStyle == ThemeStyle.GRAY_BACKGROUND,
                                         selectedColor = selectedColor,
                                         onClick = {
-                                            selectedStyle = ThemeStyle.GRAY_CARDS
-                                            onThemeChange(selectedColor, ThemeStyle.GRAY_CARDS, intensity)
+                                            selectedStyle = ThemeStyle.GRAY_BACKGROUND
+                                            onThemeChange(selectedColor, ThemeStyle.GRAY_BACKGROUND, intensity)
                                         },
                                         modifier = Modifier.weight(1f)
                                     )
@@ -477,10 +481,8 @@ private fun ThemePickerTab(
                                 )
                                 Slider(
                                     value = intensity,
-                                    onValueChange = {
-                                        intensity = it
-                                        onThemeChange(selectedColor, selectedStyle, it)
-                                    },
+                                    onValueChange = { intensity = it },
+                                    onValueChangeFinished = { onThemeChange(selectedColor, selectedStyle, intensity) },
                                     modifier = Modifier.fillMaxWidth(),
                                     colors = SliderDefaults.colors(
                                         thumbColor = selectedColor,
