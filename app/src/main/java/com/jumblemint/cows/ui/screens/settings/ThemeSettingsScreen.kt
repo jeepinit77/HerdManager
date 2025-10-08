@@ -453,27 +453,40 @@ private fun ThemePickerTab(
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
-                                
-                                Column {
-                                    Text(
-                                        "Theme Intensity",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+                        }
+                    }
+                }
+                item {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        border = null
+                    ) {
+                        BackgroundColorProvider(backgroundColor = MaterialTheme.colorScheme.surfaceVariant) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text(
+                                    "Theme Intensity",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Slider(
+                                    value = intensity,
+                                    onValueChange = {
+                                        intensity = it
+                                        onThemeChange(selectedColor, selectedStyle, it)
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = selectedColor,
+                                        activeTrackColor = selectedColor
                                     )
-                                    Slider(
-                                        value = intensity,
-                                        onValueChange = { 
-                                            intensity = it
-                                            onThemeChange(selectedColor, selectedStyle, it)
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = selectedColor,
-                                            activeTrackColor = selectedColor
-                                        )
-                                    )
-                                }
+                                )
                             }
                         }
                     }
