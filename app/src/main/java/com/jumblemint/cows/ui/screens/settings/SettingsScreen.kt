@@ -410,9 +410,10 @@ fun SettingsCard(
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         enabled = enabled,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp),
-        colors = colors
+        colors = colors,
+        border = null
     ) {
         Row(
             modifier = Modifier

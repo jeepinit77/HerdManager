@@ -106,7 +106,7 @@ fun ToolsCard(onAddCalfClick: () -> Unit, onWorkingListClick: () -> Unit, onTodo
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ToolItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    Card(onClick = onClick, colors = getCardColors(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+    Card(onClick = onClick, colors = getCardColors(), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), border = null) {
         Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
             Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
             Spacer(modifier = Modifier.height(6.dp))
@@ -145,7 +145,7 @@ fun StatItem(label: String, count: Int, color: androidx.compose.ui.graphics.Colo
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClickableStatItem(label: String, count: Int, color: androidx.compose.ui.graphics.Color, onClick: () -> Unit) {
-    Card(onClick = onClick, colors = getCardColors(), elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+    Card(onClick = onClick, colors = getCardColors(), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), border = null) {
         Column(modifier = Modifier.padding(vertical = 12.dp, horizontal = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Text(count.toString(), style = MaterialTheme.typography.titleLarge, color = color, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(2.dp))
