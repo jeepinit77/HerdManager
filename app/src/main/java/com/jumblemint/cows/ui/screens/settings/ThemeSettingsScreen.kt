@@ -354,7 +354,7 @@ private fun PresetChip(
             if (isSelected) {
                 Icon(
                     Icons.Filled.Check, contentDescription = null, tint = Color.White,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(12.dp)
+                    modifier = Modifier.align(Alignment.Center).size(20.dp)
                 )
             }
         }
