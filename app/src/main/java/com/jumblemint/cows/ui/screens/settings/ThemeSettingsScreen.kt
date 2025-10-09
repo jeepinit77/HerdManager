@@ -406,16 +406,24 @@ private fun PhoneStyleButton(
                 }
             }
             if (isSelected) {
-                Icon(
-                    Icons.Filled.Check, contentDescription = null, tint = Color.White,
-                    modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(12.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .size(32.dp)
+                        .clip(CircleShape)
+                        .background(Color.Black.copy(alpha = 0.7f))
+                ) {
+                    Icon(
+                        Icons.Filled.Check, contentDescription = null, tint = Color.White,
+                        modifier = Modifier.align(Alignment.Center).size(24.dp)
+                    )
+                }
             }
         }
         Text(
             title,
             style = MaterialTheme.typography.bodySmall,
-            color = if (isSelected) selectedColor else LocalContentColor.current,
+            color = LocalContentColor.current,
             modifier = Modifier.padding(top = 6.dp)
         )
     }
