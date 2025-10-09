@@ -222,7 +222,7 @@ private fun ThemePicker(
                                         selectedColor = MaterialTheme.colorScheme.primary,
                                         onClick = {
                                             style = ThemeStyle.COLORED_CARDS
-                                            scope.launch { applyColorAndStyle(themeManager, customColors, style, currentIntensity) }
+                                            scope.launch { val baseColors = currentPreset.getColors(); applyColorAndStyle(themeManager, baseColors, style, currentIntensity) }
                                         },
                                         modifier = Modifier.weight(1f)
                                     )
@@ -235,7 +235,7 @@ private fun ThemePicker(
                                         selectedColor = MaterialTheme.colorScheme.primary,
                                         onClick = {
                                             style = ThemeStyle.COLORED_BACKGROUND
-                                            scope.launch { applyColorAndStyle(themeManager, customColors, style, currentIntensity) }
+                                            scope.launch { val baseColors = currentPreset.getColors(); applyColorAndStyle(themeManager, baseColors, style, currentIntensity) }
                                         },
                                         modifier = Modifier.weight(1f)
                                     )
@@ -250,7 +250,7 @@ private fun ThemePicker(
                                         selectedColor = MaterialTheme.colorScheme.primary,
                                         onClick = {
                                             style = ThemeStyle.GRAY_CARDS
-                                            scope.launch { applyColorAndStyle(themeManager, customColors, style, currentIntensity) }
+                                            scope.launch { val baseColors = currentPreset.getColors(); applyColorAndStyle(themeManager, baseColors, style, currentIntensity) }
                                         },
                                         modifier = Modifier.weight(1f)
                                     )
@@ -265,7 +265,7 @@ private fun ThemePicker(
                                         selectedColor = MaterialTheme.colorScheme.primary,
                                         onClick = {
                                             style = ThemeStyle.GRAY_BACKGROUND
-                                            scope.launch { applyColorAndStyle(themeManager, customColors, style, currentIntensity) }
+                                            scope.launch { val baseColors = currentPreset.getColors(); applyColorAndStyle(themeManager, baseColors, style, currentIntensity) }
                                         },
                                         modifier = Modifier.weight(1f)
                                     )
