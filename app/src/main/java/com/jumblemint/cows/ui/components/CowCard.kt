@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import com.jumblemint.cows.ui.theme.getContrastingTextColor
 import com.jumblemint.cows.ui.theme.BackgroundColorProvider
-import com.jumblemint.cows.ui.theme.AutoText
+import com.jumblemint.cows.ui.theme.SmartText
 // import androidx.compose.material.icons.filled.Lightbulb // Removed
 import com.jumblemint.cows.R // Assuming your R file is here
 import com.jumblemint.cows.data.model.Cow
@@ -48,6 +48,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.unit.Dp
 import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Changed import
+import com.jumblemint.cows.ui.theme.SmartText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,12 +106,12 @@ fun CowCard(
                             verticalAlignment = Alignment.Top
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                AutoText(
+                                SmartText(
                                     text = cow.name ?: "Unnamed Cow",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
-                                AutoText(
+                                SmartText(
                                     text = cow.classification.name,
                                     style = MaterialTheme.typography.bodyMedium
                                 )
@@ -159,7 +160,7 @@ fun CowCard(
                                 else -> "${age.days}d"
                             }
                             Spacer(modifier = Modifier.height(6.dp))
-                            AutoText(
+                            SmartText(
                                 text = "Age: $ageText",
                                 style = MaterialTheme.typography.bodySmall
                             )
@@ -250,14 +251,14 @@ fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = M
                 verticalArrangement = Arrangement.Bottom
             ) {
             tagColor?.let {
-                AutoText(
+                SmartText(
                     text = it.lowercase().replaceFirstChar { char -> char.titlecase() },
                     style = MaterialTheme.typography.labelSmall,
                     fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                 )
                 Spacer(modifier = Modifier.height(2.dp))
             }
-            AutoText(
+            SmartText(
                 text = (tagNumber ?: "—").uppercase(),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
