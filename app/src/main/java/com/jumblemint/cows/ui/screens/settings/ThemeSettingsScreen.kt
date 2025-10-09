@@ -41,6 +41,7 @@ fun ThemeSettingsScreen(
     }
     val themeManager = remember { ThemeManager(repository) }
     val customColors by themeManager.getCustomColors().collectAsState(initial = CustomColors())
+    val currentPreset by themeManager.getCurrentPresetFlow().collectAsState(initial = PresetTheme.TINT_BLUE)
     val scope = rememberCoroutineScope()
 
     val systemDark = isSystemInDarkTheme()
@@ -91,6 +92,7 @@ fun ThemeSettingsScreen(
         ThemePicker(
             themeManager = themeManager,
             customColors = customColors,
+            currentPreset = currentPreset,
             isDarkTheme = previewDark,
             scope = scope,
             modifier = Modifier.weight(1f)
@@ -107,19 +109,19 @@ private suspend fun applyColorAndStyle(
     style: ThemeStyle,
     intensity: Float
 ) {
-    val colorAlpha = 0.05f + (intensity * 0.25f)      // 0.05..0.30
-    val grayAlphaLight = colorAlpha * 0.5f
-    val grayAlphaDark = colorAlpha * 2f
+    val colorAlpha = intensity * 0.8f      // 0.0..0.8
+    val grayAlphaLight = (0.05f + intensity * 0.25f) * 0.5f  // Same as before
+    val grayAlphaDark = (0.05f + intensity * 0.25f) * 2f
 
     val (bgL, cardL, surfL) = when (style) {
-        ThemeStyle.COLORED_CARDS -> Triple(base.backgroundLight, base.cardBackgroundLight.copy(alpha = colorAlpha), base.surfaceLight)
-        ThemeStyle.COLORED_BACKGROUND -> Triple(base.backgroundLight.copy(alpha = colorAlpha), base.cardBackgroundLight, base.surfaceLight)
+        ThemeStyle.COLORED_CARDS -> Triple(base.backgroundLight, base.primaryLight.copy(alpha = colorAlpha), base.surfaceLight)
+        ThemeStyle.COLORED_BACKGROUND -> Triple(base.primaryLight.copy(alpha = colorAlpha), base.cardBackgroundLight, base.surfaceLight)
         ThemeStyle.GRAY_CARDS -> Triple(Color.White, Color.Black.copy(alpha = grayAlphaLight), base.surfaceLight)
         ThemeStyle.GRAY_BACKGROUND -> Triple(Color.Black.copy(alpha = grayAlphaLight), Color.White, base.surfaceLight)
     }
     val (bgD, cardD, surfD) = when (style) {
-        ThemeStyle.COLORED_CARDS -> Triple(base.backgroundDark, base.cardBackgroundDark.copy(alpha = colorAlpha * 1.5f), base.surfaceDark)
-        ThemeStyle.COLORED_BACKGROUND -> Triple(base.backgroundDark.copy(alpha = colorAlpha * 2f), base.cardBackgroundDark, base.surfaceDark)
+        ThemeStyle.COLORED_CARDS -> Triple(base.backgroundDark, base.primaryDark.copy(alpha = colorAlpha * 1.5f), base.surfaceDark)
+        ThemeStyle.COLORED_BACKGROUND -> Triple(base.primaryDark.copy(alpha = colorAlpha * 2f), base.cardBackgroundDark, base.surfaceDark)
         ThemeStyle.GRAY_CARDS -> Triple(Color(0xFF1A1A1A), Color.Black.copy(alpha = grayAlphaDark), base.surfaceDark)
         ThemeStyle.GRAY_BACKGROUND -> Triple(Color.Black.copy(alpha = grayAlphaDark), Color(0xFF1A1A1A), base.surfaceDark)
     }
@@ -139,6 +141,7 @@ private suspend fun applyColorAndStyle(
 private fun ThemePicker(
     themeManager: ThemeManager,
     customColors: CustomColors,
+    currentPreset: PresetTheme,
     isDarkTheme: Boolean,
     scope: CoroutineScope,
     modifier: Modifier = Modifier
@@ -178,12 +181,12 @@ private fun ThemePicker(
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                                 Text("Color Tints", style = MaterialTheme.typography.titleMedium)
 
-                                TintRow(row = tintRow1, isDarkTheme = isDarkTheme, onPick = {
-                                    scope.launch { themeManager.applyPresetTheme(it) }
+                                TintRow(row = tintRow1, currentPreset = currentPreset, isDarkTheme = isDarkTheme, onPick = {
+                                    scope.launch { themeManager.applyPresetTheme(it); val newColors = it.getColors(); applyColorAndStyle(themeManager, newColors, style, currentIntensity) }
                                 })
 
-                                TintRow(row = tintRow2, isDarkTheme = isDarkTheme, onPick = {
-                                    scope.launch { themeManager.applyPresetTheme(it) }
+                                TintRow(row = tintRow2, currentPreset = currentPreset, isDarkTheme = isDarkTheme, onPick = {
+                                    scope.launch { themeManager.applyPresetTheme(it); val newColors = it.getColors(); applyColorAndStyle(themeManager, newColors, style, currentIntensity) }
                                 })
                             }
                         }
@@ -200,9 +203,10 @@ private fun ThemePicker(
                                     curatedRow.forEach { preset ->
                                         val swatch = if (isDarkTheme) preset.getColors().primaryDark else preset.getColors().primaryLight
                                         PresetChip(
+                                            isSelected = currentPreset == preset,
                                             name = preset.displayName,
                                             color = swatch,
-                                            onClick = { scope.launch { themeManager.applyPresetTheme(preset) } },
+                                            onClick = { scope.launch { themeManager.applyPresetTheme(preset); val newColors = preset.getColors(); applyColorAndStyle(themeManager, newColors, style, currentIntensity) } },
                                             modifier = Modifier.weight(1f)
                                         )
                                     }
@@ -310,6 +314,7 @@ private fun ThemePicker(
 
 @Composable
 private fun TintRow(
+    currentPreset: PresetTheme,
     row: List<PresetTheme>,
     isDarkTheme: Boolean,
     onPick: (PresetTheme) -> Unit
@@ -318,6 +323,7 @@ private fun TintRow(
         row.forEach { preset ->
             val swatch = if (isDarkTheme) preset.getColors().primaryDark else preset.getColors().primaryLight
             PresetChip(
+                isSelected = currentPreset == preset,
                 name = preset.displayName,
                 color = swatch,
                 onClick = { onPick(preset) },
@@ -329,6 +335,7 @@ private fun TintRow(
 
 @Composable
 private fun PresetChip(
+    isSelected: Boolean = false,
     name: String,
     color: Color,
     onClick: () -> Unit,
@@ -343,7 +350,14 @@ private fun PresetChip(
                 .size(40.dp)
                 .clip(CircleShape)
                 .background(color)
-        )
+        ) {
+            if (isSelected) {
+                Icon(
+                    Icons.Filled.Check, contentDescription = null, tint = Color.White,
+                    modifier = Modifier.align(Alignment.TopEnd).padding(2.dp).size(12.dp)
+                )
+            }
+        }
         Text(name, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
     }
 }

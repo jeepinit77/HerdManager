@@ -332,6 +332,13 @@ class ThemeManager(private val repository: CattleRepository) {
             ?.let { runCatching { PresetTheme.valueOf(it) }.getOrNull() }
             ?: PresetTheme.TINT_BLUE
 
+    fun getCurrentPresetFlow(): Flow<PresetTheme> =
+        repository.getAllSettings().map { settings ->
+            settings.find { it.key == SettingsKeys.CURRENT_THEME_NAME }?.value
+                ?.let { runCatching { PresetTheme.valueOf(it) }.getOrNull() }
+                ?: PresetTheme.TINT_BLUE
+        }
+
     suspend fun resetToDefaults() {
         applyPresetTheme(PresetTheme.TINT_BLUE)
         updateIntensity(0.2f)
