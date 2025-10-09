@@ -279,7 +279,7 @@ private fun ThemePicker(
                 item {
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         BackgroundColorProvider(MaterialTheme.colorScheme.surfaceVariant) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text("Theme Intensity", style = MaterialTheme.typography.titleMedium)
                                 Slider(
                                     value = currentIntensity,
@@ -287,10 +287,11 @@ private fun ThemePicker(
                                     onValueChangeFinished = {
                                         scope.launch { applyColorAndStyle(themeManager, customColors, style, currentIntensity) }
                                     },
-                                    modifier = Modifier.fillMaxWidth(),
+                                    modifier = Modifier.fillMaxWidth().height(32.dp),
                                     colors = SliderDefaults.colors(
-                                        thumbColor = MaterialTheme.colorScheme.primary,
-                                        activeTrackColor = MaterialTheme.colorScheme.primary
+                                        thumbColor = MaterialTheme.colorScheme.onSurface,
+                                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                                        inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
                                     )
                                 )
                             }
