@@ -174,12 +174,12 @@ private fun ThemePicker(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // ----- Color Tint Themes -----
+                // ----- Choose Color Scheme -----
                 item {
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         BackgroundColorProvider(MaterialTheme.colorScheme.surfaceVariant) {
                             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("Color Tints", style = MaterialTheme.typography.titleMedium)
+                                Text("Choose Color Scheme", style = MaterialTheme.typography.titleMedium)
 
                                 TintRow(row = tintRow1, currentPreset = currentPreset, isDarkTheme = isDarkTheme, onPick = {
                                     scope.launch { themeManager.applyPresetTheme(it); val newColors = it.getColors(); applyColorAndStyle(themeManager, newColors, style, currentIntensity) }
@@ -188,17 +188,7 @@ private fun ThemePicker(
                                 TintRow(row = tintRow2, currentPreset = currentPreset, isDarkTheme = isDarkTheme, onPick = {
                                     scope.launch { themeManager.applyPresetTheme(it); val newColors = it.getColors(); applyColorAndStyle(themeManager, newColors, style, currentIntensity) }
                                 })
-                            }
-                        }
-                    }
-                }
 
-                // ----- Curated Themes -----
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                        BackgroundColorProvider(MaterialTheme.colorScheme.surfaceVariant) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text("Curated", style = MaterialTheme.typography.titleMedium)
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     curatedRow.forEach { preset ->
                                         val swatch = if (isDarkTheme) preset.getColors().primaryDark else preset.getColors().primaryLight
