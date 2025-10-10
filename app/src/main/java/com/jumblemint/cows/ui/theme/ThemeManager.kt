@@ -252,7 +252,7 @@ class ThemeManager(private val repository: CattleRepository) {
                 ?: ThemeMode.SYSTEM
         }
 
-    // Intensity (fade amount used by the editor to set alpha on backgrounds/cards)
+    // Intensity (fade amount used by the editor to set alpha on backgrounds/cards) - deprecated, use separate
     suspend fun updateIntensity(intensity: Float) {
         repository.insertOrUpdateSetting(Settings(SettingsKeys.THEME_INTENSITY, intensity.toString()))
     }
@@ -260,6 +260,24 @@ class ThemeManager(private val repository: CattleRepository) {
     fun getCurrentIntensity(): Flow<Float> =
         repository.getAllSettings().map { settings ->
             settings.find { it.key == SettingsKeys.THEME_INTENSITY }?.value?.toFloatOrNull() ?: 0.2f
+        }
+
+    suspend fun updateLightIntensity(intensity: Float) {
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.THEME_INTENSITY_LIGHT, intensity.toString()))
+    }
+
+    fun getLightIntensity(): Flow<Float> =
+        repository.getAllSettings().map { settings ->
+            settings.find { it.key == SettingsKeys.THEME_INTENSITY_LIGHT }?.value?.toFloatOrNull() ?: 0.2f
+        }
+
+    suspend fun updateDarkIntensity(intensity: Float) {
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.THEME_INTENSITY_DARK, intensity.toString()))
+    }
+
+    fun getDarkIntensity(): Flow<Float> =
+        repository.getAllSettings().map { settings ->
+            settings.find { it.key == SettingsKeys.THEME_INTENSITY_DARK }?.value?.toFloatOrNull() ?: 0.2f
         }
 
     // Colors
@@ -341,6 +359,7 @@ class ThemeManager(private val repository: CattleRepository) {
 
     suspend fun resetToDefaults() {
         applyPresetTheme(PresetTheme.TINT_BLUE)
-        updateIntensity(0.2f)
+        updateLightIntensity(0.2f)
+        updateDarkIntensity(0.2f)
     }
 }

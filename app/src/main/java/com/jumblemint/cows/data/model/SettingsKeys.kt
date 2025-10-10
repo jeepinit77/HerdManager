@@ -43,7 +43,9 @@ object SettingsKeys {
     // General App Settings
     const val CURRENT_THEME_NAME = "current_theme_name" // Stores the enum name of the current preset or "CUSTOM"
     const val THEME_MODE = "theme_mode" // Stores "LIGHT", "DARK", or "SYSTEM"
-    const val THEME_INTENSITY = "theme_intensity" // Stores the current intensity value (Float)
+    const val THEME_INTENSITY_LIGHT = "theme_intensity_light" // Stores the intensity for light theme (Float)
+    const val THEME_INTENSITY_DARK = "theme_intensity_dark" // Stores the intensity for dark theme (Float)
+    const val THEME_INTENSITY = "theme_intensity" // Deprecated: use separate light/dark
     const val SYNC_URL = "sync_url"
     const val SYNC_INTERVAL_HOURS = "sync_interval_hours"
     const val LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
