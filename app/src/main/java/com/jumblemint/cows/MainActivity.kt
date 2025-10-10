@@ -277,10 +277,17 @@ fun CattleManagerApp() {
                                 }
                             }
                             if (currentScreenForUI == Screen.TagColorsManagement) {
-                                IconButton(onClick = { 
+                                IconButton(onClick = {
                                     resetTriggered = true
                                 }) {
                                     Icon(Icons.Filled.Refresh, contentDescription = "Reset to Defaults")
+                                }
+                            }
+                            if (currentScreenForUI == Screen.ThemeSettings) {
+                                IconButton(onClick = {
+                                    resetTriggered = true
+                                }) {
+                                    Icon(Icons.Filled.Refresh, contentDescription = "Reset Theme to Default")
                                 }
                             }
                             if (currentScreenForUI == Screen.CowInfo || 

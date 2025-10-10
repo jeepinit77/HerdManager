@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,8 +28,11 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ThemeSettingsScreen(
+    modifier: Modifier = Modifier,
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
+    resetTriggered: Boolean = false,
+    onResetHandled: () -> Unit = {}
+
 ) {
     val context = LocalContext.current
     val db = CattleDatabase.getDatabase(context)
@@ -47,6 +51,8 @@ fun ThemeSettingsScreen(
     val systemDark = isSystemInDarkTheme()
     var currentMode by remember { mutableStateOf(ThemeMode.SYSTEM) }
     var previewDark by remember { mutableStateOf(systemDark) }
+    var showResetConfirm by remember { mutableStateOf(false) }
+    var resetCount by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
         currentMode = themeManager.getThemeMode()
@@ -55,6 +61,40 @@ fun ThemeSettingsScreen(
             ThemeMode.DARK -> true
             ThemeMode.SYSTEM -> systemDark
         }
+    }
+
+    LaunchedEffect(resetTriggered) {
+        if (resetTriggered) {
+            showResetConfirm = true
+            onResetHandled()
+        }
+    }
+
+    if (showResetConfirm) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirm = false },
+            icon = { Icon(Icons.Default.WarningAmber, contentDescription = "Warning") },
+            title = { Text("Reset Theme?") },
+            text = { Text("This will reset the theme to the default settings. This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        scope.launch {
+                            themeManager.resetToDefaults()
+                            // Reset local state to defaults after successful reset
+                            currentMode = ThemeMode.SYSTEM
+                            previewDark = systemDark
+                            resetCount++ // Trigger recomposition with new remembered state
+                            showResetConfirm = false
+                        }
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                ) { Text("Reset") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
+            }
+        )
     }
 
     Column(modifier.fillMaxSize()) {
@@ -95,6 +135,7 @@ fun ThemeSettingsScreen(
             currentPreset = currentPreset,
             isDarkTheme = previewDark,
             scope = scope,
+            resetCount = resetCount,
             modifier = Modifier.weight(1f)
         )
     }
@@ -144,11 +185,12 @@ private fun ThemePicker(
     currentPreset: PresetTheme,
     isDarkTheme: Boolean,
     scope: CoroutineScope,
+    resetCount: Int,
     modifier: Modifier = Modifier
 ) {
     val intensity by themeManager.getCurrentIntensity().collectAsState(initial = 0.2f)
     var currentIntensity by remember(intensity) { mutableStateOf(intensity) }
-    var style by remember { mutableStateOf(ThemeStyle.COLORED_CARDS) }
+    var style by remember(resetCount) { mutableStateOf(ThemeStyle.COLORED_CARDS) }
 
     // --- Two rows of tint themes ---
     val tintRow1 = listOf(
