@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
-import com.jumblemint.cows.ui.theme.getContrastingTextColor
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.ui.theme.BackgroundColorProvider
 import com.jumblemint.cows.ui.theme.SmartText
 // import androidx.compose.material.icons.filled.Lightbulb // Removed
@@ -123,7 +123,7 @@ fun CowCard(
                             ) {
                                 onToggleWatch?.let {
                                     IconButton(onClick = it) {
-                                        val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else getContrastingTextColor(genderColor).copy(alpha = 0.7f)
+                                        val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else genderColor.contrastingTextColor().copy(alpha = 0.7f)
                                         Icon(
                                             imageVector = Icons.Filled.Star,
                                             contentDescription = if (cow.isWatched) "Unwatch" else "Watch",
@@ -136,7 +136,7 @@ fun CowCard(
                                         Icon(
                                             imageVector = Icons.Filled.Edit,
                                             contentDescription = "Edit Cow",
-                                            tint = getContrastingTextColor(genderColor)
+                                            tint = genderColor.contrastingTextColor()
                                         )
                                     }
                                 }

@@ -7,8 +7,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -19,7 +19,6 @@ import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -27,7 +26,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import android.widget.Toast
-import kotlinx.coroutines.delay
+import androidx.compose.ui.graphics.vector.ImageVector
+import kotlinx.coroutines.launch
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.navigation.*
@@ -41,7 +41,6 @@ import com.jumblemint.cows.ui.components.rememberGlobalSnackbarState
 import com.jumblemint.cows.ui.theme.ThemeManager
 import com.jumblemint.cows.ui.theme.ThemeMode
 import com.jumblemint.cows.CattleApplication
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,7 +62,7 @@ class MainActivity : ComponentActivity() {
             }
             val themeManager = remember(repository) { ThemeManager(repository) }
             val themeMode by themeManager.getThemeModeFlow().collectAsState(initial = ThemeMode.SYSTEM)
-            
+
             CowsTheme(themeMode = themeMode) {
                 CattleManagerApp()
             }
@@ -91,10 +90,10 @@ fun getScreenForPageIndex(index: Int): Screen? = when (index) {
 
 fun isMainTabScreen(screen: Screen?): Boolean {
     return screen == Screen.Dashboard ||
-           screen == Screen.Cows ||
-           screen == Screen.Pastures ||
-           screen == Screen.Activities ||
-           screen == Screen.Notes
+            screen == Screen.Cows ||
+            screen == Screen.Pastures ||
+            screen == Screen.Activities ||
+            screen == Screen.Notes
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -112,7 +111,7 @@ fun CattleManagerApp() {
     var hasUnsavedChanges by remember { mutableStateOf(false) }
     var backPressed by remember { mutableStateOf(false) }
     var resetTriggered by remember { mutableStateOf(false) }
-    
+
     // Double back to exit functionality
     var backPressedTime by remember { mutableStateOf(0L) }
     val context = LocalContext.current
@@ -134,7 +133,7 @@ fun CattleManagerApp() {
     LaunchedEffect(pagerState.currentPage) {
         lastPagerPage.value = pagerState.currentPage
     }
-    
+
     val currentScreenForUI = if (currentScreenFromNav == Screen.MainPager) {
         getScreenForPageIndex(pagerState.currentPage)
     } else {
@@ -170,124 +169,115 @@ fun CattleManagerApp() {
                 )
             },
             topBar = {
+                // --- Unified TopAppBar styling via AppTopBar ---
                 if (isMainTabScreen(currentScreenForUI)) {
-                    CenterAlignedTopAppBar(
-                        title = { Text(currentScreenForUI?.title ?: "Cattle Manager") }
+                    AppTopBar(
+                        title = currentScreenForUI?.title ?: "Cattle Manager"
                     )
-                } else if (currentScreenForUI == Screen.CowDetail || currentScreenForUI == Screen.NoteDetail || currentScreenForUI == Screen.AddActivity || currentScreenForUI == Screen.AddActivityWithId) {
-                    CenterAlignedTopAppBar(
-                        title = {
-                            when (currentScreenForUI) {
-                                Screen.CowDetail -> {
-                                    val cowId = navBackStackEntry?.arguments?.getLong("cowId") ?: 0L
-                                    val context = LocalContext.current
-                                    val application = context.applicationContext as CattleApplication
-                                    val database = CattleDatabase.getDatabase(context)
-                                    val repository = remember(database) {
-                                        CattleRepository(
-                                            database.cowDao(), database.pastureDao(), database.activityDao(),
-                                            database.settingsDao(), database.noteDao(), database.userDao(),
-                                            database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
-                                            database.activityTypeConfigDao(), database.breedDao()
-                                        )
-                                    }
-                                    val viewModel: CowDetailViewModel = viewModel(
-                                        factory = CowDetailViewModelFactory(application, repository, cowId)
-                                    )
-                                    val uiState by viewModel.uiState.collectAsState()
-                                    if (cowId == 0L) {
-                                        Text("Add Animal")
-                                    } else {
-                                        val name = uiState.name
-                                        Text(if (name.isNotBlank()) "Edit $name" else "Edit Animal")
-                                    }
-                                }
-                                Screen.NoteDetail -> {
-                                    val noteId = navBackStackEntry?.arguments?.getLong("noteId") ?: 0L
-                                    Text(if (noteId == 0L) "Add Note" else "Edit Note")
-                                }
-                                Screen.AddActivity -> Text("Add Activity")
-                                Screen.AddActivityWithId -> Text("Edit Activity")
-                                else -> Text("Details")
+                } else if (
+                    currentScreenForUI == Screen.CowDetail ||
+                    currentScreenForUI == Screen.NoteDetail ||
+                    currentScreenForUI == Screen.AddActivity ||
+                    currentScreenForUI == Screen.AddActivityWithId
+                ) {
+                    val detailTitle: String = when (currentScreenForUI) {
+                        Screen.CowDetail -> {
+                            val cowId = navBackStackEntry?.arguments?.getLong("cowId") ?: 0L
+                            val contextLocal = LocalContext.current
+                            val application = contextLocal.applicationContext as CattleApplication
+                            val database = CattleDatabase.getDatabase(contextLocal)
+                            val repository = remember(database) {
+                                CattleRepository(
+                                    database.cowDao(), database.pastureDao(), database.activityDao(),
+                                    database.settingsDao(), database.noteDao(), database.userDao(),
+                                    database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
+                                    database.activityTypeConfigDao(), database.breedDao()
+                                )
                             }
-                        },
+                            val viewModel: CowDetailViewModel = viewModel(
+                                factory = CowDetailViewModelFactory(application, repository, cowId)
+                            )
+                            val uiState by viewModel.uiState.collectAsState()
+                            if (cowId == 0L) "Add Animal"
+                            else {
+                                val name = uiState.name
+                                if (name.isNotBlank()) "Edit $name" else "Edit Animal"
+                            }
+                        }
+                        Screen.NoteDetail -> {
+                            val noteId = navBackStackEntry?.arguments?.getLong("noteId") ?: 0L
+                            if (noteId == 0L) "Add Note" else "Edit Note"
+                        }
+                        Screen.AddActivity -> "Add Activity"
+                        Screen.AddActivityWithId -> "Edit Activity"
+                        else -> "Details"
+                    }
+
+                    AppTopBar(
+                        title = detailTitle,
                         navigationIcon = {
-                            IconButton(onClick = { 
-                                backPressed = true
-                            }) {
+                            IconButton(onClick = { backPressed = true }) {
                                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                             }
                         },
                         actions = {
                             if (hasUnsavedChanges) {
-                                IconButton(onClick = { 
-                                    saveTriggered = true
-                                }) {
+                                IconButton(onClick = { saveTriggered = true }) {
                                     Icon(Icons.Filled.Done, contentDescription = "Save")
                                 }
                             }
                         }
                     )
                 } else if (currentScreenForUI != null) {
-                    CenterAlignedTopAppBar(
-                        title = {
-                            if (currentScreenForUI == Screen.CowList) {
-                                val type = navBackStackEntry?.arguments?.getString("type")
-                                val value = navBackStackEntry?.arguments?.getString("value")
-                                val context = LocalContext.current
-                                val application = context.applicationContext as CattleApplication
-                                val database = CattleDatabase.getDatabase(context)
-                                val repository = remember(database) {
-                                    CattleRepository(
-                                        database.cowDao(), database.pastureDao(), database.activityDao(),
-                                        database.settingsDao(), database.noteDao(), database.userDao(),
-                                        database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
-                                        database.activityTypeConfigDao(), database.breedDao()
-                                    )
-                                }
-                                val pasture = if (type == "pasture" && value != null) {
-                                    repository.getPastureById(value).collectAsState(initial = null).value
-                                } else null
-                                val pastureName = pasture?.name ?: value
-                                val dynamicTitle = when (type) {
-                                    "status" -> {
-                                        value?.let {
-                                            val statusName = it.lowercase().replaceFirstChar { char ->
-                                                if (char.isLowerCase()) char.titlecase() else char.toString()
-                                            }
-                                            "Status: $statusName"
-                                        } ?: "All Cattle"
+                    // Screens with dynamic titles and various actions
+                    val dynamicTitle: String = if (currentScreenForUI == Screen.CowList) {
+                        val type = navBackStackEntry?.arguments?.getString("type")
+                        val value = navBackStackEntry?.arguments?.getString("value")
+                        val contextLocal = LocalContext.current
+                        val database = CattleDatabase.getDatabase(contextLocal)
+                        val repository = remember(database) {
+                            CattleRepository(
+                                database.cowDao(), database.pastureDao(), database.activityDao(),
+                                database.settingsDao(), database.noteDao(), database.userDao(),
+                                database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
+                                database.activityTypeConfigDao(), database.breedDao()
+                            )
+                        }
+                        val pasture = if (type == "pasture" && value != null) {
+                            repository.getPastureById(value).collectAsState(initial = null).value
+                        } else null
+                        val pastureName = pasture?.name ?: value
+                        when (type) {
+                            "status" -> {
+                                value?.let {
+                                    val statusName = it.lowercase().replaceFirstChar { ch ->
+                                        if (ch.isLowerCase()) ch.titlecase() else ch.toString()
                                     }
-                                    "classification" -> {
-                                        value?.let { "Classification: $it" } ?: "Cattle by Classification"
-                                    }
-                                    "pasture" -> {
-                                        pastureName?.let { "Pasture: $it" } ?: "Cattle by Pasture"
-                                    }
-                                    "pastureName" -> {
-                                        if (value == "Unassigned") {
-                                            "Unassigned Animals"
-                                        } else {
-                                            value?.let { "Pasture: $it" } ?: "Cattle by Pasture"
-                                        }
-                                    }
-                                    "unassigned" -> "Unassigned Animals"
-                                    "notCalved" -> "Not Calved (9+ Months)"
-                                    "calved" -> "Cattle with Active Calves"
-                                    "age" -> {
-                                        "Age: ${AgeUtils.getLabel(value)}"
-                                    }
-                                    "watching" -> "Watched Cattle"
-                                    else -> "Cattle"
-                                }
-                                Text(dynamicTitle)
-                            } else {
-                                Text(currentScreenForUI.title ?: "Cattle Manager")
+                                    "Status: $statusName"
+                                } ?: "All Cattle"
                             }
-                        },
+                            "classification" -> value?.let { "Classification: $it" } ?: "Cattle by Classification"
+                            "pasture" -> pastureName?.let { "Pasture: $it" } ?: "Cattle by Pasture"
+                            "pastureName" -> if (value == "Unassigned") "Unassigned Animals" else value?.let { "Pasture: $it" } ?: "Cattle by Pasture"
+                            "unassigned" -> "Unassigned Animals"
+                            "notCalved" -> "Not Calved (9+ Months)"
+                            "calved" -> "Cattle with Active Calves"
+                            "age" -> "Age: ${AgeUtils.getLabel(value)}"
+                            "watching" -> "Watched Cattle"
+                            else -> "Cattle"
+                        }
+                    } else {
+                        currentScreenForUI.title ?: "Cattle Manager"
+                    }
+
+                    AppTopBar(
+                        title = dynamicTitle,
                         navigationIcon = {
                             IconButton(onClick = {
-                                if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.NoteDetail) {
+                                if (currentScreenForUI == Screen.AddPasture ||
+                                    currentScreenForUI == Screen.EditPasture ||
+                                    currentScreenForUI == Screen.NoteDetail
+                                ) {
                                     backPressed = true
                                 } else {
                                     navController.popBackStack()
@@ -300,15 +290,15 @@ fun CattleManagerApp() {
                             if (currentScreenForUI == Screen.CowInfo) {
                                 val cowIdFromArgs = navBackStackEntry?.arguments?.getLong("cowId")
                                 cowIdFromArgs?.let { idVal ->
-                                    if (idVal != 0L) { 
-                                        IconButton(onClick = { 
+                                    if (idVal != 0L) {
+                                        IconButton(onClick = {
                                             Log.d("EditButtonDebug", "Navigating to CowDetail with ID: $idVal")
-                                            navController.navigate(Screen.CowDetail.createRoute(idVal)) 
+                                            navController.navigate(Screen.CowDetail.createRoute(idVal))
                                         }) {
                                             Icon(Icons.Filled.Edit, contentDescription = "Edit")
                                         }
                                     } else {
-                                         Log.w("EditButtonDebug", "CowId is 0L, Edit button not shown or disabled.")
+                                        Log.w("EditButtonDebug", "CowId is 0L, Edit button not shown or disabled.")
                                     }
                                 } ?: run {
                                     Log.w("EditButtonDebug", "Could not retrieve cowId from arguments for Edit button.")
@@ -317,41 +307,43 @@ fun CattleManagerApp() {
                             if (currentScreenForUI == Screen.NoteInfo) {
                                 val noteIdFromArgs = navBackStackEntry?.arguments?.getLong("noteId")
                                 noteIdFromArgs?.let { idVal ->
-                                    IconButton(onClick = { 
-                                        navController.navigate(Screen.NoteDetail.createRoute(idVal)) 
+                                    IconButton(onClick = {
+                                        navController.navigate(Screen.NoteDetail.createRoute(idVal))
                                     }) {
                                         Icon(Icons.Filled.Edit, contentDescription = "Edit")
                                     }
                                 }
                             }
-                            if ((currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.NoteDetail || currentScreenForUI == Screen.AddActivity || currentScreenForUI == Screen.AddActivityWithId) && hasUnsavedChanges) {
-                                IconButton(onClick = { 
-                                    saveTriggered = true
-                                }) {
+                            if ((currentScreenForUI == Screen.AddPasture ||
+                                        currentScreenForUI == Screen.EditPasture ||
+                                        currentScreenForUI == Screen.NoteDetail ||
+                                        currentScreenForUI == Screen.AddActivity ||
+                                        currentScreenForUI == Screen.AddActivityWithId) && hasUnsavedChanges
+                            ) {
+                                IconButton(onClick = { saveTriggered = true }) {
                                     Icon(Icons.Filled.Done, contentDescription = "Save")
                                 }
                             }
                             if (currentScreenForUI == Screen.TagColorsManagement) {
-                                IconButton(onClick = {
-                                    resetTriggered = true
-                                }) {
+                                IconButton(onClick = { resetTriggered = true }) {
                                     Icon(Icons.Filled.Refresh, contentDescription = "Reset to Defaults")
                                 }
                             }
                             if (currentScreenForUI == Screen.ThemeSettings) {
-                                IconButton(onClick = {
-                                    resetTriggered = true
-                                }) {
+                                IconButton(onClick = { resetTriggered = true }) {
                                     Icon(Icons.Filled.Refresh, contentDescription = "Reset Theme to Default")
                                 }
                             }
-                            if (currentScreenForUI == Screen.CowInfo || 
-                                currentScreenForUI == Screen.PastureDetail || 
+                            if (currentScreenForUI == Screen.CowInfo ||
+                                currentScreenForUI == Screen.PastureDetail ||
                                 currentScreenForUI == Screen.CowList ||
                                 currentScreenForUI == Screen.ActivityInfo ||
                                 currentScreenForUI == Screen.WorkingList ||
-                                currentScreenForUI == Screen.NoteInfo) {
-                                IconButton(onClick = { navController.popBackStack(Screen.MainPager.route, inclusive = false) }) {
+                                currentScreenForUI == Screen.NoteInfo
+                            ) {
+                                IconButton(onClick = {
+                                    navController.popBackStack(Screen.MainPager.route, inclusive = false)
+                                }) {
                                     Icon(Icons.Filled.Close, contentDescription = "Close")
                                 }
                             }
@@ -360,15 +352,15 @@ fun CattleManagerApp() {
                 }
             },
             bottomBar = {
-                if (currentScreenFromNav == Screen.MainPager) { 
+                if (currentScreenFromNav == Screen.MainPager) {
                     NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.surface
+                        containerColor = MaterialTheme.colorScheme.primary
                     ) {
                         bottomNavItems.forEach { item ->
                             val pageIndex = getPageIndexForScreen(item.screen)
                             NavigationBarItem(
                                 icon = { Icon(item.icon, item.label) },
-                                label = { 
+                                label = {
                                     Text(
                                         text = item.label,
                                         maxLines = 1,
@@ -391,17 +383,16 @@ fun CattleManagerApp() {
                             )
                         }
                         NavigationBarItem(
-                            selected = currentScreenForUI == Screen.Settings, 
+                            selected = currentScreenForUI == Screen.Settings,
                             onClick = {
-                                navController.navigate(Screen.Settings.route) {
-                                }
+                                navController.navigate(Screen.Settings.route) { }
                             },
-                            icon = { Icon(Icons.Filled.Settings, "Settings") }, 
+                            icon = { Icon(Icons.Filled.Settings, "Settings") },
                             label = { Text("Settings") },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                                indicatorColor = MaterialTheme.colorScheme.primary
+                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedTextColor = MaterialTheme.colorScheme.onPrimary,
+                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
                             )
                         )
                     }
@@ -414,7 +405,7 @@ fun CattleManagerApp() {
                     backPressed = true
                 }
             }
-            
+
             // Handle double back to exit for MainPager screens
             if (currentScreenFromNav == Screen.MainPager) {
                 BackHandler {
@@ -429,7 +420,7 @@ fun CattleManagerApp() {
                     }
                 }
             }
-            
+
             CattleNavigation(
                 navController = navController,
                 mainScaffoldPadding = innerPadding,
@@ -445,6 +436,26 @@ fun CattleManagerApp() {
             )
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppTopBar(
+    title: String,
+    navigationIcon: (@Composable () -> Unit)? = null,
+    actions: @Composable RowScope.() -> Unit = {}
+) {
+    CenterAlignedTopAppBar(
+        title = { Text(title) },
+        navigationIcon = { navigationIcon?.invoke() },
+        actions = actions,
+        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            titleContentColor = MaterialTheme.colorScheme.onPrimary,
+            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+        )
+    )
 }
 
 data class BottomNavItem(val screen: Screen, val icon: ImageVector, val label: String)

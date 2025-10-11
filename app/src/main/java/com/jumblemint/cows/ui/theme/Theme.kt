@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -23,53 +22,22 @@ import androidx.core.view.WindowCompat
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 
-/** Blend fg over bg, preserving hue and using alpha strictly as fade. */
-fun blend(fg: Color, bg: Color): Color {
-    val a = fg.alpha
-    if (a == 1f) return fg
-    val inv = 1f - a
-    return Color(
-        red = fg.red * a + bg.red * inv,
-        green = fg.green * a + bg.green * inv,
-        blue = fg.blue * a + bg.blue * inv,
-        alpha = 1f
-    )
-}
-
 private fun createDarkColorScheme(colors: CustomColors) = darkColorScheme(
     primary = colors.primaryDark,
-    onPrimary = determineOnColor(colors.primaryDark),
     secondary = colors.secondaryDark,
-    onSecondary = determineOnColor(colors.secondaryDark),
     tertiary = colors.tertiaryDark,
-    onTertiary = determineOnColor(colors.tertiaryDark),
-
-    background = blend(colors.backgroundDark, Color.Black),
-    onBackground = determineOnColor(blend(colors.backgroundDark, Color.Black)),
-    surface = blend(colors.surfaceDark, Color.Black),
-    onSurface = determineOnColor(blend(colors.surfaceDark, Color.Black)),
-    surfaceVariant = blend(colors.cardBackgroundDark, blend(colors.backgroundDark, Color.Black)),
-    onSurfaceVariant = determineOnColor(
-        blend(colors.cardBackgroundDark, blend(colors.backgroundDark, Color.Black))
-    )
+    background = colors.backgroundDark,
+    surface = colors.surfaceDark,
+    surfaceVariant = colors.cardBackgroundDark
 )
 
 private fun createLightColorScheme(colors: CustomColors) = lightColorScheme(
     primary = colors.primaryLight,
-    onPrimary = determineOnColor(colors.primaryLight),
     secondary = colors.secondaryLight,
-    onSecondary = determineOnColor(colors.secondaryLight),
     tertiary = colors.tertiaryLight,
-    onTertiary = determineOnColor(colors.tertiaryLight),
-
-    background = blend(colors.backgroundLight, Color.White),
-    onBackground = determineOnColor(blend(colors.backgroundLight, Color.White)),
-    surface = blend(colors.surfaceLight, Color.White),
-    onSurface = determineOnColor(blend(colors.surfaceLight, Color.White)),
-    surfaceVariant = blend(colors.cardBackgroundLight, blend(colors.backgroundLight, Color.White)),
-    onSurfaceVariant = determineOnColor(
-        blend(colors.cardBackgroundLight, blend(colors.backgroundLight, Color.White))
-    )
+    background = colors.backgroundLight,
+    surface = colors.surfaceLight,
+    surfaceVariant = colors.cardBackgroundLight
 )
 
 private val SharpShapes = Shapes(

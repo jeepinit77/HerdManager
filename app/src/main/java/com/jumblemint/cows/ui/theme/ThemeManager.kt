@@ -11,10 +11,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
 // ---- Contrast helpers ----
-fun determineOnColor(backgroundColor: Color): Color =
+fun getContrastingTextColor(backgroundColor: Color): Color =
     if (backgroundColor.luminance() > 0.5f) Color(0xFF000000) else Color(0xFFFFFFFF)
-
-fun getContrastingTextColor(backgroundColor: Color): Color = determineOnColor(backgroundColor)
 fun Color.contrastingTextColor(): Color = getContrastingTextColor(this)
 
 // ---- Theme model ----

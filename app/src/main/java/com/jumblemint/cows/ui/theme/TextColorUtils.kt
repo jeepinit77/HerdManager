@@ -8,6 +8,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
@@ -18,6 +19,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.TextUnit
+
+private fun Color.contrasting(): Color = if (luminance() > 0.5f) Color.Black else Color.White
 
 @Composable
 fun SmartText(
@@ -42,7 +45,7 @@ fun SmartText(
 ) {
     val finalColor =
         if (color != Color.Unspecified) color
-        else if (backgroundColor != null) getContrastingTextColor(backgroundColor)
+        else if (backgroundColor != null) backgroundColor.contrasting()
         else style.color.takeIf { it != Color.Unspecified } ?: MaterialTheme.colorScheme.onSurface
 
     Text(
@@ -89,7 +92,7 @@ fun SmartText(
 ) {
     val finalColor =
         if (color != Color.Unspecified) color
-        else if (backgroundColor != null) getContrastingTextColor(backgroundColor)
+        else if (backgroundColor != null) backgroundColor.contrasting()
         else style.color.takeIf { it != Color.Unspecified } ?: MaterialTheme.colorScheme.onSurface
 
     Text(
@@ -113,7 +116,7 @@ fun SmartText(
     )
 }
 
-fun getTextColorForBackground(backgroundColor: Color): Color = getContrastingTextColor(backgroundColor)
+fun getTextColorForBackground(backgroundColor: Color): Color = backgroundColor.contrasting()
 
 val LocalBackgroundColor = staticCompositionLocalOf { Color.Unspecified }
 
