@@ -32,6 +32,7 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.navigation.*
 import com.jumblemint.cows.ui.theme.CowsTheme
+import com.jumblemint.cows.util.AgeUtils
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import com.jumblemint.cows.ui.components.GlobalSnackbarState
@@ -229,9 +230,63 @@ fun CattleManagerApp() {
                     )
                 } else if (currentScreenForUI != null) {
                     CenterAlignedTopAppBar(
-                        title = { Text(currentScreenForUI.title ?: "Cattle Manager") },
+                        title = {
+                            if (currentScreenForUI == Screen.CowList) {
+                                val type = navBackStackEntry?.arguments?.getString("type")
+                                val value = navBackStackEntry?.arguments?.getString("value")
+                                val context = LocalContext.current
+                                val application = context.applicationContext as CattleApplication
+                                val database = CattleDatabase.getDatabase(context)
+                                val repository = remember(database) {
+                                    CattleRepository(
+                                        database.cowDao(), database.pastureDao(), database.activityDao(),
+                                        database.settingsDao(), database.noteDao(), database.userDao(),
+                                        database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
+                                        database.activityTypeConfigDao(), database.breedDao()
+                                    )
+                                }
+                                val pasture = if (type == "pasture" && value != null) {
+                                    repository.getPastureById(value).collectAsState(initial = null).value
+                                } else null
+                                val pastureName = pasture?.name ?: value
+                                val dynamicTitle = when (type) {
+                                    "status" -> {
+                                        value?.let {
+                                            val statusName = it.lowercase().replaceFirstChar { char ->
+                                                if (char.isLowerCase()) char.titlecase() else char.toString()
+                                            }
+                                            "Status: $statusName"
+                                        } ?: "All Cattle"
+                                    }
+                                    "classification" -> {
+                                        value?.let { "Classification: $it" } ?: "Cattle by Classification"
+                                    }
+                                    "pasture" -> {
+                                        pastureName?.let { "Pasture: $it" } ?: "Cattle by Pasture"
+                                    }
+                                    "pastureName" -> {
+                                        if (value == "Unassigned") {
+                                            "Unassigned Animals"
+                                        } else {
+                                            value?.let { "Pasture: $it" } ?: "Cattle by Pasture"
+                                        }
+                                    }
+                                    "unassigned" -> "Unassigned Animals"
+                                    "notCalved" -> "Not Calved (9+ Months)"
+                                    "calved" -> "Cattle with Active Calves"
+                                    "age" -> {
+                                        "Age: ${AgeUtils.getLabel(value)}"
+                                    }
+                                    "watching" -> "Watched Cattle"
+                                    else -> "Cattle"
+                                }
+                                Text(dynamicTitle)
+                            } else {
+                                Text(currentScreenForUI.title ?: "Cattle Manager")
+                            }
+                        },
                         navigationIcon = {
-                            IconButton(onClick = { 
+                            IconButton(onClick = {
                                 if (currentScreenForUI == Screen.AddPasture || currentScreenForUI == Screen.EditPasture || currentScreenForUI == Screen.NoteDetail) {
                                     backPressed = true
                                 } else {
