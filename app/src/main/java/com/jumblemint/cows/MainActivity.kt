@@ -358,6 +358,7 @@ fun CattleManagerApp() {
                     ) {
                         bottomNavItems.forEach { item ->
                             val pageIndex = getPageIndexForScreen(item.screen)
+                            val isSelected = pagerState.currentPage == pageIndex
                             NavigationBarItem(
                                 icon = { Icon(item.icon, item.label) },
                                 label = {
@@ -367,7 +368,7 @@ fun CattleManagerApp() {
                                         overflow = TextOverflow.Ellipsis
                                     )
                                 },
-                                selected = pagerState.currentPage == pageIndex,
+                                selected = isSelected,
                                 onClick = {
                                     if (pageIndex != -1) {
                                         coroutineScope.launch {
@@ -377,8 +378,10 @@ fun CattleManagerApp() {
                                 },
                                 colors = NavigationBarItemDefaults.colors(
                                     selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                                    indicatorColor = MaterialTheme.colorScheme.primary
+                                    selectedTextColor = MaterialTheme.colorScheme.onPrimary,
+                                    unselectedIconColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                                    unselectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                                    indicatorColor = MaterialTheme.colorScheme.primary // No indicator needed
                                 )
                             )
                         }
@@ -390,9 +393,11 @@ fun CattleManagerApp() {
                             icon = { Icon(Icons.Filled.Settings, "Settings") },
                             label = { Text("Settings") },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.primary,
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
                                 selectedTextColor = MaterialTheme.colorScheme.onPrimary,
-                                indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f)
+                                unselectedIconColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                                unselectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
+                                indicatorColor = MaterialTheme.colorScheme.primary // No indicator needed
                             )
                         )
                     }

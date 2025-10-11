@@ -92,8 +92,7 @@ fun ToolsCard(onAddCalfClick: () -> Unit, onWorkingListClick: () -> Unit, onTodo
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
-                SmartText("Tools", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
-                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant)
+                SmartText("Tools", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -263,7 +262,7 @@ fun BreedingReportsCard(cowsNotCalvedIn9Months: Int, cowsCalvedIn9Months: Int, o
                     text = cowsNotCalvedIn9Months.toString(),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = if (cowsNotCalvedIn9Months > 0) MaterialTheme.colorScheme.error else LocalContentColor.current
+                    color = if (cowsNotCalvedIn9Months > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
