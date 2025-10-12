@@ -26,6 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import android.widget.Toast
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.launch
 import com.jumblemint.cows.data.database.CattleDatabase
@@ -365,9 +366,11 @@ fun CattleManagerApp() {
                     }
                     val themeManager = remember(repository) { ThemeManager(repository) }
                     val bottomNavBarAlpha by themeManager.getBottomNavBarAlpha().collectAsState(initial = 1.0f)
+                    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+                    val adjustedAlpha = if (isDark) 1.1f - bottomNavBarAlpha else bottomNavBarAlpha
 
                     NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = bottomNavBarAlpha)
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = adjustedAlpha)
                     ) {
                         bottomNavItems.forEach { item ->
                             val pageIndex = getPageIndexForScreen(item.screen)
@@ -475,13 +478,15 @@ fun AppTopBar(
     }
     val themeManager = remember(repository) { ThemeManager(repository) }
     val topAppBarAlpha by themeManager.getTopAppBarAlpha().collectAsState(initial = 1.0f)
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val adjustedAlpha = if (isDark) 1.1f - topAppBarAlpha else topAppBarAlpha
 
     CenterAlignedTopAppBar(
         title = { Text(title) },
         navigationIcon = { navigationIcon?.invoke() },
         actions = actions,
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = topAppBarAlpha),
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = adjustedAlpha),
             titleContentColor = MaterialTheme.colorScheme.onPrimary,
             navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
             actionIconContentColor = MaterialTheme.colorScheme.onPrimary

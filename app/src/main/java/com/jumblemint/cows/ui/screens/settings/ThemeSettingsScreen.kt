@@ -368,8 +368,10 @@ private fun ThemePicker(
     )
     val tintRow2 = listOf(
         PresetTheme.TINT_RED, PresetTheme.TINT_YELLOW, PresetTheme.TINT_TEAL,
-        PresetTheme.TINT_BROWN, PresetTheme.TINT_GRAY
+        PresetTheme.TINT_BROWN, PresetTheme.TINT_MULTICOLOR
     )
+
+    var showMoreThemes by remember { mutableStateOf(false) }
 
     // --- One row of curated themes ---
     val curatedRow = listOf(
@@ -450,33 +452,47 @@ private fun ThemePicker(
                                     Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    curatedRow.forEach { preset ->
-                                        val swatch =
-                                            if (isDarkTheme) preset.getColors().primaryDark else preset.getColors().primaryLight
-                                        PresetChip(
-                                            isSelected = currentPreset == preset,
-                                            name = preset.displayName,
-                                            color = swatch,
-                                            onClick = {
-                                                scope.launch {
-                                                    themeManager.applyPresetTheme(preset)
-                                                    val newColors = preset.getColors()
-                                                    applyLightColorAndStyle(
-                                                        themeManager,
-                                                        newColors,
-                                                        style,
-                                                        currentLightIntensity
-                                                    )
-                                                    applyDarkColorAndStyle(
-                                                        themeManager,
-                                                        newColors,
-                                                        style,
-                                                        currentDarkIntensity
-                                                    )
-                                                }
-                                            },
-                                            modifier = Modifier.weight(1f)
-                                        )
+                                    TextButton(
+                                        onClick = { showMoreThemes = !showMoreThemes },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(if (showMoreThemes) "Less" else "More")
+                                    }
+                                }
+
+                                if (showMoreThemes) {
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        curatedRow.forEach { preset ->
+                                            val swatch =
+                                                if (isDarkTheme) preset.getColors().primaryDark else preset.getColors().primaryLight
+                                            PresetChip(
+                                                isSelected = currentPreset == preset,
+                                                name = preset.displayName,
+                                                color = swatch,
+                                                onClick = {
+                                                    scope.launch {
+                                                        themeManager.applyPresetTheme(preset)
+                                                        val newColors = preset.getColors()
+                                                        applyLightColorAndStyle(
+                                                            themeManager,
+                                                            newColors,
+                                                            style,
+                                                            currentLightIntensity
+                                                        )
+                                                        applyDarkColorAndStyle(
+                                                            themeManager,
+                                                            newColors,
+                                                            style,
+                                                            currentDarkIntensity
+                                                        )
+                                                    }
+                                                },
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                        }
                                     }
                                 }
 
@@ -698,61 +714,54 @@ private fun ThemePicker(
                                         )
                                     )
 
-                                    ThemeMode.SYSTEM -> Column(
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        Text(
-                                            "Light Theme Intensity${if (isDarkTheme) "" else " (active)"}",
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                        Slider(
-                                            value = currentLightIntensity,
-                                            onValueChange = { currentLightIntensity = it },
-                                            onValueChangeFinished = {
-                                                scope.launch {
-                                                    applyLightColorAndStyle(
-                                                        themeManager,
-                                                        customColors,
-                                                        style,
-                                                        currentLightIntensity
-                                                    )
-                                                }
-                                            },
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(32.dp),
-                                            colors = SliderDefaults.colors(
-                                                thumbColor = MaterialTheme.colorScheme.onSurface,
-                                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                    ThemeMode.SYSTEM -> {
+                                        if (isDarkTheme) {
+                                            Slider(
+                                                value = currentDarkIntensity,
+                                                onValueChange = { currentDarkIntensity = it },
+                                                onValueChangeFinished = {
+                                                    scope.launch {
+                                                        applyDarkColorAndStyle(
+                                                            themeManager,
+                                                            customColors,
+                                                            style,
+                                                            currentDarkIntensity
+                                                        )
+                                                    }
+                                                },
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(32.dp),
+                                                colors = SliderDefaults.colors(
+                                                    thumbColor = MaterialTheme.colorScheme.onSurface,
+                                                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                                                    inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                                )
                                             )
-                                        )
-                                        Text(
-                                            "Dark Theme Intensity${if (isDarkTheme) " (active)" else ""}",
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                        Slider(
-                                            value = currentDarkIntensity,
-                                            onValueChange = { currentDarkIntensity = it },
-                                            onValueChangeFinished = {
-                                                scope.launch {
-                                                    applyDarkColorAndStyle(
-                                                        themeManager,
-                                                        customColors,
-                                                        style,
-                                                        currentDarkIntensity
-                                                    )
-                                                }
-                                            },
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(32.dp),
-                                            colors = SliderDefaults.colors(
-                                                thumbColor = MaterialTheme.colorScheme.onSurface,
-                                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                        } else {
+                                            Slider(
+                                                value = currentLightIntensity,
+                                                onValueChange = { currentLightIntensity = it },
+                                                onValueChangeFinished = {
+                                                    scope.launch {
+                                                        applyLightColorAndStyle(
+                                                            themeManager,
+                                                            customColors,
+                                                            style,
+                                                            currentLightIntensity
+                                                        )
+                                                    }
+                                                },
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(32.dp),
+                                                colors = SliderDefaults.colors(
+                                                    thumbColor = MaterialTheme.colorScheme.onSurface,
+                                                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                                                    inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                                )
                                             )
-                                        )
+                                        }
                                     }
                                 }
                             }

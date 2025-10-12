@@ -62,7 +62,7 @@ enum class PresetTheme(val displayName: String) {
     TINT_YELLOW("Yellow"),
     TINT_TEAL("Teal"),
     TINT_BROWN("Brown"),
-    TINT_GRAY("Gray"),
+    TINT_MULTICOLOR("Multicolor"),
 
     // Curated row
     SLATE_GRAY("Industrial Slate"),
@@ -92,7 +92,7 @@ fun PresetTheme.getColors(): CustomColors = when (this) {
         backgroundLight = Color(0xFFE9F6EC), surfaceLight = Color(0xFFD7F0DD), cardBackgroundLight = Color(0xFFF2FBF4),
         maleColorLight = Color(0xFF1565C0), femaleColorLight = Color(0xFFC2185B), tbdColorLight = Color(0xFF374151),
 
-        primaryDark = Color(0xFF81C784), secondaryDark = Color(0xFF66BB6A), tertiaryDark = Color(0xFFA5D6A7),
+        primaryDark = Color(0xFF1B5E20), secondaryDark = Color(0xFF2E7D32), tertiaryDark = Color(0xFF388E3C),
         backgroundDark = Color(0xFF0B160C), surfaceDark = Color(0xFF152418), cardBackgroundDark = Color(0xFF1E2E22),
         maleColorDark = Color(0xFF64B5F6), femaleColorDark = Color(0xFFF48FB1), tbdColorDark = Color(0xFF88A08F)
     )
@@ -167,14 +167,14 @@ fun PresetTheme.getColors(): CustomColors = when (this) {
         maleColorDark = Color(0xFF8D6E63), femaleColorDark = Color(0xFFFF7043), tbdColorDark = Color(0xFF9E7F73)
     )
 
-    PresetTheme.TINT_GRAY -> CustomColors(
-        primaryLight = Color(0xFF525252), secondaryLight = Color(0xFF6B7280), tertiaryLight = Color(0xFF9CA3AF),
-        backgroundLight = Color(0xFFF7F7F7), surfaceLight = Color(0xFFEDEDED), cardBackgroundLight = Color(0xFFFFFFFF),
-        maleColorLight = Color(0xFF4B5563), femaleColorLight = Color(0xFF6B7280), tbdColorLight = Color(0xFF737373),
+    PresetTheme.TINT_MULTICOLOR -> CustomColors(
+        primaryLight = Color(0xFFE91E63), secondaryLight = Color(0xFF2196F3), tertiaryLight = Color(0xFF4CAF50),
+        backgroundLight = Color(0xFFFFF8E1), surfaceLight = Color(0xFFF3E5F5), cardBackgroundLight = Color(0xFFE8F5E8),
+        maleColorLight = Color(0xFF2196F3), femaleColorLight = Color(0xFFE91E63), tbdColorLight = Color(0xFFFF9800),
 
-        primaryDark = Color(0xFFA3A3A3), secondaryDark = Color(0xFF9CA3AF), tertiaryDark = Color(0xFFCBD5E1),
-        backgroundDark = Color(0xFF121212), surfaceDark = Color(0xFF1E1E1E), cardBackgroundDark = Color(0xFF232323),
-        maleColorDark = Color(0xFF9CA3AF), femaleColorDark = Color(0xFFB0B6BF), tbdColorDark = Color(0xFFC7C7C7)
+        primaryDark = Color(0xFFF48FB1), secondaryDark = Color(0xFF64B5F6), tertiaryDark = Color(0xFF81C784),
+        backgroundDark = Color(0xFF1A1A1A), surfaceDark = Color(0xFF2A1A2A), cardBackgroundDark = Color(0xFF1A2A1A),
+        maleColorDark = Color(0xFF64B5F6), femaleColorDark = Color(0xFFF48FB1), tbdColorDark = Color(0xFFFFB74D)
     )
 
     // --------- Curated themes ----------
