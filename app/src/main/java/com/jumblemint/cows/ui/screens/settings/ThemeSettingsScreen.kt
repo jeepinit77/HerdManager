@@ -9,6 +9,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -449,15 +451,24 @@ private fun ThemePicker(
                                 )
 
                                 Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable { showMoreThemes = !showMoreThemes }
+                                        .padding(vertical = 4.dp),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    TextButton(
-                                        onClick = { showMoreThemes = !showMoreThemes },
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text(if (showMoreThemes) "Less" else "More")
-                                    }
+                                    Text(
+                                        if (showMoreThemes) "Show Less" else "Show More",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.primary
+                                    )
+                                    Icon(
+                                        if (showMoreThemes) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                        contentDescription = if (showMoreThemes) "Collapse" else "Expand",
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
                                 }
 
                                 if (showMoreThemes) {
