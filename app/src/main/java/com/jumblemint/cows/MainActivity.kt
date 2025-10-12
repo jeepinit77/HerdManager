@@ -13,6 +13,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import com.jumblemint.cows.ui.icons.Cow
 import androidx.compose.material3.*
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -143,7 +144,7 @@ fun CattleManagerApp() {
 
     val bottomNavItems = listOf(
         BottomNavItem(Screen.Dashboard, Icons.Filled.Home, "Home"),
-        BottomNavItem(Screen.Cows, Icons.Filled.GroupWork, "Cattle"),
+        BottomNavItem(Screen.Cows, Icons.Filled.Cow, "Cattle"),
         BottomNavItem(Screen.Pastures, Icons.Filled.Landscape, "Pastures"),
         BottomNavItem(Screen.Activities, Icons.Filled.Assignment, "Activity"),
         BottomNavItem(Screen.Notes, Icons.Filled.Note, "Notes")
