@@ -371,9 +371,10 @@ private fun ThemePicker(
         PresetTheme.TINT_BROWN, PresetTheme.TINT_GRAY
     )
 
-    // --- Reduced curated themes ---
+    // --- One row of curated themes ---
     val curatedRow = listOf(
-        PresetTheme.SLATE_GRAY, PresetTheme.TINT_GRAY
+        PresetTheme.SLATE_GRAY, PresetTheme.MONOCHROME,
+        PresetTheme.NORD_FROST, PresetTheme.MAUVE_MIST, PresetTheme.OLIVE_NOIR
     )
 
     val bg = if (isDarkTheme) customColors.backgroundDark else customColors.backgroundLight
@@ -477,7 +478,6 @@ private fun ThemePicker(
                                             modifier = Modifier.weight(1f)
                                         )
                                     }
-                                    Spacer(Modifier.weight(3f))
                                 }
 
                                 Text(
