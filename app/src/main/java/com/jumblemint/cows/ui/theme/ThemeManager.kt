@@ -377,9 +377,16 @@ class ThemeManager(private val repository: CattleRepository) {
 
     suspend fun resetToDefaults() {
         applyPresetTheme(PresetTheme.TINT_BLUE)
-        updateLightIntensity(0.2f)
-        updateDarkIntensity(0.2f)
+        updateLightIntensity(0.15f)
+        updateDarkIntensity(0.15f)
         updateTopAppBarAlpha(0.7f)
         updateBottomNavBarAlpha(1.0f)
+        
+        // Apply 15% intensity to colored background style
+        val defaultColors = PresetTheme.TINT_BLUE.getColors()
+        val lightAlpha = 0.15f * 0.8f  // Apply intensity calculation
+        val darkAlpha = 0.15f * 0.8f * 2f
+        updateColor(SettingsKeys.THEME_BACKGROUND_LIGHT, defaultColors.primaryLight.copy(alpha = lightAlpha))
+        updateColor(SettingsKeys.THEME_BACKGROUND_DARK, defaultColors.primaryDark.copy(alpha = darkAlpha))
     }
 }

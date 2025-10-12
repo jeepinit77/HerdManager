@@ -349,11 +349,11 @@ private fun ThemePicker(
 ) {
     val lightIntensity by themeManager.getLightIntensity().collectAsState(initial = 0.2f)
     val darkIntensity by themeManager.getDarkIntensity().collectAsState(initial = 0.2f)
-    val topAppBarAlpha by themeManager.getTopAppBarAlpha().collectAsState(initial = 1.0f)
+    val topAppBarAlpha by themeManager.getTopAppBarAlpha().collectAsState(initial = 0.7f)
     var currentLightIntensity by remember { mutableFloatStateOf(0.2f) }
     var currentDarkIntensity by remember { mutableFloatStateOf(0.2f) }
-    var currentNavBarAlpha by remember { mutableFloatStateOf(1.0f) }
-    var style by remember(resetCount) { mutableStateOf(ThemeStyle.COLORED_CARDS) }
+    var currentNavBarAlpha by remember { mutableFloatStateOf(0.7f) }
+    var style by remember(resetCount) { mutableStateOf(ThemeStyle.COLORED_BACKGROUND) }
 
     LaunchedEffect(lightIntensity) { currentLightIntensity = lightIntensity }
     LaunchedEffect(darkIntensity) { currentDarkIntensity = darkIntensity }
