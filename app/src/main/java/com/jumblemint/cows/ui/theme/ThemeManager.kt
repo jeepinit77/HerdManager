@@ -285,7 +285,7 @@ class ThemeManager(private val repository: CattleRepository) {
 
     fun getTopAppBarAlpha(): Flow<Float> =
         repository.getAllSettings().map { settings ->
-            settings.find { it.key == SettingsKeys.TOP_APP_BAR_ALPHA }?.value?.toFloatOrNull() ?: 1.0f
+            settings.find { it.key == SettingsKeys.TOP_APP_BAR_ALPHA }?.value?.toFloatOrNull() ?: 0.7f
         }
 
     // Bottom Navigation Bar Alpha
@@ -379,7 +379,7 @@ class ThemeManager(private val repository: CattleRepository) {
         applyPresetTheme(PresetTheme.TINT_BLUE)
         updateLightIntensity(0.2f)
         updateDarkIntensity(0.2f)
-        updateTopAppBarAlpha(1.0f)
+        updateTopAppBarAlpha(0.7f)
         updateBottomNavBarAlpha(1.0f)
     }
 }

@@ -368,6 +368,14 @@ fun CattleManagerApp() {
                     val bottomNavBarAlpha by themeManager.getBottomNavBarAlpha().collectAsState(initial = 1.0f)
                     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
                     val adjustedAlpha = if (isDark) 1.1f - bottomNavBarAlpha else bottomNavBarAlpha
+                    val navBackgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = adjustedAlpha)
+                    val navSurfaceColor = MaterialTheme.colorScheme.surface
+                    val navEffectiveColor = androidx.compose.ui.graphics.Color(
+                        red = navBackgroundColor.red * adjustedAlpha + navSurfaceColor.red * (1f - adjustedAlpha),
+                        green = navBackgroundColor.green * adjustedAlpha + navSurfaceColor.green * (1f - adjustedAlpha),
+                        blue = navBackgroundColor.blue * adjustedAlpha + navSurfaceColor.blue * (1f - adjustedAlpha)
+                    )
+                    val navTextColor = if (navEffectiveColor.luminance() > 0.4f) androidx.compose.ui.graphics.Color.Black else androidx.compose.ui.graphics.Color.White
 
                     NavigationBar(
                         containerColor = MaterialTheme.colorScheme.primary.copy(alpha = adjustedAlpha)
@@ -393,11 +401,11 @@ fun CattleManagerApp() {
                                     }
                                 },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                                    selectedTextColor = MaterialTheme.colorScheme.onPrimary,
-                                    unselectedIconColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
-                                    unselectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
-                                    indicatorColor = MaterialTheme.colorScheme.primary // No indicator needed
+                                    selectedIconColor = navTextColor,
+                                    selectedTextColor = navTextColor,
+                                    unselectedIconColor = navTextColor.copy(alpha = 0.6f),
+                                    unselectedTextColor = navTextColor.copy(alpha = 0.6f),
+                                    indicatorColor = MaterialTheme.colorScheme.primary
                                 )
                             )
                         }
@@ -409,11 +417,11 @@ fun CattleManagerApp() {
                             icon = { Icon(Icons.Filled.Settings, "Settings") },
                             label = { Text("Settings") },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedTextColor = MaterialTheme.colorScheme.onPrimary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
-                                unselectedTextColor = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.6f),
-                                indicatorColor = MaterialTheme.colorScheme.primary // No indicator needed
+                                selectedIconColor = navTextColor,
+                                selectedTextColor = navTextColor,
+                                unselectedIconColor = navTextColor.copy(alpha = 0.6f),
+                                unselectedTextColor = navTextColor.copy(alpha = 0.6f),
+                                indicatorColor = MaterialTheme.colorScheme.primary
                             )
                         )
                     }
@@ -480,16 +488,29 @@ fun AppTopBar(
     val topAppBarAlpha by themeManager.getTopAppBarAlpha().collectAsState(initial = 1.0f)
     val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
     val adjustedAlpha = if (isDark) 1.1f - topAppBarAlpha else topAppBarAlpha
+    
+    val backgroundColor = MaterialTheme.colorScheme.primary.copy(alpha = adjustedAlpha)
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val effectiveColor = androidx.compose.ui.graphics.Color(
+        red = backgroundColor.red * adjustedAlpha + surfaceColor.red * (1f - adjustedAlpha),
+        green = backgroundColor.green * adjustedAlpha + surfaceColor.green * (1f - adjustedAlpha),
+        blue = backgroundColor.blue * adjustedAlpha + surfaceColor.blue * (1f - adjustedAlpha)
+    )
+    val textColor = if (effectiveColor.luminance() > 0.4f) {
+        androidx.compose.ui.graphics.Color.Black
+    } else {
+        androidx.compose.ui.graphics.Color.White
+    }
 
     CenterAlignedTopAppBar(
         title = { Text(title) },
         navigationIcon = { navigationIcon?.invoke() },
         actions = actions,
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = adjustedAlpha),
-            titleContentColor = MaterialTheme.colorScheme.onPrimary,
-            navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-            actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+            containerColor = backgroundColor,
+            titleContentColor = textColor,
+            navigationIconContentColor = textColor,
+            actionIconContentColor = textColor
         )
     )
 }
