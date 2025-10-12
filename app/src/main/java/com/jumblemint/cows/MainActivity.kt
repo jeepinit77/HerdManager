@@ -353,8 +353,21 @@ fun CattleManagerApp() {
             },
             bottomBar = {
                 if (currentScreenFromNav == Screen.MainPager) {
+                    val context = LocalContext.current
+                    val database = CattleDatabase.getDatabase(context)
+                    val repository = remember(database) {
+                        CattleRepository(
+                            database.cowDao(), database.pastureDao(), database.activityDao(),
+                            database.settingsDao(), database.noteDao(), database.userDao(),
+                            database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
+                            database.activityTypeConfigDao(), database.breedDao()
+                        )
+                    }
+                    val themeManager = remember(repository) { ThemeManager(repository) }
+                    val bottomNavBarAlpha by themeManager.getBottomNavBarAlpha().collectAsState(initial = 1.0f)
+
                     NavigationBar(
-                        containerColor = MaterialTheme.colorScheme.primary
+                        containerColor = MaterialTheme.colorScheme.primary.copy(alpha = bottomNavBarAlpha)
                     ) {
                         bottomNavItems.forEach { item ->
                             val pageIndex = getPageIndexForScreen(item.screen)
@@ -450,12 +463,25 @@ fun AppTopBar(
     navigationIcon: (@Composable () -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val database = CattleDatabase.getDatabase(context)
+    val repository = remember(database) {
+        CattleRepository(
+            database.cowDao(), database.pastureDao(), database.activityDao(),
+            database.settingsDao(), database.noteDao(), database.userDao(),
+            database.herdDao(), database.herdMemberDao(), database.tagColorDao(),
+            database.activityTypeConfigDao(), database.breedDao()
+        )
+    }
+    val themeManager = remember(repository) { ThemeManager(repository) }
+    val topAppBarAlpha by themeManager.getTopAppBarAlpha().collectAsState(initial = 1.0f)
+
     CenterAlignedTopAppBar(
         title = { Text(title) },
         navigationIcon = { navigationIcon?.invoke() },
         actions = actions,
         colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-            containerColor = MaterialTheme.colorScheme.primary,
+            containerColor = MaterialTheme.colorScheme.primary.copy(alpha = topAppBarAlpha),
             titleContentColor = MaterialTheme.colorScheme.onPrimary,
             navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
             actionIconContentColor = MaterialTheme.colorScheme.onPrimary

@@ -278,6 +278,26 @@ class ThemeManager(private val repository: CattleRepository) {
             settings.find { it.key == SettingsKeys.THEME_INTENSITY_DARK }?.value?.toFloatOrNull() ?: 0.2f
         }
 
+    // Top App Bar Alpha
+    suspend fun updateTopAppBarAlpha(alpha: Float) {
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.TOP_APP_BAR_ALPHA, alpha.toString()))
+    }
+
+    fun getTopAppBarAlpha(): Flow<Float> =
+        repository.getAllSettings().map { settings ->
+            settings.find { it.key == SettingsKeys.TOP_APP_BAR_ALPHA }?.value?.toFloatOrNull() ?: 1.0f
+        }
+
+    // Bottom Navigation Bar Alpha
+    suspend fun updateBottomNavBarAlpha(alpha: Float) {
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.BOTTOM_NAV_BAR_ALPHA, alpha.toString()))
+    }
+
+    fun getBottomNavBarAlpha(): Flow<Float> =
+        repository.getAllSettings().map { settings ->
+            settings.find { it.key == SettingsKeys.BOTTOM_NAV_BAR_ALPHA }?.value?.toFloatOrNull() ?: 1.0f
+        }
+
     // Colors
     fun getCustomColors(): Flow<CustomColors> =
         repository.getAllSettings().map { settings ->
@@ -359,5 +379,7 @@ class ThemeManager(private val repository: CattleRepository) {
         applyPresetTheme(PresetTheme.TINT_BLUE)
         updateLightIntensity(0.2f)
         updateDarkIntensity(0.2f)
+        updateTopAppBarAlpha(1.0f)
+        updateBottomNavBarAlpha(1.0f)
     }
 }

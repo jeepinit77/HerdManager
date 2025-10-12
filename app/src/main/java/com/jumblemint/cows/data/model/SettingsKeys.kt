@@ -46,6 +46,8 @@ object SettingsKeys {
     const val THEME_INTENSITY_LIGHT = "theme_intensity_light" // Stores the intensity for light theme (Float)
     const val THEME_INTENSITY_DARK = "theme_intensity_dark" // Stores the intensity for dark theme (Float)
     const val THEME_INTENSITY = "theme_intensity" // Deprecated: use separate light/dark
+    const val TOP_APP_BAR_ALPHA = "top_app_bar_alpha" // Alpha for top app bar (Float)
+    const val BOTTOM_NAV_BAR_ALPHA = "bottom_nav_bar_alpha" // Alpha for bottom navigation bar (Float)
     const val SYNC_URL = "sync_url"
     const val SYNC_INTERVAL_HOURS = "sync_interval_hours"
     const val LAST_SYNC_TIMESTAMP = "last_sync_timestamp"

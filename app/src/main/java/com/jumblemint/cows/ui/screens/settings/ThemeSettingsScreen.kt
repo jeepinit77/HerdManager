@@ -349,12 +349,15 @@ private fun ThemePicker(
 ) {
     val lightIntensity by themeManager.getLightIntensity().collectAsState(initial = 0.2f)
     val darkIntensity by themeManager.getDarkIntensity().collectAsState(initial = 0.2f)
+    val topAppBarAlpha by themeManager.getTopAppBarAlpha().collectAsState(initial = 1.0f)
     var currentLightIntensity by remember { mutableFloatStateOf(0.2f) }
     var currentDarkIntensity by remember { mutableFloatStateOf(0.2f) }
+    var currentNavBarAlpha by remember { mutableFloatStateOf(1.0f) }
     var style by remember(resetCount) { mutableStateOf(ThemeStyle.COLORED_CARDS) }
 
     LaunchedEffect(lightIntensity) { currentLightIntensity = lightIntensity }
     LaunchedEffect(darkIntensity) { currentDarkIntensity = darkIntensity }
+    LaunchedEffect(topAppBarAlpha) { currentNavBarAlpha = topAppBarAlpha }
 
     val previewIntensity = if (isDarkTheme) currentDarkIntensity else currentLightIntensity
 
@@ -368,10 +371,9 @@ private fun ThemePicker(
         PresetTheme.TINT_BROWN, PresetTheme.TINT_GRAY
     )
 
-    // --- One row of curated themes ---
+    // --- Reduced curated themes ---
     val curatedRow = listOf(
-        PresetTheme.SLATE_GRAY, PresetTheme.MONOCHROME,
-        PresetTheme.NORD_FROST, PresetTheme.MAUVE_MIST, PresetTheme.OLIVE_NOIR
+        PresetTheme.SLATE_GRAY, PresetTheme.TINT_GRAY
     )
 
     val bg = if (isDarkTheme) customColors.backgroundDark else customColors.backgroundLight
@@ -475,7 +477,32 @@ private fun ThemePicker(
                                             modifier = Modifier.weight(1f)
                                         )
                                     }
+                                    Spacer(Modifier.weight(3f))
                                 }
+
+                                Text(
+                                    "Navigation Bar Transparency",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                Slider(
+                                    value = currentNavBarAlpha,
+                                    onValueChange = { currentNavBarAlpha = it },
+                                    onValueChangeFinished = {
+                                        scope.launch {
+                                            themeManager.updateTopAppBarAlpha(currentNavBarAlpha)
+                                            themeManager.updateBottomNavBarAlpha(currentNavBarAlpha)
+                                        }
+                                    },
+                                    valueRange = 0.1f..1.0f,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(32.dp),
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = MaterialTheme.colorScheme.onSurface,
+                                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                                        inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                    )
+                                )
                             }
                         }
                     }
@@ -616,27 +643,13 @@ private fun ThemePicker(
                                         modifier = Modifier.weight(1f)
                                     )
                                 }
-                            }
-                        }
-                    }
-                }
 
-                // ----- Intensity sliders -----
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                        BackgroundColorProvider(MaterialTheme.colorScheme.surfaceVariant) {
-                            Column(
-                                Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
                                 val headerText = when (currentMode) {
                                     ThemeMode.LIGHT -> "Theme Intensity (Light Mode)"
                                     ThemeMode.DARK -> "Theme Intensity (Dark Mode)"
                                     ThemeMode.SYSTEM -> "Theme Intensities"
                                 }
-                                Text(headerText, style = MaterialTheme.typography.titleMedium)
-
-
+                                Text(headerText, style = MaterialTheme.typography.bodyMedium)
 
                                 when (currentMode) {
                                     ThemeMode.LIGHT -> Slider(
@@ -690,7 +703,7 @@ private fun ThemePicker(
                                     ) {
                                         Text(
                                             "Light Theme Intensity${if (isDarkTheme) "" else " (active)"}",
-                                            style = MaterialTheme.typography.bodyMedium
+                                            style = MaterialTheme.typography.bodySmall
                                         )
                                         Slider(
                                             value = currentLightIntensity,
@@ -716,7 +729,7 @@ private fun ThemePicker(
                                         )
                                         Text(
                                             "Dark Theme Intensity${if (isDarkTheme) " (active)" else ""}",
-                                            style = MaterialTheme.typography.bodyMedium
+                                            style = MaterialTheme.typography.bodySmall
                                         )
                                         Slider(
                                             value = currentDarkIntensity,
@@ -746,6 +759,8 @@ private fun ThemePicker(
                         }
                     }
                 }
+
+
             }
         }
     }
