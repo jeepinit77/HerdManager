@@ -109,11 +109,13 @@ fun CowCard(
                                 SmartText(
                                     text = cow.name ?: "Unnamed Cow",
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    backgroundColor = genderColor
                                 )
                                 SmartText(
                                     text = cow.classification.name,
-                                    style = MaterialTheme.typography.bodyMedium
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    backgroundColor = genderColor
                                 )
                             }
                             // Action buttons (Star, Edit, Delete) - Tip icon is removed from here
@@ -162,7 +164,8 @@ fun CowCard(
                             Spacer(modifier = Modifier.height(6.dp))
                             SmartText(
                                 text = "Age: $ageText",
-                                style = MaterialTheme.typography.bodySmall
+                                style = MaterialTheme.typography.bodySmall,
+                                backgroundColor = genderColor
                             )
                         }
                     }
