@@ -254,7 +254,8 @@ fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = M
                 SmartText(
                     text = it.lowercase().replaceFirstChar { char -> char.titlecase() },
                     style = MaterialTheme.typography.labelSmall,
-                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
+                    backgroundColor = bgColor
                 )
                 Spacer(modifier = Modifier.height(2.dp))
             }
@@ -263,7 +264,8 @@ fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = M
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                softWrap = false
+                softWrap = false,
+                backgroundColor = bgColor
             )
             }
         } // End of BackgroundColorProvider
