@@ -70,7 +70,8 @@ const val COWS_PAGE_INDEX = 1
 const val PASTURES_PAGE_INDEX = 2
 const val ACTIVITIES_PAGE_INDEX = 3
 const val NOTES_PAGE_INDEX = 4
-const val MAIN_SCREEN_PAGE_COUNT = 5
+const val SETTINGS_PAGE_INDEX = 5
+const val MAIN_SCREEN_PAGE_COUNT = 6
 
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -151,6 +152,16 @@ fun MainScreensViewPager(
                 onAddNote = { navController.navigate(Screen.NoteDetail.createRoute(0L)) },
                 onEditNote = { noteId -> navController.navigate(Screen.NoteDetail.createRoute(noteId)) },
                 onViewNote = { noteId -> navController.navigate(Screen.NoteInfo.createRoute(noteId)) }
+            )
+            SETTINGS_PAGE_INDEX -> SettingsScreen(
+                modifier = Modifier.fillMaxSize(),
+                onNavigateToSignIn = { navController.navigate(Screen.SignIn.route) },
+                onNavigateToHerds = { navController.navigate(Screen.HerdSelection.route) },
+                onNavigateToAccountManagement = { navController.navigate(Screen.AccountManagement.route) },
+                onNavigateToTagColors = { navController.navigate(Screen.TagColorsManagement.route) },
+                onNavigateToActivityTypes = { navController.navigate(Screen.ActivityTypesManagement.route) },
+                onNavigateToBreeds = { navController.navigate(Screen.BreedsManagement.route) },
+                onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) }
             )
             else -> Text("Unknown Page")
         }

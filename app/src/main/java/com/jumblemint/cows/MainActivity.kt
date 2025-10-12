@@ -38,6 +38,8 @@ import kotlinx.coroutines.launch
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.navigation.*
+import com.jumblemint.cows.navigation.SETTINGS_PAGE_INDEX
+import com.jumblemint.cows.ui.screens.settings.SettingsScreen
 import com.jumblemint.cows.ui.theme.CowsTheme
 import com.jumblemint.cows.util.AgeUtils
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
@@ -83,6 +85,7 @@ fun getPageIndexForScreen(screen: Screen): Int = when (screen) {
     Screen.Pastures -> PASTURES_PAGE_INDEX
     Screen.Activities -> ACTIVITIES_PAGE_INDEX
     Screen.Notes -> NOTES_PAGE_INDEX
+    Screen.Settings -> SETTINGS_PAGE_INDEX
     else -> -1
 }
 
@@ -92,6 +95,7 @@ fun getScreenForPageIndex(index: Int): Screen? = when (index) {
     PASTURES_PAGE_INDEX -> Screen.Pastures
     ACTIVITIES_PAGE_INDEX -> Screen.Activities
     NOTES_PAGE_INDEX -> Screen.Notes
+    SETTINGS_PAGE_INDEX -> Screen.Settings
     else -> null
 }
 
@@ -100,7 +104,8 @@ fun isMainTabScreen(screen: Screen?): Boolean {
             screen == Screen.Cows ||
             screen == Screen.Pastures ||
             screen == Screen.Activities ||
-            screen == Screen.Notes
+            screen == Screen.Notes ||
+            screen == Screen.Settings
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -152,7 +157,8 @@ fun CattleManagerApp() {
         BottomNavItem(Screen.Cows, painterResource(R.drawable.ear_tag), "Cattle"),
         BottomNavItem(Screen.Pastures, Icons.Filled.Landscape, "Pastures"),
         BottomNavItem(Screen.Activities, Icons.Filled.Assignment, "Activity"),
-        BottomNavItem(Screen.Notes, Icons.Filled.Note, "Notes")
+        BottomNavItem(Screen.Notes, Icons.Filled.Note, "Notes"),
+        BottomNavItem(Screen.Settings, Icons.Filled.Settings, "Settings")
     )
 
     CompositionLocalProvider(LocalGlobalSnackbarState provides globalSnackbarState) {
@@ -421,21 +427,6 @@ fun CattleManagerApp() {
                                 )
                             )
                         }
-                        NavigationBarItem(
-                            selected = currentScreenForUI == Screen.Settings,
-                            onClick = {
-                                navController.navigate(Screen.Settings.route) { }
-                            },
-                            icon = { Icon(Icons.Filled.Settings, "Settings") },
-                            label = { Text("Settings") },
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = navTextColor,
-                                selectedTextColor = navTextColor,
-                                unselectedIconColor = navTextColor.copy(alpha = 0.6f),
-                                unselectedTextColor = navTextColor.copy(alpha = 0.6f),
-                                indicatorColor = MaterialTheme.colorScheme.primary
-                            )
-                        )
                     }
                 }
             }
