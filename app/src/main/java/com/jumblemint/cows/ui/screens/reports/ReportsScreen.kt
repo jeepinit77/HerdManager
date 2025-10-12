@@ -7,7 +7,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import com.jumblemint.cows.ui.icons.Cow
+import androidx.compose.ui.res.painterResource
+import com.jumblemint.cows.R
+import androidx.compose.ui.unit.dp
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -123,7 +126,7 @@ fun HerdOverviewCard(totalCows: Int, watchedCows: Int, onClick: (type: String?) 
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Cow, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(painterResource(R.drawable.ear_tag), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Herd Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }

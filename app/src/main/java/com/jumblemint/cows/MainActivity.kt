@@ -13,7 +13,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
-import com.jumblemint.cows.ui.icons.Cow
+//import com.jumblemint.cows.ui.icons.Cow
+
 import androidx.compose.material3.*
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -27,8 +28,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import android.widget.Toast
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
@@ -144,7 +149,7 @@ fun CattleManagerApp() {
 
     val bottomNavItems = listOf(
         BottomNavItem(Screen.Dashboard, Icons.Filled.Home, "Home"),
-        BottomNavItem(Screen.Cows, Icons.Filled.Cow, "Cattle"),
+        BottomNavItem(Screen.Cows, painterResource(R.drawable.ear_tag), "Cattle"),
         BottomNavItem(Screen.Pastures, Icons.Filled.Landscape, "Pastures"),
         BottomNavItem(Screen.Activities, Icons.Filled.Assignment, "Activity"),
         BottomNavItem(Screen.Notes, Icons.Filled.Note, "Notes")
@@ -385,7 +390,13 @@ fun CattleManagerApp() {
                             val pageIndex = getPageIndexForScreen(item.screen)
                             val isSelected = pagerState.currentPage == pageIndex
                             NavigationBarItem(
-                                icon = { Icon(item.icon, item.label) },
+                                icon = { 
+                                    when (val iconData = item.icon) {
+                                        is ImageVector -> Icon(iconData, item.label)
+                                        is Painter -> Icon(iconData, item.label, modifier = Modifier.size(24.dp))
+                                        else -> Icon(Icons.Filled.Help, item.label)
+                                    }
+                                },
                                 label = {
                                     Text(
                                         text = item.label,
@@ -516,4 +527,4 @@ fun AppTopBar(
     )
 }
 
-data class BottomNavItem(val screen: Screen, val icon: ImageVector, val label: String)
+data class BottomNavItem(val screen: Screen, val icon: Any, val label: String) // Can be ImageVector or Painter
