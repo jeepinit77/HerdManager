@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.HelpOutline
 // import androidx.compose.material.icons.outlined.Lightbulb // Removed, handled by WobblingLightbulbIcon
 import androidx.compose.material3.*
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
@@ -131,36 +132,33 @@ fun SettingsScreen(
                 )
             }
             item {
-                SettingsCard(
-                    title = "Tag Colors",
-                    subtitle = "Manage available tag colors",
-                    icon = Icons.Filled.ColorLens,
-                    onClick = { onNavigateToTagColors?.invoke() }
-                )
-            }
-            item {
-                SettingsCard(
-                    title = "Activity Types",
-                    subtitle = "Manage activity types and fields",
-                    icon = Icons.Filled.Assignment,
-                    onClick = { onNavigateToActivityTypes?.invoke() }
-                )
-            }
-            item {
-                SettingsCard(
-                    title = "Breeds",
-                    subtitle = "Manage available cattle breeds",
-                    icon = Icons.Filled.Pets,
-                    onClick = { onNavigateToBreeds?.invoke() }
-                )
-            }
-            item {
-                SettingsCard(
-                    title = "Theme Settings",
-                    subtitle = "Customize app colors and appearance",
-                    icon = Icons.Filled.Palette,
-                    onClick = { onNavigateToThemeSettings?.invoke() }
-                )
+                SettingsGroup {
+                    SettingsRow(
+                        title = "Tag Colors",
+                        subtitle = "Manage available tag colors",
+                        icon = Icons.Filled.ColorLens,
+                        onClick = { onNavigateToTagColors?.invoke() }
+                    )
+                    SettingsRow(
+                        title = "Activity Types",
+                        subtitle = "Manage activity types and fields",
+                        icon = Icons.Filled.Assignment,
+                        onClick = { onNavigateToActivityTypes?.invoke() }
+                    )
+                    SettingsRow(
+                        title = "Breeds",
+                        subtitle = "Manage available cattle breeds",
+                        icon = Icons.Filled.Pets,
+                        onClick = { onNavigateToBreeds?.invoke() }
+                    )
+                    SettingsRow(
+                        title = "Theme Settings",
+                        subtitle = "Customize app colors and appearance",
+                        icon = Icons.Filled.Palette,
+                        onClick = { onNavigateToThemeSettings?.invoke() },
+                        isLast = true
+                    )
+                }
             }
 
             item {
@@ -200,32 +198,34 @@ fun SettingsScreen(
                         { onNavigateToSignIn?.invoke() }
                     )
                 }
-                SettingsCard(title = title, subtitle = subtitle, icon = icon, onClick = { onClickAction?.invoke() })
-            }
-
-            if (isSignedIn && currentUser?.isLocalUser == false) {
-                item {
-                    SettingsCard(
-                        title = "Sync Now",
-                        subtitle = when (syncStatus) {
-                            SyncStatus.SYNCING -> "Syncing in progress..."
-                            SyncStatus.SUCCESS -> "Last sync successful"
-                            SyncStatus.ERROR -> "Last sync failed - tap to retry"
-                            else -> "Manually sync your data"
-                        },
-                        icon = when (syncStatus) {
-                            SyncStatus.SYNCING -> Icons.Filled.CloudSync
-                            SyncStatus.ERROR -> Icons.Filled.CloudOff
-                            else -> Icons.Filled.Refresh
-                        },
-                        onClick = {
-                            if (syncStatus != SyncStatus.SYNCING) {
-                                coroutineScope.launch {
-                                    application.authService.startUserSync(application.syncService)
+                
+                SettingsGroup {
+                    SettingsRow(title = title, subtitle = subtitle, icon = icon, onClick = { onClickAction?.invoke() })
+                    
+                    if (isSignedIn && currentUser?.isLocalUser == false) {
+                        SettingsRow(
+                            title = "Sync Now",
+                            subtitle = when (syncStatus) {
+                                SyncStatus.SYNCING -> "Syncing in progress..."
+                                SyncStatus.SUCCESS -> "Last sync successful"
+                                SyncStatus.ERROR -> "Last sync failed - tap to retry"
+                                else -> "Manually sync your data"
+                            },
+                            icon = when (syncStatus) {
+                                SyncStatus.SYNCING -> Icons.Filled.CloudSync
+                                SyncStatus.ERROR -> Icons.Filled.CloudOff
+                                else -> Icons.Filled.Refresh
+                            },
+                            onClick = {
+                                if (syncStatus != SyncStatus.SYNCING) {
+                                    coroutineScope.launch {
+                                        application.authService.startUserSync(application.syncService)
+                                    }
                                 }
-                            }
-                        }
-                    )
+                            },
+                            isLast = true
+                        )
+                    }
                 }
             }
 
@@ -238,40 +238,37 @@ fun SettingsScreen(
                 )
             }
             item {
-                SettingsCard(
-                    title = "Export Data",
-                    subtitle = "Export your cattle data (CSV, JSON)",
-                    icon = Icons.Filled.Download,
-                    onClick = { showExportDialog = true }
-                )
-            }
-            item {
-                SettingsCard(
-                    title = "Import Data",
-                    subtitle = "Import cattle data from file",
-                    icon = Icons.Filled.Upload,
-                    onClick = {
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Import feature coming soon!")
+                SettingsGroup {
+                    SettingsRow(
+                        title = "Export Data",
+                        subtitle = "Export your cattle data (CSV, JSON)",
+                        icon = Icons.Filled.Download,
+                        onClick = { showExportDialog = true }
+                    )
+                    SettingsRow(
+                        title = "Import Data",
+                        subtitle = "Import cattle data from file",
+                        icon = Icons.Filled.Upload,
+                        onClick = {
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Import feature coming soon!")
+                            }
                         }
-                    }
-                )
-            }
-            item {
-                SettingsCard(
-                    title = if (uiState.isSampleDataInstalled) "Remove Sample Data" else "Add Sample Data",
-                    subtitle = if (uiState.isSampleDataInstalled) "Delete sample cattle and pastures" else "Add sample data for testing",
-                    icon = if (uiState.isSampleDataInstalled) Icons.Filled.DeleteSweep else Icons.Filled.PlaylistAdd,
-                    onClick = { showSampleDataDialog = true }
-                )
-            }
-            item {
-                SettingsCard(
-                    title = "Delete Data",
-                    subtitle = "Selectively delete local and server data",
-                    icon = Icons.Filled.WarningAmber,
-                    onClick = { showDeleteDataDialog = true }
-                )
+                    )
+                    SettingsRow(
+                        title = if (uiState.isSampleDataInstalled) "Remove Sample Data" else "Add Sample Data",
+                        subtitle = if (uiState.isSampleDataInstalled) "Delete sample cattle and pastures" else "Add sample data for testing",
+                        icon = if (uiState.isSampleDataInstalled) Icons.Filled.DeleteSweep else Icons.Filled.PlaylistAdd,
+                        onClick = { showSampleDataDialog = true }
+                    )
+                    SettingsRow(
+                        title = "Delete Data",
+                        subtitle = "Selectively delete local and server data",
+                        icon = Icons.Filled.WarningAmber,
+                        onClick = { showDeleteDataDialog = true },
+                        isLast = true
+                    )
+                }
             }
 
             item {
@@ -285,38 +282,37 @@ fun SettingsScreen(
             item {
                 val context = LocalContext.current
                 val tipsManager = remember { com.jumblemint.cows.data.preferences.TipsManager(context) }
-                SettingsCard(
-                    title = "Reset Tips",
-                    subtitle = "Show all coach marks and tips again",
-                    customIconContent = { WobblingLightbulbIcon() }, // Changed to WobblingLightbulbIcon
-                    icon = null, 
-                    onClick = {
-                        coroutineScope.launch {
-                            tipsManager.enableAllTips()
-                            snackbarHostState.showSnackbar("Tips have been reset")
+                SettingsGroup {
+                    SettingsRow(
+                        title = "Reset Tips",
+                        subtitle = "Show all coach marks and tips again",
+                        customIconContent = { WobblingLightbulbIcon() },
+                        icon = null,
+                        onClick = {
+                            coroutineScope.launch {
+                                tipsManager.enableAllTips()
+                                snackbarHostState.showSnackbar("Tips have been reset")
+                            }
                         }
-                    }
-                )
-            }
-            item {
-                SettingsCard(
-                    title = "Version",
-                    subtitle = uiState.appVersion,
-                    icon = Icons.Outlined.Info,
-                    onClick = { /* No action needed or show app details dialog */ }
-                )
-            }
-            item {
-                SettingsCard(
-                    title = "About Cattle Manager",
-                    subtitle = "Learn more about the app",
-                    icon = Icons.Outlined.HelpOutline,
-                    onClick = {
-                         coroutineScope.launch {
-                            snackbarHostState.showSnackbar("About screen coming soon!")
-                        }
-                    }
-                )
+                    )
+                    SettingsRow(
+                        title = "Version",
+                        subtitle = uiState.appVersion,
+                        icon = Icons.Outlined.Info,
+                        onClick = { /* No action needed or show app details dialog */ }
+                    )
+                    SettingsRow(
+                        title = "About Cattle Manager",
+                        subtitle = "Learn more about the app",
+                        icon = Icons.Outlined.HelpOutline,
+                        onClick = {
+                             coroutineScope.launch {
+                                snackbarHostState.showSnackbar("About screen coming soon!")
+                            }
+                        },
+                        isLast = true
+                    )
+                }
             }
         }
         if (uiState.isLoading) {
@@ -389,6 +385,78 @@ fun SettingsScreen(
                 showDeleteDataDialog = false
             }
         )
+    }
+}
+
+@Composable
+fun SettingsGroup(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = getCardColors(),
+        border = null
+    ) {
+        Column {
+            content()
+        }
+    }
+}
+
+@Composable
+fun SettingsRow(
+    title: String,
+    subtitle: String,
+    icon: ImageVector? = null,
+    customIconContent: @Composable (() -> Unit)? = null,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    isLast: Boolean = false
+) {
+    Column {
+        Row(
+            modifier = modifier
+                .fillMaxWidth()
+                .clickable(enabled = enabled, onClick = onClick)
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (customIconContent != null) {
+                customIconContent()
+            } else if (icon != null) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(28.dp),
+                    tint = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                SmartText(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+                SmartText(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            }
+        }
+        if (!isLast) {
+            HorizontalDivider(
+                thickness = 1.dp,
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f)
+            )
+        }
     }
 }
 
