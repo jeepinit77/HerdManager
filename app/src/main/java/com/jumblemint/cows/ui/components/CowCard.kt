@@ -239,8 +239,16 @@ fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = M
         Image(
             painter = painterResource(id = R.drawable.ear_tag),
             contentDescription = "Cattle Tag",
-            colorFilter = ColorFilter.tint(bgColor),
+            colorFilter = ColorFilter.tint(Color.Black),
             modifier = Modifier.fillMaxSize()
+        )
+        Image(
+            painter = painterResource(id = R.drawable.ear_tag),
+            contentDescription = "Cattle Tag",
+            colorFilter = ColorFilter.tint(bgColor),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(1.dp)
         )
         BackgroundColorProvider(backgroundColor = bgColor) {
             Column(
