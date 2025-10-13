@@ -80,7 +80,8 @@ fun PasturesScreen(
             FloatingActionButton(
                 onClick = onNavigateToAddPasture,
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                shape = androidx.compose.foundation.shape.CircleShape
             ) {
                 Icon(Icons.Filled.Add, contentDescription = "Add Pasture")
             }

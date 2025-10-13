@@ -62,7 +62,8 @@ fun HerdSelectionScreen(
             
             FloatingActionButton(
                 onClick = { showCreateDialog = true },
-                modifier = Modifier.size(56.dp)
+                modifier = Modifier.size(56.dp),
+                shape = androidx.compose.foundation.shape.CircleShape
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Create Herd")
             }

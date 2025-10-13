@@ -119,7 +119,8 @@ fun TagColorsManagementScreen(
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
             containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            shape = androidx.compose.foundation.shape.CircleShape
         ) {
             Icon(Icons.Default.Add, contentDescription = "Add Tag Color")
         }
