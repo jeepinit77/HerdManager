@@ -40,14 +40,19 @@ object SettingsKeys {
     const val THEME_FEMALE_COLOR_DARK = "theme_female_color_dark"
     const val THEME_TBD_COLOR_DARK = "theme_tbd_color_dark"
 
+    // New Seed-based Theme Settings
+    const val SEED_COLOR = "seed_color" // Stores the SeedColor enum name
+    const val NAV_BAR_TONE = "nav_bar_tone" // HCT tone for navigation bars (0-100)
+    const val SURFACE_TONE = "surface_tone" // HCT tone for cards/surfaces (0-100)
+    
     // General App Settings
     const val CURRENT_THEME_NAME = "current_theme_name" // Stores the enum name of the current preset or "CUSTOM"
     const val THEME_MODE = "theme_mode" // Stores "LIGHT", "DARK", or "SYSTEM"
-    const val THEME_INTENSITY_LIGHT = "theme_intensity_light" // Stores the intensity for light theme (Float)
-    const val THEME_INTENSITY_DARK = "theme_intensity_dark" // Stores the intensity for dark theme (Float)
-    const val THEME_INTENSITY = "theme_intensity" // Deprecated: use separate light/dark
-    const val TOP_APP_BAR_ALPHA = "top_app_bar_alpha" // Alpha for top app bar (Float)
-    const val BOTTOM_NAV_BAR_ALPHA = "bottom_nav_bar_alpha" // Alpha for bottom navigation bar (Float)
+    const val THEME_INTENSITY_LIGHT = "theme_intensity_light" // Deprecated
+    const val THEME_INTENSITY_DARK = "theme_intensity_dark" // Deprecated
+    const val THEME_INTENSITY = "theme_intensity" // Deprecated
+    const val TOP_APP_BAR_ALPHA = "top_app_bar_alpha" // Deprecated
+    const val BOTTOM_NAV_BAR_ALPHA = "bottom_nav_bar_alpha" // Deprecated
     const val SYNC_URL = "sync_url"
     const val SYNC_INTERVAL_HOURS = "sync_interval_hours"
     const val LAST_SYNC_TIMESTAMP = "last_sync_timestamp"

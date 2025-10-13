@@ -31,13 +31,13 @@ fun getCardBackgroundColor(): Color {
 
 @Composable
 fun getGenderColor(gender: Gender): Color {
-    val customColors = LocalCustomColors.current
-    // Use surface luminance to determine if we're in dark mode instead of system setting
+    val themeSettings = LocalThemeSettings.current
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-
+    val seedHct = themeSettings.seedColor.color.toHct()
+    
     return when (gender) {
-        Gender.MALE -> if (isDarkTheme) customColors.maleColorDark else customColors.maleColorLight
-        Gender.FEMALE -> if (isDarkTheme) customColors.femaleColorDark else customColors.femaleColorLight
-        Gender.TBD -> if (isDarkTheme) customColors.tbdColorDark else customColors.tbdColorLight
+        Gender.MALE -> seedHct.copy(hue = 220f, tone = if (isDarkTheme) 70f else 40f).toColor()
+        Gender.FEMALE -> seedHct.copy(hue = 340f, tone = if (isDarkTheme) 70f else 40f).toColor()
+        Gender.TBD -> seedHct.copy(chroma = 20f, tone = if (isDarkTheme) 60f else 50f).toColor()
     }
 }

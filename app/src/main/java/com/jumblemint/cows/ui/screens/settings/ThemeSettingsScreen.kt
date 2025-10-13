@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.jumblemint.cows.data.database.CattleDatabase
-import com.jumblemint.cows.data.model.SettingsKeys
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.theme.*
 import kotlinx.coroutines.CoroutineScope
@@ -33,9 +32,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ThemeSettingsScreen(
     modifier: Modifier = Modifier,
-    onNavigateBack: () -> Unit,
-    resetTriggered: Boolean = false,
-    onResetHandled: () -> Unit = {}
+    onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
     val db = CattleDatabase.getDatabase(context)
@@ -47,8 +44,7 @@ fun ThemeSettingsScreen(
         )
     }
     val themeManager = remember { ThemeManager(repository) }
-    val customColors by themeManager.getCustomColors().collectAsState(initial = CustomColors())
-    val currentPreset by themeManager.getCurrentPresetFlow().collectAsState(initial = PresetTheme.TINT_BLUE)
+    val themeSettings by themeManager.getThemeSettingsFlow().collectAsState(initial = ThemeSettings())
     val scope = rememberCoroutineScope()
 
     val systemDark = isSystemInDarkTheme()
@@ -58,18 +54,11 @@ fun ThemeSettingsScreen(
     var resetCount by remember { mutableStateOf(0) }
 
     LaunchedEffect(Unit) {
-        currentMode = themeManager.getThemeMode()
+        currentMode = themeSettings.mode
         previewDark = when (currentMode) {
             ThemeMode.LIGHT -> false
             ThemeMode.DARK -> true
             ThemeMode.SYSTEM -> systemDark
-        }
-    }
-
-    LaunchedEffect(resetTriggered) {
-        if (resetTriggered) {
-            showResetConfirm = true
-            onResetHandled()
         }
     }
 
@@ -84,10 +73,9 @@ fun ThemeSettingsScreen(
                     onClick = {
                         scope.launch {
                             themeManager.resetToDefaults()
-                            // Reset local state to defaults after successful reset
                             currentMode = ThemeMode.SYSTEM
                             previewDark = systemDark
-                            resetCount++ // Trigger recomposition with new remembered state
+                            resetCount++
                             showResetConfirm = false
                         }
                     },
@@ -134,16 +122,16 @@ fun ThemeSettingsScreen(
                     }
                 }
             }
-        } // <-- close Surface properly
+        }
 
         ThemePicker(
             themeManager = themeManager,
-            customColors = customColors,
-            currentPreset = currentPreset,
+            themeSettings = themeSettings,
             isDarkTheme = previewDark,
             currentMode = currentMode,
             scope = scope,
             resetCount = resetCount,
+            onShowResetConfirm = { showResetConfirm = true },
             modifier = Modifier.weight(1f)
         )
     }
@@ -151,20 +139,18 @@ fun ThemeSettingsScreen(
 
 @Composable
 private fun TintRow(
-    currentPreset: PresetTheme,
-    row: List<PresetTheme>,
+    currentSeedColor: SeedColor,
+    row: List<SeedColor>,
     isDarkTheme: Boolean,
-    onPick: (PresetTheme) -> Unit
+    onPick: (SeedColor) -> Unit
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        row.forEach { preset ->
-            val swatch =
-                if (isDarkTheme) preset.getColors().primaryDark else preset.getColors().primaryLight
+        row.forEach { seedColor ->
             PresetChip(
-                isSelected = currentPreset == preset,
-                name = preset.displayName,
-                color = swatch,
-                onClick = { onPick(preset) },
+                isSelected = currentSeedColor == seedColor,
+                name = seedColor.displayName,
+                color = seedColor.color,
+                onClick = { onPick(seedColor) },
                 modifier = Modifier.weight(1f)
             )
         }
@@ -290,497 +276,253 @@ private fun PhoneStyleButton(
 
 private enum class ThemeStyle { COLORED_CARDS, COLORED_BACKGROUND, GRAY_CARDS, GRAY_BACKGROUND }
 
-/** Apply fade-only intensity to light theme background/card based on chosen style. */
-private suspend fun applyLightColorAndStyle(
-    manager: ThemeManager,
-    base: CustomColors,
-    style: ThemeStyle,
-    intensity: Float
-) {
-    val colorAlpha = intensity * 0.8f      // 0.0..0.8
-    val grayAlpha = (0.05f + intensity * 0.25f) * 0.5f
-
-    val (bgL, cardL, surfL) = when (style) {
-        ThemeStyle.COLORED_CARDS -> Triple(base.backgroundLight, base.primaryLight.copy(alpha = colorAlpha), base.surfaceLight)
-        ThemeStyle.COLORED_BACKGROUND -> Triple(base.primaryLight.copy(alpha = colorAlpha), base.cardBackgroundLight, base.surfaceLight)
-        ThemeStyle.GRAY_CARDS -> Triple(Color.White, Color.Black.copy(alpha = grayAlpha), base.surfaceLight)
-        ThemeStyle.GRAY_BACKGROUND -> Triple(Color.Black.copy(alpha = grayAlpha), Color.White, base.surfaceLight)
-    }
-
-    manager.updateColor(SettingsKeys.THEME_BACKGROUND_LIGHT, bgL)
-    manager.updateColor(SettingsKeys.THEME_CARD_BACKGROUND_LIGHT, cardL)
-    manager.updateColor(SettingsKeys.THEME_SURFACE_LIGHT, surfL)
-
-    manager.updateLightIntensity(intensity)
-}
-
-/** Apply fade-only intensity to dark theme background/card based on chosen style. */
-private suspend fun applyDarkColorAndStyle(
-    manager: ThemeManager,
-    base: CustomColors,
-    style: ThemeStyle,
-    intensity: Float
-) {
-    val colorAlpha = intensity * 0.8f
-    val grayAlpha = (0.05f + intensity * 0.25f) * 2f
-
-    val (bgD, cardD, surfD) = when (style) {
-        ThemeStyle.COLORED_CARDS -> Triple(base.backgroundDark, base.primaryDark.copy(alpha = colorAlpha * 1.5f), base.surfaceDark)
-        ThemeStyle.COLORED_BACKGROUND -> Triple(base.primaryDark.copy(alpha = colorAlpha * 2f), base.cardBackgroundDark, base.surfaceDark)
-        ThemeStyle.GRAY_CARDS -> Triple(Color(0xFF1A1A1A), Color.Black.copy(alpha = grayAlpha), base.surfaceDark)
-        ThemeStyle.GRAY_BACKGROUND -> Triple(Color.Black.copy(alpha = grayAlpha), Color(0xFF1A1A1A), base.surfaceDark)
-    }
-
-    manager.updateColor(SettingsKeys.THEME_BACKGROUND_DARK, bgD)
-    manager.updateColor(SettingsKeys.THEME_CARD_BACKGROUND_DARK, cardD)
-    manager.updateColor(SettingsKeys.THEME_SURFACE_DARK, surfD)
-
-    manager.updateDarkIntensity(intensity)
-}
-
 @Composable
 private fun ThemePicker(
     themeManager: ThemeManager,
-    customColors: CustomColors,
-    currentPreset: PresetTheme,
+    themeSettings: ThemeSettings,
     isDarkTheme: Boolean,
     currentMode: ThemeMode,
     scope: CoroutineScope,
     resetCount: Int,
+    onShowResetConfirm: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val lightIntensity by themeManager.getLightIntensity().collectAsState(initial = 0.2f)
-    val darkIntensity by themeManager.getDarkIntensity().collectAsState(initial = 0.2f)
-    val topAppBarAlpha by themeManager.getTopAppBarAlpha().collectAsState(initial = 0.7f)
-    var currentLightIntensity by remember { mutableFloatStateOf(0.2f) }
-    var currentDarkIntensity by remember { mutableFloatStateOf(0.2f) }
-    var currentNavBarAlpha by remember { mutableFloatStateOf(0.7f) }
+    var navBarTone by remember { mutableFloatStateOf(50f) }
+    var surfaceTone by remember { mutableFloatStateOf(90f) }
     var style by remember(resetCount) { mutableStateOf(ThemeStyle.COLORED_BACKGROUND) }
 
-    LaunchedEffect(lightIntensity) { currentLightIntensity = lightIntensity }
-    LaunchedEffect(darkIntensity) { currentDarkIntensity = darkIntensity }
-    LaunchedEffect(topAppBarAlpha) { currentNavBarAlpha = topAppBarAlpha }
+    LaunchedEffect(themeSettings, isDarkTheme) {
+        navBarTone = themeSettings.getNavBarTone(isDarkTheme)
+        surfaceTone = themeSettings.getSurfaceTone(isDarkTheme)
+    }
 
-    val previewIntensity = if (isDarkTheme) currentDarkIntensity else currentLightIntensity
+    // Generate current theme colors for preview
+    val currentColorScheme = generateThemeFromSeed(
+        themeSettings.seedColor,
+        surfaceTone,
+        navBarTone,
+        isDarkTheme
+    )
 
-    // --- Two rows of tint themes ---
+    // Seed color rows
     val tintRow1 = listOf(
-        PresetTheme.TINT_BLUE, PresetTheme.TINT_GREEN, PresetTheme.TINT_PURPLE,
-        PresetTheme.TINT_ORANGE, PresetTheme.TINT_PINK
+        SeedColor.DENIM_BLUE, SeedColor.SAGE_GREEN, SeedColor.LAVENDER_GRAPHITE,
+        SeedColor.OCHRE_GLOW, SeedColor.CRANBERRY
     )
     val tintRow2 = listOf(
-        PresetTheme.TINT_RED, PresetTheme.TINT_YELLOW, PresetTheme.TINT_TEAL,
-        PresetTheme.TINT_BROWN, PresetTheme.TINT_MULTICOLOR
+        SeedColor.BRICK_RED, SeedColor.HONEY_GOLD, SeedColor.VERDANT_TEAL,
+        SeedColor.ESPRESSO_BROWN, SeedColor.SLATE_BLUE
     )
 
     var showMoreThemes by remember { mutableStateOf(false) }
 
-    // --- One row of curated themes ---
     val curatedRow = listOf(
-        PresetTheme.SLATE_GRAY, PresetTheme.MONOCHROME,
-        PresetTheme.NORD_FROST, PresetTheme.MAUVE_MIST, PresetTheme.OLIVE_NOIR
+        SeedColor.SLATE, SeedColor.CHARCOAL_GOLD,
+        SeedColor.COPPER_TEAL, SeedColor.TERRACOTTA_SAGE, SeedColor.MIDNIGHT_CLAY
     )
 
-    val bg = if (isDarkTheme) customColors.backgroundDark else customColors.backgroundLight
-    Box(modifier.fillMaxSize().background(bg)) {
-        BackgroundColorProvider(backgroundColor = bg) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                // ----- Choose Color Scheme -----
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                        BackgroundColorProvider(MaterialTheme.colorScheme.surfaceVariant) {
-                            Column(
-                                Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                Text(
-                                    "Choose Color Scheme",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
+    Box(modifier.fillMaxSize().background(currentColorScheme.background)) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Choose Color Scheme
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text(
+                            "Choose Color Scheme",
+                            style = MaterialTheme.typography.titleMedium
+                        )
 
-                                TintRow(
-                                    row = tintRow1,
-                                    currentPreset = currentPreset,
-                                    isDarkTheme = isDarkTheme,
-                                    onPick = {
-                                        scope.launch {
-                                            themeManager.applyPresetTheme(it)
-                                            val newColors = it.getColors()
-                                            applyLightColorAndStyle(
-                                                themeManager,
-                                                newColors,
-                                                style,
-                                                currentLightIntensity
-                                            )
-                                            applyDarkColorAndStyle(
-                                                themeManager,
-                                                newColors,
-                                                style,
-                                                currentDarkIntensity
-                                            )
-                                        }
-                                    }
-                                )
+                        TintRow(
+                            row = tintRow1,
+                            currentSeedColor = themeSettings.seedColor,
+                            isDarkTheme = isDarkTheme,
+                            onPick = { scope.launch { themeManager.setSeedColor(it) } }
+                        )
 
-                                TintRow(
-                                    row = tintRow2,
-                                    currentPreset = currentPreset,
-                                    isDarkTheme = isDarkTheme,
-                                    onPick = {
-                                        scope.launch {
-                                            themeManager.applyPresetTheme(it)
-                                            val newColors = it.getColors()
-                                            applyLightColorAndStyle(
-                                                themeManager,
-                                                newColors,
-                                                style,
-                                                currentLightIntensity
-                                            )
-                                            applyDarkColorAndStyle(
-                                                themeManager,
-                                                newColors,
-                                                style,
-                                                currentDarkIntensity
-                                            )
-                                        }
-                                    }
-                                )
+                        TintRow(
+                            row = tintRow2,
+                            currentSeedColor = themeSettings.seedColor,
+                            isDarkTheme = isDarkTheme,
+                            onPick = { scope.launch { themeManager.setSeedColor(it) } }
+                        )
 
-                                Row(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable { showMoreThemes = !showMoreThemes }
-                                        .padding(vertical = 4.dp),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        if (showMoreThemes) "Show Less" else "Show More",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                    Icon(
-                                        if (showMoreThemes) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                        contentDescription = if (showMoreThemes) "Collapse" else "Expand",
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                }
-
-                                if (showMoreThemes) {
-                                    Row(
-                                        Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        curatedRow.forEach { preset ->
-                                            val swatch =
-                                                if (isDarkTheme) preset.getColors().primaryDark else preset.getColors().primaryLight
-                                            PresetChip(
-                                                isSelected = currentPreset == preset,
-                                                name = preset.displayName,
-                                                color = swatch,
-                                                onClick = {
-                                                    scope.launch {
-                                                        themeManager.applyPresetTheme(preset)
-                                                        val newColors = preset.getColors()
-                                                        applyLightColorAndStyle(
-                                                            themeManager,
-                                                            newColors,
-                                                            style,
-                                                            currentLightIntensity
-                                                        )
-                                                        applyDarkColorAndStyle(
-                                                            themeManager,
-                                                            newColors,
-                                                            style,
-                                                            currentDarkIntensity
-                                                        )
-                                                    }
-                                                },
-                                                modifier = Modifier.weight(1f)
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Text(
-                                    "Navigation Bar Transparency",
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                                Slider(
-                                    value = currentNavBarAlpha,
-                                    onValueChange = { currentNavBarAlpha = it },
-                                    onValueChangeFinished = {
-                                        scope.launch {
-                                            themeManager.updateTopAppBarAlpha(currentNavBarAlpha)
-                                            themeManager.updateBottomNavBarAlpha(currentNavBarAlpha)
-                                        }
-                                    },
-                                    valueRange = 0.1f..1.0f,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(32.dp),
-                                    colors = SliderDefaults.colors(
-                                        thumbColor = MaterialTheme.colorScheme.onSurface,
-                                        activeTrackColor = MaterialTheme.colorScheme.primary,
-                                        inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                    )
-                                )
-                            }
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { showMoreThemes = !showMoreThemes }
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                if (showMoreThemes) "Show Less" else "Show More",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Icon(
+                                if (showMoreThemes) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                contentDescription = if (showMoreThemes) "Collapse" else "Expand",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
                         }
-                    }
-                }
 
-                // ----- Style (where to apply the fade) -----
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                        BackgroundColorProvider(MaterialTheme.colorScheme.surfaceVariant) {
-                            Column(
-                                Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                        if (showMoreThemes) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text(
-                                    "Theme Style",
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    PhoneStyleButton(
-                                        title = "Colored Cards",
-                                        bgColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
-                                        cardColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                        navColor = MaterialTheme.colorScheme.primary,
-                                        isSelected = style == ThemeStyle.COLORED_CARDS,
-                                        selectedColor = MaterialTheme.colorScheme.primary,
-                                        onClick = {
-                                            style = ThemeStyle.COLORED_CARDS
-                                            scope.launch {
-                                                val baseColors = currentPreset.getColors()
-                                                applyLightColorAndStyle(
-                                                    themeManager,
-                                                    baseColors,
-                                                    style,
-                                                    currentLightIntensity
-                                                )
-                                                applyDarkColorAndStyle(
-                                                    themeManager,
-                                                    baseColors,
-                                                    style,
-                                                    currentDarkIntensity
-                                                )
-                                            }
-                                        },
+                                curatedRow.forEach { seedColor ->
+                                    PresetChip(
+                                        isSelected = themeSettings.seedColor == seedColor,
+                                        name = seedColor.displayName,
+                                        color = seedColor.color,
+                                        onClick = { scope.launch { themeManager.setSeedColor(seedColor) } },
                                         modifier = Modifier.weight(1f)
                                     )
-                                    PhoneStyleButton(
-                                        title = "Colored Background",
-                                        bgColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                        cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
-                                        navColor = MaterialTheme.colorScheme.primary,
-                                        isSelected = style == ThemeStyle.COLORED_BACKGROUND,
-                                        selectedColor = MaterialTheme.colorScheme.primary,
-                                        onClick = {
-                                            style = ThemeStyle.COLORED_BACKGROUND
-                                            scope.launch {
-                                                val baseColors = currentPreset.getColors()
-                                                applyLightColorAndStyle(
-                                                    themeManager,
-                                                    baseColors,
-                                                    style,
-                                                    currentLightIntensity
-                                                )
-                                                applyDarkColorAndStyle(
-                                                    themeManager,
-                                                    baseColors,
-                                                    style,
-                                                    currentDarkIntensity
-                                                )
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    PhoneStyleButton(
-                                        title = "Gray Cards",
-                                        bgColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
-                                        cardColor = (if (isDarkTheme) Color.Black else Color.Black).copy(
-                                            alpha = if (isDarkTheme)
-                                                (0.05f + previewIntensity * 0.25f) * 2f
-                                            else
-                                                (0.05f + previewIntensity * 0.25f) * 0.5f
-                                        ),
-                                        navColor = MaterialTheme.colorScheme.primary,
-                                        isSelected = style == ThemeStyle.GRAY_CARDS,
-                                        selectedColor = MaterialTheme.colorScheme.primary,
-                                        onClick = {
-                                            style = ThemeStyle.GRAY_CARDS
-                                            scope.launch {
-                                                val baseColors = currentPreset.getColors()
-                                                applyLightColorAndStyle(
-                                                    themeManager,
-                                                    baseColors,
-                                                    style,
-                                                    currentLightIntensity
-                                                )
-                                                applyDarkColorAndStyle(
-                                                    themeManager,
-                                                    baseColors,
-                                                    style,
-                                                    currentDarkIntensity
-                                                )
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                    PhoneStyleButton(
-                                        title = "Gray Background",
-                                        bgColor = Color.Black.copy(
-                                            alpha = if (isDarkTheme)
-                                                (0.05f + previewIntensity * 0.25f) * 2f
-                                            else
-                                                (0.05f + previewIntensity * 0.25f) * 0.5f
-                                        ),
-                                        cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
-                                        navColor = MaterialTheme.colorScheme.primary,
-                                        isSelected = style == ThemeStyle.GRAY_BACKGROUND,
-                                        selectedColor = MaterialTheme.colorScheme.primary,
-                                        onClick = {
-                                            style = ThemeStyle.GRAY_BACKGROUND
-                                            scope.launch {
-                                                val baseColors = currentPreset.getColors()
-                                                applyLightColorAndStyle(
-                                                    themeManager,
-                                                    baseColors,
-                                                    style,
-                                                    currentLightIntensity
-                                                )
-                                                applyDarkColorAndStyle(
-                                                    themeManager,
-                                                    baseColors,
-                                                    style,
-                                                    currentDarkIntensity
-                                                )
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-
-                                val headerText = when (currentMode) {
-                                    ThemeMode.LIGHT -> "Theme Intensity (Light Mode)"
-                                    ThemeMode.DARK -> "Theme Intensity (Dark Mode)"
-                                    ThemeMode.SYSTEM -> "Theme Intensities"
-                                }
-                                Text(headerText, style = MaterialTheme.typography.bodyMedium)
-
-                                when (currentMode) {
-                                    ThemeMode.LIGHT -> Slider(
-                                        value = currentLightIntensity,
-                                        onValueChange = { currentLightIntensity = it },
-                                        onValueChangeFinished = {
-                                            scope.launch {
-                                                applyLightColorAndStyle(
-                                                    themeManager,
-                                                    customColors,
-                                                    style,
-                                                    currentLightIntensity
-                                                )
-                                            }
-                                        },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(32.dp),
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.onSurface,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                                            inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                        )
-                                    )
-
-                                    ThemeMode.DARK -> Slider(
-                                        value = currentDarkIntensity,
-                                        onValueChange = { currentDarkIntensity = it },
-                                        onValueChangeFinished = {
-                                            scope.launch {
-                                                applyDarkColorAndStyle(
-                                                    themeManager,
-                                                    customColors,
-                                                    style,
-                                                    currentDarkIntensity
-                                                )
-                                            }
-                                        },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(32.dp),
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.onSurface,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                                            inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                        )
-                                    )
-
-                                    ThemeMode.SYSTEM -> {
-                                        if (isDarkTheme) {
-                                            Slider(
-                                                value = currentDarkIntensity,
-                                                onValueChange = { currentDarkIntensity = it },
-                                                onValueChangeFinished = {
-                                                    scope.launch {
-                                                        applyDarkColorAndStyle(
-                                                            themeManager,
-                                                            customColors,
-                                                            style,
-                                                            currentDarkIntensity
-                                                        )
-                                                    }
-                                                },
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .height(32.dp),
-                                                colors = SliderDefaults.colors(
-                                                    thumbColor = MaterialTheme.colorScheme.onSurface,
-                                                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                                                    inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                                )
-                                            )
-                                        } else {
-                                            Slider(
-                                                value = currentLightIntensity,
-                                                onValueChange = { currentLightIntensity = it },
-                                                onValueChangeFinished = {
-                                                    scope.launch {
-                                                        applyLightColorAndStyle(
-                                                            themeManager,
-                                                            customColors,
-                                                            style,
-                                                            currentLightIntensity
-                                                        )
-                                                    }
-                                                },
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .height(32.dp),
-                                                colors = SliderDefaults.colors(
-                                                    thumbColor = MaterialTheme.colorScheme.onSurface,
-                                                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                                                    inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                                                )
-                                            )
-                                        }
-                                    }
                                 }
                             }
                         }
+
+                        Text(
+                            "Navigation Bar Tone (${if (isDarkTheme) "Dark" else "Light"} Mode)",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Slider(
+                            value = navBarTone,
+                            onValueChange = { navBarTone = it },
+                            onValueChangeFinished = {
+                                scope.launch {
+                                    if (isDarkTheme) {
+                                        themeManager.setNavBarToneDark(navBarTone)
+                                    } else {
+                                        themeManager.setNavBarToneLight(navBarTone)
+                                    }
+                                }
+                            },
+                            valueRange = 10f..90f,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(32.dp),
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.onSurface,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
+                        )
                     }
                 }
+            }
 
+            // Theme Style
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            "Theme Style",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            PhoneStyleButton(
+                                title = "Colored Cards",
+                                bgColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
+                                cardColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                navColor = MaterialTheme.colorScheme.primary,
+                                isSelected = style == ThemeStyle.COLORED_CARDS,
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                onClick = { style = ThemeStyle.COLORED_CARDS },
+                                modifier = Modifier.weight(1f)
+                            )
+                            PhoneStyleButton(
+                                title = "Colored Background",
+                                bgColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
+                                navColor = MaterialTheme.colorScheme.primary,
+                                isSelected = style == ThemeStyle.COLORED_BACKGROUND,
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                onClick = { style = ThemeStyle.COLORED_BACKGROUND },
+                                modifier = Modifier.weight(1f)
+                            )
+                            PhoneStyleButton(
+                                title = "Gray Cards",
+                                bgColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
+                                cardColor = Color.Black.copy(alpha = 0.1f),
+                                navColor = MaterialTheme.colorScheme.primary,
+                                isSelected = style == ThemeStyle.GRAY_CARDS,
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                onClick = { style = ThemeStyle.GRAY_CARDS },
+                                modifier = Modifier.weight(1f)
+                            )
+                            PhoneStyleButton(
+                                title = "Gray Background",
+                                bgColor = Color.Black.copy(alpha = 0.1f),
+                                cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
+                                navColor = MaterialTheme.colorScheme.primary,
+                                isSelected = style == ThemeStyle.GRAY_BACKGROUND,
+                                selectedColor = MaterialTheme.colorScheme.primary,
+                                onClick = { style = ThemeStyle.GRAY_BACKGROUND },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
 
+                        Text(
+                            "Surface/Card Tone (${if (isDarkTheme) "Dark" else "Light"} Mode)",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Slider(
+                            value = surfaceTone,
+                            onValueChange = { surfaceTone = it },
+                            onValueChangeFinished = {
+                                scope.launch {
+                                    if (isDarkTheme) {
+                                        themeManager.setSurfaceToneDark(surfaceTone)
+                                    } else {
+                                        themeManager.setSurfaceToneLight(surfaceTone)
+                                    }
+                                }
+                            },
+                            valueRange = 10f..98f,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(32.dp),
+                            colors = SliderDefaults.colors(
+                                thumbColor = MaterialTheme.colorScheme.onSurface,
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Reset Button
+            item {
+                Card {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = onShowResetConfirm,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Reset to Defaults")
+                        }
+                    }
+                }
             }
         }
     }

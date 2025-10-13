@@ -45,8 +45,7 @@ import com.jumblemint.cows.ui.components.DatePickerField
 import com.jumblemint.cows.ui.components.DropdownField
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
-import com.jumblemint.cows.ui.theme.CustomColors
-import com.jumblemint.cows.ui.theme.ThemeManager
+import com.jumblemint.cows.ui.theme.getGenderColor
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.CowDetailUiState
@@ -77,8 +76,7 @@ fun CowEditScreen(
             database.activityTypeConfigDao(), database.breedDao()
         )
     }
-    val themeManager = remember { ThemeManager(repository) }
-    val customColors by themeManager.getCustomColors().collectAsState(initial = CustomColors())
+
     val isDarkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
 
     val uiState by viewModel.uiState.collectAsState()
@@ -302,7 +300,7 @@ fun CowEditScreen(
                             tagFocusRequester = tagFocusRequester,
                             genderBringRequester = genderBringRequester,
                             classificationBringRequester = classificationBringRequester,
-                            customColors = customColors,
+
                             isDarkTheme = isDarkTheme
                         )
                         1 -> PedigreeTabContent(viewModel, uiState)
@@ -325,7 +323,7 @@ private fun ProfileTabContent(
     tagFocusRequester: FocusRequester,
     genderBringRequester: BringIntoViewRequester,
     classificationBringRequester: BringIntoViewRequester,
-    customColors: CustomColors, 
+ 
     isDarkTheme: Boolean
 )
 {
@@ -472,11 +470,7 @@ private fun ProfileTabContent(
             .bringIntoViewRequester(genderBringRequester)
         ) {
             Gender.entries.forEachIndexed { index, genderOption ->
-                val currentActiveContainerColor = when (genderOption) {
-                    Gender.MALE -> if (isDarkTheme) customColors.maleColorDark else customColors.maleColorLight
-                    Gender.FEMALE -> if (isDarkTheme) customColors.femaleColorDark else customColors.femaleColorLight
-                    Gender.TBD -> if (isDarkTheme) customColors.tbdColorDark else customColors.tbdColorLight
-                }
+                val currentActiveContainerColor = getGenderColor(genderOption)
                 val currentActiveContentColor = when (genderOption) {
                     Gender.MALE -> if (isDarkTheme) Color.Black else Color.White
                     Gender.FEMALE -> if (isDarkTheme) Color.Black else Color.White
@@ -519,11 +513,7 @@ private fun ProfileTabContent(
         }
 
         if (availableClassifications.isNotEmpty()) {
-            val classificationActiveContainerColor = when (uiState.gender) {
-                Gender.MALE -> if (isDarkTheme) customColors.maleColorDark else customColors.maleColorLight
-                Gender.FEMALE -> if (isDarkTheme) customColors.femaleColorDark else customColors.femaleColorLight
-                else -> if (isDarkTheme) customColors.tbdColorDark else customColors.tbdColorLight
-            }
+            val classificationActiveContainerColor = uiState.gender?.let { getGenderColor(it) } ?: MaterialTheme.colorScheme.primary
             val classificationActiveContentColor = when (uiState.gender) {
                 Gender.MALE -> if (isDarkTheme) Color.Black else Color.White
                 Gender.FEMALE -> if (isDarkTheme) Color.Black else Color.White

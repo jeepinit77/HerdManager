@@ -118,9 +118,4 @@ fun SmartText(
 
 fun getTextColorForBackground(backgroundColor: Color): Color = backgroundColor.contrasting()
 
-val LocalBackgroundColor = staticCompositionLocalOf { Color.Unspecified }
 
-@Composable
-fun BackgroundColorProvider(backgroundColor: Color, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalBackgroundColor provides backgroundColor) { content() }
-}

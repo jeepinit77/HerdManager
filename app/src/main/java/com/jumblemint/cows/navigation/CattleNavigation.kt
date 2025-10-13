@@ -620,9 +620,7 @@ fun CattleNavigation(
         composable(Screen.ThemeSettings.route){
             ThemeSettingsScreen(
                 modifier = screenModifierWithPadding,
-                onNavigateBack = { navController.popBackStack() },
-                resetTriggered = resetTriggered,
-                onResetHandled = onResetHandled
+                onNavigateBack = { navController.popBackStack() }
             )
         }
         composable(Screen.Sync.route) {
