@@ -269,7 +269,7 @@ fun CowListScreen(
         }
     }
 
-    Box(modifier = modifier) { // Use the modifier passed to CowListScreen, which includes outer padding
+    Box(modifier = modifier.padding(horizontal = if (showSearchAndFilters) 0.dp else 8.dp)) { // Add padding only when not in main pager
         CowListContent(
             modifier = Modifier.fillMaxSize(), // CowListContent will fill this Box
             showSearchAndFilters = showSearchAndFilters,
