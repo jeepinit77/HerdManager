@@ -32,6 +32,7 @@ import com.jumblemint.cows.ui.viewmodel.CowsViewModel
 import com.jumblemint.cows.ui.viewmodel.CowsViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModel
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import java.time.LocalDate
@@ -333,7 +334,15 @@ private fun CowListContent(
                     onValueChange = { cowsViewModel.updateSearchQuery(it) },
                     label = { Text("Search cattle...") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
+                        focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
+                        focusedBorderColor = MaterialTheme.colorScheme.primary
+                    )
                 )
                 FilterChip(
                     onClick = { onShowAnimalFilterDialog() }, 
@@ -346,7 +355,22 @@ private fun CowListContent(
                         }
                     },
                     selected = hasActiveFilters(cowsUiState), 
-                    leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") }
+                    leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") },
+                    colors = FilterChipDefaults.filterChipColors(
+                        labelColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                        iconColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                        selectedLabelColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
+                        containerColor = MaterialTheme.colorScheme.background,
+                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        disabledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.12f)
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        enabled = true,
+                        selected = hasActiveFilters(cowsUiState),
+                        borderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
+                        selectedBorderColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor().copy(alpha = 0.3f)
+                    )
                 )
                 if (hasActiveFilters(cowsUiState) || cowsUiState.searchQuery.isNotBlank()) {
                     IconButton(onClick = {
