@@ -398,7 +398,7 @@ private fun CowListContent(
             }
         } else {
             LazyColumn(
-                contentPadding = PaddingValues(vertical = 12.dp), // Vertical padding for list items
+                contentPadding = PaddingValues(vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(if (showSearchAndFilters) 8.dp else 12.dp)
             ) {
                 items(list, key = { it.id }) { cow ->

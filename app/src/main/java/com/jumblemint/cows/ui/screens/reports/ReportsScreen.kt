@@ -74,9 +74,8 @@ fun ReportsScreen(
         }
     } else {
         LazyColumn(
-            modifier = modifier // Use the modifier passed to ReportsScreen
-                .fillMaxSize()
-                .padding(vertical = 8.dp), // Only vertical padding needed
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item { HerdOverviewCard(uiState.totalCows, uiState.watchedCowsCount, { type -> onShowList("status", type) }, { onShowList("watching", null) }) }

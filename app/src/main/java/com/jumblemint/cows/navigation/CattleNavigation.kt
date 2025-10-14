@@ -92,7 +92,7 @@ fun MainScreensViewPager(
         state = pagerState,
         modifier = Modifier
             .padding(mainScaffoldPadding)
-            .padding(horizontal = 8.dp)
+            .padding(horizontal = 16.dp)
             .fillMaxSize(),
         userScrollEnabled = !globalSnackbarState.isSnackbarVisible
     ) { page ->
