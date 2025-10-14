@@ -17,6 +17,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.model.Note
 import com.jumblemint.cows.ui.viewmodel.NotesViewModel
 import com.jumblemint.cows.ui.theme.getCardColors
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.launch
@@ -159,16 +160,16 @@ private fun NoteCard(
                 Row {
                     IconButton(onClick = onEdit, modifier = Modifier.size(40.dp)) {
                         Icon(
-                            Icons.Default.Edit,
+                            Icons.Filled.Edit,
                             contentDescription = "Edit",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
                         )
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
                         Icon(
-                            Icons.Default.Delete,
+                            Icons.Filled.Delete,
                             contentDescription = "Delete",
-                            tint = MaterialTheme.colorScheme.error
+                            tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
                         )
                     }
                 }

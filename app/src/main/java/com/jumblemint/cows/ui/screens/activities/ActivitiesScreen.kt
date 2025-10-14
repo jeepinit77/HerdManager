@@ -29,6 +29,7 @@ import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModel
 import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModelFactory
 import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.theme.SmartText
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
@@ -270,7 +271,11 @@ fun ActivityCard(
                     Row {
                         onEdit?.let {
                             IconButton(onClick = it, modifier = Modifier.size(40.dp)) {
-                                Icon(Icons.Filled.Edit, contentDescription = "Edit Activity")
+                                Icon(
+                                    Icons.Filled.Edit, 
+                                    contentDescription = "Edit Activity",
+                                    tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
+                                )
                             }
                         }
                         onDelete?.let {
@@ -278,7 +283,7 @@ fun ActivityCard(
                                 Icon(
                                     imageVector = Icons.Filled.Delete,
                                     contentDescription = "Delete Activity",
-                                    tint = MaterialTheme.colorScheme.error
+                                    tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
                                 )
                             }
                         }

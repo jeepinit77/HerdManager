@@ -31,6 +31,7 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.TagColorsViewModel
 import com.jumblemint.cows.ui.viewmodel.TagColorsViewModelFactory
 import com.github.skydoves.colorpicker.compose.*
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -260,16 +261,16 @@ fun TagColorItem(
             )
             IconButton(onClick = { onEdit(tagColor) }) {
                 Icon(
-                    Icons.Outlined.Edit, 
+                    Icons.Filled.Edit, 
                     contentDescription = "Edit ${tagColor.name}", 
-                    tint = MaterialTheme.colorScheme.primary
+                    tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
                 )
             }
             IconButton(onClick = { onDelete(tagColor) }) {
                 Icon(
-                    Icons.Default.DeleteOutline, 
+                    Icons.Filled.Delete, 
                     contentDescription = "Delete ${tagColor.name}", 
-                    tint = MaterialTheme.colorScheme.error
+                    tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
                 )
             }
         }

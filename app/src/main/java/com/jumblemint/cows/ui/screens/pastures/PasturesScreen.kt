@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.theme.getCardColors
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -223,7 +224,8 @@ fun PastureCard(
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Edit,
-                        contentDescription = "Edit Pasture"
+                        contentDescription = "Edit Pasture",
+                        tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
                     )
                 }
                 IconButton(
@@ -232,7 +234,7 @@ fun PastureCard(
                     Icon(
                         imageVector = Icons.Filled.Delete,
                         contentDescription = "Delete Pasture",
-                        tint = MaterialTheme.colorScheme.error
+                        tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
                     )
                 }
             }
