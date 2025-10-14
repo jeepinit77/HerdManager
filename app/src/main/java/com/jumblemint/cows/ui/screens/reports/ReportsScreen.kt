@@ -96,7 +96,7 @@ fun ToolsCard(onAddCalfClick: () -> Unit, onWorkingListClick: () -> Unit, onTodo
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
                 Spacer(modifier = Modifier.width(8.dp))
-                SmartText("Tools", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Tools", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -128,7 +128,7 @@ fun HerdOverviewCard(totalCows: Int, watchedCows: Int, onClick: (type: String?) 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(painterResource(R.drawable.ear_tag), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Herd Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Herd Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
