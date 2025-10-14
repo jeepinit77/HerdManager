@@ -154,7 +154,7 @@ fun generateThemeFromSeed(
     // Generate colors based on style
     val (surfaceVariant, background) = when (style) {
         ThemeStyle.COLORED_CARDS -> {
-            val bg = if (isDark) Color(0xFF1A1A1A) else Color.White
+            val bg = if (isDark) Color(0xFF2A2A2A) else Color(0xFFF5F5F5)
             val cards = seedHct.copy(
                 tone = adjustedSurfaceTone,
                 chroma = seedHct.chroma * 0.3f
@@ -166,17 +166,17 @@ fun generateThemeFromSeed(
                 tone = adjustedSurfaceTone,
                 chroma = seedHct.chroma * 0.3f
             ).toColor()
-            val cards = if (isDark) Color(0xFF1A1A1A) else Color.White
+            val cards = if (isDark) Color(0xFF2A2A2A) else Color(0xFFF5F5F5)
             cards to bg
         }
         ThemeStyle.GRAY_CARDS -> {
-            val bg = if (isDark) Color(0xFF1A1A1A) else Color.White
+            val bg = if (isDark) Color(0xFF2A2A2A) else Color(0xFFF5F5F5)
             val cards = HctColor(0f, 0f, adjustedSurfaceTone).toColor()
             cards to bg
         }
         ThemeStyle.GRAY_BACKGROUND -> {
             val bg = HctColor(0f, 0f, adjustedSurfaceTone).toColor()
-            val cards = if (isDark) Color(0xFF1A1A1A) else Color.White
+            val cards = if (isDark) Color(0xFF2A2A2A) else Color(0xFFF5F5F5)
             cards to bg
         }
     }
