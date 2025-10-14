@@ -120,7 +120,7 @@ fun SettingsScreen(
     ) {
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            contentPadding = PaddingValues(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -128,7 +128,7 @@ fun SettingsScreen(
                     text = "Customization",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 4.dp, top = 8.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, bottom = 4.dp, top = 8.dp)
                 )
             }
             item {
@@ -166,7 +166,7 @@ fun SettingsScreen(
                     text = "Account & Sync",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 4.dp, top = 16.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, bottom = 4.dp, top = 16.dp)
                 )
             }
             item {
@@ -234,7 +234,7 @@ fun SettingsScreen(
                     text = "Data Management",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 4.dp, top = 16.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, bottom = 4.dp, top = 16.dp)
                 )
             }
             item {
@@ -276,7 +276,7 @@ fun SettingsScreen(
                     text = "Tips & App Information",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 4.dp, top = 16.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, bottom = 4.dp, top = 16.dp)
                 )
             }
             item {
@@ -396,7 +396,7 @@ fun SettingsGroup(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp),
         colors = getCardColors(),
