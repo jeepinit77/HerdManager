@@ -1,10 +1,12 @@
 package com.jumblemint.cows.ui.viewmodel
 
-import android.app.Application // <<< IMPORT Application
+import android.app.Application
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-// import com.jumblemint.cows.data.model.Settings // Not directly used
-// import com.jumblemint.cows.data.model.SettingsKeys // Not directly used
+import com.jumblemint.cows.data.export.DataExporter
+import com.jumblemint.cows.data.import.DataImporter
+import com.jumblemint.cows.data.import.ImportResult
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -85,18 +87,32 @@ class SettingsViewModel(
         }
     }
 
+    suspend fun prepareExportData(format: String): Pair<String, String> {
+        val exporter = DataExporter(application)
+        val cows = repository.getAllCowsSync()
+        val pastures = repository.getAllPasturesSync()
+        val activities = repository.getAllActivitiesSync()
+        val notes = repository.getAllNotesSync()
+        
+        val file = when (format.uppercase()) {
+            "CSV" -> exporter.exportToCsv(cows, pastures, activities, notes)
+            "JSON" -> exporter.exportToJson(cows, pastures, activities, notes)
+            else -> throw IllegalArgumentException("Unsupported format: $format")
+        }
+        
+        return Pair(file.absolutePath, exporter.getFileName(format))
+    }
+    
     private suspend fun exportToCSV() {
-        // TODO: Implement CSV export
         _uiState.value = _uiState.value.copy(
-            message = "CSV export functionality coming soon.",
+            message = "Use the export dialog to save your CSV file",
             isLoading = false
         )
     }
 
     private suspend fun exportToJSON() {
-        // TODO: Implement JSON export
         _uiState.value = _uiState.value.copy(
-            message = "JSON export functionality coming soon.",
+            message = "Use the export dialog to save your JSON file",
             isLoading = false
         )
     }
@@ -196,6 +212,46 @@ class SettingsViewModel(
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
+    
+    fun setPendingExportFormat(format: String) {
+        _uiState.value = _uiState.value.copy(pendingExportFormat = format)
+    }
+    
+    fun importData(uri: Uri, format: String) {
+        viewModelScope.launch {
+            try {
+                _uiState.value = _uiState.value.copy(message = null, error = null, isLoading = true)
+                val importer = DataImporter(application, repository)
+                
+                val result = when (format.uppercase()) {
+                    "JSON" -> importer.importFromJson(uri)
+                    "CSV" -> importer.importFromCsv(uri)
+                    else -> ImportResult.Error("Unsupported format: $format")
+                }
+                
+                when (result) {
+                    is ImportResult.Success -> {
+                        _uiState.value = _uiState.value.copy(
+                            message = "Successfully imported ${result.itemsImported} items",
+                            isLoading = false,
+                            isSampleDataInstalled = repository.isSampleDataInstalled()
+                        )
+                    }
+                    is ImportResult.Error -> {
+                        _uiState.value = _uiState.value.copy(
+                            error = result.message,
+                            isLoading = false
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Import failed: ${e.message}",
+                    isLoading = false
+                )
+            }
+        }
+    }
 }
 
 data class SettingsUiState(
@@ -203,9 +259,10 @@ data class SettingsUiState(
     val activityTypes: List<String> = emptyList(),
     val defaultCalfPasture: String? = null,
     val isSampleDataInstalled: Boolean = false,
-    val appVersion: String = "", // <<< ADDED appVersion
-    val lastSyncTime: String? = null, // <<< ADDED lastSyncTime
+    val appVersion: String = "",
+    val lastSyncTime: String? = null,
     val isLoading: Boolean = true,
     val error: String? = null,
-    val message: String? = null
+    val message: String? = null,
+    val pendingExportFormat: String? = null
 )

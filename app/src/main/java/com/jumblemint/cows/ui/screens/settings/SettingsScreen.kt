@@ -6,21 +6,21 @@ package com.jumblemint.cows.ui.screens.settings
 // import androidx.compose.animation.core.infiniteRepeatable // Removed
 // import androidx.compose.animation.core.rememberInfiniteTransition // Removed
 // import androidx.compose.animation.core.tween // Removed
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.documentfile.provider.DocumentFile
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.HelpOutline
-// import androidx.compose.material.icons.outlined.Lightbulb // Removed, handled by WobblingLightbulbIcon
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.*
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-// import androidx.compose.ui.graphics.Color // Kept for other usages like MaterialTheme
-// import androidx.compose.ui.graphics.graphicsLayer // Removed
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -86,9 +86,48 @@ fun SettingsScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     var showExportDialog by remember { mutableStateOf(false) }
-    var showSampleDataDialog by remember { mutableStateOf(false) } // Corrected typo here
+    var showImportDialog by remember { mutableStateOf(false) }
+    var showSampleDataDialog by remember { mutableStateOf(false) }
     var showDeleteDataDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let { fileUri ->
+            val fileName = fileUri.toString()
+            val format = when {
+                fileName.contains(".json", ignoreCase = true) -> "JSON"
+                fileName.contains(".csv", ignoreCase = true) -> "CSV"
+                else -> "JSON" // Default to JSON
+            }
+            viewModel.importData(fileUri, format)
+        }
+    }
+    
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("*/*")
+    ) { uri ->
+        uri?.let { fileUri ->
+            coroutineScope.launch {
+                try {
+                    val format = uiState.pendingExportFormat ?: "JSON"
+                    val (sourcePath, _) = viewModel.prepareExportData(format)
+                    val sourceFile = java.io.File(sourcePath)
+                    
+                    context.contentResolver.openOutputStream(fileUri)?.use { outputStream ->
+                        sourceFile.inputStream().use { inputStream ->
+                            inputStream.copyTo(outputStream)
+                        }
+                    }
+                    
+                    snackbarHostState.showSnackbar("Export completed successfully")
+                } catch (e: Exception) {
+                    snackbarHostState.showSnackbar("Export failed: ${e.message}")
+                }
+            }
+        }
+    }
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let { errorMsg ->
@@ -248,11 +287,7 @@ fun SettingsScreen(
                         title = "Import Data",
                         subtitle = "Import cattle data from file",
                         icon = Icons.Filled.Upload,
-                        onClick = {
-                            coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Import feature coming soon!")
-                            }
-                        }
+                        onClick = { showImportDialog = true }
                     )
                     SettingsRow(
                         title = if (uiState.isSampleDataInstalled) "Remove Sample Data" else "Add Sample Data",
@@ -332,8 +367,26 @@ fun SettingsScreen(
         ExportDataDialog(
             onDismiss = { showExportDialog = false },
             onExport = { format ->
-                viewModel.exportData(format)
+                coroutineScope.launch {
+                    try {
+                        val (_, fileName) = viewModel.prepareExportData(format)
+                        viewModel.setPendingExportFormat(format)
+                        exportLauncher.launch(fileName)
+                    } catch (e: Exception) {
+                        snackbarHostState.showSnackbar("Export preparation failed: ${e.message}")
+                    }
+                }
                 showExportDialog = false
+            }
+        )
+    }
+    
+    if (showImportDialog) {
+        ImportDataDialog(
+            onDismiss = { showImportDialog = false },
+            onImport = { 
+                importLauncher.launch("*/*")
+                showImportDialog = false
             }
         )
     }
@@ -530,29 +583,38 @@ fun ExportDataDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = { Icon(Icons.Filled.Download, contentDescription = "Export Data") },
-        title = { Text("Export Data") },
+        icon = { 
+            Icon(
+                Icons.Filled.Download, 
+                contentDescription = "Export Data",
+                tint = MaterialTheme.colorScheme.primary
+            ) 
+        },
+        title = { 
+            Text(
+                "Export Data",
+                color = MaterialTheme.colorScheme.onSurface
+            ) 
+        },
         text = {
             Column {
-                Text("Select the format for data export:")
+                Text(
+                    "Select the format for data export:",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                    Button(
+                    FilterChip(
                         onClick = { selectedFormat = "CSV" },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selectedFormat == "CSV") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {Text("CSV")
-                    }
+                        label = { Text("CSV") },
+                        selected = selectedFormat == "CSV"
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Button(
+                    FilterChip(
                         onClick = { selectedFormat = "JSON" },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (selectedFormat == "JSON") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Text("JSON")
-                    }
+                        label = { Text("JSON") },
+                        selected = selectedFormat == "JSON"
+                    )
                 }
             }
         },
@@ -565,7 +627,9 @@ fun ExportDataDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        textContentColor = MaterialTheme.colorScheme.onSurface
     )
 }
 
@@ -655,5 +719,61 @@ fun DeleteDataSelectiveDialog(
                 Text("Cancel")
             }
         }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ImportDataDialog(
+    onDismiss: () -> Unit,
+    onImport: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { 
+            Icon(
+                Icons.Filled.Upload, 
+                contentDescription = "Import Data",
+                tint = MaterialTheme.colorScheme.primary
+            ) 
+        },
+        title = { 
+            Text(
+                "Import Data",
+                color = MaterialTheme.colorScheme.onSurface
+            ) 
+        },
+        text = {
+            Column {
+                Text(
+                    "Select a file to import cattle data from:",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Supported formats: JSON (.json), CSV (.csv)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Warning: This will add data to your existing records. Make sure to backup your current data first.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onImport) {
+                Text("Select File")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        textContentColor = MaterialTheme.colorScheme.onSurface
     )
 }
