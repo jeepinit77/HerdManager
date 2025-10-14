@@ -125,7 +125,11 @@ fun CowCard(
                             ) {
                                 onToggleWatch?.let {
                                     IconButton(onClick = it) {
-                                        val tint = if (cow.isWatched) MaterialTheme.colorScheme.tertiary else genderColor.contrastingTextColor().copy(alpha = 0.7f)
+                                        val yellowContrast = kotlin.math.abs(Color.Yellow.luminance() - genderColor.luminance())
+                                        val grayContrast = kotlin.math.abs(Color.Gray.luminance() - genderColor.luminance())
+                                        val watchedColor = if (yellowContrast > 0.3f) Color.Yellow else MaterialTheme.colorScheme.tertiary
+                                        val unwatchedColor = if (grayContrast > 0.3f) Color.Gray else genderColor.contrastingTextColor().copy(alpha = 0.5f)
+                                        val tint = if (cow.isWatched) watchedColor else unwatchedColor
                                         Icon(
                                             imageVector = Icons.Filled.Star,
                                             contentDescription = if (cow.isWatched) "Unwatch" else "Watch",
@@ -147,7 +151,7 @@ fun CowCard(
                                         Icon(
                                             imageVector = Icons.Filled.Delete,
                                             contentDescription = "Delete Cow",
-                                            tint = if (genderColor.luminance() < 0.5f) Color(0xFFFF6B6B) else Color(0xFFD32F2F)
+                                            tint = genderColor.contrastingTextColor()
                                         )
                                     }
                                 }
@@ -174,15 +178,15 @@ fun CowCard(
         } // End of BackgroundColorProvider
         } // End of Card content
 
-        // Tip Icon Button - overlaid on top-right of the Card, extending out
+        // Tip Icon Button - overlaid on bottom-left of the Card
         if (tipVisible) {
             IconButton(
                 onClick = { showTip = true },
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = 18.dp, y = (-18).dp) // Offset to extend past the edge
+                    .align(Alignment.BottomStart)
+                    .offset(x = (-8).dp, y = 8.dp)
             ) {
-                WobblingLightbulbIcon() // Changed to WobblingLightbulbIcon
+                WobblingLightbulbIcon()
             }
         }
 

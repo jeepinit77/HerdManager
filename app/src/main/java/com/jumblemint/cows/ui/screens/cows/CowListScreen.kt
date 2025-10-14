@@ -333,7 +333,7 @@ private fun CowListContent(
                     onValueChange = { cowsViewModel.updateSearchQuery(it) },
                     label = { Text("Search cattle...") },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.weight(1f).height(56.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
                         focusedLabelColor = MaterialTheme.colorScheme.primary,
@@ -355,6 +355,7 @@ private fun CowListContent(
                     },
                     selected = hasActiveFilters(cowsUiState), 
                     leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") },
+                    modifier = Modifier.height(56.dp),
                     colors = FilterChipDefaults.filterChipColors(
                         labelColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
                         iconColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
@@ -380,7 +381,6 @@ private fun CowListContent(
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(8.dp))
         }
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
