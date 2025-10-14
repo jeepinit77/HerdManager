@@ -7,6 +7,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -28,6 +29,7 @@ import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.*
 import com.jumblemint.cows.ui.theme.getCardColors
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.ui.viewmodel.CowInfoViewModel
 import com.jumblemint.cows.ui.viewmodel.CowInfoViewModelFactory // Assuming factory is in this package
 import java.time.LocalDate
@@ -165,10 +167,10 @@ fun CowInfoScreen(
                                 ) {
                                     SectionTitle("Parentage")
                                     uiState.mother?.let { mother ->
-                                        RelatedCowRow(label = "Mother", cow = mother, onNavigateToCow = onNavigateToCow)
+                                        RelatedCowRow(label = "Mother", cow = mother, onNavigateToCow = onNavigateToCow, showDivider = uiState.father != null)
                                     }
                                     uiState.father?.let { father ->
-                                        RelatedCowRow(label = "Father", cow = father, onNavigateToCow = onNavigateToCow)
+                                        RelatedCowRow(label = "Father", cow = father, onNavigateToCow = onNavigateToCow, showDivider = false)
                                     }
                                 }
                             }
@@ -190,8 +192,8 @@ fun CowInfoScreen(
                                 title = "Maternal Siblings (${uiState.maternalSiblings.size})",
                                 initiallyExpanded = uiState.maternalSiblings.size <= 3
                             ) {
-                                uiState.maternalSiblings.forEach { sibling ->
-                                    RelatedCowRow(cow = sibling, onNavigateToCow = onNavigateToCow)
+                                uiState.maternalSiblings.forEachIndexed { index, sibling ->
+                                    RelatedCowRow(cow = sibling, onNavigateToCow = onNavigateToCow, showDivider = index < uiState.maternalSiblings.size - 1)
                                 }
                             }
                         }
@@ -290,11 +292,11 @@ private fun InfoRow(label: String, value: String) {
 private fun RelatedCowRow(
     label: String? = null,
     cow: Cow,
-    onNavigateToCow: (Long) -> Unit
+    onNavigateToCow: (Long) -> Unit,
+    showDivider: Boolean = true
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
         Row(
             modifier = Modifier
@@ -339,7 +341,9 @@ private fun RelatedCowRow(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        if (showDivider) {
+            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor().copy(alpha = 0.2f))
+        }
     }
 }
 
@@ -378,8 +382,8 @@ private fun CollapsibleLazyColumnCard(
                         .heightIn(max = 200.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp) // Spacing between RelatedCowRow items
                 ) {
-                    items(items, key = { it.id }) { relatedCow ->
-                        RelatedCowRow(cow = relatedCow, onNavigateToCow = onNavigateToCow)
+                    items(items.size) { index ->
+                        RelatedCowRow(cow = items[index], onNavigateToCow = onNavigateToCow, showDivider = index < items.size - 1)
                     }
                 }
             }
