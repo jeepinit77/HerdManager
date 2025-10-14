@@ -236,7 +236,7 @@ fun CattleManagerApp() {
                         actions = {
                             if (hasUnsavedChanges) {
                                 IconButton(onClick = { saveTriggered = true }) {
-                                    Icon(Icons.Filled.Done, contentDescription = "Save")
+                                    Icon(Icons.Filled.Done, contentDescription = "Save", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                         }
@@ -308,7 +308,7 @@ fun CattleManagerApp() {
                                             Log.d("EditButtonDebug", "Navigating to CowDetail with ID: $idVal")
                                             navController.navigate(Screen.CowDetail.createRoute(idVal))
                                         }) {
-                                            Icon(Icons.Filled.Edit, contentDescription = "Edit")
+                                            Icon(Icons.Filled.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.onSurface)
                                         }
                                     } else {
                                         Log.w("EditButtonDebug", "CowId is 0L, Edit button not shown or disabled.")
@@ -323,7 +323,7 @@ fun CattleManagerApp() {
                                     IconButton(onClick = {
                                         navController.navigate(Screen.NoteDetail.createRoute(idVal))
                                     }) {
-                                        Icon(Icons.Filled.Edit, contentDescription = "Edit")
+                                        Icon(Icons.Filled.Edit, contentDescription = "Edit", tint = MaterialTheme.colorScheme.onSurface)
                                     }
                                 }
                             }
@@ -334,17 +334,17 @@ fun CattleManagerApp() {
                                         currentScreenForUI == Screen.AddActivityWithId) && hasUnsavedChanges
                             ) {
                                 IconButton(onClick = { saveTriggered = true }) {
-                                    Icon(Icons.Filled.Done, contentDescription = "Save")
+                                    Icon(Icons.Filled.Done, contentDescription = "Save", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                             if (currentScreenForUI == Screen.TagColorsManagement) {
                                 IconButton(onClick = { resetTriggered = true }) {
-                                    Icon(Icons.Filled.Refresh, contentDescription = "Reset to Defaults")
+                                    Icon(Icons.Filled.Refresh, contentDescription = "Reset to Defaults", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                             if (currentScreenForUI == Screen.ThemeSettings) {
                                 IconButton(onClick = { resetTriggered = true }) {
-                                    Icon(Icons.Filled.Refresh, contentDescription = "Reset Theme to Default")
+                                    Icon(Icons.Filled.Refresh, contentDescription = "Reset Theme to Default", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                             if (currentScreenForUI == Screen.CowInfo ||
@@ -357,7 +357,7 @@ fun CattleManagerApp() {
                                 IconButton(onClick = {
                                     navController.popBackStack(Screen.MainPager.route, inclusive = false)
                                 }) {
-                                    Icon(Icons.Filled.Close, contentDescription = "Close")
+                                    Icon(Icons.Filled.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                         }

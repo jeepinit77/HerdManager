@@ -308,6 +308,12 @@ private fun ThemePicker(
         isDarkTheme,
         style
     )
+    
+    // Generate preview colors for each style
+    val coloredCardsScheme = generateThemeFromSeed(themeSettings.seedColor, surfaceTone, navBarTone, isDarkTheme, ThemeStyle.COLORED_CARDS)
+    val coloredBgScheme = generateThemeFromSeed(themeSettings.seedColor, surfaceTone, navBarTone, isDarkTheme, ThemeStyle.COLORED_BACKGROUND)
+    val grayCardsScheme = generateThemeFromSeed(themeSettings.seedColor, surfaceTone, navBarTone, isDarkTheme, ThemeStyle.GRAY_CARDS)
+    val grayBgScheme = generateThemeFromSeed(themeSettings.seedColor, surfaceTone, navBarTone, isDarkTheme, ThemeStyle.GRAY_BACKGROUND)
 
     // Seed color rows
     val tintRow1 = listOf(
@@ -443,8 +449,8 @@ private fun ThemePicker(
                         ) {
                             PhoneStyleButton(
                                 title = "Colored Cards",
-                                bgColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
-                                cardColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                bgColor = coloredCardsScheme.background,
+                                cardColor = coloredCardsScheme.surfaceVariant,
                                 navColor = MaterialTheme.colorScheme.primary,
                                 isSelected = style == ThemeStyle.COLORED_CARDS,
                                 selectedColor = MaterialTheme.colorScheme.primary,
@@ -456,8 +462,8 @@ private fun ThemePicker(
                             )
                             PhoneStyleButton(
                                 title = "Colored Background",
-                                bgColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
+                                bgColor = coloredBgScheme.background,
+                                cardColor = coloredBgScheme.surfaceVariant,
                                 navColor = MaterialTheme.colorScheme.primary,
                                 isSelected = style == ThemeStyle.COLORED_BACKGROUND,
                                 selectedColor = MaterialTheme.colorScheme.primary,
@@ -469,8 +475,8 @@ private fun ThemePicker(
                             )
                             PhoneStyleButton(
                                 title = "Gray Cards",
-                                bgColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
-                                cardColor = Color.Black.copy(alpha = 0.1f),
+                                bgColor = grayCardsScheme.background,
+                                cardColor = grayCardsScheme.surfaceVariant,
                                 navColor = MaterialTheme.colorScheme.primary,
                                 isSelected = style == ThemeStyle.GRAY_CARDS,
                                 selectedColor = MaterialTheme.colorScheme.primary,
@@ -482,8 +488,8 @@ private fun ThemePicker(
                             )
                             PhoneStyleButton(
                                 title = "Gray Background",
-                                bgColor = Color.Black.copy(alpha = 0.1f),
-                                cardColor = if (isDarkTheme) Color(0xFF1A1A1A) else Color.White,
+                                bgColor = grayBgScheme.background,
+                                cardColor = grayBgScheme.surfaceVariant,
                                 navColor = MaterialTheme.colorScheme.primary,
                                 isSelected = style == ThemeStyle.GRAY_BACKGROUND,
                                 selectedColor = MaterialTheme.colorScheme.primary,
