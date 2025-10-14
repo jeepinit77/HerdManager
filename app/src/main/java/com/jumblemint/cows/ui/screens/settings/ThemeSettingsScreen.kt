@@ -53,9 +53,9 @@ fun ThemeSettingsScreen(
     var showResetConfirm by remember { mutableStateOf(false) }
     var resetCount by remember { mutableStateOf(0) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(themeSettings.mode) {
         currentMode = themeSettings.mode
-        previewDark = when (currentMode) {
+        previewDark = when (themeSettings.mode) {
             ThemeMode.LIGHT -> false
             ThemeMode.DARK -> true
             ThemeMode.SYSTEM -> systemDark
