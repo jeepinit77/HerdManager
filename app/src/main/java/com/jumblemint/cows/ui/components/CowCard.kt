@@ -165,11 +165,31 @@ fun CowCard(
                                 age.months > 0 -> "${age.months}m ${age.days}d"
                                 else -> "${age.days}d"
                             }
-                            Spacer(modifier = Modifier.height(6.dp))
+                            Spacer(modifier = Modifier.height(4.dp))
                             SmartText(
                                 text = "Age: $ageText",
                                 style = MaterialTheme.typography.bodySmall,
                                 backgroundColor = genderColor
+                            )
+                        }
+                        
+                        cow.breed?.takeIf { it.isNotBlank() }?.let { breed ->
+                            Spacer(modifier = Modifier.height(2.dp))
+                            SmartText(
+                                text = "Breed: $breed",
+                                style = MaterialTheme.typography.bodySmall,
+                                backgroundColor = genderColor
+                            )
+                        }
+                        
+                        cow.colorMarkings?.takeIf { it.isNotBlank() }?.let { markings ->
+                            Spacer(modifier = Modifier.height(2.dp))
+                            SmartText(
+                                text = markings,
+                                style = MaterialTheme.typography.bodySmall,
+                                backgroundColor = genderColor,
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                         }
                     }
