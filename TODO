@@ -10,3 +10,4 @@ HERD MANAGER: There's no back button and herds dont' seem to save.
 USERS: Multiple herds can be a premium feature we add later. Currently, I think it could allow each user to own one herd, but possibly the ability to toggle between multiple herds 'shared wit me'
 REQUIRED FIELDS: Required fields aren't clearly marked and when i click save they don't hihglihgt to show what's missing..
 SIGN IN: It remembers previously used account and doesn't allow you to sign in with different google account
+REFACTOR CARDS: Create standardized StandardCard component to replace hardcoded padding(16.dp) across all card components (ReportsScreen, PastureCard, NoteCard, ActivityCard, CowCard) for consistency and maintainability
