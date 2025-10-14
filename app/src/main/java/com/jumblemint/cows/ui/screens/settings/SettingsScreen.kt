@@ -95,10 +95,17 @@ fun SettingsScreen(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let { fileUri ->
-            val fileName = fileUri.toString()
+            val cursor = context.contentResolver.query(fileUri, null, null, null, null)
+            val fileName = cursor?.use {
+                if (it.moveToFirst()) {
+                    val nameIndex = it.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex >= 0) it.getString(nameIndex) else null
+                } else null
+            }
+            
             val format = when {
-                fileName.contains(".json", ignoreCase = true) -> "JSON"
-                fileName.contains(".csv", ignoreCase = true) -> "CSV"
+                fileName?.endsWith(".csv", ignoreCase = true) == true -> "CSV"
+                fileName?.endsWith(".json", ignoreCase = true) == true -> "JSON"
                 else -> "JSON" // Default to JSON
             }
             viewModel.importData(fileUri, format)

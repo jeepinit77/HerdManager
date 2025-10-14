@@ -232,7 +232,7 @@ class SettingsViewModel(
                 when (result) {
                     is ImportResult.Success -> {
                         _uiState.value = _uiState.value.copy(
-                            message = "Successfully imported ${result.itemsImported} items",
+                            message = result.message ?: "Successfully imported ${result.itemsImported} items",
                             isLoading = false,
                             isSampleDataInstalled = repository.isSampleDataInstalled()
                         )

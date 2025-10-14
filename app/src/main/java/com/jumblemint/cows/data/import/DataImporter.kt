@@ -26,73 +26,110 @@ class DataImporter(
             val exportData = gson.fromJson(jsonString, ExportData::class.java)
             
             var imported = 0
+            var skipped = 0
             
-            // Import pastures first
+            // Import pastures first (skip duplicates)
             exportData.pastures.forEach { pastureExport ->
-                val pasture = Pasture(
-                    id = pastureExport.id,
-                    name = pastureExport.name,
-                    description = pastureExport.description,
-                    sizeAcres = pastureExport.sizeAcres
-                )
-                repository.insertPasture(pasture)
-                imported++
+                try {
+                    val existing = repository.getPastureByIdSuspend(pastureExport.id)
+                    if (existing == null) {
+                        val pasture = Pasture(
+                            id = pastureExport.id,
+                            name = pastureExport.name,
+                            description = pastureExport.description,
+                            sizeAcres = pastureExport.sizeAcres
+                        )
+                        repository.insertPasture(pasture)
+                        imported++
+                    } else {
+                        skipped++
+                    }
+                } catch (e: Exception) {
+                    skipped++
+                }
             }
             
-            // Import cows
+            // Import cows (skip duplicates)
             exportData.cows.forEach { cowExport ->
-                val cow = Cow(
-                    id = cowExport.id,
-                    name = cowExport.name,
-                    tagNumber = cowExport.tagNumber,
-                    tagColor = cowExport.tagColor,
-                    birthDate = cowExport.birthDate?.let { LocalDate.parse(it) },
-                    gender = Gender.valueOf(cowExport.gender),
-                    classification = Classification.valueOf(cowExport.classification),
-                    colorMarkings = cowExport.colorMarkings,
-                    motherId = cowExport.motherId,
-                    fatherId = cowExport.fatherId,
-                    pastureId = cowExport.pastureId,
-                    status = Status.valueOf(cowExport.status),
-                    isWatched = cowExport.isWatched,
-                    createdAt = cowExport.createdAt.let { LocalDate.parse(it) },
-                    updatedAt = cowExport.updatedAt?.let { LocalDate.parse(it) }
-                )
-                repository.insertCow(cow)
-                imported++
+                try {
+                    val existing = repository.getCowById(cowExport.id)
+                    if (existing == null) {
+                        val cow = Cow(
+                            id = 0, // Let Room auto-generate new ID
+                            name = cowExport.name,
+                            tagNumber = cowExport.tagNumber,
+                            tagColor = cowExport.tagColor,
+                            birthDate = cowExport.birthDate?.let { LocalDate.parse(it) },
+                            gender = Gender.valueOf(cowExport.gender),
+                            classification = Classification.valueOf(cowExport.classification),
+                            colorMarkings = cowExport.colorMarkings,
+                            motherId = cowExport.motherId,
+                            fatherId = cowExport.fatherId,
+                            pastureId = cowExport.pastureId,
+                            status = Status.valueOf(cowExport.status),
+                            isWatched = cowExport.isWatched,
+                            createdAt = cowExport.createdAt.let { LocalDate.parse(it) },
+                            updatedAt = cowExport.updatedAt?.let { LocalDate.parse(it) }
+                        )
+                        repository.insertCow(cow)
+                        imported++
+                    } else {
+                        skipped++
+                    }
+                } catch (e: Exception) {
+                    skipped++
+                }
             }
             
-            // Import activities
+            // Import activities (skip duplicates)
             exportData.activities.forEach { activityExport ->
-                val activity = Activity(
-                    id = activityExport.id,
-                    cowId = activityExport.cowId,
-                    date = LocalDate.parse(activityExport.date),
-                    activityType = ActivityType.valueOf(activityExport.activityType),
-                    notes = activityExport.notes,
-                    details = activityExport.details,
-                    fromPastureId = activityExport.fromPastureId,
-                    toPastureId = activityExport.toPastureId,
-                    groupId = activityExport.groupId,
-                    cowIds = activityExport.cowIds
-                )
-                repository.insertActivity(activity)
-                imported++
+                try {
+                    val existing = repository.getActivityById(activityExport.id)
+                    if (existing == null) {
+                        val activity = Activity(
+                            id = 0, // Let Room auto-generate new ID
+                            cowId = activityExport.cowId,
+                            date = LocalDate.parse(activityExport.date),
+                            activityType = ActivityType.valueOf(activityExport.activityType),
+                            notes = activityExport.notes,
+                            details = activityExport.details,
+                            fromPastureId = activityExport.fromPastureId,
+                            toPastureId = activityExport.toPastureId,
+                            groupId = activityExport.groupId,
+                            cowIds = activityExport.cowIds
+                        )
+                        repository.insertActivity(activity)
+                        imported++
+                    } else {
+                        skipped++
+                    }
+                } catch (e: Exception) {
+                    skipped++
+                }
             }
             
-            // Import notes
+            // Import notes (skip duplicates)
             exportData.notes.forEach { noteExport ->
-                val note = Note(
-                    id = noteExport.id,
-                    title = noteExport.title,
-                    text = noteExport.text,
-                    timestamp = noteExport.timestamp
-                )
-                repository.insertNote(note)
-                imported++
+                try {
+                    val note = Note(
+                        id = 0, // Let Room auto-generate new ID
+                        title = noteExport.title,
+                        text = noteExport.text,
+                        timestamp = noteExport.timestamp
+                    )
+                    repository.insertNote(note)
+                    imported++
+                } catch (e: Exception) {
+                    skipped++
+                }
             }
             
-            ImportResult.Success(imported)
+            val message = if (skipped > 0) {
+                "Imported $imported items, skipped $skipped duplicates"
+            } else {
+                "Successfully imported $imported items"
+            }
+            ImportResult.Success(imported, message)
         } catch (e: Exception) {
             ImportResult.Error("Import failed: ${e.message}")
         }
@@ -104,6 +141,7 @@ class DataImporter(
             val reader = BufferedReader(InputStreamReader(inputStream))
             
             var imported = 0
+            var skipped = 0
             var currentSection = ""
             var isFirstLineOfSection = true
             
@@ -137,26 +175,47 @@ class DataImporter(
                                 when (currentSection) {
                                     "COWS" -> {
                                         parseCowCsvLine(line)?.let { cow ->
-                                            repository.insertCow(cow)
-                                            imported++
+                                            try {
+                                                repository.insertCow(cow)
+                                                imported++
+                                            } catch (e: Exception) {
+                                                skipped++
+                                            }
                                         }
                                     }
                                     "PASTURES" -> {
                                         parsePastureCsvLine(line)?.let { pasture ->
-                                            repository.insertPasture(pasture)
-                                            imported++
+                                            try {
+                                                val existing = repository.getPastureByIdSuspend(pasture.id)
+                                                if (existing == null) {
+                                                    repository.insertPasture(pasture)
+                                                    imported++
+                                                } else {
+                                                    skipped++
+                                                }
+                                            } catch (e: Exception) {
+                                                skipped++
+                                            }
                                         }
                                     }
                                     "ACTIVITIES" -> {
                                         parseActivityCsvLine(line)?.let { activity ->
-                                            repository.insertActivity(activity)
-                                            imported++
+                                            try {
+                                                repository.insertActivity(activity)
+                                                imported++
+                                            } catch (e: Exception) {
+                                                skipped++
+                                            }
                                         }
                                     }
                                     "NOTES" -> {
                                         parseNoteCsvLine(line)?.let { note ->
-                                            repository.insertNote(note)
-                                            imported++
+                                            try {
+                                                repository.insertNote(note)
+                                                imported++
+                                            } catch (e: Exception) {
+                                                skipped++
+                                            }
                                         }
                                     }
                                 }
@@ -166,7 +225,12 @@ class DataImporter(
                 }
             }
             
-            ImportResult.Success(imported)
+            val message = if (skipped > 0) {
+                "Imported $imported items, skipped $skipped duplicates/errors"
+            } else {
+                "Successfully imported $imported items"
+            }
+            ImportResult.Success(imported, message)
         } catch (e: Exception) {
             ImportResult.Error("CSV import failed: ${e.message}")
         }
@@ -178,7 +242,7 @@ class DataImporter(
             if (parts.size < 15) return null
             
             Cow(
-                id = parts[0].toLongOrNull() ?: 0,
+                id = 0, // Let Room auto-generate new ID
                 name = parts[1].takeIf { it.isNotBlank() },
                 tagNumber = parts[2].takeIf { it.isNotBlank() },
                 tagColor = parts[3].takeIf { it.isNotBlank() },
@@ -191,7 +255,7 @@ class DataImporter(
                 pastureId = parts[10].takeIf { it.isNotBlank() },
                 status = Status.valueOf(parts[11]),
                 isWatched = parts[12].toBoolean(),
-                createdAt = LocalDate.parse(parts[13]),
+                createdAt = parts[13].takeIf { it.isNotBlank() }?.let { LocalDate.parse(it) },
                 updatedAt = parts[14].takeIf { it.isNotBlank() }?.let { LocalDate.parse(it) }
             )
         } catch (e: Exception) {
@@ -221,7 +285,7 @@ class DataImporter(
             if (parts.size < 10) return null
             
             Activity(
-                id = parts[0].toLongOrNull() ?: 0,
+                id = 0, // Let Room auto-generate new ID
                 cowId = parts[1].toLong(),
                 date = LocalDate.parse(parts[2]),
                 activityType = ActivityType.valueOf(parts[3]),
@@ -243,7 +307,7 @@ class DataImporter(
             if (parts.size < 4) return null
             
             Note(
-                id = parts[0].toLongOrNull() ?: 0,
+                id = 0, // Let Room auto-generate new ID
                 title = parts[1],
                 text = parts[2],
                 timestamp = parts[3].toLong()
@@ -285,6 +349,6 @@ class DataImporter(
 }
 
 sealed class ImportResult {
-    data class Success(val itemsImported: Int) : ImportResult()
+    data class Success(val itemsImported: Int, val message: String? = null) : ImportResult()
     data class Error(val message: String) : ImportResult()
 }
