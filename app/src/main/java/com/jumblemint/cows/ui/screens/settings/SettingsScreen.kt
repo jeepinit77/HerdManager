@@ -421,7 +421,7 @@ fun SettingsScreen(
     }
 
     if (showDeleteDataDialog) {
-        DeleteDataSelectiveDialog(
+        DeleteDataCategoryDialog(
             onDismiss = { showDeleteDataDialog = false },
             onConfirm = { selection ->
                 coroutineScope.launch {
@@ -689,46 +689,80 @@ fun SampleDataDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DeleteDataSelectiveDialog(
+fun DeleteDataCategoryDialog(
     onDismiss: () -> Unit,
     onConfirm: (SettingsViewModel.DeleteSelection) -> Unit
 ) {
-    var deleteLocal by remember { mutableStateOf(true) }
-    var deleteServer by remember { mutableStateOf(false) }
+    var deleteCows by remember { mutableStateOf(false) }
+    var deletePastures by remember { mutableStateOf(false) }
+    var deleteActivities by remember { mutableStateOf(false) }
+    var deleteNotes by remember { mutableStateOf(false) }
+    var deleteTagColors by remember { mutableStateOf(false) }
+    var deleteActivityTypes by remember { mutableStateOf(false) }
+    var deleteBreeds by remember { mutableStateOf(false) }
+    var deleteSettings by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Filled.WarningAmber, contentDescription = "Delete Data") },
-        title = { Text("Delete Data Selectively") },
+        title = { Text("Delete Data by Category") },
         text = {
             Column {
-                Text("Choose which data to delete. This action cannot be undone.")
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = deleteLocal,
-                        onCheckedChange = { deleteLocal = it }
-                    )
-                    Text("Delete Local Data (on this device)")
-                }
                 Text(
-                    "Note: Server data deletion is currently disabled in this dialog. " +
-                            "To delete server data, please use the account management screen after ensuring local data is backed up or not needed.",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp)
+                    "Select which data categories to delete. This action cannot be undone.",
+                    style = MaterialTheme.typography.bodyMedium
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                // Data Categories
+                Text(
+                    "Data Categories:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                CategoryCheckbox("Cattle Records", deleteCows) { deleteCows = it }
+                CategoryCheckbox("Pastures", deletePastures) { deletePastures = it }
+                CategoryCheckbox("Activities", deleteActivities) { deleteActivities = it }
+                CategoryCheckbox("Notes", deleteNotes) { deleteNotes = it }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    "Configuration:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                
+                CategoryCheckbox("Tag Colors (resets to defaults)", deleteTagColors) { deleteTagColors = it }
+                CategoryCheckbox("Activity Types (resets to defaults)", deleteActivityTypes) { deleteActivityTypes = it }
+                CategoryCheckbox("Breeds (resets to defaults)", deleteBreeds) { deleteBreeds = it }
+                CategoryCheckbox("App Settings", deleteSettings) { deleteSettings = it }
             }
         },
         confirmButton = {
+            val hasSelection = deleteCows || deletePastures || deleteActivities || deleteNotes || 
+                             deleteTagColors || deleteActivityTypes || deleteBreeds || deleteSettings
             Button(
                 onClick = {
-                    onConfirm(SettingsViewModel.DeleteSelection(deleteLocal, deleteServer))
-                    onDismiss()
+                    onConfirm(
+                        SettingsViewModel.DeleteSelection(
+                            cows = deleteCows,
+                            pastures = deletePastures,
+                            activities = deleteActivities,
+                            notes = deleteNotes,
+                            tagColors = deleteTagColors,
+                            activityTypes = deleteActivityTypes,
+                            breeds = deleteBreeds,
+                            settings = deleteSettings
+                        )
+                    )
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                enabled = deleteLocal || deleteServer
+                enabled = hasSelection
             ) {
-                Text("Delete")
+                Text("Delete Selected")
             }
         },
         dismissButton = {
@@ -737,6 +771,28 @@ fun DeleteDataSelectiveDialog(
             }
         }
     )
+}
+
+@Composable
+private fun CategoryCheckbox(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.padding(vertical = 2.dp)
+    ) {
+        Checkbox(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

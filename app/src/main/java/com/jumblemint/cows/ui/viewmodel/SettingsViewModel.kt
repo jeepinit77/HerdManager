@@ -70,6 +70,7 @@ class SettingsViewModel(
         val notes: Boolean = false,
         val tagColors: Boolean = false,
         val activityTypes: Boolean = false,
+        val breeds: Boolean = false,
         val settings: Boolean = false
     )
 
@@ -181,22 +182,52 @@ class SettingsViewModel(
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(message = null, error = null, isLoading = true)
-                if (selection.activities) repository.deleteAllActivities()
-                if (selection.cows) repository.deleteAllCows()
-                if (selection.pastures) repository.deleteAllPastures()
-                if (selection.notes) repository.deleteAllNotes()
+                
+                val deletedCategories = mutableListOf<String>()
+                
+                if (selection.activities) {
+                    repository.deleteAllActivities()
+                    deletedCategories.add("Activities")
+                }
+                if (selection.cows) {
+                    repository.deleteAllCows()
+                    deletedCategories.add("Cattle")
+                }
+                if (selection.pastures) {
+                    repository.deleteAllPastures()
+                    deletedCategories.add("Pastures")
+                }
+                if (selection.notes) {
+                    repository.deleteAllNotes()
+                    deletedCategories.add("Notes")
+                }
                 if (selection.tagColors) {
                     repository.deleteAllTagColors()
                     repository.ensureDefaultTagColorsExist()
+                    deletedCategories.add("Tag Colors")
                 }
                 if (selection.activityTypes) {
                     repository.deleteAllActivityTypeConfigs()
                     repository.ensureDefaultActivityTypesExist()
+                    deletedCategories.add("Activity Types")
                 }
-                if (selection.settings) repository.deleteAllSettings() // Potentially risky
+                if (selection.breeds) {
+                    repository.restoreDefaultBreeds()
+                    deletedCategories.add("Breeds")
+                }
+                if (selection.settings) {
+                    repository.deleteAllSettings()
+                    deletedCategories.add("Settings")
+                }
+
+                val message = if (deletedCategories.isNotEmpty()) {
+                    "Deleted: ${deletedCategories.joinToString(", ")}"
+                } else {
+                    "No categories selected for deletion"
+                }
 
                 _uiState.value = _uiState.value.copy(
-                    message = "Selected data categories deleted successfully.",
+                    message = message,
                     isLoading = false,
                     isSampleDataInstalled = if (selection.cows || selection.pastures) repository.isSampleDataInstalled() else _uiState.value.isSampleDataInstalled
                 )
