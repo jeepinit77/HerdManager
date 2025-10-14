@@ -77,7 +77,8 @@ fun NoteDetailScreen(
                         Text(
                             text = note.title,
                             style = MaterialTheme.typography.headlineMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Text(
@@ -119,7 +120,8 @@ fun NoteDetailScreen(
                         )
                         Text(
                             text = note.text,
-                            style = MaterialTheme.typography.bodyLarge
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }

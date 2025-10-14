@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -139,7 +140,10 @@ fun NoteEditScreen(
                 }
             )
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Mark as Todo")
+            Text(
+                text = "Mark as Todo",
+                color = MaterialTheme.colorScheme.onBackground
+            )
         }
 
         if (isTodo) {
