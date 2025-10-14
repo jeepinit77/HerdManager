@@ -442,12 +442,12 @@ fun SettingsRow(
                 SmartText(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 SmartText(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -505,12 +505,12 @@ fun SettingsCard(
                 SmartText(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 SmartText(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    backgroundColor = MaterialTheme.colorScheme.surfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             content?.let {

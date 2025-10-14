@@ -70,6 +70,7 @@ fun AnimalFilterScreen(
                     Text(
                         "Filter Animals",
                         style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.align(Alignment.Center) 
                     )
                     IconButton(
@@ -126,7 +127,11 @@ fun AnimalFilterScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Text("Watched Status", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                text = "Watched Status", 
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                             Checkbox(
                                 checked = currentFilterState.isWatched ?: false, 
                                 onCheckedChange = { 
@@ -149,6 +154,7 @@ fun AnimalFilterScreen(
                                 null -> "Showing all (watched & not watched)"
                             },
                             style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 8.dp, bottom = 0.dp)
                         )
                         Divider(
@@ -241,7 +247,11 @@ private fun CollapsibleFilterSection(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(title, style = MaterialTheme.typography.titleLarge)
+            Text(
+                text = title, 
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             Icon(
                 imageVector = if (isExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
                 contentDescription = if (isExpanded) "Collapse" else "Expand"
@@ -287,7 +297,11 @@ private fun <T> MultiSelectChipGroup(
             verticalAlignment = Alignment.CenterVertically, 
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = title, 
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             TextButton(
                 onClick = { onSelectionChanged(emptyList()) },
                 enabled = selectedOptions.isNotEmpty(),
@@ -319,6 +333,9 @@ private fun <T> MultiSelectChipGroup(
                     label = { Text(itemLabel(option)) },
                     leadingIcon = if (isSelected) { { Icon(Icons.Filled.Check, "Selected", modifier = Modifier.size(FilterChipDefaults.IconSize)) } } else null,
                     colors = FilterChipDefaults.filterChipColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        labelColor = MaterialTheme.colorScheme.onSurface,
+                        iconColor = MaterialTheme.colorScheme.onSurface,
                         selectedContainerColor = MaterialTheme.colorScheme.primary, 
                         selectedLabelColor = MaterialTheme.colorScheme.onPrimary, 
                         selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary 
@@ -356,7 +373,11 @@ private fun <T> ConditionalMultiSelectFilter(
             verticalAlignment = Alignment.CenterVertically, 
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = title, 
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
             val showClearButton = selectedOptions.isNotEmpty() && options.size <= chipDisplayThreshold
             val showSelectEditButton = options.size > chipDisplayThreshold
 
@@ -402,6 +423,9 @@ private fun <T> ConditionalMultiSelectFilter(
                         label = { Text(itemLabel(option)) },
                         leadingIcon = if (isSelected) { { Icon(Icons.Filled.Check, "Selected", modifier = Modifier.size(FilterChipDefaults.IconSize)) } } else null,
                         colors = FilterChipDefaults.filterChipColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            labelColor = MaterialTheme.colorScheme.onSurface,
+                            iconColor = MaterialTheme.colorScheme.onSurface,
                             selectedContainerColor = MaterialTheme.colorScheme.primary, 
                             selectedLabelColor = MaterialTheme.colorScheme.onPrimary, 
                             selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary 
@@ -471,7 +495,10 @@ private fun <T> MultiSelectDropdownDialog(
                             )
                         ) 
                         Spacer(Modifier.width(8.dp))
-                        Text(itemLabel(option))
+                        Text(
+                            text = itemLabel(option),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }
