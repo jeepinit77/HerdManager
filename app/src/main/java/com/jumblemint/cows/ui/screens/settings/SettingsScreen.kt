@@ -31,6 +31,7 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.sync.SyncStatus
 import com.jumblemint.cows.ui.viewmodel.SettingsViewModel
 import com.jumblemint.cows.ui.viewmodel.SettingsViewModelFactory
+import com.jumblemint.cows.data.import.ConflictResolution
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -445,6 +446,15 @@ fun SettingsScreen(
             }
         )
     }
+    
+    uiState.conflictInfo?.let { conflictInfo ->
+        ConflictResolutionDialog(
+            conflictCount = conflictInfo.conflictCount,
+            totalRecords = conflictInfo.totalRecords,
+            onDismiss = { viewModel.cancelConflictResolution() },
+            onResolve = { resolution -> viewModel.resolveConflict(resolution) }
+        )
+    }
 }
 
 @Composable
@@ -773,6 +783,70 @@ fun ImportDataDialog(
         confirmButton = {
             Button(onClick = onImport) {
                 Text("Select File")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        textContentColor = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConflictResolutionDialog(
+    conflictCount: Int,
+    totalRecords: Int,
+    onDismiss: () -> Unit,
+    onResolve: (ConflictResolution) -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { 
+            Icon(
+                Icons.Filled.Warning, 
+                contentDescription = "Conflicts Detected",
+                tint = MaterialTheme.colorScheme.error
+            ) 
+        },
+        title = { 
+            Text(
+                "Duplicate Records Found",
+                color = MaterialTheme.colorScheme.onSurface
+            ) 
+        },
+        text = {
+            Column {
+                Text(
+                    "Found $conflictCount duplicate records out of $totalRecords total records.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "How would you like to handle the duplicates?",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            Column {
+                Button(
+                    onClick = { onResolve(ConflictResolution.MERGE_NEW) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Update Existing Records")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { onResolve(ConflictResolution.KEEP_EXISTING) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Keep Existing Records")
+                }
             }
         },
         dismissButton = {

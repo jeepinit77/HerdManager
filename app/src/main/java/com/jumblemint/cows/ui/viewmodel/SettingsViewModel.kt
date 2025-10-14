@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.jumblemint.cows.data.export.DataExporter
 import com.jumblemint.cows.data.import.DataImporter
 import com.jumblemint.cows.data.import.ImportResult
+import com.jumblemint.cows.data.import.ConflictResolution
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -217,14 +218,14 @@ class SettingsViewModel(
         _uiState.value = _uiState.value.copy(pendingExportFormat = format)
     }
     
-    fun importData(uri: Uri, format: String) {
+    fun importData(uri: Uri, format: String, conflictResolution: ConflictResolution? = null) {
         viewModelScope.launch {
             try {
                 _uiState.value = _uiState.value.copy(message = null, error = null, isLoading = true)
                 val importer = DataImporter(application, repository)
                 
                 val result = when (format.uppercase()) {
-                    "JSON" -> importer.importFromJson(uri)
+                    "JSON" -> importer.importFromJson(uri, conflictResolution)
                     "CSV" -> importer.importFromCsv(uri)
                     else -> ImportResult.Error("Unsupported format: $format")
                 }
@@ -243,6 +244,17 @@ class SettingsViewModel(
                             isLoading = false
                         )
                     }
+                    is ImportResult.ConflictDetected -> {
+                        _uiState.value = _uiState.value.copy(
+                            conflictInfo = ConflictInfo(
+                                uri = uri,
+                                format = format,
+                                conflictCount = result.conflictCount,
+                                totalRecords = result.totalRecords
+                            ),
+                            isLoading = false
+                        )
+                    }
                 }
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
@@ -252,7 +264,24 @@ class SettingsViewModel(
             }
         }
     }
+    
+    fun resolveConflict(resolution: ConflictResolution) {
+        val conflictInfo = _uiState.value.conflictInfo ?: return
+        _uiState.value = _uiState.value.copy(conflictInfo = null)
+        importData(conflictInfo.uri, conflictInfo.format, resolution)
+    }
+    
+    fun cancelConflictResolution() {
+        _uiState.value = _uiState.value.copy(conflictInfo = null)
+    }
 }
+
+data class ConflictInfo(
+    val uri: Uri,
+    val format: String,
+    val conflictCount: Int,
+    val totalRecords: Int
+)
 
 data class SettingsUiState(
     val tagColors: List<String> = emptyList(),
@@ -264,5 +293,6 @@ data class SettingsUiState(
     val isLoading: Boolean = true,
     val error: String? = null,
     val message: String? = null,
-    val pendingExportFormat: String? = null
+    val pendingExportFormat: String? = null,
+    val conflictInfo: ConflictInfo? = null
 )

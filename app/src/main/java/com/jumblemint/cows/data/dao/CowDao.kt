@@ -27,6 +27,9 @@ interface CowDao {
 
     @Query("SELECT * FROM cows WHERE tagNumber = :tagNumber LIMIT 1")
     suspend fun getCowByTagNumber(tagNumber: String): Cow?
+    
+    @Query("SELECT * FROM cows WHERE firestoreId = :firestoreId LIMIT 1")
+    suspend fun getCowByFirestoreId(firestoreId: String): Cow?
 
     @Query("SELECT * FROM cows WHERE status = :status AND isDeleted = 0 ORDER BY name ASC")
     fun getCowsByStatus(status: Status): Flow<List<Cow>>

@@ -49,6 +49,7 @@ class CattleRepository(
     suspend fun getCowById(id: Long): Cow? = cowDao.getCowById(id)
     fun getCowByIdFlow(id: Long): Flow<Cow?> = cowDao.getCowByIdFlow(id)
     suspend fun getCowByTagNumber(tagNumber: String): Cow? = cowDao.getCowByTagNumber(tagNumber)
+    suspend fun getCowByFirestoreId(firestoreId: String): Cow? = cowDao.getCowByFirestoreId(firestoreId)
     fun getWatchedCows(): Flow<List<Cow>> = cowDao.getWatchedCows()
 
     suspend fun insertCow(cow: Cow): Long = cowDao.insertCow(cow)
@@ -73,6 +74,7 @@ class CattleRepository(
     fun getActivitiesByType(activityType: ActivityType): Flow<List<Activity>> = activityDao.getActivitiesByType(activityType)
 
     suspend fun getActivityById(id: Long): Activity? = activityDao.getActivityById(id)
+    suspend fun getActivityByFirestoreId(firestoreId: String): Activity? = activityDao.getActivityByFirestoreId(firestoreId)
     suspend fun getActivitiesByGroupId(groupId: String): List<Activity> = activityDao.getActivitiesByGroupId(groupId)
     suspend fun insertActivity(activity: Activity): Long = activityDao.insertActivity(activity)
     suspend fun insertActivities(activities: List<Activity>) = activityDao.insertActivities(activities)
@@ -365,51 +367,69 @@ class CattleRepository(
             Pasture(id = "sample-pasture-3", name = "East Paddock", description = "Smaller paddock for breeding stock", sizeAcres = 8.5),
             Pasture(id = "sample-pasture-4", name = "West Lot", description = "Holding area near barn", sizeAcres = 5.0)
         )
-        pastures.forEach { insertPasture(it) }
+        pastures.forEach { pasture ->
+            val existing = getPastureByIdSuspend(pasture.id)
+            if (existing == null) {
+                insertPasture(pasture)
+            }
+        }
         return pastures.map { it.id }
     }
 
     private suspend fun createSampleCows(pastureIds: List<String>): List<Long> {
         val baseDate = LocalDate.now()
+        val sampleUuids = listOf(
+            "sample-cow-001", "sample-cow-002", "sample-cow-003", "sample-cow-004", "sample-cow-005", "sample-cow-006",
+            "sample-cow-007", "sample-cow-008", "sample-cow-009", "sample-cow-010", "sample-cow-011", "sample-cow-012",
+            "sample-cow-013", "sample-cow-014", "sample-cow-015", "sample-cow-016", "sample-cow-017", "sample-cow-018",
+            "sample-cow-019", "sample-cow-020", "sample-cow-021", "sample-cow-022"
+        )
+        
         val cows = listOf(
             // Generation 1 - Foundation Bulls
-            Cow(name = "Thunder", tagNumber = "B001", tagColor = "Blue", birthDate = baseDate.minusYears(8), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Black Angus with white face", pastureId = pastureIds[2], status = Status.ACTIVE),
-            Cow(name = "Storm", tagNumber = "B002", tagColor = "Red", birthDate = baseDate.minusYears(6), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Red Angus solid", pastureId = pastureIds[2], status = Status.ACTIVE),
+            Cow(firestoreId = sampleUuids[0], name = "Thunder", tagNumber = "B001", tagColor = "Blue", birthDate = baseDate.minusYears(8), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Black Angus with white face", pastureId = pastureIds[2], status = Status.ACTIVE),
+            Cow(firestoreId = sampleUuids[1], name = "Storm", tagNumber = "B002", tagColor = "Red", birthDate = baseDate.minusYears(6), gender = Gender.MALE, classification = Classification.BULL, colorMarkings = "Red Angus solid", pastureId = pastureIds[2], status = Status.ACTIVE),
             
             // Generation 1 - Foundation Cows
-            Cow(name = "Bessie", tagNumber = "C001", tagColor = "Yellow", birthDate = baseDate.minusYears(9), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Holstein black and white", pastureId = pastureIds[0], status = Status.ACTIVE, isWatched = true),
-            Cow(name = "Daisy", tagNumber = "C002", tagColor = "Green", birthDate = baseDate.minusYears(8), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Brown Jersey", pastureId = pastureIds[0], status = Status.ACTIVE),
-            Cow(name = "Rosie", tagNumber = "C003", tagColor = "Orange", birthDate = baseDate.minusYears(7), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Black Angus", pastureId = pastureIds[1], status = Status.ACTIVE, isWatched = true),
-            Cow(name = "Pearl", tagNumber = "C004", tagColor = "White", birthDate = baseDate.minusYears(7), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "White with black spots", pastureId = pastureIds[0], status = Status.ACTIVE, isWatched = true),
+            Cow(firestoreId = sampleUuids[2], name = "Bessie", tagNumber = "C001", tagColor = "Yellow", birthDate = baseDate.minusYears(9), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Holstein black and white", pastureId = pastureIds[0], status = Status.ACTIVE, isWatched = true),
+            Cow(firestoreId = sampleUuids[3], name = "Daisy", tagNumber = "C002", tagColor = "Green", birthDate = baseDate.minusYears(8), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Brown Jersey", pastureId = pastureIds[0], status = Status.ACTIVE),
+            Cow(firestoreId = sampleUuids[4], name = "Rosie", tagNumber = "C003", tagColor = "Orange", birthDate = baseDate.minusYears(7), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Black Angus", pastureId = pastureIds[1], status = Status.ACTIVE, isWatched = true),
+            Cow(firestoreId = sampleUuids[5], name = "Pearl", tagNumber = "C004", tagColor = "White", birthDate = baseDate.minusYears(7), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "White with black spots", pastureId = pastureIds[0], status = Status.ACTIVE, isWatched = true),
             
             // Generation 2 - Daughters of foundation stock
-            Cow(name = "Luna", tagNumber = "C005", tagColor = "Blue", birthDate = baseDate.minusYears(4), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Red with white markings", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 3, fatherId = 1),
-            Cow(name = "Star", tagNumber = "C006", tagColor = "Green", birthDate = baseDate.minusYears(3), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Brown with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 4, fatherId = 2),
-            Cow(name = "Grace", tagNumber = "C007", tagColor = "Yellow", birthDate = baseDate.minusYears(3), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Black with white stripe", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 5, fatherId = 1),
-            Cow(name = "Ruby", tagNumber = "C008", tagColor = "Red", birthDate = baseDate.minusYears(5), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Solid red", pastureId = pastureIds[1], status = Status.DECEASED, motherId = 6, fatherId = 1),
+            Cow(firestoreId = sampleUuids[6], name = "Luna", tagNumber = "C005", tagColor = "Blue", birthDate = baseDate.minusYears(4), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Red with white markings", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 3, fatherId = 1),
+            Cow(firestoreId = sampleUuids[7], name = "Star", tagNumber = "C006", tagColor = "Green", birthDate = baseDate.minusYears(3), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Brown with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 4, fatherId = 2),
+            Cow(firestoreId = sampleUuids[8], name = "Grace", tagNumber = "C007", tagColor = "Yellow", birthDate = baseDate.minusYears(3), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Black with white stripe", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 5, fatherId = 1),
+            Cow(firestoreId = sampleUuids[9], name = "Ruby", tagNumber = "C008", tagColor = "Red", birthDate = baseDate.minusYears(5), gender = Gender.FEMALE, classification = Classification.COW, colorMarkings = "Solid red", pastureId = pastureIds[1], status = Status.DECEASED, motherId = 6, fatherId = 1),
             
             // Generation 2 - Young breeding stock
-            Cow(name = "Hope", tagNumber = "H001", tagColor = "Orange", birthDate = baseDate.minusYears(2), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Brown with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 3, fatherId = 2),
-            Cow(name = "Faith", tagNumber = "H002", tagColor = "White", birthDate = baseDate.minusYears(2), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Red and white spotted", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 4, fatherId = 1),
-            Cow(name = "Joy", tagNumber = "H003", tagColor = "Blue", birthDate = baseDate.minusMonths(20), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Black Angus solid", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 5, fatherId = 2),
+            Cow(firestoreId = sampleUuids[10], name = "Hope", tagNumber = "H001", tagColor = "Orange", birthDate = baseDate.minusYears(2), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Brown with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 3, fatherId = 2),
+            Cow(firestoreId = sampleUuids[11], name = "Faith", tagNumber = "H002", tagColor = "White", birthDate = baseDate.minusYears(2), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Red and white spotted", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 4, fatherId = 1),
+            Cow(firestoreId = sampleUuids[12], name = "Joy", tagNumber = "H003", tagColor = "Blue", birthDate = baseDate.minusMonths(20), gender = Gender.FEMALE, classification = Classification.HEIFER, colorMarkings = "Black Angus solid", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 5, fatherId = 2),
             
             // Generation 2 - Steers (castrated males)
-            Cow(name = "Max", tagNumber = "S001", tagColor = "Green", birthDate = baseDate.minusYears(2), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Black with white stripe", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 3, fatherId = 1),
-            Cow(name = "Duke", tagNumber = "S002", tagColor = "Yellow", birthDate = baseDate.minusYears(2), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Red with white markings", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 4, fatherId = 2),
-            Cow(name = "Rex", tagNumber = "S003", tagColor = "Red", birthDate = baseDate.minusMonths(18), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Brown and white", pastureId = pastureIds[3], status = Status.SOLD, motherId = 5, fatherId = 1),
+            Cow(firestoreId = sampleUuids[13], name = "Max", tagNumber = "S001", tagColor = "Green", birthDate = baseDate.minusYears(2), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Black with white stripe", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 3, fatherId = 1),
+            Cow(firestoreId = sampleUuids[14], name = "Duke", tagNumber = "S002", tagColor = "Yellow", birthDate = baseDate.minusYears(2), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Red with white markings", pastureId = pastureIds[3], status = Status.ACTIVE, motherId = 4, fatherId = 2),
+            Cow(firestoreId = sampleUuids[15], name = "Rex", tagNumber = "S003", tagColor = "Red", birthDate = baseDate.minusMonths(18), gender = Gender.MALE, classification = Classification.STEER, colorMarkings = "Brown and white", pastureId = pastureIds[3], status = Status.SOLD, motherId = 5, fatherId = 1),
             
             // Generation 3 - Current calves
-            Cow(name = "Buddy", tagNumber = "K001", tagColor = "Orange", birthDate = baseDate.minusMonths(8), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Brown and white spotted", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 7, fatherId = 2),
-            Cow(name = "Bella", tagNumber = "K002", tagColor = "White", birthDate = baseDate.minusMonths(10), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "Solid black", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 8, fatherId = 1),
-            Cow(name = "Charlie", tagNumber = "K003", tagColor = "Blue", birthDate = baseDate.minusMonths(6), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Red with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 9, fatherId = 2),
-            Cow(name = "Rosebud", tagNumber = "K004", tagColor = "Green", birthDate = baseDate.minusMonths(4), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "Brown Jersey coloring", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 11, fatherId = 2),
-            Cow(name = "Scout", tagNumber = "K005", tagColor = "Yellow", birthDate = baseDate.minusMonths(3), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Black with white markings", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 12, fatherId = 1),
-            Cow(name = "Spirit", tagNumber = "K006", tagColor = "Red", birthDate = baseDate.minusMonths(2), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "White with black spots", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 13, fatherId = 2)
+            Cow(firestoreId = sampleUuids[16], name = "Buddy", tagNumber = "K001", tagColor = "Orange", birthDate = baseDate.minusMonths(8), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Brown and white spotted", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 7, fatherId = 2),
+            Cow(firestoreId = sampleUuids[17], name = "Bella", tagNumber = "K002", tagColor = "White", birthDate = baseDate.minusMonths(10), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "Solid black", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 8, fatherId = 1),
+            Cow(firestoreId = sampleUuids[18], name = "Charlie", tagNumber = "K003", tagColor = "Blue", birthDate = baseDate.minusMonths(6), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Red with white face", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 9, fatherId = 2),
+            Cow(firestoreId = sampleUuids[19], name = "Rosebud", tagNumber = "K004", tagColor = "Green", birthDate = baseDate.minusMonths(4), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "Brown Jersey coloring", pastureId = pastureIds[0], status = Status.ACTIVE, motherId = 11, fatherId = 2),
+            Cow(firestoreId = sampleUuids[20], name = "Scout", tagNumber = "K005", tagColor = "Yellow", birthDate = baseDate.minusMonths(3), gender = Gender.MALE, classification = Classification.CALF, colorMarkings = "Black with white markings", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 12, fatherId = 1),
+            Cow(firestoreId = sampleUuids[21], name = "Spirit", tagNumber = "K006", tagColor = "Red", birthDate = baseDate.minusMonths(2), gender = Gender.FEMALE, classification = Classification.CALF, colorMarkings = "White with black spots", pastureId = pastureIds[1], status = Status.ACTIVE, motherId = 13, fatherId = 2)
         )
         
         val createdCowIds = mutableListOf<Long>()
         cows.forEach { cow ->
-            val id = insertCow(cow)
+            val existing = cow.firestoreId?.let { getCowByFirestoreId(it) }
+            val id = if (existing != null) {
+                updateCow(cow.copy(id = existing.id, createdAt = existing.createdAt, updatedAt = LocalDate.now()))
+                existing.id
+            } else {
+                insertCow(cow)
+            }
             createdCowIds.add(id)
         }
         
@@ -479,19 +499,25 @@ class CattleRepository(
 
     suspend fun deleteSampleData() {
         if (!isSampleDataInstalled()) return
+        
+        // Delete sample pastures
         val samplePastureIds = listOf("sample-pasture-1", "sample-pasture-2", "sample-pasture-3", "sample-pasture-4")
         samplePastureIds.forEach { pastureId ->
             getPastureByIdSuspend(pastureId)?.let { pasture -> deletePasture(pasture) }
         }
-        val sampleTagPrefixes = listOf("B00", "C00", "H00", "S00", "K00", "Y00")
+        
+        // Delete sample cows by UUID
         val allCows = getAllCows().firstOrNull() ?: emptyList()
-        allCows.filter { cow -> cow.tagNumber?.let { tag -> sampleTagPrefixes.any { prefix -> tag.startsWith(prefix) } } ?: false }
+        allCows.filter { cow -> cow.firestoreId?.startsWith("sample-cow-") == true }
             .forEach { cow -> deleteCow(cow) }
+        
+        // Delete sample notes
         noteDao?.let { dao ->
             val sampleNoteTitles = listOf("Pasture Rotation Plan", "Breeding Schedule", "Feed Inventory", "Veterinary Visit")
             val allNotes = dao.getAllNotes().firstOrNull() ?: emptyList()
             allNotes.filter { note -> sampleNoteTitles.contains(note.title) }.forEach { note -> dao.delete(note) }
         }
+        
         insertOrUpdateSetting(Settings(SettingsKeys.SAMPLE_DATA_INSTALLED, "false"))
     }
 

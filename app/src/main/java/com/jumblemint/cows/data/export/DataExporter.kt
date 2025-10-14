@@ -23,6 +23,7 @@ data class ExportData(
 
 data class CowExport(
     val id: Long,
+    val firestoreId: String?,
     val name: String?,
     val tagNumber: String?,
     val tagColor: String?,
@@ -50,6 +51,7 @@ data class PastureExport(
 
 data class ActivityExport(
     val id: Long,
+    val firestoreId: String?,
     val cowId: Long,
     val date: String,
     val activityType: String,
@@ -106,9 +108,9 @@ class DataExporter(private val context: Context) {
         val csvContent = buildString {
             // Cows CSV
             appendLine("=== COWS ===")
-            appendLine("ID,Name,Tag Number,Tag Color,Birth Date,Gender,Classification,Color Markings,Mother ID,Father ID,Pasture ID,Status,Watched,Created At,Updated At")
+            appendLine("ID,UUID,Name,Tag Number,Tag Color,Birth Date,Gender,Classification,Color Markings,Mother ID,Father ID,Pasture ID,Status,Watched,Created At,Updated At")
             cows.forEach { cow ->
-                appendLine("${cow.id},\"${cow.name ?: ""}\",\"${cow.tagNumber ?: ""}\",\"${cow.tagColor ?: ""}\",\"${cow.birthDate?.toString() ?: ""}\",\"${cow.gender}\",\"${cow.classification}\",\"${cow.colorMarkings ?: ""}\",\"${cow.motherId ?: ""}\",\"${cow.fatherId ?: ""}\",\"${cow.pastureId ?: ""}\",\"${cow.status}\",\"${cow.isWatched}\",\"${cow.createdAt?.toString() ?: LocalDate.now()}\",\"${cow.updatedAt?.toString() ?: ""}\"")
+                appendLine("${cow.id},\"${cow.firestoreId ?: ""}\",\"${cow.name ?: ""}\",\"${cow.tagNumber ?: ""}\",\"${cow.tagColor ?: ""}\",\"${cow.birthDate?.toString() ?: ""}\",\"${cow.gender}\",\"${cow.classification}\",\"${cow.colorMarkings ?: ""}\",\"${cow.motherId ?: ""}\",\"${cow.fatherId ?: ""}\",\"${cow.pastureId ?: ""}\",\"${cow.status}\",\"${cow.isWatched}\",\"${cow.createdAt?.toString() ?: LocalDate.now()}\",\"${cow.updatedAt?.toString() ?: ""}\"")
             }
             
             appendLine()
@@ -120,9 +122,9 @@ class DataExporter(private val context: Context) {
             
             appendLine()
             appendLine("=== ACTIVITIES ===")
-            appendLine("ID,Cow ID,Date,Activity Type,Notes,Details,From Pasture,To Pasture,Group ID,Cow IDs,Created At")
+            appendLine("ID,UUID,Cow ID,Date,Activity Type,Notes,Details,From Pasture,To Pasture,Group ID,Cow IDs,Created At")
             activities.forEach { activity ->
-                appendLine("${activity.id},${activity.cowId},\"${activity.date}\",\"${activity.activityType}\",\"${activity.notes ?: ""}\",\"${activity.details ?: ""}\",\"${activity.fromPastureId ?: ""}\",\"${activity.toPastureId ?: ""}\",\"${activity.groupId ?: ""}\",\"${activity.cowIds.joinToString(";")}\",\"${activity.date}\"")
+                appendLine("${activity.id},\"${activity.firestoreId ?: ""}\",${activity.cowId},\"${activity.date}\",\"${activity.activityType}\",\"${activity.notes ?: ""}\",\"${activity.details ?: ""}\",\"${activity.fromPastureId ?: ""}\",\"${activity.toPastureId ?: ""}\",\"${activity.groupId ?: ""}\",\"${activity.cowIds.joinToString(";")}\",\"${activity.date}\"")
             }
             
             appendLine()
@@ -151,6 +153,7 @@ class DataExporter(private val context: Context) {
 
 private fun Cow.toExport() = CowExport(
     id = id,
+    firestoreId = firestoreId ?: java.util.UUID.randomUUID().toString(),
     name = name,
     tagNumber = tagNumber,
     tagColor = tagColor,
@@ -178,6 +181,7 @@ private fun Pasture.toExport() = PastureExport(
 
 private fun Activity.toExport() = ActivityExport(
     id = id,
+    firestoreId = firestoreId ?: java.util.UUID.randomUUID().toString(),
     cowId = cowId,
     date = date.toString(),
     activityType = activityType.name,

@@ -36,6 +36,9 @@ interface ActivityDao {
     @Query("SELECT * FROM activities WHERE id = :id LIMIT 1")
     suspend fun getActivityById(id: Long): Activity?
     
+    @Query("SELECT * FROM activities WHERE firestoreId = :firestoreId LIMIT 1")
+    suspend fun getActivityByFirestoreId(firestoreId: String): Activity?
+    
     @Query("SELECT * FROM activities WHERE groupId = :groupId AND isDeleted = 0 ORDER BY date DESC, id DESC")
     suspend fun getActivitiesByGroupId(groupId: String): List<Activity>
     
