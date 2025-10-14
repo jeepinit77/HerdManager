@@ -128,7 +128,7 @@ fun SettingsScreen(
                     text = "Customization",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, bottom = 4.dp, top = 8.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 8.dp)
                 )
             }
             item {
@@ -166,7 +166,7 @@ fun SettingsScreen(
                     text = "Account & Sync",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, bottom = 4.dp, top = 16.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
                 )
             }
             item {
@@ -234,7 +234,7 @@ fun SettingsScreen(
                     text = "Data Management",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, bottom = 4.dp, top = 16.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
                 )
             }
             item {
@@ -276,7 +276,7 @@ fun SettingsScreen(
                     text = "Tips & App Information",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, bottom = 4.dp, top = 16.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
                 )
             }
             item {
