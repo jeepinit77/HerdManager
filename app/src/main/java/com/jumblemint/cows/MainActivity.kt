@@ -409,7 +409,8 @@ fun CattleManagerApp() {
                                     selectedIconColor = MaterialTheme.colorScheme.primary,
                                     selectedTextColor = MaterialTheme.colorScheme.onSurface,
                                     unselectedIconColor = MaterialTheme.colorScheme.onSurface,
-                                    unselectedTextColor = MaterialTheme.colorScheme.onSurface
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurface,
+                                    indicatorColor = MaterialTheme.colorScheme.onSurface
                                 )
                             )
                         }
