@@ -73,7 +73,7 @@ fun Color.toHct(): HctColor {
 
 // ---- Contrast helpers ----
 fun getContrastingTextColor(backgroundColor: Color): Color =
-    if (backgroundColor.luminance() > 0.5f) Color(0xFF000000) else Color(0xFFFFFFFF)
+    if (backgroundColor.luminance() > 0.5f) Color(0xFF1C1B1F) else Color(0xFFFEFBFF)
 fun Color.contrastingTextColor(): Color = getContrastingTextColor(this)
 
 // ---- Seed Colors ----
