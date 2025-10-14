@@ -87,10 +87,26 @@ fun TagColorsManagementScreen(
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Filled.Palette, contentDescription = "No colors", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("No tag colors found.", style = MaterialTheme.typography.headlineSmall)
-                    Text("Add colors using the + button.", style = MaterialTheme.typography.bodyLarge)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally, 
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Palette, 
+                        contentDescription = "No colors", 
+                        modifier = Modifier.size(48.dp), 
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "No tag colors found.", 
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Add colors using the + button.", 
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         } else {
@@ -119,31 +135,61 @@ fun TagColorsManagementScreen(
                 .align(Alignment.BottomEnd)
                 .padding(16.dp),
             containerColor = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
-            shape = androidx.compose.foundation.shape.CircleShape
+            contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Add Tag Color")
+            Icon(
+                Icons.Default.Add, 
+                contentDescription = "Add Tag Color",
+                tint = MaterialTheme.colorScheme.onPrimary
+            )
         }
     }
     
     if (showResetConfirm) {
         AlertDialog(
             onDismissRequest = { showResetConfirm = false },
-            icon = { Icon(Icons.Default.WarningAmber, contentDescription = "Warning") },
-            title = { Text("Reset Tag Colors?") },
-            text = { Text("This will remove all custom tag colors and restore the default set. This action cannot be undone.") },
+            containerColor = MaterialTheme.colorScheme.surface,
+            icon = { 
+                Icon(
+                    Icons.Default.WarningAmber, 
+                    contentDescription = "Warning",
+                    tint = MaterialTheme.colorScheme.error
+                ) 
+            },
+            title = { 
+                Text(
+                    "Reset Tag Colors?",
+                    color = MaterialTheme.colorScheme.onSurface
+                ) 
+            },
+            text = { 
+                Text(
+                    "This will remove all custom tag colors and restore the default set. This action cannot be undone.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                ) 
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showResetConfirm = false
                         viewModel.resetToDefaults()
-                        // Reset completed
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                ) { Text("Reset") }
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) { 
+                    Text("Reset") 
+                }
             },
             dismissButton = {
-                TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
+                TextButton(
+                    onClick = { showResetConfirm = false },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) { 
+                    Text("Cancel") 
+                }
             }
         )
     }
@@ -182,7 +228,7 @@ fun TagColorItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp), // Softer corners
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant
@@ -191,60 +237,72 @@ fun TagColorItem(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp), // Adjusted padding
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(36.dp) // Slightly smaller preview
+                    .size(36.dp)
                     .clip(CircleShape)
                     .background(tagColor.toColor())
                     .border(
-                        width = 1.dp, // Thinner border
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), // Softer border
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
                         shape = CircleShape
                     )
             )
             Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = tagColor.name,
-                style = MaterialTheme.typography.bodyLarge, // Adjusted style
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
-            // Actions
             IconButton(onClick = { onEdit(tagColor) }) {
-                Icon(Icons.Outlined.Edit, contentDescription = "Edit ${tagColor.name}", tint = MaterialTheme.colorScheme.primary) // <<< CHANGED ICON
+                Icon(
+                    Icons.Outlined.Edit, 
+                    contentDescription = "Edit ${tagColor.name}", 
+                    tint = MaterialTheme.colorScheme.primary
+                )
             }
             IconButton(onClick = { onDelete(tagColor) }) {
-                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete ${tagColor.name}", tint = MaterialTheme.colorScheme.error) // Changed Icon
+                Icon(
+                    Icons.Default.DeleteOutline, 
+                    contentDescription = "Delete ${tagColor.name}", 
+                    tint = MaterialTheme.colorScheme.error
+                )
             }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class) // For AlertDialog
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TagColorDialog(
-    tagColorToEdit: TagColor? = null, // Renamed for clarity
+    tagColorToEdit: TagColor? = null,
     onDismiss: () -> Unit,
-    onSave: (name: String, colorInt: Int, id: String?) -> Unit // Pass ID for updates
+    onSave: (name: String, colorInt: Int, id: String?) -> Unit
 ) {
     var name by remember(tagColorToEdit) { mutableStateOf(tagColorToEdit?.name ?: "") }
-    var selectedColor by remember(tagColorToEdit) { mutableStateOf(tagColorToEdit?.toColor() ?: Color(0xFFE91E63)) } // Default to a vibrant pink
+    var selectedColor by remember(tagColorToEdit) { mutableStateOf(tagColorToEdit?.toColor() ?: Color(0xFFE91E63)) }
     var nameError by remember { mutableStateOf<String?>(null) }
 
-    val colorPickerController = rememberColorPickerController() // No explicit type
-
-    LaunchedEffect(tagColorToEdit) {
-        // The method to programmatically set the controller's initial color
-        // is currently unresolved. This will lead to the picker defaulting to white.
-        // Developer needs to investigate the library API for version 1.0.0.
-    }
+    val colorPickerController = rememberColorPickerController()
+    
+    // Theme-aware colors
+    val wheelColor = MaterialTheme.colorScheme.onSurface
+    val borderColor = MaterialTheme.colorScheme.outline
+    val backgroundColor = MaterialTheme.colorScheme.surface
 
     AlertDialog(
         onDismissRequest = onDismiss,
-//        icon = { Icon(if (tagColorToEdit != null) Icons.Filled.Edit else Icons.Filled.Add, contentDescription = null) },
-        title = { Text(if (tagColorToEdit != null) "Edit Tag Color" else "Add New Tag Color") },
+        containerColor = backgroundColor,
+        title = { 
+            Text(
+                if (tagColorToEdit != null) "Edit Tag Color" else "Add New Tag Color",
+                color = MaterialTheme.colorScheme.onSurface
+            ) 
+        },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -258,10 +316,20 @@ fun TagColorDialog(
                     label = { Text("Color Name*") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    isError = nameError != null
+                    isError = nameError != null,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedBorderColor = borderColor,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary,
+                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
                 if (nameError != null) {
-                    Text(nameError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        nameError!!, 
+                        color = MaterialTheme.colorScheme.error, 
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
 
                 Row(
@@ -269,36 +337,59 @@ fun TagColorDialog(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Text("Selected Color:", style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        "Selected Color:", 
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     Box(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(selectedColor)
-                            .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
+                            .border(1.dp, borderColor, CircleShape)
                     )
                 }
-                HsvColorPicker(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(250.dp) // Increased height for better usability
-                        .padding(vertical = 8.dp),
-                    controller = colorPickerController,
-                    initialColor = selectedColor, // Initialize picker with current color
-                    onColorChanged = { colorEnvelope: ColorEnvelope ->
-                        selectedColor = colorEnvelope.color
+                
+                // Color picker with theme-aware styling
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        HsvColorPicker(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(200.dp),
+                            controller = colorPickerController,
+                            initialColor = selectedColor,
+                            onColorChanged = { colorEnvelope: ColorEnvelope ->
+                                selectedColor = colorEnvelope.color
+                            }
+                        )
+                        BrightnessSlider(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(35.dp),
+                            controller = colorPickerController,
+                            borderRadius = 8.dp,
+                            wheelRadius = 8.dp,
+                            wheelColor = wheelColor,
+                            wheelPaint = remember { 
+                                androidx.compose.ui.graphics.Paint().apply { 
+                                    color = wheelColor.copy(alpha = 0.8f)
+                                } 
+                            },
+                            initialColor = selectedColor
+                        )
                     }
-                )
-                // BrightnessSlider for more control, if desired
-                 BrightnessSlider(
-                     modifier = Modifier.fillMaxWidth().height(35.dp),
-                     controller = colorPickerController,
-                     borderRadius = 8.dp,
-                     wheelRadius = 10.dp,
-                     wheelColor = Color.White,
-                     wheelPaint = remember { androidx.compose.ui.graphics.Paint().apply { color = Color.Black } },
-                     initialColor = selectedColor // Initialize slider with current color
-                 )
+                }
             }
         },
         confirmButton = {
