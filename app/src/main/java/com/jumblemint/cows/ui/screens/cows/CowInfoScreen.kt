@@ -27,6 +27,7 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.*
+import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.viewmodel.CowInfoViewModel
 import com.jumblemint.cows.ui.viewmodel.CowInfoViewModelFactory // Assuming factory is in this package
 import java.time.LocalDate
@@ -86,7 +87,7 @@ fun CowInfoScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // Header Card
-                        Card {
+                        Card(colors = getCardColors()) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -106,7 +107,8 @@ fun CowInfoScreen(
                                     Text(
                                         text = cow.name ?: "Unnamed Animal",
                                         style = MaterialTheme.typography.headlineSmall,
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                     Text(
                                         text = "${cow.classification.name} • ${cow.gender.name}",
@@ -125,7 +127,7 @@ fun CowInfoScreen(
                         }
 
                         // Physical Details Card
-                        Card {
+                        Card(colors = getCardColors()) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -141,7 +143,7 @@ fun CowInfoScreen(
                         }
                         
                         // Management Details Card
-                        Card {
+                        Card(colors = getCardColors()) {
                             Column(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -156,7 +158,7 @@ fun CowInfoScreen(
 
                         // Parentage Card
                         if (uiState.mother != null || uiState.father != null) {
-                            Card {
+                            Card(colors = getCardColors()) {
                                 Column(
                                     modifier = Modifier.padding(16.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -257,6 +259,7 @@ private fun SectionTitle(text: String) {
         text = text,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(bottom = 4.dp) 
     )
 }
@@ -277,6 +280,7 @@ private fun InfoRow(label: String, value: String) {
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(0.6f)
         )
     }
@@ -311,6 +315,7 @@ private fun RelatedCowRow(
                 text = cow.name ?: "Unnamed",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
             cow.tagNumber?.takeIf { it.isNotBlank() }?.let {
@@ -331,10 +336,10 @@ private fun RelatedCowRow(
             Icon(
                 imageVector = Icons.Filled.ChevronRight,
                 contentDescription = "Navigate",
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Divider(color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f), thickness = 1.dp)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
@@ -348,7 +353,7 @@ private fun CollapsibleLazyColumnCard(
 ) {
     var expanded by remember { mutableStateOf(initiallyExpanded) }
 
-    Card {
+    Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(vertical = 8.dp)) {
             Row(
                 modifier = Modifier
@@ -361,7 +366,8 @@ private fun CollapsibleLazyColumnCard(
                 SectionTitle(text = title)
                 Icon(
                     imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Collapse" else "Expand"
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             AnimatedVisibility(visible = expanded) {
@@ -390,7 +396,7 @@ private fun CollapsibleDetailCard(
 ) {
     var expanded by remember { mutableStateOf(initiallyExpanded) }
 
-    Card {
+    Card(colors = getCardColors()) {
         Column(modifier = Modifier.fillMaxWidth().padding(bottom = if (expanded) 8.dp else 0.dp)) { // Adjust bottom padding when expanded
             Row(
                 modifier = Modifier
@@ -403,7 +409,8 @@ private fun CollapsibleDetailCard(
                 SectionTitle(text = title)
                 Icon(
                     imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Collapse" else "Expand"
+                    contentDescription = if (expanded) "Collapse" else "Expand",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             AnimatedVisibility(visible = expanded) {
