@@ -25,6 +25,7 @@ import com.jumblemint.cows.ui.viewmodel.ReportsViewModel
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
 import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.theme.SmartText
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.util.AgeRangeKeys // Import the centralized keys
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -94,7 +95,7 @@ fun ToolsCard(onAddCalfClick: () -> Unit, onWorkingListClick: () -> Unit, onTodo
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.Settings, contentDescription = null, tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor())
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Tools", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
@@ -126,14 +127,14 @@ fun HerdOverviewCard(totalCows: Int, watchedCows: Int, onClick: (type: String?) 
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(painterResource(R.drawable.ear_tag), contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+                Icon(painterResource(R.drawable.ear_tag), contentDescription = null, tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor(), modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Herd Overview", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
                 ClickableStatItem("Total Head", totalCows, MaterialTheme.colorScheme.primary) { onClick(null) }
-                ClickableStatItem("Watching", watchedCows, MaterialTheme.colorScheme.tertiary) { onWatchingClick() }
+                ClickableStatItem("Watching", watchedCows, MaterialTheme.colorScheme.primary) { onWatchingClick() }
             }
         }
     }
@@ -165,7 +166,7 @@ fun ClassificationBreakdownCard(classifications: Map<String, Int>, onRowClick: (
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Category, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.Category, contentDescription = null, tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor())
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("By Classification", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
@@ -190,7 +191,7 @@ fun PastureBreakdownCard(pastures: Map<String, Int>, onRowClick: (String) -> Uni
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Landscape, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.Landscape, contentDescription = null, tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor())
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("By Pasture", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
@@ -219,7 +220,7 @@ fun AgeBasedReportsCard(under1Year: Int, between1And5Years: Int, between5And10Ye
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Timeline, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.Timeline, contentDescription = null, tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor())
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("By Age", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
@@ -251,7 +252,7 @@ fun BreedingReportsCard(cowsNotCalvedIn9Months: Int, cowsCalvedIn9Months: Int, o
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.PregnantWoman, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                Icon(Icons.Default.PregnantWoman, contentDescription = null, tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor())
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Breeding Reports", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
