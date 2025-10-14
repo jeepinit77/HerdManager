@@ -66,11 +66,15 @@ fun ActivityInfoScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("Activity Details", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            text = "Activity Details", 
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                         InfoRow("Type:", activity.activityType.displayName)
                         InfoRow("Date:", activity.date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")))
                         
@@ -102,20 +106,23 @@ fun ActivityInfoScreen(
                 }
 
                 // Display associated animals section
-                Text("Associated Animals", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+                Text(
+                    text = "Associated Animals", 
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
                 if (uiState.associatedCows.isNotEmpty()) {
                     uiState.associatedCows.forEach { cow -> 
                         CowCard(
                             cow = cow,
-                            onClick = { onNavigateToCow(cow.id) },
-                            modifier = Modifier.padding(bottom = 8.dp)
+                            onClick = { onNavigateToCow(cow.id) }
                         )
                     }
                 } else {
                     Text(
                         text = "No associated animals found for this activity.",
                         style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(start = 8.dp, top = 4.dp)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -135,11 +142,13 @@ private fun InfoRow(label: String, value: String) {
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(0.4f).padding(end = 8.dp) 
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(0.6f)
         )
     }
