@@ -36,6 +36,9 @@ import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
+
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.navigation.*
@@ -51,6 +54,7 @@ import com.jumblemint.cows.ui.components.rememberGlobalSnackbarState
 import com.jumblemint.cows.ui.theme.ThemeManager
 import com.jumblemint.cows.ui.theme.ThemeMode
 import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.InitialSampleDataDialog
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,9 +76,30 @@ class MainActivity : ComponentActivity() {
             }
             val themeManager = remember(repository) { ThemeManager(repository) }
             val themeMode by themeManager.getThemeModeFlow().collectAsState(initial = ThemeMode.SYSTEM)
+            
+            var showSampleDataDialog by remember { mutableStateOf(false) }
+            
+            LaunchedEffect(Unit) {
+                if (!repository.hasAnyData()) {
+                    showSampleDataDialog = true
+                }
+            }
 
             CowsTheme {
                 CattleManagerApp()
+                
+                if (showSampleDataDialog) {
+                    val coroutineScope = rememberCoroutineScope()
+                    InitialSampleDataDialog(
+                        onInstall = { 
+                            coroutineScope.launch {
+                                repository.installSampleData()
+                                showSampleDataDialog = false
+                            }
+                        },
+                        onDismiss = { showSampleDataDialog = false }
+                    )
+                }
             }
         }
     }

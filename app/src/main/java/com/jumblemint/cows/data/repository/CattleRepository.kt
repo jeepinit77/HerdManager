@@ -344,6 +344,12 @@ class CattleRepository(
         return getSettingByKey(SettingsKeys.SAMPLE_DATA_INSTALLED)?.value == "true"
     }
 
+    suspend fun hasAnyData(): Boolean {
+        val cowCount = getAllCows().first().size
+        val pastureCount = getAllPastures().first().size
+        return cowCount > 0 || pastureCount > 0
+    }
+
     suspend fun installSampleData() {
         if (isSampleDataInstalled()) return
 
