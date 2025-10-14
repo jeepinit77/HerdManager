@@ -321,7 +321,6 @@ private fun CowListContent(
 ) {
     Column(
         modifier = modifier // This modifier is Modifier.fillMaxSize() from the Box above
-            .padding(horizontal = 16.dp) // Apply specific horizontal padding for content within CowListContent
     ) {
         if (showSearchAndFilters && cowsUiState != null && cowsViewModel != null) {
             Row(
