@@ -103,8 +103,7 @@ fun PastureDetailScreen(
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
                         Column(
@@ -114,14 +113,15 @@ fun PastureDetailScreen(
                             Text(
                                 text = uiState.pasture!!.name, // Title is now part of the content
                                 style = MaterialTheme.typography.headlineMedium, // Emphasize title more
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
 
                             if (!uiState.pasture!!.description.isNullOrBlank()) {
                                 Text(
                                     text = uiState.pasture!!.description!!,
                                     style = MaterialTheme.typography.bodyLarge, // Slightly larger for description
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             }
 
@@ -136,12 +136,13 @@ fun PastureDetailScreen(
                                     Text(
                                         text = "Total Head",
                                         style = MaterialTheme.typography.labelLarge, // Slightly larger label
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                     Text(
                                         text = "${uiState.activeCows.size}",
                                         style = MaterialTheme.typography.headlineSmall, // Emphasize count
-                                        fontWeight = FontWeight.Bold
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 }
 
@@ -150,12 +151,13 @@ fun PastureDetailScreen(
                                         Text(
                                             text = "Size",
                                             style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onPrimary
                                         )
                                         Text(
                                             text = "${uiState.pasture!!.sizeAcres} acres",
                                             style = MaterialTheme.typography.titleLarge, // Match Total Head style better
-                                            fontWeight = FontWeight.Medium
+                                            fontWeight = FontWeight.Medium,
+                                            color = MaterialTheme.colorScheme.onPrimary
                                         )
                                     }
                                 }
@@ -167,7 +169,7 @@ fun PastureDetailScreen(
                                     text = "Animal Types",
                                     style = MaterialTheme.typography.titleSmall, // Consistent small title for subsections
                                     fontWeight = FontWeight.Medium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 val breakdownText = uiState.classificationBreakdown
@@ -178,7 +180,8 @@ fun PastureDetailScreen(
                                     }
                                 Text(
                                     text = breakdownText,
-                                    style = MaterialTheme.typography.bodyMedium
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimary
                                 )
                             }
                         }

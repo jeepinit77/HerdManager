@@ -89,7 +89,11 @@ fun CowInfoScreen(
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // Header Card
-                        Card(colors = getCardColors()) {
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -110,18 +114,18 @@ fun CowInfoScreen(
                                         text = cow.name ?: "Unnamed Animal",
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                     Text(
                                         text = "${cow.classification.name} • ${cow.gender.name}",
                                         style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                     cow.birthDate?.let {
                                         Text(
                                             text = "Age: ${calculateAgeString(it)}",
                                             style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            color = MaterialTheme.colorScheme.onPrimary
                                         )
                                     }
                                 }

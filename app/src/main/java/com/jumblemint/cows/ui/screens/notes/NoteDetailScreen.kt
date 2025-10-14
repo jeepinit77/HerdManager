@@ -67,7 +67,10 @@ fun NoteDetailScreen(
         ) {
             // Note Header Card
             Card(
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -78,13 +81,13 @@ fun NoteDetailScreen(
                             text = note.title,
                             style = MaterialTheme.typography.headlineMedium,
                             fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
                     Text(
                         text = "Added: ${dateFormat.format(Date(note.timestamp))}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                     if (note.isTodo) {
                         Text(
@@ -96,7 +99,7 @@ fun NoteDetailScreen(
                             Text(
                                 text = "Due: ${SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(dueDate))}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
