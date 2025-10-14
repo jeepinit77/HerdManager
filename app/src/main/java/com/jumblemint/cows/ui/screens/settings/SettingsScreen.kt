@@ -120,7 +120,6 @@ fun SettingsScreen(
     ) {
         LazyColumn(
             modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
@@ -326,7 +325,7 @@ fun SettingsScreen(
                 CircularProgressIndicator()
             }
         }
-        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.fillMaxWidth().padding(bottom=8.dp))
+        SnackbarHost(hostState = snackbarHostState, modifier = Modifier.fillMaxWidth())
     }
 
     if (showExportDialog) {
@@ -395,8 +394,7 @@ fun SettingsGroup(
 ) {
     Card(
         modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp),
         colors = getCardColors(),
