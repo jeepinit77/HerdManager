@@ -274,7 +274,7 @@ private fun PhoneStyleButton(
     }
 }
 
-private enum class ThemeStyle { COLORED_CARDS, COLORED_BACKGROUND, GRAY_CARDS, GRAY_BACKGROUND }
+
 
 @Composable
 private fun ThemePicker(
@@ -289,7 +289,11 @@ private fun ThemePicker(
 ) {
     var navBarTone by remember { mutableFloatStateOf(50f) }
     var surfaceTone by remember { mutableFloatStateOf(90f) }
-    var style by remember(resetCount) { mutableStateOf(ThemeStyle.COLORED_BACKGROUND) }
+    var style by remember(resetCount) { mutableStateOf(themeSettings.style) }
+    
+    LaunchedEffect(themeSettings.style) {
+        style = themeSettings.style
+    }
 
     LaunchedEffect(themeSettings, isDarkTheme) {
         navBarTone = themeSettings.getNavBarTone(isDarkTheme)
@@ -301,7 +305,8 @@ private fun ThemePicker(
         themeSettings.seedColor,
         surfaceTone,
         navBarTone,
-        isDarkTheme
+        isDarkTheme,
+        style
     )
 
     // Seed color rows
@@ -443,7 +448,10 @@ private fun ThemePicker(
                                 navColor = MaterialTheme.colorScheme.primary,
                                 isSelected = style == ThemeStyle.COLORED_CARDS,
                                 selectedColor = MaterialTheme.colorScheme.primary,
-                                onClick = { style = ThemeStyle.COLORED_CARDS },
+                                onClick = { 
+                                    style = ThemeStyle.COLORED_CARDS
+                                    scope.launch { themeManager.setThemeStyle(ThemeStyle.COLORED_CARDS) }
+                                },
                                 modifier = Modifier.weight(1f)
                             )
                             PhoneStyleButton(
@@ -453,7 +461,10 @@ private fun ThemePicker(
                                 navColor = MaterialTheme.colorScheme.primary,
                                 isSelected = style == ThemeStyle.COLORED_BACKGROUND,
                                 selectedColor = MaterialTheme.colorScheme.primary,
-                                onClick = { style = ThemeStyle.COLORED_BACKGROUND },
+                                onClick = { 
+                                    style = ThemeStyle.COLORED_BACKGROUND
+                                    scope.launch { themeManager.setThemeStyle(ThemeStyle.COLORED_BACKGROUND) }
+                                },
                                 modifier = Modifier.weight(1f)
                             )
                             PhoneStyleButton(
@@ -463,7 +474,10 @@ private fun ThemePicker(
                                 navColor = MaterialTheme.colorScheme.primary,
                                 isSelected = style == ThemeStyle.GRAY_CARDS,
                                 selectedColor = MaterialTheme.colorScheme.primary,
-                                onClick = { style = ThemeStyle.GRAY_CARDS },
+                                onClick = { 
+                                    style = ThemeStyle.GRAY_CARDS
+                                    scope.launch { themeManager.setThemeStyle(ThemeStyle.GRAY_CARDS) }
+                                },
                                 modifier = Modifier.weight(1f)
                             )
                             PhoneStyleButton(
@@ -473,7 +487,10 @@ private fun ThemePicker(
                                 navColor = MaterialTheme.colorScheme.primary,
                                 isSelected = style == ThemeStyle.GRAY_BACKGROUND,
                                 selectedColor = MaterialTheme.colorScheme.primary,
-                                onClick = { style = ThemeStyle.GRAY_BACKGROUND },
+                                onClick = { 
+                                    style = ThemeStyle.GRAY_BACKGROUND
+                                    scope.launch { themeManager.setThemeStyle(ThemeStyle.GRAY_BACKGROUND) }
+                                },
                                 modifier = Modifier.weight(1f)
                             )
                         }

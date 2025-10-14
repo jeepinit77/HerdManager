@@ -123,7 +123,8 @@ data class ThemeSettings(
     val navBarToneDark: Float = 20f,
     val surfaceToneLight: Float = 95f,
     val surfaceToneDark: Float = 15f,
-    val mode: ThemeMode = ThemeMode.SYSTEM
+    val mode: ThemeMode = ThemeMode.SYSTEM,
+    val style: ThemeStyle = ThemeStyle.COLORED_BACKGROUND
 ) {
     fun getNavBarTone(isDark: Boolean) = if (isDark) navBarToneDark else navBarToneLight
     fun getSurfaceTone(isDark: Boolean) = if (isDark) surfaceToneDark else surfaceToneLight
@@ -133,12 +134,15 @@ val LocalThemeSettings = staticCompositionLocalOf { ThemeSettings() }
 
 enum class ThemeMode { LIGHT, DARK, SYSTEM }
 
+enum class ThemeStyle { COLORED_CARDS, COLORED_BACKGROUND, GRAY_CARDS, GRAY_BACKGROUND }
+
 // ---- Theme Generation ----
 fun generateThemeFromSeed(
     seedColor: SeedColor,
     surfaceTone: Float,
     navBarTone: Float,
-    isDark: Boolean
+    isDark: Boolean,
+    style: ThemeStyle = ThemeStyle.COLORED_BACKGROUND
 ): androidx.compose.material3.ColorScheme {
     val seed = seedColor.color
     val seedHct = seed.toHct()
@@ -147,11 +151,35 @@ fun generateThemeFromSeed(
     val adjustedSurfaceTone = if (isDark) (100f - surfaceTone) * 0.2f else surfaceTone
     val adjustedNavTone = if (isDark) (100f - navBarTone) * 0.3f else navBarTone
     
-    // Generate colors with adjusted tones
-    val surfaceColor = seedHct.copy(
-        tone = adjustedSurfaceTone,
-        chroma = seedHct.chroma * 0.3f // Reduce saturation for surfaces
-    ).toColor()
+    // Generate colors based on style
+    val (surfaceVariant, background) = when (style) {
+        ThemeStyle.COLORED_CARDS -> {
+            val bg = if (isDark) Color(0xFF1A1A1A) else Color.White
+            val cards = seedHct.copy(
+                tone = adjustedSurfaceTone,
+                chroma = seedHct.chroma * 0.3f
+            ).toColor()
+            cards to bg
+        }
+        ThemeStyle.COLORED_BACKGROUND -> {
+            val bg = seedHct.copy(
+                tone = adjustedSurfaceTone,
+                chroma = seedHct.chroma * 0.3f
+            ).toColor()
+            val cards = if (isDark) Color(0xFF1A1A1A) else Color.White
+            cards to bg
+        }
+        ThemeStyle.GRAY_CARDS -> {
+            val bg = if (isDark) Color(0xFF1A1A1A) else Color.White
+            val cards = Color.Black.copy(alpha = 0.1f)
+            cards to bg
+        }
+        ThemeStyle.GRAY_BACKGROUND -> {
+            val bg = Color.Black.copy(alpha = 0.1f)
+            val cards = if (isDark) Color(0xFF1A1A1A) else Color.White
+            cards to bg
+        }
+    }
     val navBarColor = seedHct.copy(tone = adjustedNavTone).toColor()
     
     // Create base scheme
@@ -159,23 +187,29 @@ fun generateThemeFromSeed(
         androidx.compose.material3.darkColorScheme(
             primary = seed,
             surface = navBarColor,
-            surfaceVariant = surfaceColor,
+            surfaceVariant = surfaceVariant,
             background = seedHct.copy(tone = 6f, chroma = seedHct.chroma * 0.1f).toColor()
         )
     } else {
         androidx.compose.material3.lightColorScheme(
             primary = seed,
             surface = navBarColor,
-            surfaceVariant = surfaceColor,
+            surfaceVariant = surfaceVariant,
             background = seedHct.copy(tone = 98f, chroma = seedHct.chroma * 0.1f).toColor()
         )
     }
     
     return baseScheme.copy(
+        surfaceVariant = surfaceVariant,
+        background = background,
+        surface = navBarColor,
+        surfaceContainer = navBarColor,
         onPrimary = seed.contrastingTextColor(),
-        onSurface = surfaceColor.contrastingTextColor(),
-        onSurfaceVariant = navBarColor.contrastingTextColor(),
-        onBackground = baseScheme.background.contrastingTextColor()
+        onSurface = navBarColor.contrastingTextColor(),
+        onSurfaceVariant = surfaceVariant.contrastingTextColor(),
+        onBackground = background.contrastingTextColor(),
+        outline = navBarColor.contrastingTextColor().copy(alpha = 0.6f),
+        outlineVariant = navBarColor.contrastingTextColor().copy(alpha = 0.38f)
     )
 }
 
@@ -230,6 +264,11 @@ class ThemeManager(private val repository: CattleRepository) {
         repository.insertOrUpdateSetting(Settings("SURFACE_TONE_DARK", tone.toString()))
     }
 
+    // Theme Style
+    suspend fun setThemeStyle(style: ThemeStyle) {
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.THEME_STYLE, style.name))
+    }
+
     // Theme Settings
     fun getThemeSettingsFlow(): Flow<ThemeSettings> =
         repository.getAllSettings().map { settings ->
@@ -243,13 +282,18 @@ class ThemeManager(private val repository: CattleRepository) {
                 ?.let { runCatching { ThemeMode.valueOf(it.uppercase()) }.getOrNull() }
                 ?: ThemeMode.SYSTEM
                 
+            val style = map[SettingsKeys.THEME_STYLE]
+                ?.let { runCatching { ThemeStyle.valueOf(it) }.getOrNull() }
+                ?: ThemeStyle.COLORED_BACKGROUND
+                
             ThemeSettings(
                 seedColor = seedColor,
                 navBarToneLight = map["NAV_BAR_TONE_LIGHT"]?.toFloatOrNull() ?: 80f,
                 navBarToneDark = map["NAV_BAR_TONE_DARK"]?.toFloatOrNull() ?: 20f,
                 surfaceToneLight = map["SURFACE_TONE_LIGHT"]?.toFloatOrNull() ?: 95f,
                 surfaceToneDark = map["SURFACE_TONE_DARK"]?.toFloatOrNull() ?: 15f,
-                mode = mode
+                mode = mode,
+                style = style
             )
         }
 
@@ -260,6 +304,7 @@ class ThemeManager(private val repository: CattleRepository) {
         setNavBarToneDark(20f)
         setSurfaceToneLight(95f)
         setSurfaceToneDark(15f)
+        setThemeStyle(ThemeStyle.COLORED_BACKGROUND)
     }
 
     // Legacy methods for compatibility (return default values)

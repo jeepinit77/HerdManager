@@ -34,7 +34,8 @@ fun CowsTheme(
         seedColor = themeSettings.seedColor,
         surfaceTone = themeSettings.getSurfaceTone(isDark),
         navBarTone = themeSettings.getNavBarTone(isDark),
-        isDark = isDark
+        isDark = isDark,
+        style = themeSettings.style
     )
 
     CompositionLocalProvider(

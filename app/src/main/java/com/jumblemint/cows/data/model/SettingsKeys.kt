@@ -44,6 +44,7 @@ object SettingsKeys {
     const val SEED_COLOR = "seed_color" // Stores the SeedColor enum name
     const val NAV_BAR_TONE = "nav_bar_tone" // HCT tone for navigation bars (0-100)
     const val SURFACE_TONE = "surface_tone" // HCT tone for cards/surfaces (0-100)
+    const val THEME_STYLE = "theme_style" // Stores the ThemeStyle enum name
     
     // General App Settings
     const val CURRENT_THEME_NAME = "current_theme_name" // Stores the enum name of the current preset or "CUSTOM"
