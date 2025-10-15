@@ -39,9 +39,21 @@ class ActivitiesViewModel(
                 val currentState = _uiState.value
                 val pastureNames = pastures.map { it.name }
                 
-                // Filter activities based on cow filters (only show activities for cows matching criteria)
+                // Filter activities based on search and filters
                 val filteredActivities = activities.filter { activity ->
                     val cow = allCows.find { it.id == activity.cowId }
+                    
+                    // Search filter
+                    val searchMatch = if (currentState.searchQuery.isBlank()) {
+                        true
+                    } else {
+                        val query = currentState.searchQuery.lowercase()
+                        activity.activityType.displayName.lowercase().contains(query) ||
+                        activity.notes?.lowercase()?.contains(query) == true ||
+                        cow?.name?.lowercase()?.contains(query) == true ||
+                        cow?.tagNumber?.toString()?.contains(query) == true
+                    }
+                    
                     cow?.let { c ->
                         // Status filter
                         val statusMatch = currentState.selectedStatuses.isEmpty() || 
@@ -69,7 +81,7 @@ class ActivitiesViewModel(
                         val activityTypeMatch = currentState.selectedActivityTypes.isEmpty() ||
                                               currentState.selectedActivityTypes.contains(activity.activityType)
                         
-                        statusMatch && classificationMatch && genderMatch && pastureMatch && activityTypeMatch
+                        searchMatch && statusMatch && classificationMatch && genderMatch && pastureMatch && activityTypeMatch
                     } ?: false
                 }
 
@@ -155,15 +167,21 @@ class ActivitiesViewModel(
         loadActivitiesWithFilters() // Reload with new filters
     }
     
+    fun updateSearchQuery(query: String) {
+        _uiState.value = _uiState.value.copy(searchQuery = query)
+        loadActivitiesWithFilters()
+    }
+    
     fun clearAllFilters() {
         _uiState.value = _uiState.value.copy(
-            selectedStatuses = emptySet(), // Reset to all statuses (no filter)
+            selectedStatuses = emptySet(),
             selectedClassifications = emptySet(),
             selectedGenders = emptySet(),
             selectedPastures = emptySet(),
-            selectedActivityTypes = emptySet()
+            selectedActivityTypes = emptySet(),
+            searchQuery = ""
         )
-        loadActivitiesWithFilters() // Reload with new filters
+        loadActivitiesWithFilters()
     }
 
     // Deletion + undo helpers
@@ -206,12 +224,13 @@ class ActivitiesViewModel(
 
 data class ActivitiesUiState(
     val activityGroups: List<ActivityGroup> = emptyList(),
-    val selectedStatuses: Set<Status> = emptySet(), // Default to all statuses (empty set means no filter)
+    val selectedStatuses: Set<Status> = emptySet(),
     val selectedClassifications: Set<Classification> = emptySet(),
     val selectedGenders: Set<Gender> = emptySet(),
     val selectedPastures: Set<String> = emptySet(),
     val selectedActivityTypes: Set<ActivityType> = emptySet(),
     val availablePastures: List<String> = emptyList(),
+    val searchQuery: String = "",
     val isLoading: Boolean = true,
     val error: String? = null
 )

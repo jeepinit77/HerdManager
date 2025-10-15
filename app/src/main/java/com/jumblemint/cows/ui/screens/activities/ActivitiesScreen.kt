@@ -10,6 +10,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -90,12 +93,50 @@ fun ActivitiesScreen(
                     }
                 }
             } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
-                ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Search and Filter bar
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.searchQuery,
+                            onValueChange = { viewModel.updateSearchQuery(it) },
+                            label = { Text("Search activities...") },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                            modifier = Modifier.weight(1f).height(56.dp)
+                        )
+                        FilterChip(
+                            onClick = { showFilters = !showFilters },
+                            label = {
+                                val activeFilterCount = getActiveFilterCount(uiState)
+                                if (activeFilterCount > 0) {
+                                    Text("($activeFilterCount)")
+                                } else {
+                                    Text("Filters")
+                                }
+                            },
+                            selected = hasActiveFilters(uiState),
+                            leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") },
+                            modifier = Modifier.height(56.dp)
+                        )
+                        if (hasActiveFilters(uiState) || uiState.searchQuery.isNotBlank()) {
+                            IconButton(onClick = {
+                                viewModel.clearAllFilters()
+                            }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Clear All Filters")
+                            }
+                        }
+                    }
+                    
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
+                    ) {
                     if (showFilters) {
                         item {
                             Card(
@@ -123,41 +164,11 @@ fun ActivitiesScreen(
                                         }
                                     }
                                     FilterSection(
-                                        title = "Cattle Status",
-                                        items = Status.values().toList(),
-                                        selectedItems = uiState.selectedStatuses,
-                                        onToggle = { viewModel.toggleStatusFilter(it) },
-                                        itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
-                                    )
-                                    FilterSection(
-                                        title = "Animal Type",
-                                        items = Classification.values().toList(),
-                                        selectedItems = uiState.selectedClassifications,
-                                        onToggle = { viewModel.toggleClassificationFilter(it) },
-                                        itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
-                                    )
-                                    FilterSection(
-                                        title = "Gender",
-                                        items = Gender.values().toList(),
-                                        selectedItems = uiState.selectedGenders,
-                                        onToggle = { viewModel.toggleGenderFilter(it) },
-                                        itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
-                                    )
-                                    if (uiState.availablePastures.isNotEmpty()) {
-                                        FilterSection(
-                                            title = "Pasture",
-                                            items = uiState.availablePastures,
-                                            selectedItems = uiState.selectedPastures,
-                                            onToggle = { viewModel.togglePastureFilter(it) },
-                                            itemLabel = { it }
-                                        )
-                                    }
-                                    FilterSection(
                                         title = "Activity Type",
                                         items = ActivityType.values().toList(),
                                         selectedItems = uiState.selectedActivityTypes,
                                         onToggle = { viewModel.toggleActivityTypeFilter(it) },
-                                        itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.uppercase() } }
+                                        itemLabel = { it.displayName }
                                     )
                                 }
                             }
@@ -190,6 +201,7 @@ fun ActivitiesScreen(
                         item {
                             Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
                                 Text("No activities match your filters.", style = MaterialTheme.typography.bodyLarge)
+                            }
                             }
                         }
                     }
@@ -295,11 +307,13 @@ fun ActivityCard(
 }
 
 private fun hasActiveFilters(uiState: com.jumblemint.cows.ui.viewmodel.ActivitiesUiState): Boolean {
-    return uiState.selectedStatuses != setOf(Status.ACTIVE) ||
-           uiState.selectedClassifications.isNotEmpty() ||
-           uiState.selectedGenders.isNotEmpty() ||
-           uiState.selectedPastures.isNotEmpty() ||
-           uiState.selectedActivityTypes.isNotEmpty()
+    return uiState.selectedActivityTypes.isNotEmpty()
+}
+
+private fun getActiveFilterCount(uiState: com.jumblemint.cows.ui.viewmodel.ActivitiesUiState): Int {
+    var count = 0
+    if (uiState.selectedActivityTypes.isNotEmpty()) count++
+    return count
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
