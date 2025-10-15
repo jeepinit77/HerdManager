@@ -18,11 +18,10 @@ import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.sync.SyncStatus
 // Consider adding a proper date/time formatting utility if more detailed time is needed
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountManagementScreen(
     onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier // <<< ADDED MODIFIER PARAMETER
+    modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
@@ -30,47 +29,31 @@ fun AccountManagementScreen(
 
     val currentUser by application.authService.currentUser.collectAsState(initial = null)
     val syncStatus by application.syncService.syncStatus.collectAsState(initial = SyncStatus.IDLE)
-    // val lastSyncTime by application.syncService.lastSuccessfulSyncTime.collectAsState(initial = 0L) // Example
 
     var showSignOutDialog by remember { mutableStateOf(false) }
 
     val lastSyncTimeText = remember(currentUser?.lastSyncAt, currentUser?.isLocalUser, syncStatus) {
         when {
-            currentUser?.isLocalUser == true -> "N/A (Local Account)"
+            currentUser?.isLocalUser == true -> "Not applicable"
             syncStatus == SyncStatus.SYNCING -> "Syncing..."
-            // TODO: Replace with actual formatted date/time from a utility
-            currentUser?.lastSyncAt == 0L || currentUser?.lastSyncAt == null -> "Never Synced"
-            else -> "Recently" // Placeholder, use formatted application.syncService.lastSuccessfulSyncTime
+            currentUser?.lastSyncAt == 0L || currentUser?.lastSyncAt == null -> "Never"
+            else -> "Recently"
         }
     }
 
-    Scaffold( // <<< CHANGED Column to Scaffold
-        modifier = modifier, // <<< APPLIED MODIFIER HERE
-        topBar = {
-            TopAppBar(
-                title = { Text("Account Management") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                }
-            )
-        }
-    ) { scaffoldPadding -> // Padding from this Scaffold
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(scaffoldPadding) // Apply padding from Scaffold
-                .padding(horizontal = 16.dp), // Horizontal padding for content
-            contentPadding = PaddingValues(vertical = 16.dp), // Vertical padding for LazyColumn items
-            verticalArrangement = Arrangement.spacedBy(20.dp) // Spacing between items/groups
-        ) {
+    LazyColumn(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
             // User Information Section
             item {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 ) {
                     Row(
@@ -82,27 +65,27 @@ fun AccountManagementScreen(
                         Icon(
                             imageVector = Icons.Default.AccountCircle,
                             contentDescription = "User Account",
-                            modifier = Modifier.size(56.dp), // Slightly larger icon
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            modifier = Modifier.size(56.dp),
+                            tint = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                             Text(
                                 text = currentUser?.displayName ?: currentUser?.email ?: "Unknown User",
-                                style = MaterialTheme.typography.titleLarge, // Adjusted style
+                                style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = if (currentUser?.isLocalUser == false) "Cloud Account" else "Local Account",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             if (currentUser?.email?.isNotBlank() == true && currentUser?.displayName != currentUser?.email) {
                                  Text(
                                     text = currentUser?.email ?: "",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -119,10 +102,10 @@ fun AccountManagementScreen(
                     AccountManagementCard(
                         title = "Cloud Sync Status",
                         subtitle = when (syncStatus) {
-                            SyncStatus.SYNCING -> "Syncing your data..."
-                            SyncStatus.SUCCESS -> "Data is up to date. (Last sync: $lastSyncTimeText)"
-                            SyncStatus.ERROR -> "Sync error occurred. Tap to retry."
-                            SyncStatus.IDLE -> "Tap to sync with Cloud. (Last sync: $lastSyncTimeText)"
+                            SyncStatus.SYNCING -> "Syncing your data with cloud..."
+                            SyncStatus.SUCCESS -> "Data is synchronized. Last sync: $lastSyncTimeText"
+                            SyncStatus.ERROR -> "Sync failed. Tap to try again."
+                            SyncStatus.IDLE -> "Tap to sync with cloud. Last sync: $lastSyncTimeText"
                         },
                         icon = when (syncStatus) {
                             SyncStatus.SYNCING -> Icons.Filled.CloudSync
@@ -151,9 +134,9 @@ fun AccountManagementScreen(
                 AccountManagementCard(
                     title = if (currentUser?.isLocalUser == false) "Disconnect Cloud Account" else "Reset Local Account",
                     subtitle = if (currentUser?.isLocalUser == false)
-                        "Disconnect cloud. Data stays on device, sync stops."
+                        "Disconnect from cloud. Your data stays on this device but sync will stop."
                     else
-                        "Clear local user, data remains. App will restart.", // Updated subtitle
+                        "Reset user profile. Your cattle data will remain safe.",
                     icon = if (currentUser?.isLocalUser == false) Icons.Filled.CloudOff else Icons.Filled.DeleteForever, // Changed icon
                     onClick = { showSignOutDialog = true },
                     isDestructive = true // Indicate this is a potentially destructive action
@@ -183,7 +166,6 @@ fun AccountManagementScreen(
                 }
             }
         }
-    }
 
     if (showSignOutDialog) {
         AlertDialog(
@@ -192,9 +174,10 @@ fun AccountManagementScreen(
             text = {
                 Text(
                     if (currentUser?.isLocalUser == false)
-                        "Your Cloud account will be disconnected. Your app data will remain on this device for offline use but will no longer sync with the Cloud unless you sign in again."
+                        "Your cloud account will be disconnected. All cattle data will remain on this device for offline use, but will no longer sync with the cloud unless you sign in again."
                     else
-                        "This will reset the current local user profile. Your underlying cattle data will NOT be deleted. The app will behave as if it's a fresh install for user settings."
+                        "This will reset your user profile. Your cattle data will remain safe and unchanged. Only user settings will be reset.",
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             },
             confirmButton = {
@@ -228,7 +211,8 @@ private fun SectionTitle(title: String) {
         text = title,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp) // Adjusted padding
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
     )
 }
 
@@ -274,8 +258,8 @@ private fun AccountManagementCard(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = onCardColor.copy(alpha = 0.8f),
-                    lineHeight = 16.sp // Improved line spacing for subtitle
+                    color = onCardColor,
+                    lineHeight = 16.sp
                 )
             }
             if (isLoading) {
@@ -283,8 +267,8 @@ private fun AccountManagementCard(
             } else {
                 Icon(
                     imageVector = Icons.Default.ChevronRight,
-                    contentDescription = "Action", // More descriptive
-                    tint = onCardColor.copy(alpha = 0.7f)
+                    contentDescription = "Action",
+                    tint = onCardColor
                 )
             }
         }
@@ -303,13 +287,13 @@ private fun AccountInfoRow(label: String, value: String) {
         Text(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f) // Consistent color
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant // Consistent color
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
