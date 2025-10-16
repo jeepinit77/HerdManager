@@ -25,9 +25,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.Activity
 import com.jumblemint.cows.data.model.ActivityType
-import com.jumblemint.cows.data.model.Status
-import com.jumblemint.cows.data.model.Classification
-import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModel
 import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModelFactory
@@ -38,9 +35,6 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import java.time.LocalDate
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
@@ -105,49 +99,85 @@ fun ActivitiesScreen(
                 }
             } else {
                 Column(modifier = Modifier.fillMaxSize()) {
-                    // Search and Filter bar
+
+                    // ── Search + Filter bar (matching CowList styling) ───────────────────────────
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.Top
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedTextField(
                             value = uiState.searchQuery,
                             onValueChange = { viewModel.updateSearchQuery(it) },
-                            label = { Text("Search activities...", color = MaterialTheme.colorScheme.onBackground) },
+                            placeholder = { Text("Search activities...") }, // placeholder (not label)
                             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                                focusedBorderColor = MaterialTheme.colorScheme.primary
-                            ),
+                            singleLine = true,
                             modifier = Modifier
                                 .weight(1f)
-                                .height(56.dp)
+                                .defaultMinSize(minHeight = 56.dp)
+                                .alignBy { it.measuredHeight / 2 }, // align with chip
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
+                                focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
+                                focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                                cursorColor = MaterialTheme.colorScheme.primary
+                            )
                         )
+
+                        val activeFilterCount = getActiveFilterCount(uiState)
                         FilterChip(
                             onClick = { showFilters = !showFilters },
                             label = {
-                                val activeFilterCount = getActiveFilterCount(uiState)
                                 if (activeFilterCount > 0) {
-                                    Text("($activeFilterCount)", color = MaterialTheme.colorScheme.onPrimaryContainer)
+                                    Text("($activeFilterCount)")
                                 } else {
                                     Text("Filters")
                                 }
                             },
                             selected = hasActiveFilters(uiState),
                             leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") },
-                            modifier = Modifier.height(56.dp)
+                            modifier = Modifier
+                                .defaultMinSize(minHeight = 56.dp)
+                                .alignBy { it.measuredHeight / 2 },
+                            colors = FilterChipDefaults.filterChipColors(
+                                labelColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                                iconColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                                selectedLabelColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
+                                selectedLeadingIconColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
+                                containerColor = MaterialTheme.colorScheme.background,
+                                selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                disabledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.12f)
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = hasActiveFilters(uiState),
+                                borderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
+                                selectedBorderColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor().copy(alpha = 0.3f)
+                            )
                         )
+
                         if (hasActiveFilters(uiState) || uiState.searchQuery.isNotBlank()) {
                             IconButton(onClick = {
                                 viewModel.clearAllFilters()
+                                viewModel.updateSearchQuery("") // also clear search to match Cows screen
+                                showFilters = false
                             }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear All Filters", tint = MaterialTheme.colorScheme.onBackground)
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Clear All Filters and Search",
+                                    tint = MaterialTheme.colorScheme.onBackground
+                                )
                             }
                         }
                     }
+                    // ─────────────────────────────────────────────────────────────────────────────
 
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
@@ -183,6 +213,7 @@ fun ActivitiesScreen(
                                                 Text("Done")
                                             }
                                         }
+
                                         DateRangeFilterSection(
                                             currentRange = uiState.dateRange,
                                             onRangeSelected = { viewModel.updateDateRange(it) },
@@ -234,6 +265,7 @@ fun ActivitiesScreen(
                                         Spacer(modifier = Modifier.height(8.dp))
                                         TextButton(onClick = {
                                             viewModel.clearAllFilters()
+                                            viewModel.updateSearchQuery("")
                                             showFilters = false
                                         }) {
                                             Text("Clear search & filters")
@@ -246,7 +278,7 @@ fun ActivitiesScreen(
                 }
             }
         }
-        
+
         // Floating Action Button positioned manually
         FloatingActionButton(
             onClick = onAddActivityClick,
@@ -284,7 +316,9 @@ fun DateRangeFilterSection(
         ) {
             val today = LocalDate.now()
             val thisMonth = Pair(today.withDayOfMonth(1), today)
-            val lastMonth = Pair(today.minusMonths(1).withDayOfMonth(1), today.minusMonths(1).withDayOfMonth(today.minusMonths(1).lengthOfMonth()))
+            val lastMonthStart = today.minusMonths(1).withDayOfMonth(1)
+            val lastMonthEnd = today.minusMonths(1).withDayOfMonth(today.minusMonths(1).lengthOfMonth())
+            val lastMonth = Pair(lastMonthStart, lastMonthEnd)
             val thisYear = Pair(LocalDate.of(today.year, 1, 1), today)
             val lastYear = Pair(LocalDate.of(today.year - 1, 1, 1), LocalDate.of(today.year - 1, 12, 31))
 
@@ -331,11 +365,13 @@ fun DateRangeFilterSection(
                 onDateSelected = { newStartDate ->
                     if (newStartDate != null) {
                         val endDate = currentRange?.second ?: newStartDate
-                        onRangeSelected(if (newStartDate.isBefore(endDate) || newStartDate.isEqual(endDate)) {
-                            Pair(newStartDate, endDate)
-                        } else {
-                            Pair(newStartDate, newStartDate)
-                        })
+                        onRangeSelected(
+                            if (newStartDate.isBefore(endDate) || newStartDate.isEqual(endDate)) {
+                                Pair(newStartDate, endDate)
+                            } else {
+                                Pair(newStartDate, newStartDate)
+                            }
+                        )
                     } else {
                         onRangeSelected(null)
                     }
@@ -351,11 +387,13 @@ fun DateRangeFilterSection(
                 onDateSelected = { newEndDate ->
                     if (newEndDate != null) {
                         val startDate = currentRange?.first ?: newEndDate
-                        onRangeSelected(if (startDate.isBefore(newEndDate) || startDate.isEqual(newEndDate)) {
-                            Pair(startDate, newEndDate)
-                        } else {
-                            Pair(newEndDate, newEndDate)
-                        })
+                        onRangeSelected(
+                            if (startDate.isBefore(newEndDate) || startDate.isEqual(newEndDate)) {
+                                Pair(startDate, newEndDate)
+                            } else {
+                                Pair(newEndDate, newEndDate)
+                            }
+                        )
                     } else {
                         onRangeSelected(null)
                     }
@@ -502,14 +540,14 @@ fun ActivityCard(
                         onEdit?.let {
                             IconButton(onClick = it, modifier = Modifier.size(40.dp)) {
                                 Icon(
-                                    Icons.Filled.Edit, 
+                                    Icons.Filled.Edit,
                                     contentDescription = "Edit Activity",
                                     tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
                                 )
                             }
                         }
                         onDelete?.let {
-                            IconButton(onClick = it, modifier = Modifier.size(40.dp)) { 
+                            IconButton(onClick = it, modifier = Modifier.size(40.dp)) {
                                 Icon(
                                     imageVector = Icons.Filled.Delete,
                                     contentDescription = "Delete Activity",
@@ -541,7 +579,9 @@ private fun ActivityTypeFilterSection(
     selectedTypes: Set<ActivityType>,
     onToggleType: (ActivityType) -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(bottom = 0.dp, top = 0.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -569,7 +609,9 @@ private fun ActivityTypeFilterSection(
         }
         Spacer(modifier = Modifier.height(8.dp))
         LazyRow(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 0.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             items(ActivityType.entries.toList()) { activityType ->
