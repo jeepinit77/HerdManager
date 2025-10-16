@@ -1,11 +1,10 @@
 package com.jumblemint.cows.ui.screens.activities
 
 import android.app.Application
-import androidx.compose.foundation.clickable // Added for Card click
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
@@ -14,10 +13,12 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,22 +32,27 @@ import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModelFactory
 import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.theme.SmartText
 import com.jumblemint.cows.ui.theme.contrastingTextColor
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
-import java.time.LocalDate
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.ui.draw.alpha
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivitiesScreen(
     onAddActivityClick: () -> Unit = {},
     onEditActivityClick: (Activity) -> Unit = {},
-    onActivityClick: (Long) -> Unit = {}, // <<< ADDED PARAMETER
+    onActivityClick: (Long) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -63,61 +69,55 @@ fun ActivitiesScreen(
             database.herdMemberDao(),
             database.tagColorDao(),
             database.activityTypeConfigDao(),
-            database.breedDao() // Added missing breedDao
+            database.breedDao()
         )
     }
     val viewModel: ActivitiesViewModel = viewModel(
         factory = ActivitiesViewModelFactory(context.applicationContext as Application, repository)
     )
 
-    val dateRangeFormatter = remember { DateTimeFormatter.ofPattern("MMM dd, yyyy") }
     val uiState by viewModel.uiState.collectAsState()
-    var showFilters by remember { mutableStateOf(false) }
-
     val globalSnackbarState = com.jumblemint.cows.ui.components.LocalGlobalSnackbarState.current
     val scope = rememberCoroutineScope()
+
+    // dialog open/close
+    var showFilterDialog by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {
             if (uiState.isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
-            } else if (uiState.activityGroups.isEmpty() && !showFilters && uiState.searchQuery.isBlank() && !hasActiveFilters(uiState)) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+            } else if (uiState.activityGroups.isEmpty() && !showFilterDialog && uiState.searchQuery.isBlank() && !hasActiveFilters(uiState)) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(text = "Nothing here yet", style = MaterialTheme.typography.headlineSmall)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(text = "Add activities using the + button to get started", style = MaterialTheme.typography.bodyMedium)
+                        Text("Nothing here yet", style = MaterialTheme.typography.headlineSmall)
+                        Spacer(Modifier.height(8.dp))
+                        Text("Add activities using the + button to get started", style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             } else {
-                Column(modifier = Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize()) {
 
-                    // ── Search + Filter bar (matching CowList styling) ───────────────────────────
+                    // ── Search + Filter bar (matches CowList; full width; aligned) ─────────────
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                            .padding(vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         OutlinedTextField(
                             value = uiState.searchQuery,
                             onValueChange = { viewModel.updateSearchQuery(it) },
-                            placeholder = { Text("Search activities...") }, // placeholder (not label)
+                            placeholder = { Text("Search activities...") },
                             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
                             singleLine = true,
                             modifier = Modifier
                                 .weight(1f)
                                 .defaultMinSize(minHeight = 56.dp)
-                                .alignBy { it.measuredHeight / 2 }, // align with chip
+                                .alignBy { it.measuredHeight / 2 },
                             colors = OutlinedTextFieldDefaults.colors(
                                 unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
                                 focusedLabelColor = MaterialTheme.colorScheme.primary,
@@ -133,14 +133,8 @@ fun ActivitiesScreen(
 
                         val activeFilterCount = getActiveFilterCount(uiState)
                         FilterChip(
-                            onClick = { showFilters = !showFilters },
-                            label = {
-                                if (activeFilterCount > 0) {
-                                    Text("($activeFilterCount)")
-                                } else {
-                                    Text("Filters")
-                                }
-                            },
+                            onClick = { showFilterDialog = true },
+                            label = { if (activeFilterCount > 0) Text("($activeFilterCount)") else Text("Filters") },
                             selected = hasActiveFilters(uiState),
                             leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") },
                             modifier = Modifier
@@ -166,69 +160,20 @@ fun ActivitiesScreen(
                         if (hasActiveFilters(uiState) || uiState.searchQuery.isNotBlank()) {
                             IconButton(onClick = {
                                 viewModel.clearAllFilters()
-                                viewModel.updateSearchQuery("") // also clear search to match Cows screen
-                                showFilters = false
+                                viewModel.updateSearchQuery("")
+                                showFilterDialog = false
                             }) {
-                                Icon(
-                                    Icons.Default.Clear,
-                                    contentDescription = "Clear All Filters and Search",
-                                    tint = MaterialTheme.colorScheme.onBackground
-                                )
+                                Icon(Icons.Default.Clear, contentDescription = "Clear All Filters and Search", tint = MaterialTheme.colorScheme.onBackground)
                             }
                         }
                     }
-                    // ─────────────────────────────────────────────────────────────────────────────
+                    // ───────────────────────────────────────────────────────────────────────────
 
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
                     ) {
-                        if (showFilters) {
-                            item {
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(bottom = 8.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween,
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Text(
-                                                text = "Filters",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Bold
-                                            )
-                                            TextButton(onClick = { showFilters = false }) {
-                                                Text("Done")
-                                            }
-                                        }
-
-                                        DateRangeFilterSection(
-                                            currentRange = uiState.dateRange,
-                                            onRangeSelected = { viewModel.updateDateRange(it) },
-                                            formatter = dateRangeFormatter
-                                        )
-
-                                        ActivityTypeFilterSection(
-                                            selectedTypes = uiState.selectedActivityTypes,
-                                            onToggleType = { viewModel.toggleActivityTypeFilter(it) }
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
                         if (uiState.activityGroups.isNotEmpty()) {
                             items(uiState.activityGroups, key = { it.sample.id }) { group ->
                                 ActivityCard(
@@ -238,38 +183,36 @@ fun ActivitiesScreen(
                                     onEdit = { onEditActivityClick(group.sample) },
                                     onDelete = {
                                         scope.launch {
-                                            viewModel.deleteActivities(group.activities)
+                                            val acts = group.activities
+                                            viewModel.deleteActivities(acts)
                                             val res = globalSnackbarState?.showSnackbar(
                                                 message = "Activity deleted",
                                                 actionLabel = "UNDO",
                                                 duration = SnackbarDuration.Long
                                             )
                                             if (res == SnackbarResult.ActionPerformed) {
-                                                viewModel.undoDeleteActivities(group.activities)
+                                                viewModel.undoDeleteActivities(acts)
                                             }
                                         }
                                     }
                                 )
                             }
-                        } else if (showFilters || uiState.searchQuery.isNotBlank() || hasActiveFilters(uiState)) {
+                        } else if (uiState.searchQuery.isNotBlank() || hasActiveFilters(uiState)) {
                             item {
                                 Box(
-                                    modifier = Modifier.fillParentMaxSize(),
+                                    modifier = Modifier
+                                        .fillParentMaxSize()
+                                        .padding(top = 32.dp),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text(
-                                            "No activities match your search.",
-                                            style = MaterialTheme.typography.bodyLarge
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Text("No activities match your search.", style = MaterialTheme.typography.bodyLarge)
+                                        Spacer(Modifier.height(8.dp))
                                         TextButton(onClick = {
                                             viewModel.clearAllFilters()
                                             viewModel.updateSearchQuery("")
-                                            showFilters = false
-                                        }) {
-                                            Text("Clear search & filters")
-                                        }
+                                            showFilterDialog = false
+                                        }) { Text("Clear search & filters") }
                                     }
                                 }
                             }
@@ -279,7 +222,7 @@ fun ActivitiesScreen(
             }
         }
 
-        // Floating Action Button positioned manually
+        // FAB
         FloatingActionButton(
             onClick = onAddActivityClick,
             modifier = Modifier
@@ -292,14 +235,123 @@ fun ActivitiesScreen(
             Icon(Icons.Filled.Add, contentDescription = "Add Activity")
         }
     }
+
+    // ===== FILTER DIALOG (styled like AnimalFilterScreen) =====
+    if (showFilterDialog) {
+        ActivityFilterDialog(
+            initialRange = uiState.dateRange,
+            initialTypes = uiState.selectedActivityTypes,
+            onApply = { newRange, newTypes ->
+                // Apply date range
+                viewModel.updateDateRange(newRange)
+                // Sync activity types via diff
+                val current = uiState.selectedActivityTypes
+                (current - newTypes).forEach { viewModel.toggleActivityTypeFilter(it) } // remove
+                (newTypes - current).forEach { viewModel.toggleActivityTypeFilter(it) } // add
+                showFilterDialog = false
+            },
+            onDismiss = { showFilterDialog = false }
+        )
+    }
 }
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun ActivityFilterDialog(
+    initialRange: Pair<LocalDate, LocalDate>?,
+    initialTypes: Set<ActivityType>,
+    onApply: (Pair<LocalDate, LocalDate>?, Set<ActivityType>) -> Unit,
+    onDismiss: () -> Unit
+) {
+    // Match AnimalFilterScreen sizing & structure
+    val dialogContentPadding = 16.dp
+    var range by remember { mutableStateOf(initialRange) }
+    var types by remember { mutableStateOf(initialTypes) }
+    val scrollState = rememberScrollState()
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.9f),
+            shape = MaterialTheme.shapes.large
+        ) {
+            Column(modifier = Modifier.padding(dialogContentPadding)) {
+                // Title centered with Close icon on right (like AnimalFilterScreen)
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "Filter Activities",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Close Filters")
+                    }
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Scrollable content
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(scrollState)
+                ) {
+                    // Date Range (mirrors your animal filter quick-picks + selectors)
+                    DateRangeSection(
+                        currentRange = range,
+                        onRangeSelected = { range = it }
+                    )
+
+                    // Activity Type section (FlowRow wrap, Clear button like your groups)
+                    ActivityTypeSection(
+                        selectedTypes = types,
+                        onToggleType = { t ->
+                            types = if (types.contains(t)) types - t else types + t
+                        },
+                        onClear = { types = emptySet() }
+                    )
+                }
+
+                Spacer(Modifier.height(16.dp))
+
+                // Buttons row (Clear All / Apply) – same vibe
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            range = null
+                            types = emptySet()
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Clear All") }
+
+                    Button(
+                        onClick = { onApply(range, types) },
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Apply Filters") }
+                }
+            }
+        }
+    }
+}
+
+/* ---------- Sections used inside the dialog (styled to match your AnimalFilterScreen) ---------- */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DateRangeFilterSection(
+private fun DateRangeSection(
     currentRange: Pair<LocalDate, LocalDate>?,
-    onRangeSelected: (Pair<LocalDate, LocalDate>?) -> Unit,
-    formatter: DateTimeFormatter
+    onRangeSelected: (Pair<LocalDate, LocalDate>?) -> Unit
 ) {
     Column {
         Text(
@@ -307,9 +359,9 @@ fun DateRangeFilterSection(
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Medium
         )
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(Modifier.height(8.dp))
 
-        // Quick select buttons
+        // Quick picks row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -322,96 +374,125 @@ fun DateRangeFilterSection(
             val thisYear = Pair(LocalDate.of(today.year, 1, 1), today)
             val lastYear = Pair(LocalDate.of(today.year - 1, 1, 1), LocalDate.of(today.year - 1, 12, 31))
 
-            FilterChip(
-                selected = currentRange == thisMonth,
-                onClick = { onRangeSelected(thisMonth) },
-                label = { Text("This Month") },
-                modifier = Modifier.weight(1f)
-            )
-            FilterChip(
-                selected = currentRange == lastMonth,
-                onClick = { onRangeSelected(lastMonth) },
-                label = { Text("Last Month") },
-                modifier = Modifier.weight(1f)
-            )
-            FilterChip(
-                selected = currentRange == thisYear,
-                onClick = { onRangeSelected(thisYear) },
-                label = { Text("This Year") },
-                modifier = Modifier.weight(1f)
-            )
-            FilterChip(
-                selected = currentRange == lastYear,
-                onClick = { onRangeSelected(lastYear) },
-                label = { Text("Last Year") },
-                modifier = Modifier.weight(1f)
-            )
+            FilterChip(selected = currentRange == thisMonth, onClick = { onRangeSelected(thisMonth) }, label = { Text("This Month") }, modifier = Modifier.weight(1f))
+            FilterChip(selected = currentRange == lastMonth, onClick = { onRangeSelected(lastMonth) }, label = { Text("Last Month") }, modifier = Modifier.weight(1f))
+            FilterChip(selected = currentRange == thisYear, onClick = { onRangeSelected(thisYear) }, label = { Text("This Year") }, modifier = Modifier.weight(1f))
+            FilterChip(selected = currentRange == lastYear, onClick = { onRangeSelected(lastYear) }, label = { Text("Last Year") }, modifier = Modifier.weight(1f))
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
-
+        Spacer(Modifier.height(12.dp))
         HorizontalDivider()
+        Spacer(Modifier.height(12.dp))
 
-        Spacer(modifier = Modifier.height(12.dp))
+        val formatter = remember { DateTimeFormatter.ofPattern("MMM dd, yyyy") }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Start date button
             DateSelectorButton(
                 selectedDate = currentRange?.first,
                 placeholderText = "Start date",
-                onDateSelected = { newStartDate ->
-                    if (newStartDate != null) {
-                        val endDate = currentRange?.second ?: newStartDate
-                        onRangeSelected(
-                            if (newStartDate.isBefore(endDate) || newStartDate.isEqual(endDate)) {
-                                Pair(newStartDate, endDate)
-                            } else {
-                                Pair(newStartDate, newStartDate)
-                            }
-                        )
-                    } else {
-                        onRangeSelected(null)
-                    }
+                onDateSelected = { newStart ->
+                    if (newStart != null) {
+                        val end = currentRange?.second ?: newStart
+                        onRangeSelected(if (!newStart.isAfter(end)) Pair(newStart, end) else Pair(newStart, newStart))
+                    } else onRangeSelected(null)
                 },
                 formatter = formatter,
                 modifier = Modifier.weight(1f)
             )
-
-            // End date button
             DateSelectorButton(
                 selectedDate = currentRange?.second,
                 placeholderText = "End date",
-                onDateSelected = { newEndDate ->
-                    if (newEndDate != null) {
-                        val startDate = currentRange?.first ?: newEndDate
-                        onRangeSelected(
-                            if (startDate.isBefore(newEndDate) || startDate.isEqual(newEndDate)) {
-                                Pair(startDate, newEndDate)
-                            } else {
-                                Pair(newEndDate, newEndDate)
-                            }
-                        )
-                    } else {
-                        onRangeSelected(null)
-                    }
+                onDateSelected = { newEnd ->
+                    if (newEnd != null) {
+                        val start = currentRange?.first ?: newEnd
+                        onRangeSelected(if (!start.isAfter(newEnd)) Pair(start, newEnd) else Pair(newEnd, newEnd))
+                    } else onRangeSelected(null)
                 },
                 formatter = formatter,
                 modifier = Modifier.weight(1f)
             )
         }
 
-        // Clear button if range is set
         if (currentRange != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = { onRangeSelected(null) }) {
-                Text("Clear date range")
-            }
+            Spacer(Modifier.height(8.dp))
+            TextButton(onClick = { onRangeSelected(null) }) { Text("Clear date range") }
         }
+
+        Divider(
+            modifier = Modifier
+                .padding(top = 1.dp)
+                .fillMaxWidth()
+        )
     }
 }
+
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+private fun ActivityTypeSection(
+    selectedTypes: Set<ActivityType>,
+    onToggleType: (ActivityType) -> Unit,
+    onClear: () -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Activity Type",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            TextButton(
+                onClick = onClear,
+                enabled = selectedTypes.isNotEmpty(),
+                modifier = Modifier
+                    .alpha(if (selectedTypes.isNotEmpty()) 1f else 0f)
+                    .heightIn(min = 0.dp)
+            ) { Text("Clear") }
+        }
+
+        FlowRow(
+            modifier = Modifier.fillMaxWidth().padding(top = 0.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            ActivityType.entries.forEach { t ->
+                val isSelected = selectedTypes.contains(t)
+                FilterChip(
+                    selected = isSelected,
+                    onClick = { onToggleType(t) },
+                    label = { Text(t.displayName) },
+                    leadingIcon = if (isSelected) {
+                        { Icon(Icons.Filled.Check, contentDescription = "Selected", modifier = Modifier.size(FilterChipDefaults.IconSize)) }
+                    } else null,
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        labelColor = MaterialTheme.colorScheme.onSurface,
+                        iconColor = MaterialTheme.colorScheme.onSurface,
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                )
+            }
+        }
+
+        Divider(
+            modifier = Modifier
+                .padding(top = 1.dp)
+                .fillMaxWidth()
+        )
+    }
+}
+
+/* ---------- Shared bits (date picker) ---------- */
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -424,44 +505,27 @@ private fun DateSelectorButton(
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
 
-    OutlinedButton(
-        onClick = { showDatePicker = true },
-        modifier = modifier
-    ) {
-        Text(
-            text = selectedDate?.format(formatter) ?: placeholderText,
-            style = MaterialTheme.typography.bodyMedium
-        )
+    OutlinedButton(onClick = { showDatePicker = true }, modifier = modifier) {
+        Text(text = selectedDate?.format(formatter) ?: placeholderText, style = MaterialTheme.typography.bodyMedium)
     }
 
     if (showDatePicker) {
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = selectedDate?.atStartOfDay()?.toInstant(java.time.ZoneOffset.UTC)?.toEpochMilli()
         )
-
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
                 TextButton(onClick = {
-                    val selectedDateMillis = datePickerState.selectedDateMillis
-                    if (selectedDateMillis != null) {
-                        val localDate = java.time.Instant.ofEpochMilli(selectedDateMillis)
-                            .atZone(java.time.ZoneId.systemDefault())
-                            .toLocalDate()
+                    val millis = datePickerState.selectedDateMillis
+                    if (millis != null) {
+                        val localDate = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
                         onDateSelected(localDate)
-                    } else {
-                        onDateSelected(null)
-                    }
+                    } else onDateSelected(null)
                     showDatePicker = false
-                }) {
-                    Text("Confirm")
-                }
+                }) { Text("Confirm") }
             },
-            dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel")
-                }
-            }
+            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }
         ) {
             DatePicker(
                 state = datePickerState,
@@ -485,19 +549,17 @@ private fun DateSelectorButton(
 fun ActivityCard(
     activity: Activity,
     cowNames: List<String>,
-    onClick: () -> Unit, // <<< ADDED onClick PARAMETER
+    onClick: () -> Unit,
     onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick), // <<< MADE CARD CLICKABLE
+            .clickable(onClick = onClick),
         colors = getCardColors()
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+        Column(Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -505,31 +567,28 @@ fun ActivityCard(
             ) {
                 Column(modifier = Modifier.weight(1f).padding(end = 8.dp)) {
                     SmartText(
-                        text = activity.activityType.displayName, // Using displayName
+                        text = activity.activityType.displayName,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         backgroundColor = MaterialTheme.colorScheme.surfaceVariant
                     )
-
                     if (cowNames.isNotEmpty()) {
                         SmartText(
-                            text = cowNames.joinToString(separator = ", "),
+                            text = cowNames.joinToString(", "),
                             style = MaterialTheme.typography.bodyMedium,
                             backgroundColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     }
-
                     activity.notes?.takeIf { it.isNotBlank() }?.let { notes ->
                         SmartText(
                             text = notes,
                             style = MaterialTheme.typography.bodySmall,
                             backgroundColor = MaterialTheme.colorScheme.surfaceVariant,
-                            maxLines = 2, // Limit notes preview if needed
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis // Added for long notes
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                         )
                     }
                 }
-
                 Column(horizontalAlignment = Alignment.End) {
                     SmartText(
                         text = activity.date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy")),
@@ -539,20 +598,12 @@ fun ActivityCard(
                     Row {
                         onEdit?.let {
                             IconButton(onClick = it, modifier = Modifier.size(40.dp)) {
-                                Icon(
-                                    Icons.Filled.Edit,
-                                    contentDescription = "Edit Activity",
-                                    tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
-                                )
+                                Icon(Icons.Filled.Edit, contentDescription = "Edit Activity", tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor())
                             }
                         }
                         onDelete?.let {
                             IconButton(onClick = it, modifier = Modifier.size(40.dp)) {
-                                Icon(
-                                    imageVector = Icons.Filled.Delete,
-                                    contentDescription = "Delete Activity",
-                                    tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
-                                )
+                                Icon(Icons.Filled.Delete, contentDescription = "Delete Activity", tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor())
                             }
                         }
                     }
@@ -571,79 +622,4 @@ private fun getActiveFilterCount(uiState: com.jumblemint.cows.ui.viewmodel.Activ
     if (uiState.selectedActivityTypes.isNotEmpty()) count++
     if (uiState.dateRange != null) count++
     return count
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ActivityTypeFilterSection(
-    selectedTypes: Set<ActivityType>,
-    onToggleType: (ActivityType) -> Unit
-) {
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(bottom = 0.dp, top = 0.dp)) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 0.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Activity Type",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            TextButton(
-                onClick = {
-                    // This button clears all selected types by toggling off the ones that are selected
-                    selectedTypes.forEach { onToggleType(it) }
-                },
-                enabled = selectedTypes.isNotEmpty(),
-                modifier = Modifier
-                    .alpha(if (selectedTypes.isNotEmpty()) 1f else 0f)
-                    .heightIn(min = 0.dp)
-            ) {
-                Text("Clear")
-            }
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 0.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            items(ActivityType.entries.toList()) { activityType ->
-                val isSelected = selectedTypes.contains(activityType)
-                FilterChip(
-                    selected = isSelected,
-                    onClick = { onToggleType(activityType) },
-                    label = { Text(activityType.displayName) },
-                    leadingIcon = if (isSelected) {
-                        {
-                            Icon(
-                                Icons.Filled.Check,
-                                contentDescription = "Selected",
-                                modifier = Modifier.size(FilterChipDefaults.IconSize)
-                            )
-                        }
-                    } else null,
-                    colors = FilterChipDefaults.filterChipColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        labelColor = MaterialTheme.colorScheme.onSurface,
-                        iconColor = MaterialTheme.colorScheme.onSurface,
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                )
-            }
-        }
-        HorizontalDivider(
-            modifier = Modifier
-                .padding(top = 8.dp)
-                .fillMaxWidth()
-        )
-    }
 }
