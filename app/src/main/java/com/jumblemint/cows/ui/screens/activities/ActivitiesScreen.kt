@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +38,14 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import java.time.LocalDate
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.DatePickerDefaults
+import androidx.compose.ui.draw.alpha
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -179,12 +188,10 @@ fun ActivitiesScreen(
                                             onRangeSelected = { viewModel.updateDateRange(it) },
                                             formatter = dateRangeFormatter
                                         )
-                                        FilterSection(
-                                            title = "Activity Type",
-                                            items = ActivityType.values().toList(),
-                                            selectedItems = uiState.selectedActivityTypes,
-                                            onToggle = { viewModel.toggleActivityTypeFilter(it) },
-                                            itemLabel = { it.displayName }
+
+                                        ActivityTypeFilterSection(
+                                            selectedTypes = uiState.selectedActivityTypes,
+                                            onToggleType = { viewModel.toggleActivityTypeFilter(it) }
                                         )
                                     }
                                 }
@@ -255,18 +262,184 @@ fun ActivitiesScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DateRangeFilterSection(
     currentRange: Pair<LocalDate, LocalDate>?,
     onRangeSelected: (Pair<LocalDate, LocalDate>?) -> Unit,
     formatter: DateTimeFormatter
 ) {
-    // Placeholder implementation to avoid crashes - Date range filter not yet implemented
-    Text(
-        text = "Date range filter coming soon...",
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
+    Column {
+        Text(
+            text = "Date Range",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.Medium
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Quick select buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            val today = LocalDate.now()
+            val thisMonth = Pair(today.withDayOfMonth(1), today)
+            val lastMonth = Pair(today.minusMonths(1).withDayOfMonth(1), today.minusMonths(1).withDayOfMonth(today.minusMonths(1).lengthOfMonth()))
+            val thisYear = Pair(LocalDate.of(today.year, 1, 1), today)
+            val lastYear = Pair(LocalDate.of(today.year - 1, 1, 1), LocalDate.of(today.year - 1, 12, 31))
+
+            FilterChip(
+                selected = currentRange == thisMonth,
+                onClick = { onRangeSelected(thisMonth) },
+                label = { Text("This Month") },
+                modifier = Modifier.weight(1f)
+            )
+            FilterChip(
+                selected = currentRange == lastMonth,
+                onClick = { onRangeSelected(lastMonth) },
+                label = { Text("Last Month") },
+                modifier = Modifier.weight(1f)
+            )
+            FilterChip(
+                selected = currentRange == thisYear,
+                onClick = { onRangeSelected(thisYear) },
+                label = { Text("This Year") },
+                modifier = Modifier.weight(1f)
+            )
+            FilterChip(
+                selected = currentRange == lastYear,
+                onClick = { onRangeSelected(lastYear) },
+                label = { Text("Last Year") },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        HorizontalDivider()
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Start date button
+            DateSelectorButton(
+                selectedDate = currentRange?.first,
+                placeholderText = "Start date",
+                onDateSelected = { newStartDate ->
+                    if (newStartDate != null) {
+                        val endDate = currentRange?.second ?: newStartDate
+                        onRangeSelected(if (newStartDate.isBefore(endDate) || newStartDate.isEqual(endDate)) {
+                            Pair(newStartDate, endDate)
+                        } else {
+                            Pair(newStartDate, newStartDate)
+                        })
+                    } else {
+                        onRangeSelected(null)
+                    }
+                },
+                formatter = formatter,
+                modifier = Modifier.weight(1f)
+            )
+
+            // End date button
+            DateSelectorButton(
+                selectedDate = currentRange?.second,
+                placeholderText = "End date",
+                onDateSelected = { newEndDate ->
+                    if (newEndDate != null) {
+                        val startDate = currentRange?.first ?: newEndDate
+                        onRangeSelected(if (startDate.isBefore(newEndDate) || startDate.isEqual(newEndDate)) {
+                            Pair(startDate, newEndDate)
+                        } else {
+                            Pair(newEndDate, newEndDate)
+                        })
+                    } else {
+                        onRangeSelected(null)
+                    }
+                },
+                formatter = formatter,
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Clear button if range is set
+        if (currentRange != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(onClick = { onRangeSelected(null) }) {
+                Text("Clear date range")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DateSelectorButton(
+    selectedDate: LocalDate?,
+    placeholderText: String,
+    onDateSelected: (LocalDate?) -> Unit,
+    formatter: DateTimeFormatter,
+    modifier: Modifier = Modifier
+) {
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    OutlinedButton(
+        onClick = { showDatePicker = true },
+        modifier = modifier
+    ) {
+        Text(
+            text = selectedDate?.format(formatter) ?: placeholderText,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate?.atStartOfDay()?.toInstant(java.time.ZoneOffset.UTC)?.toEpochMilli()
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    val selectedDateMillis = datePickerState.selectedDateMillis
+                    if (selectedDateMillis != null) {
+                        val localDate = java.time.Instant.ofEpochMilli(selectedDateMillis)
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .toLocalDate()
+                        onDateSelected(localDate)
+                    } else {
+                        onDateSelected(null)
+                    }
+                    showDatePicker = false
+                }) {
+                    Text("Confirm")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) {
+                    Text("Cancel")
+                }
+            }
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    headlineContentColor = MaterialTheme.colorScheme.onSurface,
+                    dayContentColor = MaterialTheme.colorScheme.onSurface,
+                    selectedDayContentColor = MaterialTheme.colorScheme.primary,
+                    selectedDayContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    todayContentColor = MaterialTheme.colorScheme.primary,
+                    todayDateBorderColor = MaterialTheme.colorScheme.primary,
+                )
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -352,41 +525,83 @@ fun ActivityCard(
 }
 
 private fun hasActiveFilters(uiState: com.jumblemint.cows.ui.viewmodel.ActivitiesUiState): Boolean {
-    return uiState.selectedActivityTypes.isNotEmpty()
+    return uiState.selectedActivityTypes.isNotEmpty() || uiState.dateRange != null
 }
 
 private fun getActiveFilterCount(uiState: com.jumblemint.cows.ui.viewmodel.ActivitiesUiState): Int {
     var count = 0
     if (uiState.selectedActivityTypes.isNotEmpty()) count++
+    if (uiState.dateRange != null) count++
     return count
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun <T> FilterSection(
-    title: String,
-    items: List<T>,
-    selectedItems: Set<T>,
-    onToggle: (T) -> Unit,
-    itemLabel: (T) -> String
+private fun ActivityTypeFilterSection(
+    selectedTypes: Set<ActivityType>,
+    onToggleType: (ActivityType) -> Unit
 ) {
-    Column {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.Medium
-        )
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = "Activity Type",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            TextButton(
+                onClick = {
+                    // This button clears all selected types by toggling off the ones that are selected
+                    selectedTypes.forEach { onToggleType(it) }
+                },
+                enabled = selectedTypes.isNotEmpty(),
+                modifier = Modifier
+                    .alpha(if (selectedTypes.isNotEmpty()) 1f else 0f)
+                    .heightIn(min = 0.dp)
+            ) {
+                Text("Clear")
+            }
+        }
         Spacer(modifier = Modifier.height(8.dp))
         LazyRow(
+            modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(items) { item ->
+            items(ActivityType.entries.toList()) { activityType ->
+                val isSelected = selectedTypes.contains(activityType)
                 FilterChip(
-                    onClick = { onToggle(item) },
-                    label = { Text(itemLabel(item)) },
-                    selected = selectedItems.contains(item)
+                    selected = isSelected,
+                    onClick = { onToggleType(activityType) },
+                    label = { Text(activityType.displayName) },
+                    leadingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = "Selected",
+                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                            )
+                        }
+                    } else null,
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = MaterialTheme.colorScheme.surface,
+                        labelColor = MaterialTheme.colorScheme.onSurface,
+                        iconColor = MaterialTheme.colorScheme.onSurface,
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
+                    )
                 )
             }
         }
+        HorizontalDivider(
+            modifier = Modifier
+                .padding(top = 8.dp)
+                .fillMaxWidth()
+        )
     }
 }

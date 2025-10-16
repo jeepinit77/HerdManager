@@ -44,7 +44,7 @@ import java.util.Locale
 fun CowListScreen(
     type: String? = null,
     value: String? = null,
-    pastureId: String? = null, 
+    pastureId: String? = null,
     onCowClick: (Long) -> Unit,
     onCowEdit: ((Long) -> Unit)? = null,
     onAddCowClick: (() -> Unit)? = null,
@@ -76,18 +76,18 @@ fun CowListScreen(
     val cowsViewModel: CowsViewModel? = if (showSearchAndFilters) {
         viewModel(factory = CowsViewModelFactory(cattleApplication, repository))
     } else null
-    
+
     val reportsViewModel: ReportsViewModel? = if (!showSearchAndFilters) {
         viewModel(factory = ReportsViewModelFactory(applicationContext, repository, cattleApplication.authService))
     } else null
 
     val cowsUiState = cowsViewModel?.uiState?.collectAsState()
     val reportsUiState = reportsViewModel?.uiState?.collectAsState()
-    
+
     val cowsFlow by remember { mutableStateOf(repository.getAllCows()) }
     val allCows by cowsFlow.collectAsState(initial = emptyList())
     val tagColorMap = rememberTagColorMap(repository)
-    
+
     var showAnimalFilterDialog by remember { mutableStateOf(false) }
     val globalSnackbarState = LocalGlobalSnackbarState.current
     val scope = rememberCoroutineScope()
@@ -104,7 +104,7 @@ fun CowListScreen(
     val list: List<Cow> = if (showSearchAndFilters) {
         cowsUiState?.value?.cows ?: emptyList()
     } else {
-        remember(allCows, type, value) { 
+        remember(allCows, type, value) {
             val active = allCows.filter { it.status == Status.ACTIVE }
             val today = LocalDate.now()
             when (type) {
@@ -118,12 +118,12 @@ fun CowListScreen(
                     }
                 }
                 "classification" -> active.filter { it.classification.name == value }
-                "pasture" -> active.filter { it.pastureId == value } 
+                "pasture" -> active.filter { it.pastureId == value }
                 "pastureName" -> {
                     if (value == "Unassigned") {
                         active.filter { it.pastureId == null }
                     } else {
-                        active 
+                        active
                     }
                 }
                 "unassigned" -> active.filter { it.pastureId == null }
@@ -137,14 +137,14 @@ fun CowListScreen(
                 "calved" -> {
                     val activeCalves = allCows.filter { cow ->
                         cow.classification == Classification.CALF &&
-                        cow.status == Status.ACTIVE &&
-                        cow.motherId != null
+                                cow.status == Status.ACTIVE &&
+                                cow.motherId != null
                     }
                     val mothersWithActiveCalves = activeCalves.mapNotNull { it.motherId }.toSet()
                     active.filter {
                         it.gender == Gender.FEMALE &&
-                        it.classification in listOf(Classification.COW, Classification.HEIFER) &&
-                        it.id in mothersWithActiveCalves
+                                it.classification in listOf(Classification.COW, Classification.HEIFER) &&
+                                it.id in mothersWithActiveCalves
                     }
                 }
                 "age" -> value?.let { ageKey -> active.filter { AgeUtils.cowMatchesAgeRangeKey(it, ageKey, today) } } ?: active // Use AgeUtils
@@ -173,7 +173,7 @@ fun CowListScreen(
             "pasture" -> {
                 newTitle = value?.let { "Pasture: $it" } ?: "Cattle by Pasture"
             }
-            "pastureName" -> { 
+            "pastureName" -> {
                 newTitle = if (value == "Unassigned") {
                     "Unassigned Animals"
                 } else {
@@ -199,21 +199,21 @@ fun CowListScreen(
 
     if (showSearchAndFilters && cowsViewModel != null && cowsUiState?.value != null) {
         val currentUiState = cowsUiState.value
-        if (showAnimalFilterDialog) { 
+        if (showAnimalFilterDialog) {
             AnimalFilterScreen(
                 initialFilterState = AnimalFilterState(
                     classifications = currentUiState.selectedClassifications.toList(),
                     genders = currentUiState.selectedGenders.toList(),
                     pastures = currentUiState.selectedPastures.toList(),
-                    breeds = currentUiState.selectedBreeds.toList(), 
+                    breeds = currentUiState.selectedBreeds.toList(),
                     statuses = currentUiState.selectedStatuses.toList(),
-                    tagColors = currentUiState.selectedTagColors.toList(), 
-                    isWatched = currentUiState.selectedIsWatched, 
+                    tagColors = currentUiState.selectedTagColors.toList(),
+                    isWatched = currentUiState.selectedIsWatched,
                     selectedAgeRanges = currentUiState.selectedAgeRanges.toList()
                 ),
                 availablePastures = currentUiState.availablePastures,
-                availableBreeds = currentUiState.availableBreeds, 
-                availableTagColors = currentUiState.availableTagColors, 
+                availableBreeds = currentUiState.availableBreeds,
+                availableTagColors = currentUiState.availableTagColors,
                 onApplyFilters = { newState ->
                     Status.entries.forEach { status ->
                         val shouldBeSelected = newState.statuses.contains(status)
@@ -233,13 +233,13 @@ fun CowListScreen(
                             cowsViewModel.toggleClassificationFilter(classification)
                         }
                     }
-                    (currentUiState.availablePastures + newState.pastures).distinct().forEach { pasture -> 
+                    (currentUiState.availablePastures + newState.pastures).distinct().forEach { pasture ->
                         val shouldBeSelected = newState.pastures.contains(pasture)
                         if (currentUiState.selectedPastures.contains(pasture) != shouldBeSelected) {
                             cowsViewModel.togglePastureFilter(pasture)
                         }
                     }
-                    (currentUiState.availableBreeds + newState.breeds).distinct().forEach { breed -> 
+                    (currentUiState.availableBreeds + newState.breeds).distinct().forEach { breed ->
                         val shouldBeSelected = newState.breeds.contains(breed)
                         if (currentUiState.selectedBreeds.contains(breed) != shouldBeSelected) {
                             cowsViewModel.toggleBreedFilter(breed)
@@ -273,7 +273,7 @@ fun CowListScreen(
         CowListContent(
             modifier = Modifier.fillMaxSize(), // CowListContent will fill this Box
             showSearchAndFilters = showSearchAndFilters,
-            onShowAnimalFilterDialog = { showAnimalFilterDialog = true }, 
+            onShowAnimalFilterDialog = { showAnimalFilterDialog = true },
             cowsUiState = cowsUiState?.value,
             cowsViewModel = cowsViewModel,
             list = list,
@@ -304,11 +304,12 @@ fun CowListScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CowListContent(
     modifier: Modifier,
     showSearchAndFilters: Boolean,
-    onShowAnimalFilterDialog: () -> Unit, 
+    onShowAnimalFilterDialog: () -> Unit,
     cowsUiState: com.jumblemint.cows.ui.viewmodel.CowsUiState?,
     cowsViewModel: CowsViewModel?,
     list: List<Cow>,
@@ -323,39 +324,53 @@ private fun CowListContent(
         modifier = modifier // This modifier is Modifier.fillMaxSize() from the Box above
     ) {
         if (showSearchAndFilters && cowsUiState != null && cowsViewModel != null) {
+
+            // ---- Search + Filters (stable, theme-friendly, aligned) ----
             Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedTextField(
-                    value = cowsUiState.searchQuery, 
+                    value = cowsUiState.searchQuery,
                     onValueChange = { cowsViewModel.updateSearchQuery(it) },
-                    label = { Text("Search cattle...") },
+                    placeholder = { Text("Search cattle...") }, // <<-- use placeholder not label
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                    modifier = Modifier.weight(1f).height(56.dp),
+                    singleLine = true,
+                    modifier = Modifier
+                        .weight(1f)
+                        .defaultMinSize(minHeight = 56.dp)
+                        .alignBy { it.measuredHeight / 2 }, // center-align with chip
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
                         focusedLabelColor = MaterialTheme.colorScheme.primary,
                         unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
                         focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
                         unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
-                        focusedBorderColor = MaterialTheme.colorScheme.primary
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        cursorColor = MaterialTheme.colorScheme.primary
                     )
                 )
+
+                val activeFilterCount = getActiveFilterCount(cowsUiState)
                 FilterChip(
-                    onClick = { onShowAnimalFilterDialog() }, 
+                    onClick = { onShowAnimalFilterDialog() },
                     label = {
-                        val activeFilterCount = getActiveFilterCount(cowsUiState) 
                         if (activeFilterCount > 0) {
                             Text("($activeFilterCount)")
                         } else {
-                            Text("Filters") 
+                            Text("Filters")
                         }
                     },
-                    selected = hasActiveFilters(cowsUiState), 
+                    selected = hasActiveFilters(cowsUiState),
                     leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") },
-                    modifier = Modifier.height(56.dp),
+                    modifier = Modifier
+                        .defaultMinSize(minHeight = 56.dp)
+                        .alignBy { it.measuredHeight / 2 },
                     colors = FilterChipDefaults.filterChipColors(
                         labelColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
                         iconColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
@@ -372,16 +387,19 @@ private fun CowListContent(
                         selectedBorderColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor().copy(alpha = 0.3f)
                     )
                 )
+
                 if (hasActiveFilters(cowsUiState) || cowsUiState.searchQuery.isNotBlank()) {
                     IconButton(onClick = {
-                        cowsViewModel.clearAllFilters() 
-                        cowsViewModel.updateSearchQuery("") 
+                        cowsViewModel.clearAllFilters()
+                        cowsViewModel.updateSearchQuery("")
                     }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear All Filters")
+                        Icon(Icons.Default.Clear, contentDescription = "Clear all filters and search")
                     }
                 }
             }
+            // ---- End search row ----
         }
+
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -429,14 +447,14 @@ private fun CowListContent(
 }
 
 private fun hasActiveFilters(uiState: com.jumblemint.cows.ui.viewmodel.CowsUiState): Boolean {
-    return uiState.selectedStatuses.isNotEmpty() || 
-           uiState.selectedClassifications.isNotEmpty() || 
-           uiState.selectedGenders.isNotEmpty() || 
-           uiState.selectedPastures.isNotEmpty() || 
-           uiState.selectedBreeds.isNotEmpty() ||
-           uiState.selectedTagColors.isNotEmpty() || 
-           uiState.selectedIsWatched != null ||
-           uiState.selectedAgeRanges.isNotEmpty()
+    return uiState.selectedStatuses.isNotEmpty() ||
+            uiState.selectedClassifications.isNotEmpty() ||
+            uiState.selectedGenders.isNotEmpty() ||
+            uiState.selectedPastures.isNotEmpty() ||
+            uiState.selectedBreeds.isNotEmpty() ||
+            uiState.selectedTagColors.isNotEmpty() ||
+            uiState.selectedIsWatched != null ||
+            uiState.selectedAgeRanges.isNotEmpty()
 }
 
 private fun getActiveFilterCount(uiState: com.jumblemint.cows.ui.viewmodel.CowsUiState): Int {
@@ -446,11 +464,10 @@ private fun getActiveFilterCount(uiState: com.jumblemint.cows.ui.viewmodel.CowsU
     if (uiState.selectedGenders.isNotEmpty()) count++
     if (uiState.selectedPastures.isNotEmpty()) count++
     if (uiState.selectedBreeds.isNotEmpty()) count++
-    if (uiState.selectedTagColors.isNotEmpty()) count++ 
-    if (uiState.selectedIsWatched != null) count++ 
+    if (uiState.selectedTagColors.isNotEmpty()) count++
+    if (uiState.selectedIsWatched != null) count++
     if (uiState.selectedAgeRanges.isNotEmpty()) count++
     return count
 }
 
 // filterByAgeGroup is no longer needed here as the logic is now within the main list generation for `type == "age"` using AgeUtils
-
