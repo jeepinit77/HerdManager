@@ -10,6 +10,7 @@ import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.model.Classification
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.repository.CattleRepository
+import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -38,35 +39,40 @@ class ActivitiesViewModel(
             ) { activities, allCows, pastures ->
                 val currentState = _uiState.value
                 val pastureNames = pastures.map { it.name }
-                
+
+                // Use selected date range when set, fall back to entire list otherwise
+                val activitiesInRange = currentState.dateRange?.let { (startDate, endDate) ->
+                    activities.filter { it.date in startDate..endDate }
+                } ?: activities
+
                 // Filter activities based on search and filters
-                val filteredActivities = activities.filter { activity ->
+                val filteredActivities = activitiesInRange.filter { activity ->
                     val cow = allCows.find { it.id == activity.cowId }
-                    
+
                     // Search filter
                     val searchMatch = if (currentState.searchQuery.isBlank()) {
                         true
                     } else {
                         val query = currentState.searchQuery.lowercase()
                         activity.activityType.displayName.lowercase().contains(query) ||
-                        activity.notes?.lowercase()?.contains(query) == true ||
-                        cow?.name?.lowercase()?.contains(query) == true ||
-                        cow?.tagNumber?.toString()?.contains(query) == true
+                            activity.notes?.lowercase()?.contains(query) == true ||
+                            cow?.name?.lowercase()?.contains(query) == true ||
+                            cow?.tagNumber?.toString()?.contains(query) == true
                     }
-                    
+
                     cow?.let { c ->
                         // Status filter
-                        val statusMatch = currentState.selectedStatuses.isEmpty() || 
-                                        currentState.selectedStatuses.contains(c.status)
-                        
+                        val statusMatch = currentState.selectedStatuses.isEmpty() ||
+                            currentState.selectedStatuses.contains(c.status)
+
                         // Classification filter
-                        val classificationMatch = currentState.selectedClassifications.isEmpty() || 
-                                                currentState.selectedClassifications.contains(c.classification)
-                        
+                        val classificationMatch = currentState.selectedClassifications.isEmpty() ||
+                            currentState.selectedClassifications.contains(c.classification)
+
                         // Gender filter
-                        val genderMatch = currentState.selectedGenders.isEmpty() || 
-                                        currentState.selectedGenders.contains(c.gender)
-                        
+                        val genderMatch = currentState.selectedGenders.isEmpty() ||
+                            currentState.selectedGenders.contains(c.gender)
+
                         // Pasture filter
                         val pastureMatch = if (currentState.selectedPastures.isEmpty()) {
                             true
@@ -76,18 +82,19 @@ class ActivitiesViewModel(
                             }
                             cowPastureName?.let { currentState.selectedPastures.contains(it) } ?: false
                         }
-                        
+
                         // Activity type filter
                         val activityTypeMatch = currentState.selectedActivityTypes.isEmpty() ||
-                                              currentState.selectedActivityTypes.contains(activity.activityType)
-                        
+                            currentState.selectedActivityTypes.contains(activity.activityType)
+
                         searchMatch && statusMatch && classificationMatch && genderMatch && pastureMatch && activityTypeMatch
                     } ?: false
                 }
 
                 // Group activities by groupId (or fallback to old grouping for legacy data)
                 val groups = filteredActivities.groupBy { act ->
-                    act.groupId ?: "legacy_${act.date}_${act.activityType}_${act.notes}_${act.fromPastureId}_${act.toPastureId}_${act.details}"
+                    act.groupId
+                        ?: "legacy_${act.date}_${act.activityType}_${act.notes}_${act.fromPastureId}_${act.toPastureId}_${act.details}"
                 }
 
                 val grouped = groups.map { (groupId, acts) ->
@@ -101,7 +108,7 @@ class ActivitiesViewModel(
                         cowNames = cowNames
                     )
                 }
-                
+
                 _uiState.value = _uiState.value.copy(
                     activityGroups = grouped.sortedWith(compareByDescending<ActivityGroup> { it.sample.date }.thenByDescending { it.sample.id }),
                     availablePastures = pastureNames,
@@ -166,6 +173,11 @@ class ActivitiesViewModel(
         _uiState.value = _uiState.value.copy(selectedActivityTypes = currentTypes)
         loadActivitiesWithFilters() // Reload with new filters
     }
+
+    fun updateDateRange(range: Pair<LocalDate, LocalDate>?) {
+        _uiState.value = _uiState.value.copy(dateRange = range)
+        loadActivitiesWithFilters()
+    }
     
     fun updateSearchQuery(query: String) {
         _uiState.value = _uiState.value.copy(searchQuery = query)
@@ -179,6 +191,7 @@ class ActivitiesViewModel(
             selectedGenders = emptySet(),
             selectedPastures = emptySet(),
             selectedActivityTypes = emptySet(),
+            dateRange = null,
             searchQuery = ""
         )
         loadActivitiesWithFilters()
@@ -229,6 +242,7 @@ data class ActivitiesUiState(
     val selectedGenders: Set<Gender> = emptySet(),
     val selectedPastures: Set<String> = emptySet(),
     val selectedActivityTypes: Set<ActivityType> = emptySet(),
+    val dateRange: Pair<LocalDate, LocalDate>? = null,
     val availablePastures: List<String> = emptyList(),
     val searchQuery: String = "",
     val isLoading: Boolean = true,

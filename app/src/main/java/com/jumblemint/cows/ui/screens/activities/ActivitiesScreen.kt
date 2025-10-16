@@ -36,6 +36,7 @@ import com.jumblemint.cows.ui.theme.contrastingTextColor
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -66,6 +67,7 @@ fun ActivitiesScreen(
         factory = ActivitiesViewModelFactory(context.applicationContext as Application, repository)
     )
 
+    val dateRangeFormatter = remember { DateTimeFormatter.ofPattern("MMM dd, yyyy") }
     val uiState by viewModel.uiState.collectAsState()
     var showFilters by remember { mutableStateOf(false) }
 
@@ -81,7 +83,7 @@ fun ActivitiesScreen(
                 ) {
                     CircularProgressIndicator()
                 }
-            } else if (uiState.activityGroups.isEmpty() && !showFilters) {
+            } else if (uiState.activityGroups.isEmpty() && !showFilters && uiState.searchQuery.isBlank() && !hasActiveFilters(uiState)) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
@@ -100,21 +102,27 @@ fun ActivitiesScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.Top
                     ) {
                         OutlinedTextField(
                             value = uiState.searchQuery,
                             onValueChange = { viewModel.updateSearchQuery(it) },
-                            label = { Text("Search activities...") },
+                            label = { Text("Search activities...", color = MaterialTheme.colorScheme.onBackground) },
                             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                            modifier = Modifier.weight(1f).height(56.dp)
+                            colors = OutlinedTextFieldDefaults.colors(
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                                focusedBorderColor = MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp)
                         )
                         FilterChip(
                             onClick = { showFilters = !showFilters },
                             label = {
                                 val activeFilterCount = getActiveFilterCount(uiState)
                                 if (activeFilterCount > 0) {
-                                    Text("($activeFilterCount)")
+                                    Text("($activeFilterCount)", color = MaterialTheme.colorScheme.onPrimaryContainer)
                                 } else {
                                     Text("Filters")
                                 }
@@ -127,81 +135,104 @@ fun ActivitiesScreen(
                             IconButton(onClick = {
                                 viewModel.clearAllFilters()
                             }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear All Filters")
+                                Icon(Icons.Default.Clear, contentDescription = "Clear All Filters", tint = MaterialTheme.colorScheme.onBackground)
                             }
                         }
                     }
-                    
+
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                         contentPadding = PaddingValues(top = 8.dp, bottom = 80.dp)
                     ) {
-                    if (showFilters) {
-                        item {
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(bottom = 8.dp),
-                                colors = getCardColors()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceBetween,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Text(
-                                            text = "Filters",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        TextButton(onClick = { showFilters = false }) {
-                                            Text("Done")
-                                        }
-                                    }
-                                    FilterSection(
-                                        title = "Activity Type",
-                                        items = ActivityType.values().toList(),
-                                        selectedItems = uiState.selectedActivityTypes,
-                                        onToggle = { viewModel.toggleActivityTypeFilter(it) },
-                                        itemLabel = { it.displayName }
+                        if (showFilters) {
+                            item {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(bottom = 8.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Filters",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            TextButton(onClick = { showFilters = false }) {
+                                                Text("Done")
+                                            }
+                                        }
+                                        DateRangeFilterSection(
+                                            currentRange = uiState.dateRange,
+                                            onRangeSelected = { viewModel.updateDateRange(it) },
+                                            formatter = dateRangeFormatter
+                                        )
+                                        FilterSection(
+                                            title = "Activity Type",
+                                            items = ActivityType.values().toList(),
+                                            selectedItems = uiState.selectedActivityTypes,
+                                            onToggle = { viewModel.toggleActivityTypeFilter(it) },
+                                            itemLabel = { it.displayName }
+                                        )
+                                    }
                                 }
                             }
                         }
-                    }
 
-                    if (uiState.activityGroups.isNotEmpty()){
-                        items(uiState.activityGroups, key = { it.sample.id }) { group ->
-                            ActivityCard(
-                                activity = group.sample,
-                                cowNames = group.cowNames.filterNotNull(),
-                                onClick = { onActivityClick(group.sample.id) }, // <<< PASSING CLICK HANDLER
-                                onEdit = { onEditActivityClick(group.sample) },
-                                onDelete = {
-                                    scope.launch {
-                                        viewModel.deleteActivities(group.activities)
-                                        val res = globalSnackbarState?.showSnackbar(
-                                            message = "Activity deleted",
-                                            actionLabel = "UNDO",
-                                            duration = SnackbarDuration.Long
+                        if (uiState.activityGroups.isNotEmpty()) {
+                            items(uiState.activityGroups, key = { it.sample.id }) { group ->
+                                ActivityCard(
+                                    activity = group.sample,
+                                    cowNames = group.cowNames.filterNotNull(),
+                                    onClick = { onActivityClick(group.sample.id) },
+                                    onEdit = { onEditActivityClick(group.sample) },
+                                    onDelete = {
+                                        scope.launch {
+                                            viewModel.deleteActivities(group.activities)
+                                            val res = globalSnackbarState?.showSnackbar(
+                                                message = "Activity deleted",
+                                                actionLabel = "UNDO",
+                                                duration = SnackbarDuration.Long
+                                            )
+                                            if (res == SnackbarResult.ActionPerformed) {
+                                                viewModel.undoDeleteActivities(group.activities)
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        } else if (showFilters || uiState.searchQuery.isNotBlank() || hasActiveFilters(uiState)) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillParentMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Text(
+                                            "No activities match your search.",
+                                            style = MaterialTheme.typography.bodyLarge
                                         )
-                                        if (res == SnackbarResult.ActionPerformed) {
-                                            viewModel.undoDeleteActivities(group.activities)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        TextButton(onClick = {
+                                            viewModel.clearAllFilters()
+                                            showFilters = false
+                                        }) {
+                                            Text("Clear search & filters")
                                         }
                                     }
                                 }
-                            )
-                        }
-                    } else if (showFilters) {
-                        item {
-                            Box(modifier = Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("No activities match your filters.", style = MaterialTheme.typography.bodyLarge)
-                            }
                             }
                         }
                     }
@@ -222,6 +253,20 @@ fun ActivitiesScreen(
             Icon(Icons.Filled.Add, contentDescription = "Add Activity")
         }
     }
+}
+
+@Composable
+fun DateRangeFilterSection(
+    currentRange: Pair<LocalDate, LocalDate>?,
+    onRangeSelected: (Pair<LocalDate, LocalDate>?) -> Unit,
+    formatter: DateTimeFormatter
+) {
+    // Placeholder implementation to avoid crashes - Date range filter not yet implemented
+    Text(
+        text = "Date range filter coming soon...",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
