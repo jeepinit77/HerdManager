@@ -49,11 +49,31 @@ fun AnimalFilterScreen(
     availableBreeds: List<String>,
     availableTagColors: List<String>,
     onApplyFilters: (AnimalFilterState) -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    viewModel: com.jumblemint.cows.ui.viewmodel.CowsViewModel? = null
 ) {
     var currentFilterState by remember { mutableStateOf(initialFilterState) }
     val scrollState = rememberScrollState()
     val dialogContentPadding = 16.dp // Standard padding for the dialog content area
+    
+    // Track preview result count
+    var previewCount by remember { mutableStateOf<Int?>(null) }
+    
+    // Calculate preview count when filters change
+    LaunchedEffect(currentFilterState) {
+        viewModel?.let {
+            previewCount = it.getPreviewResultCount(
+                previewClassifications = currentFilterState.classifications,
+                previewGenders = currentFilterState.genders,
+                previewPastures = currentFilterState.pastures,
+                previewBreeds = currentFilterState.breeds,
+                previewStatuses = currentFilterState.statuses,
+                previewTagColors = currentFilterState.tagColors,
+                previewIsWatched = currentFilterState.isWatched,
+                previewAgeRanges = currentFilterState.selectedAgeRanges
+            )
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -202,6 +222,23 @@ fun AnimalFilterScreen(
                 } 
 
                 Spacer(modifier = Modifier.height(16.dp))
+
+                // Result count display
+                previewCount?.let { count ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "$count result${if (count != 1) "s" else ""}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),

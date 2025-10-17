@@ -162,6 +162,57 @@ class CowsViewModel(
         )
     }
 
+    suspend fun getPreviewResultCount(
+        previewClassifications: List<Classification>,
+        previewGenders: List<Gender>,
+        previewPastures: List<String>,
+        previewBreeds: List<String>,
+        previewStatuses: List<Status>,
+        previewTagColors: List<String>,
+        previewIsWatched: Boolean?,
+        previewAgeRanges: List<String>
+    ): Int {
+        val allCows = repository.getAllCows().first()
+        val pastures = repository.getAllPastures().first()
+        val currentState = _uiState.value
+        val today = LocalDate.now()
+        
+        val filteredCows = allCows.filter { cow ->
+            // Use preview filters
+            val statusMatch = previewStatuses.isEmpty() || previewStatuses.contains(cow.status)
+            val classificationMatch = previewClassifications.isEmpty() || previewClassifications.contains(cow.classification)
+            val genderMatch = previewGenders.isEmpty() || previewGenders.contains(cow.gender)
+            val pastureMatch = if (previewPastures.isEmpty()) {
+                true
+            } else {
+                val cowPastureName = cow.pastureId?.let { pastureId -> pastures.find { it.id == pastureId }?.name }
+                cowPastureName?.let { previewPastures.contains(it) } ?: false
+            }
+            val breedMatch = previewBreeds.isEmpty() || cow.breed?.let { previewBreeds.contains(it) } == true
+            val tagColorMatch = previewTagColors.isEmpty() || cow.tagColor?.let { previewTagColors.contains(it) } == true
+            val watchedMatch = previewIsWatched == null || cow.isWatched == previewIsWatched
+            val ageMatch = cowMatchesSelectedAgeRanges(cow, previewAgeRanges.toSet(), today)
+            
+            // Keep current search query
+            val searchMatch = if (currentState.searchQuery.isBlank()) {
+                true
+            } else {
+                val query = currentState.searchQuery.lowercase()
+                (cow.name?.lowercase()?.contains(query) == true) ||
+                (cow.tagNumber?.lowercase()?.contains(query) == true) ||
+                cow.classification.name.lowercase().contains(query) ||
+                cow.gender.name.lowercase().contains(query) ||
+                (cow.breed?.lowercase()?.contains(query) == true) ||
+                (cow.status.name.lowercase().contains(query) == true) || 
+                (cow.tagColor?.lowercase()?.contains(query) == true)
+            }
+            
+            statusMatch && classificationMatch && genderMatch && pastureMatch && breedMatch && tagColorMatch && watchedMatch && ageMatch && searchMatch
+        }
+        
+        return filteredCows.size
+    }
+
     suspend fun deleteCow(cow: Cow) {
         val deletedCow = cow.copy(isDeleted = true, lastSyncAt = 0L)
         repository.updateCow(deletedCow)

@@ -264,7 +264,8 @@ fun CowListScreen(
 
                     showAnimalFilterDialog = false
                 },
-                onDismiss = { showAnimalFilterDialog = false }
+                onDismiss = { showAnimalFilterDialog = false },
+                viewModel = cowsViewModel
             )
         }
     }
