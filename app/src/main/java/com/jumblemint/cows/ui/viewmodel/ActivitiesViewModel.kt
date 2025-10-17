@@ -200,6 +200,75 @@ class ActivitiesViewModel(
         loadActivitiesWithFilters()
     }
 
+    suspend fun getPreviewResultCount(
+        previewDateRange: Pair<LocalDate, LocalDate>?,
+        previewActivityTypes: Set<ActivityType>
+    ): Int {
+        val activities = repository.getAllActivities().first()
+        val allCows = repository.getAllCows().first()
+        val pastures = repository.getAllPastures().first()
+        val currentState = _uiState.value
+
+        // Use preview date range when set, fall back to entire list otherwise
+        val activitiesInRange = previewDateRange?.let { (startDate, endDate) ->
+            activities.filter { it.date in startDate..endDate }
+        } ?: activities
+
+        // Filter activities based on search and filters (using preview activity types)
+        val filteredActivities = activitiesInRange.filter { activity ->
+            val cow = allCows.find { it.id == activity.cowId }
+
+            // Search filter (keep current search query)
+            val searchMatch = if (currentState.searchQuery.isBlank()) {
+                true
+            } else {
+                val query = currentState.searchQuery.lowercase()
+                activity.activityType.displayName.lowercase().contains(query) ||
+                    activity.notes?.lowercase()?.contains(query) == true ||
+                    cow?.name?.lowercase()?.contains(query) == true ||
+                    cow?.tagNumber?.toString()?.contains(query) == true
+            }
+
+            cow?.let { c ->
+                // Status filter (keep current filters)
+                val statusMatch = currentState.selectedStatuses.isEmpty() ||
+                    currentState.selectedStatuses.contains(c.status)
+
+                // Classification filter (keep current filters)
+                val classificationMatch = currentState.selectedClassifications.isEmpty() ||
+                    currentState.selectedClassifications.contains(c.classification)
+
+                // Gender filter (keep current filters)
+                val genderMatch = currentState.selectedGenders.isEmpty() ||
+                    currentState.selectedGenders.contains(c.gender)
+
+                // Pasture filter (keep current filters)
+                val pastureMatch = if (currentState.selectedPastures.isEmpty()) {
+                    true
+                } else {
+                    val cowPastureName = c.pastureId?.let { pastureId ->
+                        pastures.find { it.id == pastureId }?.name
+                    }
+                    cowPastureName?.let { currentState.selectedPastures.contains(it) } ?: false
+                }
+
+                // Activity type filter (use PREVIEW types instead of current)
+                val activityTypeMatch = previewActivityTypes.isEmpty() ||
+                    previewActivityTypes.contains(activity.activityType)
+
+                searchMatch && statusMatch && classificationMatch && genderMatch && pastureMatch && activityTypeMatch
+            } ?: false
+        }
+
+        // Group by groupId to count activity groups, not individual activities
+        val groups = filteredActivities.groupBy { act ->
+            act.groupId
+                ?: "legacy_${act.date}_${act.activityType}_${act.notes}_${act.fromPastureId}_${act.toPastureId}_${act.details}"
+        }
+
+        return groups.size
+    }
+
     // Deletion + undo helpers
     suspend fun deleteActivities(activities: List<Activity>) {
         activities.forEach { 

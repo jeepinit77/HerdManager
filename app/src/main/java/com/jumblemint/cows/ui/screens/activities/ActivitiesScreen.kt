@@ -278,6 +278,35 @@ private fun ActivityFilterDialog(
     var range by remember { mutableStateOf(initialRange) }
     var types by remember { mutableStateOf(initialTypes) }
     val scrollState = rememberScrollState()
+    
+    // Track preview result count
+    val context = LocalContext.current
+    val database = CattleDatabase.getDatabase(context)
+    val repository = remember {
+        CattleRepository(
+            database.cowDao(),
+            database.pastureDao(),
+            database.activityDao(),
+            database.settingsDao(),
+            database.noteDao(),
+            database.userDao(),
+            database.herdDao(),
+            database.herdMemberDao(),
+            database.tagColorDao(),
+            database.activityTypeConfigDao(),
+            database.breedDao()
+        )
+    }
+    val viewModel: ActivitiesViewModel = viewModel(
+        factory = ActivitiesViewModelFactory(context.applicationContext as Application, repository)
+    )
+    
+    var previewCount by remember { mutableStateOf<Int?>(null) }
+    
+    // Calculate preview count when filters change
+    LaunchedEffect(range, types) {
+        previewCount = viewModel.getPreviewResultCount(range, types)
+    }
 
     Dialog(
         onDismissRequest = onDismiss,
@@ -332,6 +361,23 @@ private fun ActivityFilterDialog(
                 }
 
                 Spacer(Modifier.height(16.dp))
+
+                // Result count display
+                previewCount?.let { count ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "$count result${if (count != 1) "s" else ""}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
 
                 // Buttons row (Clear All / Apply) – same vibe
                 Row(
