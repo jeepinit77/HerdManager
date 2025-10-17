@@ -16,6 +16,5 @@ enum class ActivityType(val displayName: String) {
     HEALTH_CHECK("Health Check"),
     TAGGED("Tagged"),
     NOTE("Note"),
-    BIRTH("Birth"),
     OTHER("Other")
 }

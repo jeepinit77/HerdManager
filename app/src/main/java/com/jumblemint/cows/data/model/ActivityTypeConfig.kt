@@ -62,6 +62,7 @@ data class ActivityTypeConfig(
                 ActivityTypeConfig(name = "WEANED", displayName = "Weaned", isDefault = true, iconName = "ChildCare"),
                 ActivityTypeConfig(name = "SOLD", displayName = "Sold", isDefault = true, iconName = "Sell"),
                 ActivityTypeConfig(name = "DECEASED", displayName = "Deceased", isDefault = true, iconName = "Dangerous"),
+                ActivityTypeConfig(name = "WORKED", displayName = "Worked", isDefault = true, iconName = "Handyman"),
                 ActivityTypeConfig(name = "CASTRATED", displayName = "Castrated", isDefault = true, iconName = "MedicalServices"),
                 ActivityTypeConfig(name = "BRED", displayName = "Bred", isDefault = true, iconName = "Favorite"),
                 ActivityTypeConfig(name = "CALVED", displayName = "Calved", isDefault = true, iconName = "BabyChangingStation"),

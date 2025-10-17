@@ -333,7 +333,7 @@ class CattleRepository(
             insertOrUpdateSetting(
                 Settings(
                     SettingsKeys.ACTIVITY_TYPES,
-                    "MOVED,WEANED,SOLD,DECEASED,WORKED,CASTRATED,BRED,CALVED,VACCINATED,TREATED,WEIGHED,PURCHASED,HEALTH_CHECK,TAGGED,NOTE,BIRTH,OTHER"
+                    "MOVED,WEANED,SOLD,DECEASED,WORKED,CASTRATED,BRED,CALVED,VACCINATED,TREATED,WEIGHED,PURCHASED,HEALTH_CHECK,TAGGED,NOTE,OTHER"
                 )
             )
         }
