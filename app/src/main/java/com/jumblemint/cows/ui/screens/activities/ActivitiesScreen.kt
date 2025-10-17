@@ -111,7 +111,10 @@ fun ActivitiesScreen(
                         OutlinedTextField(
                             value = uiState.searchQuery,
                             onValueChange = { viewModel.updateSearchQuery(it) },
-                            placeholder = { Text("Search activities...") },
+                            placeholder = {
+                                Text("Search Activities...",
+                                    softWrap = false)
+                                          },
                             leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
                             singleLine = true,
                             modifier = Modifier
