@@ -142,17 +142,16 @@ class CattleRepository(
             status = Status.ACTIVE
         )
         val calfId = insertCow(calf)
-        // Birth activity is typically for the calf, cowIds would be the calf's ID
-        // If you also want to associate this with the mother, you'd handle that separately or adjust Activity model
-        val birthActivity = Activity(
-            cowId = calfId, // The subject of the BIRTH activity is the calf
+        // Calving activity is typically recorded for the newborn calf
+        // If you also want to associate this with the dam, include her ID in cowIds
+        val calvingActivity = Activity(
+            cowId = calfId,
             date = birthDate,
-            activityType = ActivityType.BIRTH,
+            activityType = ActivityType.CALVED,
             notes = "Born to mother ID: $motherId" + (fatherId?.let { ", father ID: $it" } ?: ""),
-            cowIds = listOf(calfId) // The BIRTH activity primarily concerns the calf itself
-            // If you want to link it to mother/father in Activity.cowIds, add them: listOf(calfId, motherId)
+            cowIds = listOf(calfId, motherId)
         )
-        insertActivity(birthActivity)
+        insertActivity(calvingActivity)
         return calfId
     }
 
@@ -334,7 +333,7 @@ class CattleRepository(
             insertOrUpdateSetting(
                 Settings(
                     SettingsKeys.ACTIVITY_TYPES,
-                    "MOVED,WEANED,SOLD,DECEASED,WORKED,CASTRATED,BIRTH,OTHER"
+                    "MOVED,WEANED,SOLD,DECEASED,WORKED,CASTRATED,BRED,CALVED,VACCINATED,TREATED,WEIGHED,PURCHASED,HEALTH_CHECK,TAGGED,NOTE,OTHER"
                 )
             )
         }
@@ -464,27 +463,275 @@ class CattleRepository(
     private suspend fun createSampleActivities(cowIds: List<Long>, pastureIds: List<String>) {
         val baseDate = LocalDate.now()
         val activities = mutableListOf<Activity>()
-        // Example for a bulk activity where all these cows are involved together
-        val involvedInSampleMove = cowIds.take(2) // e.g., Thunder and Storm moved together
-        val sampleMoveGroupId = UUID.randomUUID().toString()
 
-        involvedInSampleMove.forEach { cowId ->
-            activities.add(Activity(
-                cowId = cowId, // Specific cow for this record
-                date = baseDate.minusMonths(3),
-                activityType = ActivityType.MOVED,
-                fromPastureId = pastureIds.getOrNull(1),
-                toPastureId = pastureIds.getOrNull(0),
-                notes = "Sample bulk move",
-                groupId = sampleMoveGroupId,
-                cowIds = involvedInSampleMove // ALL cows involved in this specific move
-            ))
+        val thunderId = cowIds[0]
+        val stormId = cowIds[1]
+        val bessieId = cowIds[2]
+        val daisyId = cowIds[3]
+        val rosieId = cowIds[4]
+        val lunaId = cowIds[6]
+        val starId = cowIds[7]
+        val graceId = cowIds[8]
+        val rubyId = cowIds[9]
+        val hopeId = cowIds[10]
+        val faithId = cowIds[11]
+        val maxId = cowIds[13]
+        val dukeId = cowIds[14]
+        val rexId = cowIds[15]
+        val buddyId = cowIds[16]
+        val bellaId = cowIds[17]
+        val charlieId = cowIds[18]
+        val rosebudId = cowIds[19]
+        val scoutId = cowIds[20]
+        val spiritId = cowIds[21]
+
+        // MOVED (multiple animals)
+        val movedCowIds = listOf(thunderId, stormId)
+        val moveGroupId = UUID.randomUUID().toString()
+        movedCowIds.forEach { cowId ->
+            activities.add(
+                Activity(
+                    cowId = cowId,
+                    date = baseDate.minusMonths(3),
+                    activityType = ActivityType.MOVED,
+                    fromPastureId = pastureIds.getOrNull(1),
+                    toPastureId = pastureIds.getOrNull(0),
+                    notes = "Sample bulk move",
+                    groupId = moveGroupId,
+                    cowIds = movedCowIds
+                )
+            )
         }
 
-        // Single animal activities
-        activities.add(Activity(cowId = cowIds[19], date = baseDate.minusMonths(9), activityType = ActivityType.BIRTH, notes = "Healthy male calf born to Luna", details = "Birth weight: 85 lbs, no complications", groupId = UUID.randomUUID().toString(), cowIds = listOf(cowIds[19])))
-        activities.add(Activity(cowId = cowIds[20], date = baseDate.minusMonths(11), activityType = ActivityType.BIRTH, notes = "Female calf born to Star", details = "Birth weight: 78 lbs, assisted birth", groupId = UUID.randomUUID().toString(), cowIds = listOf(cowIds[20])))
-        // ... (add cowIds = listOf(specificCowId) for other single activities)
+        // WEANED (single animal)
+        activities.add(
+            Activity(
+                cowId = buddyId,
+                date = baseDate.minusMonths(7),
+                activityType = ActivityType.WEANED,
+                notes = "Buddy weaned from Luna and transitioned to pasture diet.",
+                details = "Weight at weaning: 420 lbs",
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(buddyId)
+            )
+        )
+
+        // SOLD (single animal)
+        activities.add(
+            Activity(
+                cowId = rexId,
+                date = baseDate.minusMonths(5),
+                activityType = ActivityType.SOLD,
+                notes = "Rex sold at spring livestock auction.",
+                details = "Sale price: $1,150",
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(rexId)
+            )
+        )
+
+        // DECEASED (single animal)
+        activities.add(
+            Activity(
+                cowId = rubyId,
+                date = baseDate.minusMonths(12),
+                activityType = ActivityType.DECEASED,
+                notes = "Ruby found deceased due to suspected bloat.",
+                details = "Vet necropsy confirmed digestive upset.",
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(rubyId)
+            )
+        )
+
+        // WORKED (single animal)
+        activities.add(
+            Activity(
+                cowId = maxId,
+                date = baseDate.minusMonths(6),
+                activityType = ActivityType.WORKED,
+                notes = "Max ran through handling facility for annual boosters.",
+                details = "Hoof trimming and fly treatment applied.",
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(maxId)
+            )
+        )
+
+        // CASTRATED (single animal)
+        activities.add(
+            Activity(
+                cowId = dukeId,
+                date = baseDate.minusMonths(14),
+                activityType = ActivityType.CASTRATED,
+                notes = "Duke castrated to finish as a steer.",
+                details = "Banding method with tetanus booster.",
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(dukeId)
+            )
+        )
+
+        // BRED (multiple animals)
+        val bredCowIds = listOf(bessieId, daisyId)
+        val bredGroupId = UUID.randomUUID().toString()
+        bredCowIds.forEach { cowId ->
+            activities.add(
+                Activity(
+                    cowId = cowId,
+                    date = baseDate.minusMonths(10),
+                    activityType = ActivityType.BRED,
+                    notes = "Synchronized AI breeding with sire Thunder.",
+                    details = "Breeding technician: Sarah Lopez",
+                    groupId = bredGroupId,
+                    cowIds = bredCowIds
+                )
+            )
+        }
+
+        // CALVED (single animal with calf association)
+        activities.add(
+            Activity(
+                cowId = lunaId,
+                date = baseDate.minusMonths(8),
+                activityType = ActivityType.CALVED,
+                notes = "Luna calved a healthy bull calf (Buddy).",
+                details = "Calf weight: 85 lbs, unassisted delivery.",
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(lunaId, buddyId)
+            )
+        )
+        activities.add(
+            Activity(
+                cowId = starId,
+                date = baseDate.minusMonths(9),
+                activityType = ActivityType.CALVED,
+                notes = "Star delivered a vigorous heifer calf (Bella).",
+                details = "Assisted delivery with quick recovery.",
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(starId, bellaId)
+            )
+        )
+
+        // VACCINATED (multiple animals)
+        val vaccinationCowIds = listOf(buddyId, bellaId, charlieId)
+        val vaccinationGroupId = UUID.randomUUID().toString()
+        vaccinationCowIds.forEach { cowId ->
+            activities.add(
+                Activity(
+                    cowId = cowId,
+                    date = baseDate.minusMonths(2),
+                    activityType = ActivityType.VACCINATED,
+                    notes = "Spring respiratory vaccination clinic.",
+                    details = "Administered Bovishield Gold FP5 vaccine.",
+                    groupId = vaccinationGroupId,
+                    technician = "Dr. Johnson",
+                    cost = 45.0,
+                    cowIds = vaccinationCowIds
+                )
+            )
+        }
+
+        // TREATED (single animal)
+        activities.add(
+            Activity(
+                cowId = rosieId,
+                date = baseDate.minusMonths(4),
+                activityType = ActivityType.TREATED,
+                notes = "Rosie treated for mild mastitis in right quarter.",
+                details = "Intramammary antibiotic therapy for three days.",
+                technician = "Dr. Johnson",
+                cost = 95.0,
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(rosieId)
+            )
+        )
+
+        // WEIGHED (single animal)
+        activities.add(
+            Activity(
+                cowId = maxId,
+                date = baseDate.minusMonths(1),
+                activityType = ActivityType.WEIGHED,
+                notes = "Mid-summer weight check for Max.",
+                details = "Scale weight: 1,280 lbs.",
+                quantity = 1280.0,
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(maxId)
+            )
+        )
+
+        // PURCHASED (single animal)
+        activities.add(
+            Activity(
+                cowId = stormId,
+                date = baseDate.minusYears(2),
+                activityType = ActivityType.PURCHASED,
+                notes = "Storm purchased from Red River Genetics.",
+                details = "2-year-old Red Angus bull with proven calving ease.",
+                cost = 3200.0,
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(stormId)
+            )
+        )
+
+        // HEALTH CHECK (multiple animals)
+        val healthCheckCowIds = listOf(hopeId, faithId)
+        val healthCheckGroupId = UUID.randomUUID().toString()
+        healthCheckCowIds.forEach { cowId ->
+            activities.add(
+                Activity(
+                    cowId = cowId,
+                    date = baseDate.minusMonths(3),
+                    activityType = ActivityType.HEALTH_CHECK,
+                    notes = "Annual reproductive soundness exams.",
+                    details = "Both heifers cleared for breeding season.",
+                    groupId = healthCheckGroupId,
+                    technician = "Dr. Johnson",
+                    cost = 60.0,
+                    cowIds = healthCheckCowIds
+                )
+            )
+        }
+
+        // TAGGED (multiple animals)
+        val taggedCowIds = listOf(rosebudId, scoutId, spiritId)
+        val taggingGroupId = UUID.randomUUID().toString()
+        taggedCowIds.forEach { cowId ->
+            activities.add(
+                Activity(
+                    cowId = cowId,
+                    date = baseDate.minusMonths(2),
+                    activityType = ActivityType.TAGGED,
+                    notes = "Tagged spring calves with new color-coded ear tags.",
+                    details = "Applied RFID and visual ID tags.",
+                    groupId = taggingGroupId,
+                    cowIds = taggedCowIds
+                )
+            )
+        }
+
+        // NOTE (single animal)
+        activities.add(
+            Activity(
+                cowId = bessieId,
+                date = baseDate.minusWeeks(2),
+                activityType = ActivityType.NOTE,
+                notes = "Observation: Bessie showing excellent maternal behavior.",
+                details = "Keeping calf close and maintaining body condition score 6.",
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(bessieId)
+            )
+        )
+
+        // OTHER (single animal)
+        activities.add(
+            Activity(
+                cowId = graceId,
+                date = baseDate.minusWeeks(6),
+                activityType = ActivityType.OTHER,
+                notes = "Training session to halter break Grace for county fair.",
+                details = "Practiced leading and setting up for showmanship.",
+                groupId = UUID.randomUUID().toString(),
+                cowIds = listOf(graceId)
+            )
+        )
 
         activities.forEach { activity ->
             insertActivity(activity)

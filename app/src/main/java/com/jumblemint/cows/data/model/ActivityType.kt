@@ -7,6 +7,14 @@ enum class ActivityType(val displayName: String) {
     DECEASED("Deceased"),
     WORKED("Worked"),
     CASTRATED("Castrated"),
-    BIRTH("Birth"),
+    BRED("Bred"),
+    CALVED("Calved"),
+    VACCINATED("Vaccinated"),
+    TREATED("Treated"),
+    WEIGHED("Weighed"),
+    PURCHASED("Purchased"),
+    HEALTH_CHECK("Health Check"),
+    TAGGED("Tagged"),
+    NOTE("Note"),
     OTHER("Other")
 }
