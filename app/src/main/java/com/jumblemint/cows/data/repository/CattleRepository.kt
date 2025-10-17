@@ -72,6 +72,7 @@ class CattleRepository(
     fun getAllActivities(): Flow<List<Activity>> = activityDao.getAllActivities()
     fun getActivitiesForCow(cowId: Long): Flow<List<Activity>> = activityDao.getActivitiesForCow(cowId)
     fun getActivitiesByType(activityType: ActivityType): Flow<List<Activity>> = activityDao.getActivitiesByType(activityType)
+    suspend fun getDistinctActivityTypes(): List<ActivityType> = activityDao.getDistinctActivityTypes()
 
     suspend fun getActivityById(id: Long): Activity? = activityDao.getActivityById(id)
     suspend fun getActivityByFirestoreId(firestoreId: String): Activity? = activityDao.getActivityByFirestoreId(firestoreId)

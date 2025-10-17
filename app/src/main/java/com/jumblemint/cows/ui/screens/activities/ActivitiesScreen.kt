@@ -1,6 +1,7 @@
 package com.jumblemint.cows.ui.screens.activities
 
 import android.app.Application
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,6 +47,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.graphics.Color
+import androidx.compose.foundation.layout.Box
+
+private enum class DateFilterType { PRESET, CUSTOM, ALL_DATES }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -244,6 +249,7 @@ fun ActivitiesScreen(
         ActivityFilterDialog(
             initialRange = uiState.dateRange,
             initialTypes = uiState.selectedActivityTypes,
+            usedActivityTypes = uiState.usedActivityTypes,
             onApply = { newRange, newTypes ->
                 // Apply date range
                 viewModel.updateDateRange(newRange)
@@ -263,6 +269,7 @@ fun ActivitiesScreen(
 private fun ActivityFilterDialog(
     initialRange: Pair<LocalDate, LocalDate>?,
     initialTypes: Set<ActivityType>,
+    usedActivityTypes: List<ActivityType>,
     onApply: (Pair<LocalDate, LocalDate>?, Set<ActivityType>) -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -316,6 +323,7 @@ private fun ActivityFilterDialog(
                     // Activity Type section (FlowRow wrap, Clear button like your groups)
                     ActivityTypeSection(
                         selectedTypes = types,
+                        usedActivityTypes = usedActivityTypes,
                         onToggleType = { t ->
                             types = if (types.contains(t)) types - t else types + t
                         },
@@ -356,6 +364,9 @@ private fun DateRangeSection(
     currentRange: Pair<LocalDate, LocalDate>?,
     onRangeSelected: (Pair<LocalDate, LocalDate>?) -> Unit
 ) {
+    var selectedTab by remember { mutableStateOf<DateFilterType>(DateFilterType.ALL_DATES) }
+    val formatter = remember { DateTimeFormatter.ofPattern("MMM dd, yyyy") }
+
     Column {
         Text(
             text = "Date Range",
@@ -364,64 +375,156 @@ private fun DateRangeSection(
         )
         Spacer(Modifier.height(8.dp))
 
-        // Quick picks row
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            val today = LocalDate.now()
-            val thisMonth = Pair(today.withDayOfMonth(1), today)
-            val lastMonthStart = today.minusMonths(1).withDayOfMonth(1)
-            val lastMonthEnd = today.minusMonths(1).withDayOfMonth(today.minusMonths(1).lengthOfMonth())
-            val lastMonth = Pair(lastMonthStart, lastMonthEnd)
-            val thisYear = Pair(LocalDate.of(today.year, 1, 1), today)
-            val lastYear = Pair(LocalDate.of(today.year - 1, 1, 1), LocalDate.of(today.year - 1, 12, 31))
-
-            FilterChip(selected = currentRange == thisMonth, onClick = { onRangeSelected(thisMonth) }, label = { Text("This Month") }, modifier = Modifier.weight(1f))
-            FilterChip(selected = currentRange == lastMonth, onClick = { onRangeSelected(lastMonth) }, label = { Text("Last Month") }, modifier = Modifier.weight(1f))
-            FilterChip(selected = currentRange == thisYear, onClick = { onRangeSelected(thisYear) }, label = { Text("This Year") }, modifier = Modifier.weight(1f))
-            FilterChip(selected = currentRange == lastYear, onClick = { onRangeSelected(lastYear) }, label = { Text("Last Year") }, modifier = Modifier.weight(1f))
+        // Segmented button
+        SingleChoiceSegmentedButtonRow {
+            SegmentedButton(
+                selected = selectedTab == DateFilterType.ALL_DATES,
+                onClick = {
+                    selectedTab = DateFilterType.ALL_DATES
+                    onRangeSelected(null)
+                },
+                shape = SegmentedButtonDefaults.itemShape(index = 0, count = 3),
+                modifier = Modifier.weight(1f)
+            ) { Text("All Dates") }
+            SegmentedButton(
+                selected = selectedTab == DateFilterType.PRESET,
+                onClick = { selectedTab = DateFilterType.PRESET },
+                shape = SegmentedButtonDefaults.itemShape(index = 1, count = 3),
+                modifier = Modifier.weight(1f)
+            ) { Text("Preset") }
+            SegmentedButton(
+                selected = selectedTab == DateFilterType.CUSTOM,
+                onClick = { selectedTab = DateFilterType.CUSTOM },
+                shape = SegmentedButtonDefaults.itemShape(index = 2, count = 3),
+                modifier = Modifier.weight(1f)
+            ) { Text("Custom") }
         }
 
         Spacer(Modifier.height(12.dp))
-        HorizontalDivider()
-        Spacer(Modifier.height(12.dp))
 
-        val formatter = remember { DateTimeFormatter.ofPattern("MMM dd, yyyy") }
+        when (selectedTab) {
+            DateFilterType.ALL_DATES -> {
+                // No additional UI, already set to null
+                Text(
+                    text = "Showing all activities with no date restriction.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            DateFilterType.PRESET -> {
+                val today = LocalDate.now()
+                val thisMonth = Pair(today.withDayOfMonth(1), today)
+                val lastMonthStart = today.minusMonths(1).withDayOfMonth(1)
+                val lastMonthEnd = today.minusMonths(1).withDayOfMonth(today.minusMonths(1).lengthOfMonth())
+                val lastMonth = Pair(lastMonthStart, lastMonthEnd)
+                val last30Days = Pair(today.minusDays(30), today)
+                val last90Days = Pair(today.minusDays(90), today)
+                val lastQuarterEnd = today
+                val lastQuarterStart = when (today.monthValue) {
+                    1, 2, 3 -> LocalDate.of(today.year - 1, 10, 1)
+                    4, 5, 6 -> LocalDate.of(today.year, 1, 1)
+                    7, 8, 9 -> LocalDate.of(today.year, 4, 1)
+                    else -> LocalDate.of(today.year, 7, 1)
+                }
+                val lastQuarter = Pair(lastQuarterStart, lastQuarterEnd)
+                val thisQuarterStart = when (today.monthValue) {
+                    1, 2, 3 -> LocalDate.of(today.year, 1, 1)
+                    4, 5, 6 -> LocalDate.of(today.year, 4, 1)
+                    7, 8, 9 -> LocalDate.of(today.year, 7, 1)
+                    else -> LocalDate.of(today.year, 10, 1)
+                }
+                val thisQuarter = Pair(thisQuarterStart, today)
+                val last2Years = Pair(today.minusYears(2).plusDays(1), today)
+                val thisYearStart = LocalDate.of(today.year, 1, 1)
+                val thisYear = Pair(thisYearStart, today)
+                val lastYear = Pair(LocalDate.of(today.year - 1, 1, 1), LocalDate.of(today.year - 1, 12, 31))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            DateSelectorButton(
-                selectedDate = currentRange?.first,
-                placeholderText = "Start date",
-                onDateSelected = { newStart ->
-                    if (newStart != null) {
-                        val end = currentRange?.second ?: newStart
-                        onRangeSelected(if (!newStart.isAfter(end)) Pair(newStart, end) else Pair(newStart, newStart))
-                    } else onRangeSelected(null)
-                },
-                formatter = formatter,
-                modifier = Modifier.weight(1f)
-            )
-            DateSelectorButton(
-                selectedDate = currentRange?.second,
-                placeholderText = "End date",
-                onDateSelected = { newEnd ->
-                    if (newEnd != null) {
-                        val start = currentRange?.first ?: newEnd
-                        onRangeSelected(if (!start.isAfter(newEnd)) Pair(start, newEnd) else Pair(newEnd, newEnd))
-                    } else onRangeSelected(null)
-                },
-                formatter = formatter,
-                modifier = Modifier.weight(1f)
-            )
-        }
+                val presets = listOf(
+                    "This Month" to thisMonth,
+                    "Last Month" to lastMonth,
+                    "|", // divider placeholder
+                    "Last 30 days" to last30Days,
+                    "Last 90 days" to last90Days,
+                    "Last Quarter" to lastQuarter,
+                    "This Quarter" to thisQuarter,
+                    "Last 2 years" to last2Years,
+                    "|", // divider
+                    "YTD (This Year)" to thisYear,
+                    "Last Year" to lastYear
+                )
 
-        if (currentRange != null) {
-            Spacer(Modifier.height(8.dp))
-            TextButton(onClick = { onRangeSelected(null) }) { Text("Clear date range") }
+                presets.chunked(3).forEach { row ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        row.forEach { item ->
+                            when (item) {
+                                is String -> {
+                                    if (item == "|") {
+                                        Spacer(Modifier.width(8.dp))
+                                        Box(
+                                            modifier = Modifier
+                                                .width(1.dp)
+                                                .height(36.dp)
+                                                .background(Color.Gray.copy(alpha = 0.3f))
+                                        )
+                                        Spacer(Modifier.width(8.dp))
+                                    }
+                                }
+                                is Pair<*, *> -> {
+                                    @Suppress("UNCHECKED_CAST")
+                                    val pair = item as? Pair<String, Pair<LocalDate, LocalDate>>
+                                    if (pair != null) {
+                                        val itemName = pair.first
+                                        val itemRange = pair.second
+                                        FilterChip(
+                                            selected = currentRange == itemRange,
+                                            onClick = { onRangeSelected(itemRange) },
+                                            label = { Text(itemName) },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        // Fill remaining space if less than 3
+                        repeat(3 - row.size) { Spacer(Modifier.weight(1f)) }
+                    }
+                    Spacer(Modifier.height(4.dp))
+                }
+            }
+            DateFilterType.CUSTOM -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    DateSelectorButton(
+                        selectedDate = currentRange?.first,
+                        placeholderText = "Start date",
+                        onDateSelected = { newStart ->
+                            if (newStart != null) {
+                                val end = currentRange?.second ?: LocalDate.now()
+                                onRangeSelected(if (!newStart.isAfter(end)) Pair(newStart, end) else Pair(newStart, end))
+                            } else onRangeSelected(null)
+                        },
+                        formatter = formatter,
+                        modifier = Modifier.weight(1f)
+                    )
+                    DateSelectorButton(
+                        selectedDate = currentRange?.second,
+                        placeholderText = "End date",
+                        onDateSelected = { newEnd ->
+                            if (newEnd != null) {
+                                val start = currentRange?.first ?: newEnd
+                                onRangeSelected(if (!start.isAfter(newEnd)) Pair(start, newEnd) else Pair(start, newEnd))
+                            } else onRangeSelected(null)
+                        },
+                        formatter = formatter,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
 
         Divider(
@@ -436,6 +539,7 @@ private fun DateRangeSection(
 @Composable
 private fun ActivityTypeSection(
     selectedTypes: Set<ActivityType>,
+    usedActivityTypes: List<ActivityType>,
     onToggleType: (ActivityType) -> Unit,
     onClear: () -> Unit
 ) {
@@ -466,7 +570,12 @@ private fun ActivityTypeSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            ActivityType.entries.forEach { t ->
+            val validActivityTypes = usedActivityTypes.ifEmpty {
+                // Fallback to all types if no activities exist yet
+                ActivityType.entries
+            }
+
+            validActivityTypes.forEach { t ->
                 val isSelected = selectedTypes.contains(t)
                 FilterChip(
                     selected = isSelected,

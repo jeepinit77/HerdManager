@@ -42,6 +42,9 @@ interface ActivityDao {
     @Query("SELECT * FROM activities WHERE groupId = :groupId AND isDeleted = 0 ORDER BY date DESC, id DESC")
     suspend fun getActivitiesByGroupId(groupId: String): List<Activity>
     
+    @Query("SELECT DISTINCT activityType FROM activities WHERE isDeleted = 0 ORDER BY activityType")
+    suspend fun getDistinctActivityTypes(): List<ActivityType>
+
     @Query("DELETE FROM activities")
     suspend fun deleteAllActivities()
 }

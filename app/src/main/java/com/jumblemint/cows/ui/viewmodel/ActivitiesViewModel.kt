@@ -109,9 +109,12 @@ class ActivitiesViewModel(
                     )
                 }
 
+                val usedTypes = activities.map { it.activityType }.distinct().sortedBy { it.displayName }
+
                 _uiState.value = _uiState.value.copy(
                     activityGroups = grouped.sortedWith(compareByDescending<ActivityGroup> { it.sample.date }.thenByDescending { it.sample.id }),
                     availablePastures = pastureNames,
+                    usedActivityTypes = usedTypes,
                     isLoading = false
                 )
             }.collect { }
@@ -244,6 +247,7 @@ data class ActivitiesUiState(
     val selectedActivityTypes: Set<ActivityType> = emptySet(),
     val dateRange: Pair<LocalDate, LocalDate>? = null,
     val availablePastures: List<String> = emptyList(),
+    val usedActivityTypes: List<ActivityType> = emptyList(),
     val searchQuery: String = "",
     val isLoading: Boolean = true,
     val error: String? = null
