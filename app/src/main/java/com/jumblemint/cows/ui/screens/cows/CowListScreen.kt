@@ -1,9 +1,13 @@
 package com.jumblemint.cows.ui.screens.cows
 
 import android.app.Application // Required for ViewModelFactory
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
@@ -33,8 +37,10 @@ import com.jumblemint.cows.ui.viewmodel.CowsViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModel
 import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
 import com.jumblemint.cows.ui.theme.contrastingTextColor
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import java.time.LocalDate
 // Period is not directly used here anymore, AgeUtils handles it.
 import java.util.Locale
@@ -321,126 +327,175 @@ private fun CowListContent(
     scope: kotlinx.coroutines.CoroutineScope,
     globalSnackbarState: com.jumblemint.cows.ui.components.GlobalSnackbarState?
 ) {
+    val lazyListState = rememberLazyListState()
+    var searchBarVisible by remember { mutableStateOf(true) }
+
+    LaunchedEffect(showSearchAndFilters) {
+        searchBarVisible = showSearchAndFilters
+    }
+
+    if (showSearchAndFilters) {
+        LaunchedEffect(lazyListState) {
+            var previousIndex = lazyListState.firstVisibleItemIndex
+            var previousScrollOffset = lazyListState.firstVisibleItemScrollOffset
+
+            snapshotFlow { lazyListState.firstVisibleItemIndex to lazyListState.firstVisibleItemScrollOffset }
+                .distinctUntilChanged()
+                .collectLatest { (index, offset) ->
+                    if (index == 0 && offset == 0) {
+                        searchBarVisible = true
+                    } else {
+                        val scrollingUp = index < previousIndex ||
+                                (index == previousIndex && offset < previousScrollOffset - 10)
+                        val scrollingDown = index > previousIndex ||
+                                (index == previousIndex && offset > previousScrollOffset + 10)
+
+                        when {
+                            scrollingUp -> searchBarVisible = true
+                            scrollingDown -> searchBarVisible = false
+                        }
+                    }
+
+                    previousIndex = index
+                    previousScrollOffset = offset
+                }
+        }
+    }
+
     Column(
-        modifier = modifier // This modifier is Modifier.fillMaxSize() from the Box above
+        modifier = modifier.fillMaxSize()
     ) {
         if (showSearchAndFilters && cowsUiState != null && cowsViewModel != null) {
 
             // ---- Search + Filters (stable, theme-friendly, aligned) ----
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
+            AnimatedVisibility(
+                visible = searchBarVisible,
+                enter = slideInVertically(initialOffsetY = { -it }),
+                exit = slideOutVertically(targetOffsetY = { -it })
             ) {
-                OutlinedTextField(
-                    value = cowsUiState.searchQuery,
-                    onValueChange = { cowsViewModel.updateSearchQuery(it) },
-                    placeholder = { Text("Search cattle...") }, // <<-- use placeholder not label
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                    singleLine = true,
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .defaultMinSize(minHeight = 56.dp)
-                        .alignBy { it.measuredHeight / 2 }, // center-align with chip
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                        focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        cursorColor = MaterialTheme.colorScheme.primary
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedTextField(
+                        value = cowsUiState.searchQuery,
+                        onValueChange = { cowsViewModel.updateSearchQuery(it) },
+                        placeholder = { Text("Search cattle...") }, // <<-- use placeholder not label
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                        singleLine = true,
+                        modifier = Modifier
+                            .weight(1f)
+                            .defaultMinSize(minHeight = 56.dp)
+                            .alignBy { it.measuredHeight / 2 }, // center-align with chip
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
+                            focusedLabelColor = MaterialTheme.colorScheme.primary,
+                            unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
+                            focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            cursorColor = MaterialTheme.colorScheme.primary
+                        )
                     )
-                )
 
-                val activeFilterCount = getActiveFilterCount(cowsUiState)
-                FilterChip(
-                    onClick = { onShowAnimalFilterDialog() },
-                    label = {
-                        if (activeFilterCount > 0) {
-                            Text("($activeFilterCount)")
-                        } else {
-                            Text("Filters")
-                        }
-                    },
-                    selected = hasActiveFilters(cowsUiState),
-                    leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") },
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = 56.dp)
-                        .alignBy { it.measuredHeight / 2 },
-                    colors = FilterChipDefaults.filterChipColors(
-                        labelColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
-                        iconColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
-                        selectedLabelColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
-                        containerColor = MaterialTheme.colorScheme.background,
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        disabledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.12f)
-                    ),
-                    border = FilterChipDefaults.filterChipBorder(
-                        enabled = true,
+                    val activeFilterCount = getActiveFilterCount(cowsUiState)
+                    FilterChip(
+                        onClick = { onShowAnimalFilterDialog() },
+                        label = {
+                            if (activeFilterCount > 0) {
+                                Text("($activeFilterCount)")
+                            } else {
+                                Text("Filters")
+                            }
+                        },
                         selected = hasActiveFilters(cowsUiState),
-                        borderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
-                        selectedBorderColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor().copy(alpha = 0.3f)
+                        leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") },
+                        modifier = Modifier
+                            .defaultMinSize(minHeight = 56.dp)
+                            .alignBy { it.measuredHeight / 2 },
+                        colors = FilterChipDefaults.filterChipColors(
+                            labelColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                            iconColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                            selectedLabelColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
+                            containerColor = MaterialTheme.colorScheme.background,
+                            selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            disabledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.12f)
+                        ),
+                        border = FilterChipDefaults.filterChipBorder(
+                            enabled = true,
+                            selected = hasActiveFilters(cowsUiState),
+                            borderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
+                            selectedBorderColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor().copy(alpha = 0.3f)
+                        )
                     )
-                )
 
-                if (hasActiveFilters(cowsUiState) || cowsUiState.searchQuery.isNotBlank()) {
-                    IconButton(onClick = {
-                        cowsViewModel.clearAllFilters()
-                        cowsViewModel.updateSearchQuery("")
-                    }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear all filters and search")
+                    if (hasActiveFilters(cowsUiState) || cowsUiState.searchQuery.isNotBlank()) {
+                        IconButton(onClick = {
+                            cowsViewModel.clearAllFilters()
+                            cowsViewModel.updateSearchQuery("")
+                        }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Clear all filters and search")
+                        }
                     }
                 }
             }
             // ---- End search row ----
         }
 
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else if (list.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(if (showSearchAndFilters) "Nothing here yet" else "No cattle match the criteria.", style = MaterialTheme.typography.headlineSmall)
-                    if (showSearchAndFilters) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text("Add cattle using the + button to get started", style = MaterialTheme.typography.bodyMedium)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) {
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            } else if (list.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(if (showSearchAndFilters) "Nothing here yet" else "No cattle match the criteria.", style = MaterialTheme.typography.headlineSmall)
+                        if (showSearchAndFilters) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text("Add cattle using the + button to get started", style = MaterialTheme.typography.bodyMedium)
+                        }
                     }
                 }
-            }
-        } else {
-            LazyColumn(
-                contentPadding = PaddingValues(vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(if (showSearchAndFilters) 8.dp else 12.dp)
-            ) {
-                items(list, key = { it.id }) { cow ->
-                    CowCard(
-                        cow = cow,
-                        onClick = { onCowClick(cow.id) },
-                        onToggleWatch = if (showSearchAndFilters && cowsViewModel != null) {{ cowsViewModel.toggleWatch(cow) }} else null,
-                        onEdit = onCowEdit?.let { { onCowEdit(cow.id) } },
-                        onDelete = if (showSearchAndFilters && cowsViewModel != null && globalSnackbarState != null) {{
-                            scope.launch {
-                                cowsViewModel.deleteCow(cow)
-                                val res = globalSnackbarState.showSnackbar(
-                                    message = "Animal deleted",
-                                    actionLabel = "UNDO",
-                                    duration = SnackbarDuration.Long
-                                )
-                                if (res == SnackbarResult.ActionPerformed) {
-                                    cowsViewModel.undoDeleteCow(cow)
+            } else {
+                LazyColumn(
+                    state = lazyListState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (showSearchAndFilters) 8.dp else 12.dp)
+                ) {
+                    items(list, key = { it.id }) { cow ->
+                        CowCard(
+                            cow = cow,
+                            onClick = { onCowClick(cow.id) },
+                            onToggleWatch = if (showSearchAndFilters && cowsViewModel != null) {{ cowsViewModel.toggleWatch(cow) }} else null,
+                            onEdit = onCowEdit?.let { { onCowEdit(cow.id) } },
+                            onDelete = if (showSearchAndFilters && cowsViewModel != null && globalSnackbarState != null) {{
+                                scope.launch {
+                                    cowsViewModel.deleteCow(cow)
+                                    val res = globalSnackbarState.showSnackbar(
+                                        message = "Animal deleted",
+                                        actionLabel = "UNDO",
+                                        duration = SnackbarDuration.Long
+                                    )
+                                    if (res == SnackbarResult.ActionPerformed) {
+                                        cowsViewModel.undoDeleteCow(cow)
+                                    }
                                 }
-                            }
-                        }} else null,
-                        resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap)
-                    )
+                            }} else null,
+                            resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap)
+                        )
+                    }
                 }
             }
         }
