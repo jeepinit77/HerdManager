@@ -1,19 +1,32 @@
 package com.jumblemint.cows.ui.screens.cows
 
 import android.app.Application // Required for ViewModelFactory
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
@@ -88,7 +101,6 @@ fun CowListScreen(
     val allCows by cowsFlow.collectAsState(initial = emptyList())
     val tagColorMap = rememberTagColorMap(repository)
 
-    var showAnimalFilterDialog by remember { mutableStateOf(false) }
     val globalSnackbarState = LocalGlobalSnackbarState.current
     val scope = rememberCoroutineScope()
 
@@ -199,7 +211,7 @@ fun CowListScreen(
 
     if (showSearchAndFilters && cowsViewModel != null && cowsUiState?.value != null) {
         val currentUiState = cowsUiState.value
-        if (showAnimalFilterDialog) {
+        if (currentUiState.isFilterDialogVisible) {
             AnimalFilterScreen(
                 initialFilterState = AnimalFilterState(
                     classifications = currentUiState.selectedClassifications.toList(),
@@ -262,9 +274,9 @@ fun CowListScreen(
                         }
                     }
 
-                    showAnimalFilterDialog = false
+                    cowsViewModel.closeFilterDialog()
                 },
-                onDismiss = { showAnimalFilterDialog = false }
+                onDismiss = { cowsViewModel.closeFilterDialog() }
             )
         }
     }
@@ -273,7 +285,6 @@ fun CowListScreen(
         CowListContent(
             modifier = Modifier.fillMaxSize(), // CowListContent will fill this Box
             showSearchAndFilters = showSearchAndFilters,
-            onShowAnimalFilterDialog = { showAnimalFilterDialog = true },
             cowsUiState = cowsUiState?.value,
             cowsViewModel = cowsViewModel,
             list = list,
@@ -309,7 +320,6 @@ fun CowListScreen(
 private fun CowListContent(
     modifier: Modifier,
     showSearchAndFilters: Boolean,
-    onShowAnimalFilterDialog: () -> Unit,
     cowsUiState: com.jumblemint.cows.ui.viewmodel.CowsUiState?,
     cowsViewModel: CowsViewModel?,
     list: List<Cow>,
@@ -323,83 +333,6 @@ private fun CowListContent(
     Column(
         modifier = modifier // This modifier is Modifier.fillMaxSize() from the Box above
     ) {
-        if (showSearchAndFilters && cowsUiState != null && cowsViewModel != null) {
-
-            // ---- Search + Filters (stable, theme-friendly, aligned) ----
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                OutlinedTextField(
-                    value = cowsUiState.searchQuery,
-                    onValueChange = { cowsViewModel.updateSearchQuery(it) },
-                    placeholder = { Text("Search cattle...") }, // <<-- use placeholder not label
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .weight(1f)
-                        .defaultMinSize(minHeight = 56.dp)
-                        .alignBy { it.measuredHeight / 2 }, // center-align with chip
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                        focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        cursorColor = MaterialTheme.colorScheme.primary
-                    )
-                )
-
-                val activeFilterCount = getActiveFilterCount(cowsUiState)
-                FilterChip(
-                    onClick = { onShowAnimalFilterDialog() },
-                    label = {
-                        if (activeFilterCount > 0) {
-                            Text("($activeFilterCount)")
-                        } else {
-                            Text("Filters")
-                        }
-                    },
-                    selected = hasActiveFilters(cowsUiState),
-                    leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") },
-                    modifier = Modifier
-                        .defaultMinSize(minHeight = 56.dp)
-                        .alignBy { it.measuredHeight / 2 },
-                    colors = FilterChipDefaults.filterChipColors(
-                        labelColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
-                        iconColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
-                        selectedLabelColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
-                        containerColor = MaterialTheme.colorScheme.background,
-                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-                        disabledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.12f)
-                    ),
-                    border = FilterChipDefaults.filterChipBorder(
-                        enabled = true,
-                        selected = hasActiveFilters(cowsUiState),
-                        borderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
-                        selectedBorderColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor().copy(alpha = 0.3f)
-                    )
-                )
-
-                if (hasActiveFilters(cowsUiState) || cowsUiState.searchQuery.isNotBlank()) {
-                    IconButton(onClick = {
-                        cowsViewModel.clearAllFilters()
-                        cowsViewModel.updateSearchQuery("")
-                    }) {
-                        Icon(Icons.Default.Clear, contentDescription = "Clear all filters and search")
-                    }
-                }
-            }
-            // ---- End search row ----
-        }
-
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
@@ -441,6 +374,273 @@ private fun CowListContent(
                         resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap)
                     )
                 }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CowListTopAppBar() {
+    val context = LocalContext.current
+    val application = context.applicationContext as CattleApplication
+    val database = CattleDatabase.getDatabase(context)
+    val repository = remember {
+        CattleRepository(
+            cowDao = database.cowDao(),
+            pastureDao = database.pastureDao(),
+            activityDao = database.activityDao(),
+            settingsDao = database.settingsDao(),
+            noteDao = database.noteDao(),
+            userDao = database.userDao(),
+            herdDao = database.herdDao(),
+            herdMemberDao = database.herdMemberDao(),
+            tagColorDao = database.tagColorDao(),
+            activityTypeConfigDao = database.activityTypeConfigDao()
+        )
+    }
+
+    val cowsViewModel: CowsViewModel = viewModel(factory = CowsViewModelFactory(application, repository))
+    val uiState by cowsViewModel.uiState.collectAsState()
+
+    CowListTopAppBarContent(
+        searchQuery = uiState.searchQuery,
+        onQueryChange = cowsViewModel::updateSearchQuery,
+        onClearSearch = {
+            cowsViewModel.updateSearchQuery("")
+        },
+        hasActiveFilters = hasActiveFilters(uiState),
+        filterCount = getActiveFilterCount(uiState),
+        onOpenFilters = {
+            cowsViewModel.openFilterDialog()
+        },
+        onClearFilters = {
+            cowsViewModel.clearAllFilters()
+            cowsViewModel.closeFilterDialog()
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun CowListTopAppBarContent(
+    searchQuery: String,
+    onQueryChange: (String) -> Unit,
+    onClearSearch: () -> Unit,
+    hasActiveFilters: Boolean,
+    filterCount: Int,
+    onOpenFilters: () -> Unit,
+    onClearFilters: () -> Unit
+) {
+    var isSearchExpanded by rememberSaveable { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+
+    LaunchedEffect(isSearchExpanded) {
+        if (isSearchExpanded) {
+            focusRequester.requestFocus()
+        } else {
+            focusManager.clearFocus(force = true)
+        }
+    }
+
+    TopAppBar(
+        title = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isSearchExpanded) {
+                    TextField(
+                        value = searchQuery,
+                        onValueChange = onQueryChange,
+                        placeholder = { Text("Search cattle…") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                        trailingIcon = {
+                            if (searchQuery.isNotBlank()) {
+                                IconButton(onClick = {
+                                    onClearSearch()
+                                    focusRequester.requestFocus()
+                                }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = CircleShape,
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 40.dp)
+                            .focusRequester(focusRequester)
+                            .onFocusChanged {
+                                if (!it.isFocused) {
+                                    isSearchExpanded = false
+                                }
+                            },
+                        colors = TextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                            cursorColor = MaterialTheme.colorScheme.primary,
+                            focusedIndicatorColor = Color.Transparent,
+                            unfocusedIndicatorColor = Color.Transparent,
+                            focusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            focusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    )
+                } else {
+                    IconButton(onClick = { isSearchExpanded = true }) {
+                        Icon(Icons.Default.Search, contentDescription = "Search")
+                    }
+
+                    AnimatedVisibility(visible = searchQuery.isNotBlank()) {
+                        ActiveSearchIndicator(
+                            query = searchQuery,
+                            onExpand = { isSearchExpanded = true },
+                            onClear = {
+                                onClearSearch()
+                                focusManager.clearFocus(force = true)
+                            }
+                        )
+                    }
+                }
+            }
+        },
+        actions = {
+            CowFiltersAction(
+                hasActiveFilters = hasActiveFilters,
+                filterCount = filterCount,
+                onOpenFilters = {
+                    isSearchExpanded = false
+                    onOpenFilters()
+                },
+                onClearFilters = onClearFilters
+            )
+        }
+    )
+}
+
+@Composable
+private fun ActiveSearchIndicator(
+    query: String,
+    onExpand: () -> Unit,
+    onClear: () -> Unit
+) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = Modifier
+            .padding(start = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .height(36.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = rememberRipple(bounded = true)
+                    ) { onExpand() }
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.Search, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = query,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
+
+            Divider(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .width(1.dp),
+                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.3f)
+            )
+
+            Icon(
+                imageVector = Icons.Default.Clear,
+                contentDescription = "Clear search",
+                modifier = Modifier
+                    .padding(horizontal = 12.dp)
+                    .size(18.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = rememberRipple(bounded = false)
+                    ) { onClear() }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CowFiltersAction(
+    hasActiveFilters: Boolean,
+    filterCount: Int,
+    onOpenFilters: () -> Unit,
+    onClearFilters: () -> Unit
+) {
+    Surface(
+        shape = CircleShape,
+        color = if (hasActiveFilters) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = if (hasActiveFilters) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .padding(end = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.height(40.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = rememberRipple(bounded = true)
+                    ) { onOpenFilters() }
+                    .padding(start = 12.dp, top = 8.dp, bottom = 8.dp, end = if (hasActiveFilters) 8.dp else 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(Icons.Default.FilterList, contentDescription = "Filters")
+                Spacer(modifier = Modifier.width(8.dp))
+                if (hasActiveFilters) {
+                    Text(text = filterCount.toString(), style = MaterialTheme.typography.labelLarge)
+                } else {
+                    Text(text = "Filters", style = MaterialTheme.typography.labelLarge)
+                }
+            }
+
+            if (hasActiveFilters) {
+                Divider(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(1.dp),
+                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.3f)
+                )
+
+                Icon(
+                    imageVector = Icons.Default.Clear,
+                    contentDescription = "Clear filters",
+                    modifier = Modifier
+                        .padding(horizontal = 12.dp)
+                        .size(18.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = rememberRipple(bounded = false)
+                        ) { onClearFilters() }
+                )
             }
         }
     }

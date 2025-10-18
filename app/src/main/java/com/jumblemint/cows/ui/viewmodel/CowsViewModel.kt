@@ -151,15 +151,23 @@ class CowsViewModel(
     
     fun clearAllFilters() {
         _uiState.value = _uiState.value.copy(
-            selectedStatuses = emptySet(), 
+            selectedStatuses = emptySet(),
             selectedClassifications = emptySet(),
             selectedGenders = emptySet(),
             selectedPastures = emptySet(),
             selectedBreeds = emptySet(),
-            selectedTagColors = emptySet(), 
-            selectedIsWatched = null, 
+            selectedTagColors = emptySet(),
+            selectedIsWatched = null,
             selectedAgeRanges = emptySet()
         )
+    }
+
+    fun openFilterDialog() {
+        _uiState.value = _uiState.value.copy(isFilterDialogVisible = true)
+    }
+
+    fun closeFilterDialog() {
+        _uiState.value = _uiState.value.copy(isFilterDialogVisible = false)
     }
 
     suspend fun deleteCow(cow: Cow) {
@@ -212,5 +220,6 @@ data class CowsUiState(
     val availableTagColors: List<String> = emptyList(),
     val selectedIsWatched: Boolean? = null,
     val selectedAgeRanges: Set<String> = emptySet(),
-    val error: String? = null
+    val error: String? = null,
+    val isFilterDialogVisible: Boolean = false
 )

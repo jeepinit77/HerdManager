@@ -43,6 +43,7 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.navigation.*
 import com.jumblemint.cows.navigation.SETTINGS_PAGE_INDEX
+import com.jumblemint.cows.ui.screens.cows.CowListTopAppBar
 import com.jumblemint.cows.ui.screens.settings.SettingsScreen
 import com.jumblemint.cows.ui.theme.CowsTheme
 import com.jumblemint.cows.util.AgeUtils
@@ -210,9 +211,13 @@ fun CattleManagerApp() {
             topBar = {
                 // --- Unified TopAppBar styling via AppTopBar ---
                 if (isMainTabScreen(currentScreenForUI)) {
-                    AppTopBar(
-                        title = currentScreenForUI?.title ?: "Cattle Manager"
-                    )
+                    if (currentScreenForUI == Screen.Cows) {
+                        CowListTopAppBar()
+                    } else {
+                        AppTopBar(
+                            title = currentScreenForUI?.title ?: "Cattle Manager"
+                        )
+                    }
                 } else if (
                     currentScreenForUI == Screen.CowDetail ||
                     currentScreenForUI == Screen.NoteDetail ||
