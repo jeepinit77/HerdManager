@@ -23,6 +23,7 @@ import com.jumblemint.cows.ui.viewmodel.BreedsViewModel
 import com.jumblemint.cows.ui.viewmodel.BreedsViewModelFactory
 import kotlinx.coroutines.launch
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.ui.theme.getCardColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -170,7 +171,8 @@ fun BreedItem(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        shape = RoundedCornerShape(12.dp),
+        colors = getCardColors()
     ) {
         Row(
             modifier = Modifier
