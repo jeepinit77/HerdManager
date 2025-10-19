@@ -49,6 +49,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
 private enum class DateFilterType { PRESET, CUSTOM, ALL_DATES }
 
@@ -126,17 +127,7 @@ fun ActivitiesScreen(
                                 .weight(1f)
                                 .defaultMinSize(minHeight = 56.dp)
                                 .alignBy { it.measuredHeight / 2 },
-                            colors = OutlinedTextFieldDefaults.colors(
-                                unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                                focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                                focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                                cursorColor = MaterialTheme.colorScheme.primary
-                            )
+                        colors = defaultOutlinedTextFieldColors()
                         )
 
                         val activeFilterCount = getActiveFilterCount(uiState)

@@ -18,6 +18,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.model.Herd
 import com.jumblemint.cows.data.model.HerdRole
 import com.jumblemint.cows.ui.viewmodel.HerdViewModel
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -263,7 +264,8 @@ private fun CreateHerdDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Herd Name") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = defaultOutlinedTextFieldColors()
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
@@ -271,7 +273,8 @@ private fun CreateHerdDialog(
                     onValueChange = { description = it },
                     label = { Text("Description (Optional)") },
                     modifier = Modifier.fillMaxWidth(),
-                    maxLines = 3
+                    maxLines = 3,
+                    colors = defaultOutlinedTextFieldColors()
                 )
             }
         },

@@ -32,6 +32,7 @@ import com.jumblemint.cows.ui.viewmodel.TagColorsViewModel
 import com.jumblemint.cows.ui.viewmodel.TagColorsViewModelFactory
 import com.github.skydoves.colorpicker.compose.*
 import com.jumblemint.cows.ui.theme.contrastingTextColor
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -318,12 +319,7 @@ fun TagColorDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     isError = nameError != null,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = borderColor,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    colors = defaultOutlinedTextFieldColors()
                 )
                 if (nameError != null) {
                     Text(

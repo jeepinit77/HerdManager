@@ -33,6 +33,7 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.ActivityTypesViewModel
 import com.jumblemint.cows.ui.viewmodel.ActivityTypesViewModelFactory
 import kotlinx.coroutines.launch
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -333,7 +334,8 @@ fun ActivityTypeDialog(
                     singleLine = true,
                     isError = displayNameError != null,
                     // <<< USE activityTypeToEdit.isDefault
-                    readOnly = activityTypeToEdit?.isDefault == true
+                    readOnly = activityTypeToEdit?.isDefault == true,
+                    colors = defaultOutlinedTextFieldColors()
                 )
                 if (displayNameError != null) {
                     Text(displayNameError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
@@ -348,7 +350,8 @@ fun ActivityTypeDialog(
                     minLines = 2,
                     maxLines = 3,
                     // <<< USE activityTypeToEdit.isDefault
-                    readOnly = activityTypeToEdit?.isDefault == true
+                    readOnly = activityTypeToEdit?.isDefault == true,
+                    colors = defaultOutlinedTextFieldColors()
                 )
 
                 Row(

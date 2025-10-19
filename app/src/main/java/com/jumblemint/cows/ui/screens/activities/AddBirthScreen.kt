@@ -26,6 +26,7 @@ import com.jumblemint.cows.ui.components.DatePickerField
 import com.jumblemint.cows.ui.components.DropdownField
 import com.jumblemint.cows.ui.viewmodel.AddBirthViewModel
 import com.jumblemint.cows.ui.viewmodel.AddBirthViewModelFactory
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
 // Removed @OptIn(ExperimentalMaterial3Api::class) if TopAppBar is removed, 
 // but keeping it if other Material3 components are used directly.
@@ -178,7 +179,8 @@ fun AddBirthScreen(
                                     )
                                 }
                             },
-                        singleLine = true
+                        singleLine = true,
+                        colors = defaultOutlinedTextFieldColors()
                     )
                     
                     Text(
@@ -217,7 +219,8 @@ fun AddBirthScreen(
                         onValueChange = viewModel::updateCalfTagNumber,
                         label = { Text("Tag Number (Optional)") },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        colors = defaultOutlinedTextFieldColors()
                     )
                     DropdownField(
                         value = uiState.calfTagColor,
@@ -232,7 +235,8 @@ fun AddBirthScreen(
                         label = { Text("Color/Markings (Optional)") },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 2,
-                        maxLines = 4
+                        maxLines = 4,
+                        colors = defaultOutlinedTextFieldColors()
                     )
                 }
             }

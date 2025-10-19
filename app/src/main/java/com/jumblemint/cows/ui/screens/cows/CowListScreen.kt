@@ -35,6 +35,7 @@ import com.jumblemint.cows.ui.viewmodel.ReportsViewModelFactory
 import com.jumblemint.cows.ui.theme.contrastingTextColor
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import java.time.LocalDate
 // Period is not directly used here anymore, AgeUtils handles it.
 import java.util.Locale
@@ -344,17 +345,7 @@ private fun CowListContent(
                         .weight(1f)
                         .defaultMinSize(minHeight = 56.dp)
                         .alignBy { it.measuredHeight / 2 }, // center-align with chip
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                        focusedLabelColor = MaterialTheme.colorScheme.primary,
-                        unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                        focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
-                        unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        cursorColor = MaterialTheme.colorScheme.primary
-                    )
+                    colors = defaultOutlinedTextFieldColors()
                 )
 
                 val activeFilterCount = getActiveFilterCount(cowsUiState)

@@ -46,6 +46,7 @@ import com.jumblemint.cows.ui.components.DropdownField
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.theme.getGenderColor
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.CowDetailUiState
@@ -353,9 +354,7 @@ private fun ProfileTabContent(
                     supportingText = if (fieldsBlankError && uiState.tagNumber.isBlank()) { 
                         { Text("Name or Tag Number must be provided.") } 
                     } else null,
-                    colors = if (fieldsBlankError && uiState.tagNumber.isBlank()) OutlinedTextFieldDefaults.colors(
-                        errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
-                    ) else OutlinedTextFieldDefaults.colors()
+                    colors = defaultOutlinedTextFieldColors()
                 )
 
                 Box { 
@@ -369,17 +368,7 @@ private fun ProfileTabContent(
                         enabled = !uiState.isNameTagLinked,
                         isError = fieldsBlankError,
                         supportingText = null, 
-                        colors = if (fieldsBlankError) {
-                            OutlinedTextFieldDefaults.colors(errorContainerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f))
-                        } else if (uiState.isNameTagLinked) {
-                            OutlinedTextFieldDefaults.colors(
-                                disabledTextColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
-                                disabledBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.12f),
-                                disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                            )
-                        } else {
-                            OutlinedTextFieldDefaults.colors()
-                        }
+                        colors = defaultOutlinedTextFieldColors()
                     )
                     if (uiState.isNameTagLinked) {
                         Box(
@@ -565,7 +554,8 @@ private fun ProfileTabContent(
             label = { Text("Color/Markings") },
             modifier = Modifier.fillMaxWidth(),
             minLines = 1,
-            maxLines = 3
+            maxLines = 3,
+            colors = defaultOutlinedTextFieldColors()
         )
     }
 }
@@ -614,7 +604,8 @@ private fun PedigreeTabContent(
             value = uiState.registrationNumber,
             onValueChange = viewModel::updateRegistrationNumber,
             label = { Text("Registration Number") },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = defaultOutlinedTextFieldColors()
         )
     }
 }

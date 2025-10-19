@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.jumblemint.cows.data.model.Pasture
 import com.jumblemint.cows.ui.components.UnsavedChangesDialog
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
 @Composable
 fun PastureDetailScreen(
@@ -148,7 +149,8 @@ fun PastureDetailScreen(
             label = { Text("Pasture Name*") },
             isError = nameError != null,
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = defaultOutlinedTextFieldColors()
         )
         if (nameError != null) {
             Text(
@@ -170,7 +172,8 @@ fun PastureDetailScreen(
             },
             label = { Text("Size in Acres (Optional)") },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            colors = defaultOutlinedTextFieldColors()
         )
 
         OutlinedTextField(
@@ -179,7 +182,8 @@ fun PastureDetailScreen(
             label = { Text("Description (Optional)") },
             modifier = Modifier.fillMaxWidth(),
             minLines = 2,
-            maxLines = 4
+            maxLines = 4,
+            colors = defaultOutlinedTextFieldColors()
         )
     }
 }

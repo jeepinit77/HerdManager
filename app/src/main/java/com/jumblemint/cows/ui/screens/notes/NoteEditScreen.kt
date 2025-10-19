@@ -31,6 +31,7 @@ import com.jumblemint.cows.ui.components.UnsavedChangesDialog
 import com.jumblemint.cows.ui.viewmodel.NotesViewModel
 import java.time.LocalDate
 import java.time.ZoneId
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
 @Composable
 fun NoteEditScreen(
@@ -125,7 +126,8 @@ fun NoteEditScreen(
             label = { Text("Title*") },
             isError = titleError != null,
             supportingText = titleError?.let { { Text(it) } },
-            singleLine = true
+            singleLine = true,
+            colors = defaultOutlinedTextFieldColors()
         )
 
         Row(
@@ -161,7 +163,8 @@ fun NoteEditScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(200.dp),
-            label = { Text("Note (optional)") }
+            label = { Text("Note (optional)") },
+            colors = defaultOutlinedTextFieldColors()
         )
     }
 

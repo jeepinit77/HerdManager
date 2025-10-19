@@ -22,6 +22,7 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.viewmodel.BreedsViewModel
 import com.jumblemint.cows.ui.viewmodel.BreedsViewModelFactory
 import kotlinx.coroutines.launch
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -218,7 +219,8 @@ fun BreedDialog(
                     label = { Text("Breed Name*") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    isError = nameError != null
+                    isError = nameError != null,
+                    colors = defaultOutlinedTextFieldColors()
                 )
                 if (nameError != null) {
                     Text(nameError!!, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)

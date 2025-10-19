@@ -26,6 +26,7 @@ import com.jumblemint.cows.ui.viewmodel.AddActivityViewModelFactory
 import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.ui.theme.getCardBackgroundColor
 import com.jumblemint.cows.ui.theme.getCardColors
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -249,17 +250,7 @@ fun AddActivityScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 2,
                                 maxLines = 5,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                                    focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                focusedTextColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
-                                unfocusedTextColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
-                                    cursorColor = MaterialTheme.colorScheme.primary
-                                ),
+                                colors = defaultOutlinedTextFieldColors(),
                                 placeholder = {
                                     Text(
                                         if (uiState.activityType in listOf(ActivityType.WORKED, ActivityType.OTHER))
@@ -316,17 +307,7 @@ fun AddActivityScreen(
                                 } else null,
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
-                                    focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
-                                    unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
-                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                    focusedTextColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
-                                    unfocusedTextColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
-                                    cursorColor = MaterialTheme.colorScheme.primary
-                                )
+                                colors = defaultOutlinedTextFieldColors()
                             )
 
                             Row(
