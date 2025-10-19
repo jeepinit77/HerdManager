@@ -27,6 +27,8 @@ import com.jumblemint.cows.ui.components.DropdownField
 import com.jumblemint.cows.ui.viewmodel.AddBirthViewModel
 import com.jumblemint.cows.ui.viewmodel.AddBirthViewModelFactory
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.ui.components.SectionTitle
+import com.jumblemint.cows.ui.theme.getCardColors
 
 // Removed @OptIn(ExperimentalMaterial3Api::class) if TopAppBar is removed, 
 // but keeping it if other Material3 components are used directly.
@@ -76,16 +78,12 @@ fun AddBirthScreen(
         ) {
             // Birth Details Card with Coaching Tip Icon
             Box(modifier = Modifier.fillMaxWidth()) { 
-                Card(modifier = Modifier.fillMaxWidth()) {
+                Card(modifier = Modifier.fillMaxWidth(), colors = getCardColors()) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Text(
-                            text = "Birth Details",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        SectionTitle("Birth Details")
                         DatePickerField(
                             value = uiState.birthDate,
                             onValueChange = viewModel::updateBirthDate,
@@ -141,16 +139,12 @@ fun AddBirthScreen(
             }
 
             // Calf Details Card
-            Card(modifier = Modifier.fillMaxWidth()) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = getCardColors()) {
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = "Calf Details",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    SectionTitle("Calf Details")
 
                     var calfNameTfv by remember { mutableStateOf(TextFieldValue(uiState.calfName)) }
 
