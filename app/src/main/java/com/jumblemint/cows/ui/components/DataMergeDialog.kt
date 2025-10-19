@@ -15,6 +15,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
 enum class DataMergeOption {
     MERGE_WITH_SERVER,
@@ -30,7 +31,10 @@ fun DataMergeDialog(
     hasLocalData: Boolean = true,
     hasServerData: Boolean = true
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -64,7 +68,7 @@ fun DataMergeDialog(
                         "How would you like to sync your cloud data to this device?"
                     },
                     fontSize = 14.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp
                 )
@@ -103,7 +107,7 @@ fun DataMergeDialog(
                 }
                 
                 // Cancel button
-                SecondaryButton(
+                OutlinedButton(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -197,9 +201,9 @@ private fun DataMergeOptionCard(
                     text = description,
                     fontSize = 12.sp,
                     color = if (recommended) {
-                        MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        MaterialTheme.colorScheme.onPrimaryContainer
                     } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                        MaterialTheme.colorScheme.onSurfaceVariant
                     },
                     lineHeight = 16.sp
                 )
