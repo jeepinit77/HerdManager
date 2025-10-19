@@ -26,34 +26,20 @@ fun loadVersionProperties() {
     }
 }
 
-// Function to save version properties
-fun saveVersionProperties() {
-    versionPropsFile.outputStream().use {
-        versionProps.store(it, "Auto-incremented version properties")
-    }
-}
+// Removed saving of version properties to prevent auto-increment on each build
 
 // Load current versions
 loadVersionProperties()
 
 val appVersionMajor = versionProps.getProperty("APP_VERSION_MAJOR", "1").toInt()
 val appVersionMinor = versionProps.getProperty("APP_VERSION_MINOR", "0").toInt()
-var appVersionPatch = versionProps.getProperty("APP_VERSION_PATCH", "0").toInt()
-var appBuildNumber = versionProps.getProperty("APP_BUILD_NUMBER", "0").toInt()
-
-// Increment for this build
-appVersionPatch += 1
-appBuildNumber += 1
+val appVersionPatch = versionProps.getProperty("APP_VERSION_PATCH", "0").toInt()
+val appBuildNumber = versionProps.getProperty("APP_BUILD_NUMBER", "0").toInt()
 
 val calculatedVersionName = "${appVersionMajor}.${appVersionMinor}.${appVersionPatch}"
 val calculatedVersionCode = appBuildNumber
 
-// Update properties for next build
-versionProps["APP_VERSION_MAJOR"] = appVersionMajor.toString()
-versionProps["APP_VERSION_MINOR"] = appVersionMinor.toString()
-versionProps["APP_VERSION_PATCH"] = appVersionPatch.toString()
-versionProps["APP_BUILD_NUMBER"] = appBuildNumber.toString()
-saveVersionProperties()
+// Do not write back to version.properties; keep values static until manually changed
 
 android {
     namespace = "com.jumblemint.cows"
