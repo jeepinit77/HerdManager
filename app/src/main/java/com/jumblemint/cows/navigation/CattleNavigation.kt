@@ -616,7 +616,9 @@ fun CattleNavigation(
         composable(Screen.BreedsManagement.route){
             BreedsManagementScreen(
                 modifier = screenModifierWithPadding,
-                 onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                resetTriggered = resetTriggered,
+                onResetHandled = onResetHandled
             )
         }
         composable(Screen.ThemeSettings.route){

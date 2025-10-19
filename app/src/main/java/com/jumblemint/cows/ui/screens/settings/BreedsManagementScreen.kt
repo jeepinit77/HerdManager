@@ -12,23 +12,28 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.jumblemint.cows.AppTopBar
 import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.LocalGlobalSnackbarState
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.Breed
 import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.ui.theme.contrastingTextColor
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import com.jumblemint.cows.ui.viewmodel.BreedsViewModel
 import com.jumblemint.cows.ui.viewmodel.BreedsViewModelFactory
 import kotlinx.coroutines.launch
-import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
-import com.jumblemint.cows.ui.theme.getCardColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BreedsManagementScreen(
     onNavigateBack: () -> Unit,
+    resetTriggered: Boolean = false,
+    onResetHandled: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -55,19 +60,19 @@ fun BreedsManagementScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingBreed by remember { mutableStateOf<Breed?>(null) }
 
-    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var lastDeleted by remember { mutableStateOf<Breed?>(null) }
+    val globalSnackbarState = LocalGlobalSnackbarState.current
+    var showResetConfirm by remember { mutableStateOf(false) }
+    
+    LaunchedEffect(resetTriggered) {
+        if (resetTriggered) {
+            showResetConfirm = true
+            onResetHandled()
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Snackbar Host positioned manually
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
-
-        var showResetConfirm by remember { mutableStateOf(false) }
-
+        
         if (breeds.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -75,18 +80,32 @@ fun BreedsManagementScreen(
                     .padding(16.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Filled.Pets, contentDescription = "No breeds", modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text("No breeds found.", style = MaterialTheme.typography.headlineSmall)
-                    Text("Add breeds using the '+' button above.", style = MaterialTheme.typography.bodyLarge)
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Pets,
+                        contentDescription = "No breeds",
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        "No breeds found.",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        "Add breeds using the + button.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(vertical = 16.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(breeds, key = { it.id }) { breed ->
@@ -94,48 +113,77 @@ fun BreedsManagementScreen(
                         breed = breed,
                         onEdit = { editingBreed = it; showAddDialog = true },
                         onDelete = { breedToDelete ->
-                            lastDeleted = breedToDelete
                             viewModel.deleteBreed(breedToDelete)
                             scope.launch {
-                                val result = snackbarHostState.showSnackbar(
-                                    message = "Breed '${breedToDelete.name}' deleted",
-                                    actionLabel = "Undo",
-                                    duration = SnackbarDuration.Short
-                                )
-                                if (result == SnackbarResult.ActionPerformed) {
-                                    lastDeleted?.let { viewModel.restoreBreed(it) }
+                                globalSnackbarState?.let { snackbarState ->
+                                    val result = snackbarState.showSnackbar(
+                                        message = "Breed '${breedToDelete.name}' deleted",
+                                        actionLabel = "Undo",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        viewModel.restoreBreed(breedToDelete)
+                                    }
                                 }
-                                lastDeleted = null
                             }
-                        }
+                        },
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 }
             }
         }
-
-        if (showResetConfirm) {
-            com.jumblemint.cows.ui.components.AppAlertDialog(
-                onDismissRequest = { showResetConfirm = false },
-                icon = { Icon(Icons.Default.WarningAmber, contentDescription = "Warning") },
-                title = { Text("Reset Breeds?") },
-                text = { Text("This will remove all custom breeds and reinstall the default set. This action cannot be undone.") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showResetConfirm = false
-                            viewModel.resetToDefaults()
-                            scope.launch {
-                                snackbarHostState.showSnackbar("Breeds reset to defaults.")
-                            }
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) { Text("Reset") }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
-                }
+        
+        FloatingActionButton(
+            onClick = {
+                editingBreed = null
+                showAddDialog = true
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Add Breed",
+                tint = MaterialTheme.colorScheme.onPrimary
             )
         }
+    }
+
+    if (showResetConfirm) {
+        com.jumblemint.cows.ui.components.AppAlertDialog(
+            onDismissRequest = { showResetConfirm = false },
+            icon = {
+                Icon(
+                    Icons.Default.WarningAmber,
+                    contentDescription = "Warning",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Reset Breeds?") },
+            text = { Text("This will remove all custom breeds and reinstall the default set. This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showResetConfirm = false
+                        viewModel.resetToDefaults()
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) { Text("Reset") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showResetConfirm = false },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) { Text("Cancel") }
+            }
+        )
     }
 
     if (showAddDialog || editingBreed != null) {
@@ -167,12 +215,18 @@ fun BreedsManagementScreen(
 fun BreedItem(
     breed: Breed,
     onEdit: (Breed) -> Unit,
-    onDelete: (Breed) -> Unit
+    onDelete: (Breed) -> Unit,
+    containerColor: Color
 ) {
+    val contrastColor = containerColor.contrastingTextColor()
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = getCardColors()
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = contrastColor
+        )
     ) {
         Row(
             modifier = Modifier
@@ -186,10 +240,18 @@ fun BreedItem(
                 modifier = Modifier.weight(1f)
             )
             IconButton(onClick = { onEdit(breed) }) {
-                Icon(Icons.Outlined.Edit, contentDescription = "Edit ${breed.name}", tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    Icons.Filled.Edit,
+                    contentDescription = "Edit ${breed.name}",
+                    tint = contrastColor
+                )
             }
             IconButton(onClick = { onDelete(breed) }) {
-                Icon(Icons.Default.DeleteOutline, contentDescription = "Delete ${breed.name}", tint = MaterialTheme.colorScheme.error)
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = "Delete ${breed.name}",
+                    tint = contrastColor
+                )
             }
         }
     }

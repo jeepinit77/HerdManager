@@ -368,6 +368,11 @@ fun CattleManagerApp() {
                                     Icon(Icons.Filled.Refresh, contentDescription = "Reset to Defaults", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
+                            if (currentScreenForUI == Screen.BreedsManagement) {
+                                IconButton(onClick = { resetTriggered = true }) {
+                                    Icon(Icons.Filled.Refresh, contentDescription = "Reset to Defaults", tint = MaterialTheme.colorScheme.onSurface)
+                                }
+                            }
                             if (currentScreenForUI == Screen.ThemeSettings) {
                                 IconButton(onClick = { resetTriggered = true }) {
                                     Icon(Icons.Filled.Refresh, contentDescription = "Reset Theme to Default", tint = MaterialTheme.colorScheme.onSurface)

@@ -17,6 +17,9 @@ class GlobalSnackbarState(
         actionLabel: String? = null,
         duration: SnackbarDuration = SnackbarDuration.Short
     ): SnackbarResult {
+        // Dismiss any currently showing snackbar to prevent stacking
+        snackbarHostState.currentSnackbarData?.dismiss()
+        
         return snackbarHostState.showSnackbar(
             message = message,
             actionLabel = actionLabel,
