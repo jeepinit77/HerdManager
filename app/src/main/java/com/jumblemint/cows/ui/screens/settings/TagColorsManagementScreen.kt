@@ -25,6 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.LocalGlobalSnackbarState
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.TagColor
 import com.jumblemint.cows.data.repository.CattleRepository
@@ -68,9 +69,8 @@ fun TagColorsManagementScreen(
     var showAddDialog by remember { mutableStateOf(false) }
     var editingColor by remember { mutableStateOf<TagColor?>(null) }
 
-
     val scope = rememberCoroutineScope()
-    var lastDeleted by remember { mutableStateOf<TagColor?>(null) }
+    val globalSnackbarState = LocalGlobalSnackbarState.current
     var showResetConfirm by remember { mutableStateOf(false) }
     
     LaunchedEffect(resetTriggered) {
@@ -121,10 +121,20 @@ fun TagColorsManagementScreen(
                     TagColorItem(
                         tagColor = tagColor,
                         onEdit = { editingColor = it; showAddDialog = true },
-                        onDelete = { color ->
-                            lastDeleted = color
-                            viewModel.deleteTagColor(color)
-                            // Note: Undo functionality removed due to no snackbar in non-nested layout
+                        onDelete = { colorToDelete ->
+                            viewModel.deleteTagColor(colorToDelete)
+                            scope.launch {
+                                globalSnackbarState?.let { snackbarState ->
+                                    val result = snackbarState.showSnackbar(
+                                        message = "Tag color '${colorToDelete.name}' deleted",
+                                        actionLabel = "Undo",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        viewModel.restoreTagColor(colorToDelete)
+                                    }
+                                }
+                            }
                         }
                     )
                 }

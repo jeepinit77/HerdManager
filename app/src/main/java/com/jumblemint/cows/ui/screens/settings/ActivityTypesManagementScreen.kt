@@ -68,7 +68,6 @@ fun ActivityTypesManagementScreen(
     var showResetConfirm by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
-    var lastDeleted by remember { mutableStateOf<ActivityTypeConfig?>(null) }
 
     Box(modifier = modifier.fillMaxSize()) {
         // Snackbar Host positioned manually
@@ -115,19 +114,19 @@ fun ActivityTypesManagementScreen(
                         activityType = activityType,
                         onEdit = { editingType = it; showAddDialog = true },
                         onDelete = { typeToDelete ->
-                            lastDeleted = typeToDelete
                             viewModel.deleteActivityType(typeToDelete)
                             scope.launch {
+                                // Dismiss any current snackbar to prevent stacking
+                                snackbarHostState.currentSnackbarData?.dismiss()
+                                
                                 val result = snackbarHostState.showSnackbar(
                                     message = "Type '${typeToDelete.displayName}' deleted",
                                     actionLabel = "Undo",
                                     duration = SnackbarDuration.Short
                                 )
                                 if (result == SnackbarResult.ActionPerformed) {
-                                    // <<< USE NEW RESTORE METHOD
-                                    lastDeleted?.let { viewModel.restoreDeletedActivityType(it) }
+                                    viewModel.restoreDeletedActivityType(typeToDelete)
                                 }
-                                lastDeleted = null // Clear after action or dismissal
                             }
                         }
                     )
