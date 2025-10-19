@@ -165,22 +165,20 @@ fun BreedsManagementScreen(
             title = { Text("Reset Breeds?") },
             text = { Text("This will remove all custom breeds and reinstall the default set. This action cannot be undone.") },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         showResetConfirm = false
                         viewModel.resetToDefaults()
                     },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
                     )
                 ) { Text("Reset") }
             },
             dismissButton = {
-                TextButton(
-                    onClick = { showResetConfirm = false },
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                FilledTonalButton(
+                    onClick = { showResetConfirm = false }
                 ) { Text("Cancel") }
             }
         )
@@ -306,7 +304,7 @@ fun BreedDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FilledTonalButton(onClick = onDismiss) {
                 Text("Cancel")
             }
         }

@@ -27,7 +27,6 @@ import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.common.api.ApiException
 import com.jumblemint.cows.R
 import com.jumblemint.cows.ui.components.DataMergeDialog
-import com.jumblemint.cows.ui.components.SecondaryButton
 // import com.jumblemint.cows.ui.components.DataMergeOption // Not directly used in this file if AuthViewModel handles it
 import com.jumblemint.cows.ui.viewmodel.AuthViewModel
 import kotlinx.coroutines.launch
@@ -241,7 +240,7 @@ fun SignInScreen(
                     }
                 }
             }
-            
+
             uiState.error?.let { errorMessage ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -258,9 +257,10 @@ fun SignInScreen(
             }
 
             if (!isGoogleSignedIn) { // Show "Continue without signing in" only if not signed in
-                SecondaryButton(
+                OutlinedButton(
                     onClick = onNavigateBack,
-                    modifier = Modifier.fillMaxWidth().height(56.dp)
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(28.dp)
                 ) {
                     Text("Continue without signing in", fontSize = 16.sp, fontWeight = FontWeight.Medium)
                 }

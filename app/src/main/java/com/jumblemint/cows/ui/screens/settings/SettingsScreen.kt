@@ -642,7 +642,7 @@ fun ExportDataDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FilledTonalButton(onClick = onDismiss) {
                 Text("Cancel")
             }
         }
@@ -673,13 +673,16 @@ fun SampleDataDialog(
                     if (isSampleDataInstalled) onRemove() else onInstall()
                     onDismiss()
                 },
-                colors = if (isSampleDataInstalled) ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error) else ButtonDefaults.buttonColors()
+                colors = if (isSampleDataInstalled) ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                ) else ButtonDefaults.buttonColors()
             ) {
                 Text(if (isSampleDataInstalled) "Remove" else "Install")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FilledTonalButton(onClick = onDismiss) {
                 Text("Cancel")
             }
         }
@@ -758,14 +761,17 @@ fun DeleteDataCategoryDialog(
                         )
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = MaterialTheme.colorScheme.onError
+                ),
                 enabled = hasSelection
             ) {
                 Text("Delete Selected")
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FilledTonalButton(onClick = onDismiss) {
                 Text("Cancel")
             }
         }
@@ -841,7 +847,7 @@ fun ImportDataDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FilledTonalButton(onClick = onDismiss) {
                 Text("Cancel")
             }
         }

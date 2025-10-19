@@ -170,11 +170,17 @@ fun ActivityTypesManagementScreen(
     if (showResetConfirm) {
         com.jumblemint.cows.ui.components.AppAlertDialog(
             onDismissRequest = { showResetConfirm = false },
-            icon = { Icon(Icons.Default.WarningAmber, contentDescription = "Warning") },
+            icon = { 
+                Icon(
+                    Icons.Default.WarningAmber, 
+                    contentDescription = "Warning",
+                    tint = MaterialTheme.colorScheme.error
+                ) 
+            },
             title = { Text("Reset Activity Types?") },
             text = { Text("This will remove ALL custom activity types and restore the original default types. This action cannot be undone.") },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         viewModel.restoreDefaults()
                         showResetConfirm = false
@@ -182,11 +188,16 @@ fun ActivityTypesManagementScreen(
                             snackbarHostState.showSnackbar("Activity types reset to defaults.")
                         }
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
                 ) { Text("Reset") }
             },
             dismissButton = {
-                TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
+                FilledTonalButton(onClick = { showResetConfirm = false }) { 
+                    Text("Cancel") 
+                }
             }
         )
     }
@@ -437,7 +448,7 @@ fun ActivityTypeDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FilledTonalButton(onClick = onDismiss) {
                 // <<< USE activityTypeToEdit.isDefault
                 Text(if (activityTypeToEdit?.isDefault == true) "Close" else "Cancel")
             }

@@ -65,11 +65,17 @@ fun ThemeSettingsScreen(
     if (showResetConfirm) {
         com.jumblemint.cows.ui.components.AppAlertDialog(
             onDismissRequest = { showResetConfirm = false },
-            icon = { Icon(Icons.Filled.WarningAmber, contentDescription = "Warning") },
+            icon = { 
+                Icon(
+                    Icons.Filled.WarningAmber, 
+                    contentDescription = "Warning",
+                    tint = MaterialTheme.colorScheme.error
+                ) 
+            },
             title = { Text("Reset Theme?") },
             text = { Text("This will reset the theme to the default settings. This action cannot be undone.") },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         scope.launch {
                             themeManager.resetToDefaults()
@@ -79,11 +85,16 @@ fun ThemeSettingsScreen(
                             showResetConfirm = false
                         }
                     },
-                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error,
+                        contentColor = MaterialTheme.colorScheme.onError
+                    )
                 ) { Text("Reset") }
             },
             dismissButton = {
-                TextButton(onClick = { showResetConfirm = false }) { Text("Cancel") }
+                FilledTonalButton(onClick = { showResetConfirm = false }) { 
+                    Text("Cancel") 
+                }
             }
         )
     }
