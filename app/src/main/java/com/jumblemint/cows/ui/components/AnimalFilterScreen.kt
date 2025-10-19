@@ -506,7 +506,7 @@ private fun <T> MultiSelectDropdownDialog(
     onDismiss: () -> Unit,
     itemLabel: (T) -> String
 ) {
-    AlertDialog(
+    com.jumblemint.cows.ui.components.AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {

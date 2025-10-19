@@ -168,7 +168,7 @@ fun AccountManagementScreen(
         }
 
     if (showSignOutDialog) {
-        AlertDialog(
+        com.jumblemint.cows.ui.components.AppAlertDialog(
             onDismissRequest = { showSignOutDialog = false },
             title = { Text(if (currentUser?.isLocalUser == false) "Disconnect Account?" else "Reset Local Account?") },
             text = {
@@ -176,17 +176,16 @@ fun AccountManagementScreen(
                     if (currentUser?.isLocalUser == false)
                         "Your cloud account will be disconnected. All cattle data will remain on this device for offline use, but will no longer sync with the cloud unless you sign in again."
                     else
-                        "This will reset your user profile. Your cattle data will remain safe and unchanged. Only user settings will be reset.",
-                    color = MaterialTheme.colorScheme.onSurface
+                        "This will reset your user profile. Your cattle data will remain safe and unchanged. Only user settings will be reset."
                 )
             },
             confirmButton = {
                 Button(
                     onClick = {
                         coroutineScope.launch {
-                            application.authService.signOut() // Handles both cases
+                            application.authService.signOut()
                             showSignOutDialog = false
-                            onNavigateBack() // Navigate back after action
+                            onNavigateBack()
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -197,9 +196,7 @@ fun AccountManagementScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSignOutDialog = false }) {
-                    Text("Cancel")
-                }
+                TextButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
             }
         )
     }

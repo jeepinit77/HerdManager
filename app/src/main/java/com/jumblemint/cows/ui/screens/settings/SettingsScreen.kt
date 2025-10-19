@@ -598,7 +598,7 @@ fun ExportDataDialog(
 ) {
     var selectedFormat by remember { mutableStateOf("CSV") }
 
-    AlertDialog(
+    com.jumblemint.cows.ui.components.AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = { 
             Icon(
@@ -644,9 +644,7 @@ fun ExportDataDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        },
-        containerColor = MaterialTheme.colorScheme.surface,
-        textContentColor = MaterialTheme.colorScheme.onSurface
+        }
     )
 }
 
@@ -658,7 +656,7 @@ fun SampleDataDialog(
     onInstall: () -> Unit,
     onRemove: () -> Unit
 ) {
-    AlertDialog(
+    com.jumblemint.cows.ui.components.AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(if (isSampleDataInstalled) Icons.Filled.DeleteSweep else Icons.Filled.PlaylistAdd, contentDescription = "Sample Data") },
         title = { Text(if (isSampleDataInstalled) "Remove Sample Data" else "Add Sample Data") },
@@ -702,7 +700,7 @@ fun DeleteDataCategoryDialog(
     var deleteBreeds by remember { mutableStateOf(false) }
     var deleteSettings by remember { mutableStateOf(false) }
 
-    AlertDialog(
+    com.jumblemint.cows.ui.components.AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Filled.WarningAmber, contentDescription = "Delete Data") },
         title = { Text("Delete Data by Category") },
@@ -801,7 +799,7 @@ fun ImportDataDialog(
     onDismiss: () -> Unit,
     onImport: () -> Unit
 ) {
-    AlertDialog(
+    com.jumblemint.cows.ui.components.AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = { 
             Icon(
@@ -845,9 +843,7 @@ fun ImportDataDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        },
-        containerColor = MaterialTheme.colorScheme.surface,
-        textContentColor = MaterialTheme.colorScheme.onSurface
+        }
     )
 }
 
@@ -859,7 +855,7 @@ fun ConflictResolutionDialog(
     onDismiss: () -> Unit,
     onResolve: (ConflictResolution) -> Unit
 ) {
-    AlertDialog(
+    com.jumblemint.cows.ui.components.AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = { 
             Icon(
@@ -909,8 +905,6 @@ fun ConflictResolutionDialog(
             TextButton(onClick = onDismiss) {
                 Text("Cancel")
             }
-        },
-        containerColor = MaterialTheme.colorScheme.surface,
-        textContentColor = MaterialTheme.colorScheme.onSurface
+        }
     )
 }

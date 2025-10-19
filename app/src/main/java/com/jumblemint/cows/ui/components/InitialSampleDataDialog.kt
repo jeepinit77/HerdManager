@@ -12,7 +12,7 @@ fun InitialSampleDataDialog(
     onInstall: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = { 
             Icon(
@@ -43,8 +43,6 @@ fun InitialSampleDataDialog(
             TextButton(onClick = onDismiss) {
                 Text("Start Empty")
             }
-        },
-        containerColor = MaterialTheme.colorScheme.surface,
-        textContentColor = MaterialTheme.colorScheme.onSurface
+        }
     )
 }

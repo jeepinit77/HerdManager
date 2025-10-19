@@ -255,7 +255,7 @@ private fun CreateHerdDialog(
     var name by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     
-    AlertDialog(
+    com.jumblemint.cows.ui.components.AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Create New Herd") },
         text = {

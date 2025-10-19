@@ -148,9 +148,8 @@ fun TagColorsManagementScreen(
     }
     
     if (showResetConfirm) {
-        AlertDialog(
+        com.jumblemint.cows.ui.components.AppAlertDialog(
             onDismissRequest = { showResetConfirm = false },
-            containerColor = MaterialTheme.colorScheme.surface,
             icon = { 
                 Icon(
                     Icons.Default.WarningAmber, 
@@ -158,18 +157,8 @@ fun TagColorsManagementScreen(
                     tint = MaterialTheme.colorScheme.error
                 ) 
             },
-            title = { 
-                Text(
-                    "Reset Tag Colors?",
-                    color = MaterialTheme.colorScheme.onSurface
-                ) 
-            },
-            text = { 
-                Text(
-                    "This will remove all custom tag colors and restore the default set. This action cannot be undone.",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                ) 
-            },
+            title = { Text("Reset Tag Colors?") },
+            text = { Text("This will remove all custom tag colors and restore the default set. This action cannot be undone.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -179,9 +168,7 @@ fun TagColorsManagementScreen(
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
                     )
-                ) { 
-                    Text("Reset") 
-                }
+                ) { Text("Reset") }
             },
             dismissButton = {
                 TextButton(
@@ -189,9 +176,7 @@ fun TagColorsManagementScreen(
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                ) { 
-                    Text("Cancel") 
-                }
+                ) { Text("Cancel") }
             }
         )
     }
@@ -296,9 +281,8 @@ fun TagColorDialog(
     val borderColor = MaterialTheme.colorScheme.outline
     val backgroundColor = MaterialTheme.colorScheme.surface
 
-    AlertDialog(
+    com.jumblemint.cows.ui.components.AppAlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = backgroundColor,
         title = { 
             Text(
                 if (tagColorToEdit != null) "Edit Tag Color" else "Add New Tag Color",

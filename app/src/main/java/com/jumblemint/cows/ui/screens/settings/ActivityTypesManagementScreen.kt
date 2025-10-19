@@ -169,7 +169,7 @@ fun ActivityTypesManagementScreen(
     }
 
     if (showResetConfirm) {
-        AlertDialog(
+        com.jumblemint.cows.ui.components.AppAlertDialog(
             onDismissRequest = { showResetConfirm = false },
             icon = { Icon(Icons.Default.WarningAmber, contentDescription = "Warning") },
             title = { Text("Reset Activity Types?") },
@@ -312,7 +312,7 @@ fun ActivityTypeDialog(
     var showIconPicker by remember { mutableStateOf(false) }
     var displayNameError by remember { mutableStateOf<String?>(null) }
 
-    AlertDialog(
+    com.jumblemint.cows.ui.components.AppAlertDialog(
         onDismissRequest = onDismiss,
         // <<< USE activityTypeToEdit.isDefault
         icon = { Icon(if (activityTypeToEdit != null && !activityTypeToEdit.isDefault) Icons.Filled.Edit else if (activityTypeToEdit == null) Icons.Filled.AddBusiness else Icons.Filled.Info, contentDescription = null)},

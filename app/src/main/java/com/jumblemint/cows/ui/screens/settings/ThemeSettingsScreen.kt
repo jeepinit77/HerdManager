@@ -63,7 +63,7 @@ fun ThemeSettingsScreen(
     }
 
     if (showResetConfirm) {
-        AlertDialog(
+        com.jumblemint.cows.ui.components.AppAlertDialog(
             onDismissRequest = { showResetConfirm = false },
             icon = { Icon(Icons.Filled.WarningAmber, contentDescription = "Warning") },
             title = { Text("Reset Theme?") },

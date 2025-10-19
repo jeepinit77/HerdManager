@@ -113,7 +113,7 @@ fun BreedsManagementScreen(
         }
 
         if (showResetConfirm) {
-            AlertDialog(
+            com.jumblemint.cows.ui.components.AppAlertDialog(
                 onDismissRequest = { showResetConfirm = false },
                 icon = { Icon(Icons.Default.WarningAmber, contentDescription = "Warning") },
                 title = { Text("Reset Breeds?") },
@@ -203,7 +203,7 @@ fun BreedDialog(
     var name by remember(breedToEdit) { mutableStateOf(breedToEdit?.name ?: "") }
     var nameError by remember { mutableStateOf<String?>(null) }
 
-    AlertDialog(
+    com.jumblemint.cows.ui.components.AppAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (breedToEdit != null) "Edit Breed" else "Add New Breed") },
         text = {

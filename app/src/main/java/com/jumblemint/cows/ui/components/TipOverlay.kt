@@ -38,10 +38,10 @@ fun TipOverlay(
 ) {
     val scope = rememberCoroutineScope()
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = { onClosed() },
-        properties = DialogProperties(usePlatformDefaultWidth = false), // Added to control width
-        modifier = Modifier.fillMaxWidth(), // Allows dialog to use full screen width available to it
+        // properties not supported on wrapper; use default width
+        // modifier removed for wrapper simplicity
         icon = null,
         title = {
             Row(
