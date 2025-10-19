@@ -23,6 +23,9 @@ import com.jumblemint.cows.ui.components.AnimalFilterScreen
 import com.jumblemint.cows.ui.components.AnimalFilterState
 import com.jumblemint.cows.ui.viewmodel.AddActivityViewModel
 import com.jumblemint.cows.ui.viewmodel.AddActivityViewModelFactory
+import com.jumblemint.cows.ui.theme.contrastingTextColor
+import com.jumblemint.cows.ui.theme.getCardBackgroundColor
+import com.jumblemint.cows.ui.theme.getCardColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -173,7 +176,10 @@ fun AddActivityScreen(
                 }
 
                 item {
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = getCardColors()
+                    ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -181,7 +187,8 @@ fun AddActivityScreen(
                             Text(
                                 text = "Activity Details",
                                 style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                color = getCardBackgroundColor().contrastingTextColor()
                             )
 
                             DropdownField(
@@ -242,6 +249,17 @@ fun AddActivityScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 minLines = 2,
                                 maxLines = 5,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
+                                    focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                focusedTextColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                                unfocusedTextColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                                    cursorColor = MaterialTheme.colorScheme.primary
+                                ),
                                 placeholder = {
                                     Text(
                                         if (uiState.activityType in listOf(ActivityType.WORKED, ActivityType.OTHER))
@@ -262,7 +280,10 @@ fun AddActivityScreen(
                 }
 
                 item {
-                    Card(modifier = Modifier.fillMaxWidth()) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = getCardColors()
+                    ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -275,12 +296,13 @@ fun AddActivityScreen(
                                 Text(
                                     text = "Select Animals",
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    color = getCardBackgroundColor().contrastingTextColor()
                                 )
                                 Text(
                                     text = "${uiState.selectedCows.size} selected",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = getCardBackgroundColor().contrastingTextColor().copy(alpha = 0.75f)
                                 )
                             }
 
@@ -293,7 +315,18 @@ fun AddActivityScreen(
                                     { IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, contentDescription = "Clear search") } }
                                 } else null,
                                 modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
+                                singleLine = true,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedLabelColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
+                                    focusedLabelColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedLeadingIconColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.6f),
+                                    focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    focusedTextColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                                    unfocusedTextColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                                    cursorColor = MaterialTheme.colorScheme.primary
+                                )
                             )
 
                             Row(

@@ -11,6 +11,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import com.jumblemint.cows.ui.theme.defaultDisabledOutlinedTextFieldColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,13 +33,7 @@ fun DatePickerField(
                 label = { Text(label) },
                 readOnly = true,
                 enabled = false, // Make the TextField non-interactive
-                colors = OutlinedTextFieldDefaults.colors(
-                    disabledTextColor = MaterialTheme.colorScheme.onSurface,
-                    disabledBorderColor = MaterialTheme.colorScheme.outline,
-                    disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    disabledTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                    // Ensure other states like placeholder, prefix/suffix also look enabled if you use them
-                ),
+                colors = defaultDisabledOutlinedTextFieldColors(),
                 trailingIcon = {
                     // IconButton is still clickable itself, which is fine.
                     IconButton(onClick = { showDatePicker = true }) {

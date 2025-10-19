@@ -14,6 +14,8 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,7 +63,7 @@ fun DropdownField(
                     // as the label is outside the colored container when a value is present.
                 )
             } else {
-                OutlinedTextFieldDefaults.colors() // Default colors for other states
+                defaultOutlinedTextFieldColors()
             },
             trailingIcon = {
                 // Swatch Box and Spacer removed
