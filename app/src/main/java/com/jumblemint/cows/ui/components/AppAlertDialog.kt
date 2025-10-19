@@ -24,7 +24,7 @@ fun AppAlertDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         iconContentColor = MaterialTheme.colorScheme.onSurface,
         titleContentColor = MaterialTheme.colorScheme.onSurface,
-        textContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        textContentColor = MaterialTheme.colorScheme.onSurface
     )
 }
 
