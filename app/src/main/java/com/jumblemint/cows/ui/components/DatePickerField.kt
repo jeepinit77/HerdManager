@@ -45,47 +45,16 @@ fun DatePickerField(
         }
 
         if (showDatePicker) {
-            DatePickerDialog(
-                onDateSelected = { selectedDate ->
+            AppDatePickerDialog(
+                initialDate = value,
+                onConfirm = { selectedDate ->
                     onValueChange(selectedDate)
                     showDatePicker = false
                 },
-                onDismiss = { showDatePicker = false }
+                onDismissRequest = { showDatePicker = false }
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DatePickerDialog(
-    onDateSelected: (LocalDate?) -> Unit,
-    onDismiss: () -> Unit
-) {
-    val datePickerState = rememberDatePickerState()
-
-    androidx.compose.material3.DatePickerDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(
-                onClick = {
-                    val selectedDate = datePickerState.selectedDateMillis?.let { millis ->
-                        java.time.Instant.ofEpochMilli(millis)
-                            .atZone(java.time.ZoneId.systemDefault())
-                            .toLocalDate()
-                    }
-                    onDateSelected(selectedDate)
-                }
-            ) {
-                Text("OK")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    ) {
-        DatePicker(state = datePickerState)
-    }
-}
+// Legacy DatePickerDialog removed in favor of AppDatePickerDialog

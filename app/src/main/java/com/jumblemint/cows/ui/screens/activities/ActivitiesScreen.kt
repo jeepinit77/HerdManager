@@ -38,7 +38,6 @@ import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.DatePickerDefaults
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -47,6 +46,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.jumblemint.cows.ui.components.AppDatePickerDialog
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
@@ -662,34 +662,14 @@ private fun DateSelectorButton(
         val datePickerState = rememberDatePickerState(
             initialSelectedDateMillis = selectedDate?.atStartOfDay()?.toInstant(java.time.ZoneOffset.UTC)?.toEpochMilli()
         )
-        DatePickerDialog(
-            onDismissRequest = { showDatePicker = false },
-            confirmButton = {
-                TextButton(onClick = {
-                    val millis = datePickerState.selectedDateMillis
-                    if (millis != null) {
-                        val localDate = java.time.Instant.ofEpochMilli(millis).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-                        onDateSelected(localDate)
-                    } else onDateSelected(null)
-                    showDatePicker = false
-                }) { Text("Confirm") }
+        AppDatePickerDialog(
+            initialDate = selectedDate,
+            onConfirm = { picked ->
+                onDateSelected(picked)
+                showDatePicker = false
             },
-            dismissButton = { TextButton(onClick = { showDatePicker = false }) { Text("Cancel") } }
-        ) {
-            DatePicker(
-                state = datePickerState,
-                colors = DatePickerDefaults.colors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    headlineContentColor = MaterialTheme.colorScheme.onSurface,
-                    dayContentColor = MaterialTheme.colorScheme.onSurface,
-                    selectedDayContentColor = MaterialTheme.colorScheme.primary,
-                    selectedDayContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                    todayContentColor = MaterialTheme.colorScheme.primary,
-                    todayDateBorderColor = MaterialTheme.colorScheme.primary,
-                )
-            )
-        }
+            onDismissRequest = { showDatePicker = false }
+        )
     }
 }
 
