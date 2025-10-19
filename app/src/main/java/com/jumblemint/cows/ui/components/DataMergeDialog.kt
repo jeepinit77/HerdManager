@@ -103,7 +103,7 @@ fun DataMergeDialog(
                 }
                 
                 // Cancel button
-                OutlinedButton(
+                SecondaryButton(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth()
                 ) {

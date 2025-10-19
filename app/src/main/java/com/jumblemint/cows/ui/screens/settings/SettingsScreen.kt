@@ -39,6 +39,7 @@ import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.theme.SmartText
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Added/Ensured import
+import com.jumblemint.cows.ui.components.SecondaryButton
 
 // Helper data class for quadruple values
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
@@ -893,7 +894,7 @@ fun ConflictResolutionDialog(
                     Text("Update Existing Records")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
+                SecondaryButton(
                     onClick = { onResolve(ConflictResolution.KEEP_EXISTING) },
                     modifier = Modifier.fillMaxWidth()
                 ) {

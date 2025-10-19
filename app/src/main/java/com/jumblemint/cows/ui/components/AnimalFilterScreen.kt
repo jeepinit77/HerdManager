@@ -244,7 +244,7 @@ fun AnimalFilterScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp) 
                 ) {
-                    OutlinedButton(
+                    SecondaryButton(
                         onClick = { currentFilterState = AnimalFilterState() }, 
                         modifier = Modifier.weight(1f)
                     ) {
@@ -471,7 +471,7 @@ private fun <T> ConditionalMultiSelectFilter(
                 }
             }
         } else { 
-            OutlinedButton(
+            SecondaryButton(
                 onClick = { showDialog = true },
                 modifier = Modifier.fillMaxWidth().padding(top = 8.dp) 
             ) {

@@ -73,7 +73,7 @@ fun TipOverlay(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    OutlinedButton(
+                    SecondaryButton(
                         onClick = {
                             onClosed()
                         },
@@ -101,7 +101,7 @@ fun TipOverlay(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                OutlinedButton(
+                SecondaryButton(
                     onClick = {
                         scope.launch {
                             tipsManager.hideAllTips()

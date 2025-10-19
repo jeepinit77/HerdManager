@@ -33,6 +33,7 @@ import com.jumblemint.cows.ui.viewmodel.ActivitiesViewModelFactory
 import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.theme.SmartText
 import com.jumblemint.cows.ui.theme.contrastingTextColor
+import com.jumblemint.cows.ui.components.SecondaryButton
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import kotlinx.coroutines.launch
@@ -375,7 +376,7 @@ private fun ActivityFilterDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    OutlinedButton(
+                    SecondaryButton(
                         onClick = {
                             range = null
                             types = emptySet()
