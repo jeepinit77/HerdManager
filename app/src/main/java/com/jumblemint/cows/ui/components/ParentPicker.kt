@@ -22,9 +22,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,6 +53,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Classification
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
 private const val ALL_PASTURES_KEY = "__ALL__"
@@ -74,6 +77,11 @@ fun ParentPicker(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
+        val surfaceContrast = MaterialTheme.colorScheme.surface.contrastingTextColor()
+        val surfaceVariantContrast = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
+        val primaryContainerContrast = MaterialTheme.colorScheme.primaryContainer.contrastingTextColor()
+        val secondaryContainerContrast = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor()
+
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.95f)
@@ -91,7 +99,7 @@ fun ParentPicker(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = surfaceContrast,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.align(Alignment.Center)
                     )
@@ -102,7 +110,7 @@ fun ParentPicker(
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "Close parent picker",
-                            tint = MaterialTheme.colorScheme.onSurface
+                            tint = surfaceContrast
                         )
                     }
                 }
@@ -118,15 +126,30 @@ fun ParentPicker(
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    label = { Text("Search by name or tag") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    label = {
+                        Text(
+                            "Search by name or tag",
+                            color = surfaceVariantContrast.copy(alpha = 0.85f)
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = null,
+                            tint = surfaceVariantContrast
+                        )
+                    },
                     trailingIcon = if (searchQuery.isNotEmpty()) {
                         {
                             IconButton(onClick = {
                                 searchQuery = ""
                                 focusRequester.requestFocus()
                             }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                                Icon(
+                                    Icons.Default.Clear,
+                                    contentDescription = "Clear search",
+                                    tint = surfaceVariantContrast
+                                )
                             }
                         }
                     } else null,
@@ -146,12 +169,16 @@ fun ParentPicker(
                         Text(
                             text = "Recent picks",
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = surfaceVariantContrast
                         )
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            val quickPickChipColors = AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                labelColor = secondaryContainerContrast
+                            )
                             quickPickItems.forEach { cow ->
                                 AssistChip(
                                     onClick = {
@@ -163,9 +190,11 @@ fun ParentPicker(
                                         Text(
                                             text = formatPrimaryLabel(cow),
                                             maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            overflow = TextOverflow.Ellipsis,
+                                            color = secondaryContainerContrast
                                         )
-                                    }
+                                    },
+                                    colors = quickPickChipColors
                                 )
                             }
                         }
@@ -180,17 +209,29 @@ fun ParentPicker(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.FilterList, contentDescription = null)
+                            Icon(
+                                Icons.Default.FilterList,
+                                contentDescription = null,
+                                tint = surfaceVariantContrast
+                            )
                             Text(
                                 "Filter by classification",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurface
+                                color = surfaceVariantContrast
                             )
                         }
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
+                            val filterChipColors = FilterChipDefaults.filterChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                labelColor = surfaceVariantContrast,
+                                iconColor = surfaceVariantContrast,
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = primaryContainerContrast,
+                                selectedLeadingIconColor = primaryContainerContrast
+                            )
                             classificationOptions.forEach { option ->
                                 val isSelected = option in selectedClassifications
                                 FilterChip(
@@ -204,7 +245,8 @@ fun ParentPicker(
                                     label = {
                                         Text(option.name.lowercase().replaceFirstChar { it.titlecase() })
                                     },
-                                    selected = isSelected
+                                    selected = isSelected,
+                                    colors = filterChipColors
                                 )
                             }
                         }
@@ -264,7 +306,9 @@ fun ParentPicker(
                             onDismiss()
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.outlinedButtonColors()
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = surfaceContrast
+                        )
                     ) {
                         Text("Clear selection")
                     }
@@ -284,7 +328,7 @@ fun ParentPicker(
                         ) {
                             Text(
                                 "No animals match your filters.",
-                                color = MaterialTheme.colorScheme.onSurface,
+                                color = surfaceContrast,
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center
                             )
@@ -293,7 +337,7 @@ fun ParentPicker(
                                 Text(
                                     text = "Try adjusting your search or filters.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = surfaceVariantContrast,
                                     textAlign = TextAlign.Center
                                 )
                             }
@@ -336,6 +380,8 @@ private fun ParentPickerItem(
         pastureLabel?.let { add(it) }
         add(cow.classification.name.lowercase().replaceFirstChar { it.titlecase() })
     }.joinToString(" • ")
+    val surfaceContrast = MaterialTheme.colorScheme.surface.contrastingTextColor()
+    val surfaceVariantContrast = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
 
     Column {
         Column(
@@ -356,7 +402,7 @@ private fun ParentPickerItem(
                 Text(
                     text = name ?: tag ?: "Unnamed Animal",
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = surfaceContrast,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -366,7 +412,7 @@ private fun ParentPickerItem(
                     Text(
                         text = tag,
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = surfaceContrast,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -379,7 +425,7 @@ private fun ParentPickerItem(
                 Text(
                     text = "Tag $tag",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = surfaceVariantContrast
                 )
             }
             if (secondaryDetails.isNotBlank()) {
@@ -387,13 +433,13 @@ private fun ParentPickerItem(
                 Text(
                     text = secondaryDetails,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = surfaceVariantContrast,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
             }
         }
-        Divider()
+        Divider(color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
