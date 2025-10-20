@@ -1,17 +1,13 @@
 package com.jumblemint.cows.ui.screens.activities
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
@@ -25,6 +21,8 @@ import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.preferences.TipsManager
 import com.jumblemint.cows.ui.components.DatePickerField
 import com.jumblemint.cows.ui.components.ParentPicker
+import com.jumblemint.cows.ui.components.ParentSelectionField
+import com.jumblemint.cows.ui.components.formatParentDisplay
 import com.jumblemint.cows.ui.components.SectionTitle
 import com.jumblemint.cows.ui.components.TipOverlay
 import com.jumblemint.cows.ui.components.UnsavedChangesDialog
@@ -376,53 +374,6 @@ fun AddBirthScreen(
         }
     }
 }
-
-@Composable
-private fun ParentSelectionField(
-    label: String,
-    value: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    isError: Boolean = false,
-    placeholder: String? = null
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    Box(modifier = modifier) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = {},
-            label = { Text(label) },
-            placeholder = placeholder?.let { { Text(it) } },
-            readOnly = true,
-            isError = isError,
-            trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
-            colors = defaultOutlinedTextFieldColors(),
-            modifier = Modifier.fillMaxWidth()
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(MaterialTheme.shapes.small)
-                .clickable(
-                    interactionSource = interactionSource,
-                    indication = null,
-                    onClick = onClick
-                )
-        )
-    }
-}
-
-private fun formatParentDisplay(cow: Cow): String {
-    val name = cow.name?.takeIf { it.isNotBlank() }
-    val tag = cow.tagNumber?.takeIf { it.isNotBlank() }
-    return when {
-        name != null && tag != null -> "$name ($tag)"
-        name != null -> name
-        tag != null -> tag
-        else -> "Unnamed Animal"
-    }
-}
-
 // Suggested enhancements:
 // - Surface dam health alerts alongside selection to catch repeat calving risks.
 // - Add quick links to log initial vaccinations immediately after recording a birth.

@@ -43,6 +43,9 @@ import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.DatePickerField
 import com.jumblemint.cows.ui.components.DropdownField
+import com.jumblemint.cows.ui.components.ParentPicker
+import com.jumblemint.cows.ui.components.ParentSelectionField
+import com.jumblemint.cows.ui.components.formatParentDisplay
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.theme.getGenderColor
@@ -51,6 +54,7 @@ import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.CowDetailUiState
 import com.jumblemint.cows.ui.components.UnsavedChangesDialog
+import kotlin.collections.buildMap
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -85,6 +89,37 @@ fun CowEditScreen(
     var saveAttempted by remember { mutableStateOf(false) }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 
+    var showMotherPicker by remember { mutableStateOf(false) }
+    var showFatherPicker by remember { mutableStateOf(false) }
+
+    val pastureNames = remember(uiState.availablePastures) {
+        buildMap<String?, String> {
+            put(null, "Unassigned")
+            uiState.availablePastures.sortedBy { it.name }.forEach { pasture ->
+                put(pasture.id, pasture.name)
+            }
+        }
+    }
+
+    val selectedMother = remember(uiState.motherId, uiState.availableMothers) {
+        uiState.availableMothers.find { it.id == uiState.motherId }
+    }
+    val selectedFather = remember(uiState.fatherId, uiState.availableFathers) {
+        uiState.availableFathers.find { it.id == uiState.fatherId }
+    }
+    val motherDisplay = selectedMother?.let { formatParentDisplay(it) } ?: uiState.motherName.orEmpty()
+    val fatherDisplay = selectedFather?.let { formatParentDisplay(it) } ?: uiState.fatherName.orEmpty()
+
+    val fatherOptions = remember(uiState.availableFathers, uiState.fatherId) {
+        val bulls = uiState.availableFathers.filter { it.classification == Classification.BULL }
+        val current = uiState.availableFathers.find { it.id == uiState.fatherId }
+        if (current != null && bulls.none { it.id == current.id }) {
+            (bulls + current).distinctBy { it.id }
+        } else {
+            bulls
+        }
+    }
+
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
             onNavigateBack()
@@ -106,6 +141,33 @@ fun CowEditScreen(
             }
             onBackHandled()
         }
+    }
+
+    if (showMotherPicker) {
+        ParentPicker(
+            title = "Select Mother",
+            animals = uiState.availableMothers,
+            pastureNames = pastureNames,
+            classificationOptions = listOf(Classification.COW, Classification.HEIFER),
+            enablePastureFilter = true,
+            allowClearSelection = true,
+            onSelect = { cow -> viewModel.updateMother(cow.id) },
+            onClearSelection = { viewModel.updateMother(null) },
+            onDismiss = { showMotherPicker = false }
+        )
+    }
+
+    if (showFatherPicker) {
+        ParentPicker(
+            title = "Select Father",
+            animals = fatherOptions,
+            pastureNames = pastureNames,
+            enablePastureFilter = true,
+            allowClearSelection = true,
+            onSelect = { cow -> viewModel.updateFather(cow.id) },
+            onClearSelection = { viewModel.updateFather(null) },
+            onDismiss = { showFatherPicker = false }
+        )
     }
 
     // Function to handle save logic
@@ -304,7 +366,14 @@ fun CowEditScreen(
 
                             isDarkTheme = isDarkTheme
                         )
-                        1 -> PedigreeTabContent(viewModel, uiState)
+                        1 -> PedigreeTabContent(
+                            viewModel = viewModel,
+                            uiState = uiState,
+                            motherDisplay = motherDisplay,
+                            fatherDisplay = fatherDisplay,
+                            onMotherClick = { showMotherPicker = true },
+                            onFatherClick = { showFatherPicker = true }
+                        )
                         2 -> ManagementTabContent(viewModel, uiState)
                     }
                 }
@@ -563,33 +632,27 @@ private fun ProfileTabContent(
 @Composable
 private fun PedigreeTabContent(
     viewModel: CowDetailViewModel,
-    uiState: CowDetailUiState
+    uiState: CowDetailUiState,
+    motherDisplay: String,
+    fatherDisplay: String,
+    onMotherClick: () -> Unit,
+    onFatherClick: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Parentage", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        DropdownField(
-            value = uiState.motherName ?: "",
-            onValueChange = { selectedNameOrTag -> 
-                val mother = uiState.availableMothers.find { cow -> 
-                    (cow.name ?: "") == selectedNameOrTag || (cow.tagNumber ?: "") == selectedNameOrTag 
-                }
-                viewModel.updateMother(mother?.id)
-            },
+        ParentSelectionField(
             label = "Mother",
-            options = listOf("") + uiState.availableMothers.mapNotNull { cow -> cow.name?.takeIf { it.isNotBlank() } ?: cow.tagNumber },
-            modifier = Modifier.fillMaxWidth()
+            value = motherDisplay,
+            onClick = onMotherClick,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = "Tap to select a mother"
         )
-        DropdownField(
-            value = uiState.fatherName ?: "",
-            onValueChange = { selectedNameOrTag -> 
-                val father = uiState.availableFathers.find { cow -> 
-                    (cow.name ?: "") == selectedNameOrTag || (cow.tagNumber ?: "") == selectedNameOrTag 
-                }
-                viewModel.updateFather(father?.id)
-            },
+        ParentSelectionField(
             label = "Father",
-            options = listOf("") + uiState.availableFathers.mapNotNull { cow -> cow.name?.takeIf { it.isNotBlank() } ?: cow.tagNumber },
-            modifier = Modifier.fillMaxWidth()
+            value = fatherDisplay,
+            onClick = onFatherClick,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = "Tap to select a father"
         )
 
         Text("Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
