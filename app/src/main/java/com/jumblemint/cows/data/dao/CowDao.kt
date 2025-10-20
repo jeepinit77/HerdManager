@@ -4,6 +4,7 @@ import androidx.room.*
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Status
 import kotlinx.coroutines.flow.Flow
+import java.time.LocalDate
 
 @Dao
 interface CowDao {
@@ -38,8 +39,20 @@ interface CowDao {
     @Query("SELECT * FROM cows WHERE pastureId = :pastureId AND isDeleted = 0 ORDER BY name ASC")
     fun getCowsByPasture(pastureId: String): Flow<List<Cow>>
 
-    @Query("SELECT * FROM cows WHERE gender = 'FEMALE' AND status = 'ACTIVE' AND isDeleted = 0 ORDER BY name ASC")
-    fun getActiveFemales(): Flow<List<Cow>>
+    @Query(
+        "SELECT * FROM cows " +
+            "WHERE gender = 'FEMALE' " +
+            "AND status = 'ACTIVE' " +
+            "AND isDeleted = 0 " +
+            "AND (id NOT IN (" +
+            "    SELECT motherId FROM cows " +
+            "    WHERE motherId IS NOT NULL " +
+            "    AND birthDate >= :cutoffDate " +
+            "    AND isDeleted = 0" +
+            ") OR :cutoffDate IS NULL) " +
+            "ORDER BY name ASC"
+    )
+    fun getEligibleMothers(cutoffDate: LocalDate?): Flow<List<Cow>>
 
     @Query("SELECT * FROM cows WHERE gender = 'MALE' AND status = 'ACTIVE' AND isDeleted = 0 ORDER BY name ASC")
     fun getActiveMales(): Flow<List<Cow>>
@@ -75,6 +88,18 @@ interface CowDao {
 
     @Query("SELECT * FROM cows WHERE id IN (:ids)")
     fun getCowsByIds(ids: List<Long>): Flow<List<Cow>>
+
+    @Query(
+        "SELECT fatherId FROM cows " +
+            "WHERE fatherId IS NOT NULL " +
+            "AND isDeleted = 0 " +
+            "ORDER BY birthDate DESC " +
+            "LIMIT :limit"
+    )
+    suspend fun getRecentFatherIds(limit: Int): List<Long>
+
+    @Query("SELECT * FROM cows WHERE id IN (:ids)")
+    suspend fun getCowsByIdsImmediate(ids: List<Long>): List<Cow>
 
     // Add other queries as needed, e.g., for search, filtering by multiple criteria
 }

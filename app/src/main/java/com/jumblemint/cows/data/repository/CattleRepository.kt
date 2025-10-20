@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import java.time.LocalDate
+import java.util.LinkedHashSet
 import java.util.UUID
 
 class CattleRepository(
@@ -37,11 +38,47 @@ class CattleRepository(
     fun getAllCows(): Flow<List<Cow>> = cowDao.getAllCows()
     fun getCowsByStatus(status: Status): Flow<List<Cow>> = cowDao.getCowsByStatus(status)
     fun getCowsByPasture(pastureId: String): Flow<List<Cow>> = cowDao.getCowsByPasture(pastureId)
-    fun getActiveFemales(): Flow<List<Cow>> = cowDao.getActiveFemales()
+    fun getActiveFemales(): Flow<List<Cow>> = cowDao.getEligibleMothers(null)
+    fun getEligibleMothers(cutoffDate: LocalDate): Flow<List<Cow>> = cowDao.getEligibleMothers(cutoffDate)
     fun getActiveMales(): Flow<List<Cow>> = cowDao.getActiveMales()
     fun getCalvesByMother(motherId: Long): Flow<List<Cow>> = cowDao.getCalvesByMother(motherId)
     fun getCalvesByFather(fatherId: Long): Flow<List<Cow>> = cowDao.getCalvesByFather(fatherId)
     fun getCowsByIds(ids: List<Long>): Flow<List<Cow>> = cowDao.getCowsByIds(ids)
+    suspend fun getRecentFatherIds(limit: Int): List<Long> = cowDao.getRecentFatherIds(limit)
+    suspend fun getCowsByIdsImmediate(ids: List<Long>): List<Cow> = cowDao.getCowsByIdsImmediate(ids)
+
+    suspend fun getRecentSires(limit: Int = DEFAULT_RECENT_SIRES_LIMIT): List<Cow> {
+        val recentIds = getRecentFatherIds(limit)
+        if (recentIds.isEmpty()) return emptyList()
+        val sireRecords = getCowsByIdsImmediate(recentIds)
+        val distinctOrderedIds = LinkedHashSet<Long>()
+        recentIds.forEach { id ->
+            if (id != 0L) {
+                distinctOrderedIds.add(id)
+            }
+        }
+        return distinctOrderedIds.mapNotNull { id -> sireRecords.find { it.id == id } }
+    }
+
+    suspend fun rememberRecentSire(sireId: Long, limit: Int = DEFAULT_RECENT_SIRES_LIMIT) {
+        if (sireId == 0L) return
+        val existing = getSettingByKey(SettingsKeys.RECENT_SIRE_IDS)?.value
+            ?.split(",")
+            ?.mapNotNull { it.toLongOrNull() }
+            ?: emptyList()
+        val updated = buildList {
+            add(sireId)
+            existing.forEach { id ->
+                if (id != sireId) add(id)
+            }
+        }.take(limit)
+        insertOrUpdateSetting(
+            Settings(
+                key = SettingsKeys.RECENT_SIRE_IDS,
+                value = updated.joinToString(separator = ",")
+            )
+        )
+    }
 
     fun getMaternalSiblings(cowId: Long, motherId: Long): Flow<List<Cow>> = cowDao.getMaternalSiblings(cowId, motherId)
     fun getPaternalSiblings(cowId: Long, fatherId: Long): Flow<List<Cow>> = cowDao.getPaternalSiblings(cowId, fatherId)
@@ -885,3 +922,5 @@ class CattleRepository(
         insertBreeds(Breed.getDefaultBreeds())
     }
 }
+
+private const val DEFAULT_RECENT_SIRES_LIMIT = 5

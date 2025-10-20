@@ -16,6 +16,8 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.jumblemint.cows.data.model.Classification
 import com.jumblemint.cows.data.model.Cow
@@ -75,6 +77,11 @@ fun AddBirthScreen(
     val motherDisplay = selectedMother?.let { formatParentDisplay(it) } ?: ""
     val fatherDisplay = selectedFather?.let { formatParentDisplay(it) } ?: ""
     val motherError = uiState.error?.contains("Mother") == true
+
+    val pastureEntries = remember(pastureNames) {
+        pastureNames.entries.map { it.key to it.value }
+    }
+    val selectedPastureLabel = pastureNames[uiState.calfPastureId] ?: pastureNames[null] ?: "Unassigned"
 
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
@@ -143,6 +150,7 @@ fun AddBirthScreen(
             pastureNames = pastureNames,
             enablePastureFilter = true,
             allowClearSelection = true,
+            quickPicks = uiState.recentSires,
             onSelect = { cow -> viewModel.updateFather(cow.id) },
             onClearSelection = { viewModel.updateFather(null) },
             onDismiss = { showFatherPicker = false }
@@ -203,6 +211,17 @@ fun AddBirthScreen(
                             onClick = { showFatherPicker = true },
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = "Tap to choose a bull"
+                        )
+                        DropdownField(
+                            value = selectedPastureLabel,
+                            onValueChange = { label ->
+                                val entry = pastureEntries.firstOrNull { it.second == label }
+                                viewModel.updateCalfPasture(entry?.first)
+                            },
+                            label = "Calf Pasture",
+                            options = pastureEntries.map { it.second },
+                            modifier = Modifier.fillMaxWidth(),
+                            showNoneOption = false
                         )
                     }
                 }
@@ -269,9 +288,19 @@ fun AddBirthScreen(
                         singleLine = true,
                         colors = defaultOutlinedTextFieldColors()
                     )
-                    
+
+                    OutlinedTextField(
+                        value = uiState.calfBirthWeight,
+                        onValueChange = viewModel::updateCalfBirthWeight,
+                        label = { Text("Birth Weight (lbs)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        colors = defaultOutlinedTextFieldColors()
+                    )
+
                     Text(
-                        text = "Calf Gender", 
+                        text = "Calf Gender",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(bottom = 4.dp)
@@ -395,5 +424,5 @@ private fun formatParentDisplay(cow: Cow): String {
 }
 
 // Suggested enhancements:
-// - Surface calf birth weight entry and quick pasture reassignment to streamline post-birth chores.
-// - Remember recently used sires to offer quick picks in the Father selector for faster data entry.
+// - Surface dam health alerts alongside selection to catch repeat calving risks.
+// - Add quick links to log initial vaccinations immediately after recording a birth.

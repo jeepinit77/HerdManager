@@ -61,6 +61,7 @@ object SettingsKeys {
     const val TAG_COLORS = "tag_colors"
     const val ACTIVITY_TYPES = "activity_types"
     const val SAMPLE_DATA_INSTALLED = "sample_data_installed"
+    const val RECENT_SIRE_IDS = "recent_sire_ids"
 
     // Add other settings keys as needed
 }

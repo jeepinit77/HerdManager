@@ -3,7 +3,13 @@ package com.jumblemint.cows.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jumblemint.cows.auth.AuthService
-import com.jumblemint.cows.data.model.*
+import com.jumblemint.cows.data.model.Activity
+import com.jumblemint.cows.data.model.ActivityType
+import com.jumblemint.cows.data.model.Classification
+import com.jumblemint.cows.data.model.Cow
+import com.jumblemint.cows.data.model.Gender
+import com.jumblemint.cows.data.model.Pasture
+import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.sync.SyncService
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,10 +40,13 @@ class AddBirthViewModel(
         viewModelScope.launch {
             try {
                 val tagColors = repository.getAllTagColors().first().map { it.name }
-                val mothers = repository.getActiveFemales().first()
+                val cutoffDate = LocalDate.now().minusMonths(9)
+                val mothers = repository.getEligibleMothers(cutoffDate).first()
                 val fathers = repository.getActiveMales().first()
                     .filter { it.classification == Classification.BULL }
                 val pastures = repository.getAllPastures().first()
+                val recentSires = repository.getRecentSires()
+                    .filter { sire -> fathers.any { it.id == sire.id } }
 
                 setState(
                     _uiState.value.copy(
@@ -45,6 +54,7 @@ class AddBirthViewModel(
                         availableMothers = mothers,
                         availableFathers = fathers,
                         availablePastures = pastures,
+                        recentSires = recentSires,
                         isLoading = false,
                         isSaved = false,
                         error = null
@@ -106,6 +116,7 @@ class AddBirthViewModel(
                 motherId = motherId,
                 motherName = mother?.name,
                 calfName = newCalfName,
+                calfPastureId = mother?.pastureId,
                 error = null,
                 isSaved = false
             )
@@ -123,11 +134,25 @@ class AddBirthViewModel(
                 isSaved = false
             )
         )
+
+        if (fatherId != null) {
+            viewModelScope.launch {
+                repository.rememberRecentSire(fatherId)
+                val refreshedSires = repository.getRecentSires()
+                    .filter { sire -> _uiState.value.availableFathers.any { it.id == sire.id } }
+                setState(_uiState.value.copy(recentSires = refreshedSires))
+            }
+        }
     }
 
     fun updateCalfName(name: String) {
         val state = _uiState.value
         setState(state.copy(calfName = name, isSaved = false))
+    }
+
+    fun updateCalfBirthWeight(weight: String) {
+        val state = _uiState.value
+        setState(state.copy(calfBirthWeight = weight, isSaved = false))
     }
 
     fun updateCalfGender(gender: Gender) {
@@ -148,6 +173,11 @@ class AddBirthViewModel(
     fun updateCalfColorMarkings(colorMarkings: String) {
         val state = _uiState.value
         setState(state.copy(calfColorMarkings = colorMarkings, isSaved = false))
+    }
+
+    fun updateCalfPasture(pastureId: String?) {
+        val state = _uiState.value
+        setState(state.copy(calfPastureId = pastureId, isSaved = false))
     }
 
     fun recordBirth() {
@@ -186,7 +216,7 @@ class AddBirthViewModel(
                     motherId = state.motherId,
                     fatherId = state.fatherId,
                     status = Status.ACTIVE,
-                    pastureId = selectedMother?.pastureId,
+                    pastureId = state.calfPastureId ?: selectedMother?.pastureId,
                     photos = emptyList(),
                     isWatched = false,
                     createdAt = LocalDate.now(),
@@ -199,10 +229,26 @@ class AddBirthViewModel(
                     updatedBy = currentUserId
                 )
 
-                repository.insertCow(newCalf)
+                val insertedId = repository.insertCow(newCalf)
+                val newCalfRecord = newCalf.copy(id = insertedId)
+
+                if (state.calfBirthWeight.isNotBlank()) {
+                    state.calfBirthWeight.toDoubleOrNull()?.takeIf { it > 0 }?.let { weight ->
+                        repository.insertActivity(
+                            Activity(
+                                cowId = newCalfRecord.id,
+                                date = state.birthDate ?: LocalDate.now(),
+                                activityType = ActivityType.WEIGHED,
+                                notes = "Birth weight recorded",
+                                quantity = weight,
+                                cowIds = listOfNotNull(newCalfRecord.id.takeIf { it != 0L })
+                            )
+                        )
+                    }
+                }
 
                 if (!currentUser.isLocalUser) {
-                    syncService.syncItemImmediately(currentUserId, newCalf)
+                    syncService.syncItemImmediately(currentUserId, newCalfRecord)
                         .onFailure {
                             setState(state.copy(error = "Failed to sync new calf: ${it.message}", isSaved = false))
                             println("Error immediately syncing new calf: ${it.message}")
@@ -225,7 +271,9 @@ class AddBirthViewModel(
         calfGender = state.calfGender,
         calfTagNumber = state.calfTagNumber,
         calfTagColor = state.calfTagColor,
-        calfColorMarkings = state.calfColorMarkings
+        calfColorMarkings = state.calfColorMarkings,
+        calfBirthWeight = state.calfBirthWeight,
+        calfPastureId = state.calfPastureId
     )
 
     private fun setState(newState: AddBirthUiState, resetInitial: Boolean = false) {
@@ -249,10 +297,13 @@ data class AddBirthUiState(
     val calfTagNumber: String = "",
     val calfTagColor: String = "",
     val calfColorMarkings: String = "",
+    val calfBirthWeight: String = "",
     val tagColors: List<String> = emptyList(),
     val availableMothers: List<Cow> = emptyList(),
     val availableFathers: List<Cow> = emptyList(),
     val availablePastures: List<Pasture> = emptyList(),
+    val calfPastureId: String? = null,
+    val recentSires: List<Cow> = emptyList(),
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
     val error: String? = null,
@@ -267,5 +318,7 @@ private data class BirthFormSnapshot(
     val calfGender: Gender,
     val calfTagNumber: String,
     val calfTagColor: String,
-    val calfColorMarkings: String
+    val calfColorMarkings: String,
+    val calfBirthWeight: String,
+    val calfPastureId: String?
 )

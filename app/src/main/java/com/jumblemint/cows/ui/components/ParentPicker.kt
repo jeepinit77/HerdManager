@@ -3,8 +3,11 @@ package com.jumblemint.cows.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -18,18 +21,19 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,10 +41,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalFocusManager
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Classification
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
@@ -48,6 +56,7 @@ import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 private const val ALL_PASTURES_KEY = "__ALL__"
 private const val UNASSIGNED_PASTURE_KEY = "__UNASSIGNED__"
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ParentPicker(
     title: String,
@@ -56,6 +65,7 @@ fun ParentPicker(
     classificationOptions: List<Classification> = emptyList(),
     enablePastureFilter: Boolean = true,
     allowClearSelection: Boolean = false,
+    quickPicks: List<Cow> = emptyList(),
     onSelect: (Cow) -> Unit,
     onClearSelection: (() -> Unit)? = null,
     onDismiss: () -> Unit
@@ -64,29 +74,47 @@ fun ParentPicker(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
-        Surface(modifier = Modifier.fillMaxSize()) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.9f),
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surface
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(16.dp),
+                    .padding(20.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Box(modifier = Modifier.fillMaxWidth()) {
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.align(Alignment.Center)
                     )
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close parent picker")
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.align(Alignment.CenterEnd)
+                    ) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Close parent picker",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
 
                 var searchQuery by remember { mutableStateOf("") }
+                val focusRequester = remember { FocusRequester() }
+                val focusManager = LocalFocusManager.current
+
+                LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
+                }
+
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -94,15 +122,55 @@ fun ParentPicker(
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = if (searchQuery.isNotEmpty()) {
                         {
-                            IconButton(onClick = { searchQuery = "" }) {
+                            IconButton(onClick = {
+                                searchQuery = ""
+                                focusRequester.requestFocus()
+                            }) {
                                 Icon(Icons.Default.Clear, contentDescription = "Clear search")
                             }
                         }
                     } else null,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester),
                     singleLine = true,
                     colors = defaultOutlinedTextFieldColors()
                 )
+
+                val quickPickItems = remember(quickPicks, animals) {
+                    quickPicks.distinctBy { it.id }.filter { pick -> animals.any { it.id == pick.id } }
+                }
+
+                if (quickPickItems.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Recent picks",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            quickPickItems.forEach { cow ->
+                                AssistChip(
+                                    onClick = {
+                                        focusManager.clearFocus()
+                                        onSelect(cow)
+                                        onDismiss()
+                                    },
+                                    label = {
+                                        Text(
+                                            text = formatPrimaryLabel(cow),
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
                 var selectedClassifications by remember { mutableStateOf(setOf<Classification>()) }
                 if (classificationOptions.isNotEmpty()) {
@@ -113,10 +181,15 @@ fun ParentPicker(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(Icons.Default.FilterList, contentDescription = null)
-                            Text("Filter by classification", style = MaterialTheme.typography.labelLarge)
+                            Text(
+                                "Filter by classification",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
                         }
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             classificationOptions.forEach { option ->
                                 val isSelected = option in selectedClassifications
@@ -209,13 +282,19 @@ fun ParentPicker(
                                 .align(Alignment.Center),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("No animals match your filters.")
+                            Text(
+                                "No animals match your filters.",
+                                color = MaterialTheme.colorScheme.onSurface,
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = TextAlign.Center
+                            )
                             if (searchQuery.isNotBlank() || selectedClassifications.isNotEmpty() || selectedPastureKey != ALL_PASTURES_KEY) {
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
                                     text = "Try adjusting your search or filters.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = TextAlign.Center
                                 )
                             }
                         }
@@ -229,6 +308,7 @@ fun ParentPicker(
                                     cow = cow,
                                     pastureNames = pastureNames,
                                     onClick = {
+                                        focusManager.clearFocus()
                                         onSelect(cow)
                                         onDismiss()
                                     }
@@ -248,45 +328,82 @@ private fun ParentPickerItem(
     pastureNames: Map<String?, String>,
     onClick: () -> Unit
 ) {
-    val displayName = cow.name?.takeIf { it.isNotBlank() } ?: cow.tagNumber ?: "Unnamed Animal"
-    val secondaryText = buildList {
-        cow.tagNumber?.takeIf { it.isNotBlank() }?.let { add("Tag: $it") }
-        val pastureLabel = pastureNames[cow.pastureId] ?: pastureNames[null]
-        pastureLabel?.let { add("Pasture: $it") }
+    val interactionSource = remember { MutableInteractionSource() }
+    val name = cow.name?.takeIf { it.isNotBlank() }
+    val tag = cow.tagNumber?.takeIf { it.isNotBlank() }
+    val pastureLabel = pastureNames[cow.pastureId] ?: pastureNames[null]
+    val secondaryDetails = buildList {
+        pastureLabel?.let { add(it) }
         add(cow.classification.name.lowercase().replaceFirstChar { it.titlecase() })
     }.joinToString(" • ")
 
     Column {
-        val interactionSource = remember { MutableInteractionSource() }
-
-        ListItem(
-            headlineContent = {
-                Text(
-                    text = displayName,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleMedium
-                )
-            },
-            supportingContent = {
-                if (secondaryText.isNotBlank()) {
-                    Text(
-                        text = secondaryText,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 4.dp)
-                .padding(vertical = 4.dp)
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
                     onClick = onClick
                 )
-        )
+                .padding(horizontal = 12.dp, vertical = 12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = name ?: tag ?: "Unnamed Animal",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                if (tag != null && name != null) {
+                    Text(
+                        text = tag,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(start = 16.dp)
+                    )
+                }
+            }
+            if (name == null && tag != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Tag $tag",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (secondaryDetails.isNotBlank()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = secondaryDetails,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
         Divider()
+    }
+}
+
+private fun formatPrimaryLabel(cow: Cow): String {
+    val name = cow.name?.takeIf { it.isNotBlank() }
+    val tag = cow.tagNumber?.takeIf { it.isNotBlank() }
+    return when {
+        name != null && tag != null -> "$name • $tag"
+        name != null -> name
+        tag != null -> tag
+        else -> "Unnamed Animal"
     }
 }
