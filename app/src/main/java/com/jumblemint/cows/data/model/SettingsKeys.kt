@@ -58,6 +58,7 @@ object SettingsKeys {
     const val SYNC_INTERVAL_HOURS = "sync_interval_hours"
     const val LAST_SYNC_TIMESTAMP = "last_sync_timestamp"
     const val INITIAL_SETUP_COMPLETE = "initial_setup_complete"
+    const val ANIMAL_IDENTIFIER_MODE = "animal_identifier_mode"
     const val TAG_COLORS = "tag_colors"
     const val ACTIVITY_TYPES = "activity_types"
     const val SAMPLE_DATA_INSTALLED = "sample_data_installed"

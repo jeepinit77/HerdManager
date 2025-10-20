@@ -123,6 +123,14 @@ class CattleRepository(
     fun getAllSettings(): Flow<List<Settings>> = settingsDao.getAllSettings()
     suspend fun getSettingByKey(key: String): Settings? = settingsDao.getSettingByKey(key)
     suspend fun insertOrUpdateSetting(setting: Settings) = settingsDao.insertOrUpdateSetting(setting)
+
+    suspend fun setAnimalIdentifierMode(mode: AnimalIdentifierMode) {
+        insertOrUpdateSetting(Settings(SettingsKeys.ANIMAL_IDENTIFIER_MODE, mode.name))
+    }
+
+    suspend fun markInitialSetupComplete() {
+        insertOrUpdateSetting(Settings(SettingsKeys.INITIAL_SETUP_COMPLETE, "true"))
+    }
     suspend fun deleteSetting(setting: Settings) = settingsDao.deleteSetting(setting)
 
     // Business logic operations

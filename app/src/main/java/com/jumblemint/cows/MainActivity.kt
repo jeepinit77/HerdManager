@@ -40,15 +40,20 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.navigation.*
 import com.jumblemint.cows.navigation.SETTINGS_PAGE_INDEX
-import com.jumblemint.cows.ui.theme.CowsTheme
-import com.jumblemint.cows.util.AgeUtils
-import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
-import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
+import com.jumblemint.cows.data.model.Breed
+import com.jumblemint.cows.data.model.Settings
+import com.jumblemint.cows.data.model.SettingsKeys
+import com.jumblemint.cows.data.model.TagColor
+import com.jumblemint.cows.ui.components.InitialSetupLandingDialog
 import com.jumblemint.cows.ui.components.LocalGlobalSnackbarState
+import com.jumblemint.cows.ui.components.SetupWizardDialog
 import com.jumblemint.cows.ui.components.rememberGlobalSnackbarState
+import com.jumblemint.cows.ui.theme.CowsTheme
 import com.jumblemint.cows.ui.theme.ThemeManager
 import com.jumblemint.cows.ui.theme.ThemeMode
-import com.jumblemint.cows.ui.components.InitialSampleDataDialog
+import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
+import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
+import com.jumblemint.cows.util.AgeUtils
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,28 +75,100 @@ class MainActivity : ComponentActivity() {
             }
             val themeManager = remember(repository) { ThemeManager(repository) }
             val themeMode by themeManager.getThemeModeFlow().collectAsState(initial = ThemeMode.SYSTEM)
-            
-            var showSampleDataDialog by remember { mutableStateOf(false) }
-            
+
+            val defaultBreeds = remember { Breed.getDefaultBreeds() }
+            val defaultTagColors = remember { TagColor.getDefaultColors() }
+
+            var showInitialSetup by remember { mutableStateOf(false) }
+            var showSetupWizard by remember { mutableStateOf(false) }
+
+            val coroutineScope = rememberCoroutineScope()
+
             LaunchedEffect(Unit) {
-                if (!repository.hasAnyData()) {
-                    showSampleDataDialog = true
+                val hasData = repository.hasAnyData()
+                val setupComplete = repository.getSettingByKey(SettingsKeys.INITIAL_SETUP_COMPLETE)?.value == "true"
+                if (!hasData && !setupComplete) {
+                    showInitialSetup = true
                 }
             }
 
             CowsTheme {
                 CattleManagerApp()
-                
-                if (showSampleDataDialog) {
-                    val coroutineScope = rememberCoroutineScope()
-                    InitialSampleDataDialog(
-                        onInstall = { 
+
+                if (showInitialSetup && !showSetupWizard) {
+                    InitialSetupLandingDialog(
+                        onInstallSampleData = {
+                            showSetupWizard = false
+                            showInitialSetup = false
                             coroutineScope.launch {
-                                repository.installSampleData()
-                                showSampleDataDialog = false
+                                try {
+                                    repository.installSampleData()
+                                    repository.markInitialSetupComplete()
+                                } catch (t: Throwable) {
+                                    Log.e("MainActivity", "Failed to install sample data", t)
+                                    showInitialSetup = true
+                                }
                             }
                         },
-                        onDismiss = { showSampleDataDialog = false }
+                        onStartEmpty = {
+                            showSetupWizard = false
+                            showInitialSetup = false
+                            coroutineScope.launch {
+                                try {
+                                    repository.markInitialSetupComplete()
+                                } catch (t: Throwable) {
+                                    Log.e("MainActivity", "Failed to mark setup complete", t)
+                                    showInitialSetup = true
+                                }
+                            }
+                        },
+                        onStartWizard = { showSetupWizard = true },
+                        onDismiss = { showInitialSetup = false }
+                    )
+                }
+
+                if (showInitialSetup && showSetupWizard) {
+                    SetupWizardDialog(
+                        defaultBreeds = defaultBreeds,
+                        defaultTagColors = defaultTagColors,
+                        onExit = { showSetupWizard = false },
+                        onFinished = {
+                            showSetupWizard = false
+                            showInitialSetup = false
+                            coroutineScope.launch {
+                                try {
+                                    repository.markInitialSetupComplete()
+                                } catch (t: Throwable) {
+                                    Log.e("MainActivity", "Failed to mark setup complete after wizard", t)
+                                }
+                            }
+                        },
+                        onSaveIdentifierMode = { mode ->
+                            repository.setAnimalIdentifierMode(mode)
+                        },
+                        onSaveBreeds = { breeds ->
+                            repository.deleteAllBreeds()
+                            if (breeds.isNotEmpty()) {
+                                repository.insertBreeds(breeds)
+                            }
+                        },
+                        onSaveTagColors = { colors ->
+                            repository.deleteAllTagColors()
+                            if (colors.isNotEmpty()) {
+                                repository.insertTagColors(colors)
+                                repository.insertOrUpdateSetting(
+                                    Settings(
+                                        SettingsKeys.TAG_COLORS,
+                                        colors.joinToString(separator = ",") { it.name }
+                                    )
+                                )
+                            } else {
+                                repository.insertOrUpdateSetting(Settings(SettingsKeys.TAG_COLORS, ""))
+                            }
+                        },
+                        onSavePastures = { pastures ->
+                            pastures.forEach { repository.insertPasture(it) }
+                        }
                     )
                 }
             }
