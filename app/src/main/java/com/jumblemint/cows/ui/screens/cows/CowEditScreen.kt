@@ -3,7 +3,6 @@ package com.jumblemint.cows.ui.screens.cows
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -16,13 +15,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.LinkOff
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.FocusManager
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
@@ -51,7 +48,6 @@ import com.jumblemint.cows.ui.components.resolveTagColor
 import com.jumblemint.cows.ui.theme.getGenderColor
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
-import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.CowDetailUiState
 import com.jumblemint.cows.ui.components.UnsavedChangesDialog
 import kotlin.collections.buildMap

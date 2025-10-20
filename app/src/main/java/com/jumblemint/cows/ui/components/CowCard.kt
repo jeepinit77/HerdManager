@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.*
 import com.jumblemint.cows.ui.theme.getGenderColor
 import com.jumblemint.cows.ui.theme.getCardBackgroundColor
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons // Added this import
+import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
@@ -17,38 +17,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter // Added this import
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.PathOperation
-import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.graphics.vector.PathParser
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.res.painterResource // Added this import
-import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.Density
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.ui.theme.BackgroundColorProvider
 import com.jumblemint.cows.ui.theme.SmartText
-// import androidx.compose.material.icons.filled.Lightbulb // Removed
-import com.jumblemint.cows.R // Assuming your R file is here
+import com.jumblemint.cows.R
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.model.Status
 import java.time.LocalDate
 import java.time.Period
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.RoundRect
-import androidx.compose.ui.unit.Dp
-import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Changed import
-import com.jumblemint.cows.ui.theme.SmartText
+import com.jumblemint.cows.ui.components.WobblingLightbulbIcon
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
