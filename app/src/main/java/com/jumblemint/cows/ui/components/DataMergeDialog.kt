@@ -1,6 +1,5 @@
 package com.jumblemint.cows.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -48,7 +47,6 @@ fun DataMergeDialog(
                 modifier = Modifier.padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Title
                 Text(
                     text = "Data Sync Options",
                     fontSize = 20.sp,
@@ -57,8 +55,7 @@ fun DataMergeDialog(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth()
                 )
-                
-                // Description
+
                 Text(
                     text = if (hasLocalData && hasServerData) {
                         "You have data both on this device and in your cloud account. How would you like to handle the data?"
@@ -72,10 +69,9 @@ fun DataMergeDialog(
                     textAlign = TextAlign.Center,
                     lineHeight = 20.sp
                 )
-                
+
                 Divider()
-                
-                // Option 1: Merge data
+
                 DataMergeOptionCard(
                     icon = Icons.Default.MergeType,
                     title = "Merge Data",
@@ -83,8 +79,7 @@ fun DataMergeDialog(
                     recommended = hasLocalData && hasServerData,
                     onClick = { onOptionSelected(DataMergeOption.MERGE_WITH_SERVER) }
                 )
-                
-                // Option 2: Replace server with device data
+
                 if (hasLocalData) {
                     DataMergeOptionCard(
                         icon = Icons.Default.CloudUpload,
@@ -94,8 +89,7 @@ fun DataMergeDialog(
                         onClick = { onOptionSelected(DataMergeOption.REPLACE_SERVER_WITH_DEVICE) }
                     )
                 }
-                
-                // Option 3: Replace device with server data
+
                 if (hasServerData) {
                     DataMergeOptionCard(
                         icon = Icons.Default.CloudDownload,
@@ -105,8 +99,7 @@ fun DataMergeDialog(
                         onClick = { onOptionSelected(DataMergeOption.REPLACE_DEVICE_WITH_SERVER) }
                     )
                 }
-                
-                // Cancel button
+
                 OutlinedButton(
                     onClick = onDismiss,
                     modifier = Modifier.fillMaxWidth()
@@ -131,94 +124,65 @@ private fun DataMergeOptionCard(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (recommended) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            }
-        ),
-        border = if (recommended) {
-            BorderStroke(
-                2.dp,
-                MaterialTheme.colorScheme.primary
-            )
-        } else null
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp),
-                tint = if (recommended) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
-            
-            Column(
-                modifier = Modifier.weight(1f)
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+            if (recommended) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
+                    Text(
+                        text = "Recommended",
+                        fontSize = 10.sp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = title,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Medium,
-                        color = if (recommended) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    
-                    if (recommended) {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.primary
-                            ),
-                            modifier = Modifier.padding(0.dp)
-                        ) {
-                            Text(
-                                text = "Recommended",
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
+
+                    Text(
+                        text = description,
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                        lineHeight = 16.sp
+                    )
                 }
-                
-                Text(
-                    text = description,
-                    fontSize = 12.sp,
-                    color = if (recommended) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                    lineHeight = 16.sp
+
+                Icon(
+                    imageVector = Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
-            Icon(
-                imageVector = Icons.Default.ChevronRight,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = if (recommended) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            )
         }
     }
 }
