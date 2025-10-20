@@ -6,10 +6,10 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ActivityTypeConfigDao {
-    @Query("SELECT * FROM activity_type_configs WHERE isActive = 1 ORDER BY isDefault DESC, displayName ASC")
+    @Query("SELECT * FROM activity_type_configs WHERE isActive = 1 AND isDeleted = 0 ORDER BY isDefault DESC, displayName ASC")
     fun getAllActiveActivityTypes(): Flow<List<ActivityTypeConfig>>
 
-    @Query("SELECT * FROM activity_type_configs ORDER BY isDefault DESC, displayName ASC")
+    @Query("SELECT * FROM activity_type_configs WHERE isDeleted = 0 ORDER BY isDefault DESC, displayName ASC")
     fun getAllActivityTypes(): Flow<List<ActivityTypeConfig>>
 
     @Query("SELECT * FROM activity_type_configs")

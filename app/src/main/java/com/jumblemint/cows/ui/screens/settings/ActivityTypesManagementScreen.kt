@@ -2,18 +2,17 @@ package com.jumblemint.cows.ui.screens.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items // Keep this import
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.items // Keep this import
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Delete // Specific import
-import androidx.compose.material.icons.outlined.Edit // Specific import
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
@@ -21,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-// import androidx.compose.ui.text.font.FontWeight // <<< REMOVED UNUSED IMPORT
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -34,11 +32,15 @@ import com.jumblemint.cows.ui.viewmodel.ActivityTypesViewModel
 import com.jumblemint.cows.ui.viewmodel.ActivityTypesViewModelFactory
 import kotlinx.coroutines.launch
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.ui.components.LocalGlobalSnackbarState
+import com.jumblemint.cows.ui.theme.contrastingTextColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActivityTypesManagementScreen(
     onNavigateBack: () -> Unit,
+    resetTriggered: Boolean = false,
+    onResetHandled: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -65,17 +67,19 @@ fun ActivityTypesManagementScreen(
     val activityTypes by viewModel.activityTypes.collectAsState()
     var showAddDialog by remember { mutableStateOf(false) }
     var editingType by remember { mutableStateOf<ActivityTypeConfig?>(null) }
+    var viewingType by remember { mutableStateOf<ActivityTypeConfig?>(null) }
     var showResetConfirm by remember { mutableStateOf(false) }
-    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val globalSnackbarState = LocalGlobalSnackbarState.current
+    
+    LaunchedEffect(resetTriggered) {
+        if (resetTriggered) {
+            showResetConfirm = true
+            onResetHandled()
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Snackbar Host positioned manually
-        SnackbarHost(
-            hostState = snackbarHostState,
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
-
         if (activityTypes.isEmpty()) {
             Box(
                 modifier = Modifier
@@ -95,7 +99,7 @@ fun ActivityTypesManagementScreen(
                     )
                     Text("No custom activity types found.", style = MaterialTheme.typography.headlineSmall)
                     Text(
-                        "Add types using the '+' button above or reset to defaults.",
+                        "Add types using the '+' button or reset to defaults.",
                         style = MaterialTheme.typography.bodyLarge,
                         textAlign = TextAlign.Center
                     )
@@ -103,29 +107,27 @@ fun ActivityTypesManagementScreen(
             }
         } else {
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(vertical = 16.dp),
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(activityTypes, key = { it.id }) { activityType ->
                     ActivityTypeItem(
                         activityType = activityType,
-                        onEdit = { editingType = it; showAddDialog = true },
+                        onClick = { viewingType = it },
+                        onEdit = { editingType = it },
                         onDelete = { typeToDelete ->
                             viewModel.deleteActivityType(typeToDelete)
                             scope.launch {
-                                // Dismiss any current snackbar to prevent stacking
-                                snackbarHostState.currentSnackbarData?.dismiss()
-                                
-                                val result = snackbarHostState.showSnackbar(
-                                    message = "Type '${typeToDelete.displayName}' deleted",
-                                    actionLabel = "Undo",
-                                    duration = SnackbarDuration.Short
-                                )
-                                if (result == SnackbarResult.ActionPerformed) {
-                                    viewModel.restoreDeletedActivityType(typeToDelete)
+                                globalSnackbarState?.let { snackbarState ->
+                                    val result = snackbarState.showSnackbar(
+                                        message = "Type '${typeToDelete.displayName}' deleted",
+                                        actionLabel = "Undo",
+                                        duration = SnackbarDuration.Short
+                                    )
+                                    if (result == SnackbarResult.ActionPerformed) {
+                                        viewModel.restoreDeletedActivityType(typeToDelete)
+                                    }
                                 }
                             }
                         }
@@ -133,11 +135,30 @@ fun ActivityTypesManagementScreen(
                 }
             }
         }
+
+        FloatingActionButton(
+            onClick = {
+                editingType = null
+                showAddDialog = true
+            },
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ) {
+            Icon(
+                Icons.Default.Add,
+                contentDescription = "Add Activity Type",
+                tint = MaterialTheme.colorScheme.onPrimary
+            )
+        }
     }
 
     if (showAddDialog || editingType != null) {
         ActivityTypeDialog(
             activityTypeToEdit = editingType,
+            isViewOnly = false,
             onDismiss = {
                 showAddDialog = false
                 editingType = null
@@ -146,24 +167,32 @@ fun ActivityTypesManagementScreen(
                 if (editingType != null) {
                     viewModel.updateActivityType(
                         editingType!!.copy(
-                            // name = internalName, // Internal name should generally not change for existing items
                             displayName = displayName,
                             description = description.takeIf { it.isNotBlank() },
-                            iconName = iconName, // <<< PASS iconName
+                            iconName = iconName,
                             updatedAt = System.currentTimeMillis()
                         )
                     )
                 } else {
                     viewModel.addActivityType(
-                        name = internalName, // Generated internal name for new types
+                        name = internalName,
                         displayName = displayName,
                         description = description.takeIf { it.isNotBlank() },
-                        iconName = iconName // <<< PASS iconName
+                        iconName = iconName
                     )
                 }
                 showAddDialog = false
                 editingType = null
             }
+        )
+    }
+
+    if (viewingType != null) {
+        ActivityTypeDialog(
+            activityTypeToEdit = viewingType,
+            isViewOnly = true,
+            onDismiss = { viewingType = null },
+            onSave = { _, _, _, _ -> }
         )
     }
 
@@ -185,7 +214,7 @@ fun ActivityTypesManagementScreen(
                         viewModel.restoreDefaults()
                         showResetConfirm = false
                         scope.launch {
-                            snackbarHostState.showSnackbar("Activity types reset to defaults.")
+                            globalSnackbarState?.showSnackbar("Activity types reset to defaults.")
                         }
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -206,12 +235,19 @@ fun ActivityTypesManagementScreen(
 @Composable
 fun ActivityTypeItem(
     activityType: ActivityTypeConfig,
+    onClick: (ActivityTypeConfig) -> Unit,
     onEdit: (ActivityTypeConfig) -> Unit,
     onDelete: (ActivityTypeConfig) -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp)
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick(activityType) },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     ) {
         Row(
             modifier = Modifier
@@ -220,36 +256,39 @@ fun ActivityTypeItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                // <<< USE activityType.iconName (now exists)
                 imageVector = getIconForActivityType(activityType.iconName ?: activityType.name),
                 contentDescription = activityType.displayName,
                 modifier = Modifier.size(28.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = activityType.displayName,
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 activityType.description?.takeIf { it.isNotBlank() }?.let { description ->
                     Text(
                         text = description,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                     )
                 }
             }
             IconButton(onClick = { onEdit(activityType) }) {
-                // <<< CORRECTED ICON
-                Icon(Icons.Outlined.Edit, contentDescription = "Edit ${activityType.displayName}", tint = MaterialTheme.colorScheme.primary)
+                Icon(
+                    Icons.Filled.Edit,
+                    contentDescription = "Edit ${activityType.displayName}",
+                    tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
+                )
             }
-            // <<< USE isDefault instead of isSystemType
-            if (!activityType.isDefault) {
-                IconButton(onClick = { onDelete(activityType) }) {
-                    // <<< CORRECTED ICON
-                    Icon(Icons.Outlined.Delete, contentDescription = "Delete ${activityType.displayName}", tint = MaterialTheme.colorScheme.error)
-                }
+            IconButton(onClick = { onDelete(activityType) }) {
+                Icon(
+                    Icons.Filled.Delete,
+                    contentDescription = "Delete ${activityType.displayName}",
+                    tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor()
+                )
             }
         }
     }
@@ -279,14 +318,14 @@ val availableActivityIcons = listOf(
     "Biotech" to Icons.Default.Biotech,
     "Science" to Icons.Default.Science,
     "WarningAmber" to Icons.Default.WarningAmber,
-    "Info" to Icons.Default.Info
+    "Info" to Icons.Default.Info,
+    "Handyman" to Icons.Default.Handyman
 ).sortedBy { it.first }
 
 fun getIconForActivityType(iconNameOrActivityName: String): androidx.compose.ui.graphics.vector.ImageVector {
     val directMatch = availableActivityIcons.find { it.first.equals(iconNameOrActivityName, ignoreCase = true) }
     if (directMatch != null) return directMatch.second
 
-    // Fallback logic, can be simplified if iconName is always expected to be in availableActivityIcons
     return when (iconNameOrActivityName.uppercase()) {
         "MOVED" -> Icons.Default.DriveFileMove
         "WEANED" -> Icons.Default.ChildCare
@@ -310,24 +349,59 @@ fun getIconForActivityType(iconNameOrActivityName: String): androidx.compose.ui.
 @Composable
 fun ActivityTypeDialog(
     activityTypeToEdit: ActivityTypeConfig? = null,
+    isViewOnly: Boolean = false,
     onDismiss: () -> Unit,
     onSave: (internalName: String, displayName: String, description: String, iconName: String) -> Unit
 ) {
     var displayName by remember(activityTypeToEdit) { mutableStateOf(activityTypeToEdit?.displayName ?: "") }
     var description by remember(activityTypeToEdit) { mutableStateOf(activityTypeToEdit?.description ?: "") }
     var selectedIconName by remember(activityTypeToEdit) {
-        // <<< USE activityTypeToEdit.iconName
-        mutableStateOf(activityTypeToEdit?.iconName ?: availableActivityIcons.firstOrNull()?.first ?: "Assignment")
+        val iconName = activityTypeToEdit?.iconName 
+            ?: activityTypeToEdit?.name?.let { name ->
+                // Try to find icon based on activity type name
+                when (name.uppercase()) {
+                    "MOVED" -> "DriveFileMove"
+                    "WEANED" -> "ChildCare"
+                    "SOLD" -> "Sell"
+                    "DECEASED" -> "Dangerous"
+                    "CASTRATED" -> "MedicalServices"
+                    "BRED" -> "Favorite"
+                    "CALVED" -> "BabyChangingStation"
+                    "VACCINATED" -> "Vaccines"
+                    "TREATED" -> "LocalHospital"
+                    "WEIGHED" -> "Scale"
+                    "PURCHASED" -> "Pets"
+                    "HEALTH_CHECK" -> "Healing"
+                    "TAGGED" -> "ContentCut"
+                    "NOTE" -> "EditNote"
+                    "WORKED" -> "Handyman"
+                    else -> null
+                }
+            }
+            ?: availableActivityIcons.firstOrNull()?.first 
+            ?: "Assignment"
+        mutableStateOf(iconName)
     }
     var showIconPicker by remember { mutableStateOf(false) }
     var displayNameError by remember { mutableStateOf<String?>(null) }
 
     com.jumblemint.cows.ui.components.AppAlertDialog(
         onDismissRequest = onDismiss,
-        // <<< USE activityTypeToEdit.isDefault
-        icon = { Icon(if (activityTypeToEdit != null && !activityTypeToEdit.isDefault) Icons.Filled.Edit else if (activityTypeToEdit == null) Icons.Filled.AddBusiness else Icons.Filled.Info, contentDescription = null)},
-        // <<< USE activityTypeToEdit.isDefault
-        title = { Text(if (activityTypeToEdit != null) (if(activityTypeToEdit.isDefault) "View Activity Type" else "Edit Activity Type") else "Add New Activity Type") },
+        icon = { 
+            Icon(
+                if (isViewOnly) Icons.Filled.Info 
+                else if (activityTypeToEdit != null) Icons.Filled.Edit 
+                else Icons.Filled.AddBusiness,
+                contentDescription = null
+            )
+        },
+        title = { 
+            Text(
+                if (isViewOnly) "View Activity Type"
+                else if (activityTypeToEdit != null) "Edit Activity Type"
+                else "Add New Activity Type"
+            )
+        },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -343,8 +417,7 @@ fun ActivityTypeDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     isError = displayNameError != null,
-                    // <<< USE activityTypeToEdit.isDefault
-                    readOnly = activityTypeToEdit?.isDefault == true,
+                    readOnly = isViewOnly,
                     colors = defaultOutlinedTextFieldColors()
                 )
                 if (displayNameError != null) {
@@ -359,8 +432,7 @@ fun ActivityTypeDialog(
                     modifier = Modifier.fillMaxWidth(),
                     minLines = 2,
                     maxLines = 3,
-                    // <<< USE activityTypeToEdit.isDefault
-                    readOnly = activityTypeToEdit?.isDefault == true,
+                    readOnly = isViewOnly,
                     colors = defaultOutlinedTextFieldColors()
                 )
 
@@ -371,20 +443,19 @@ fun ActivityTypeDialog(
                 ) {
                     Text("Icon:", style = MaterialTheme.typography.bodyLarge)
                     Button(
-                        // <<< USE activityTypeToEdit.isDefault
-                        onClick = { if (activityTypeToEdit?.isDefault != true) showIconPicker = true },
-                        // <<< USE activityTypeToEdit.isDefault
-                        enabled = activityTypeToEdit?.isDefault != true
+                        onClick = { if (!isViewOnly) showIconPicker = true },
+                        enabled = !isViewOnly
                     ) {
                         Icon(getIconForActivityType(selectedIconName), contentDescription = "Selected: $selectedIconName", modifier = Modifier.size(20.dp))
                         Spacer(Modifier.width(8.dp))
-                        // <<< USE activityTypeToEdit.isDefault
-                        Text(if (activityTypeToEdit?.isDefault == true) "Default Icon" else "Change Icon")
+                        Text(
+                            if (isViewOnly) "Icon" 
+                            else "Change Icon"
+                        )
                     }
                 }
 
-                // <<< USE activityTypeToEdit.isDefault
-                if (showIconPicker && activityTypeToEdit?.isDefault != true) {
+                if (showIconPicker && !isViewOnly) {
                     Card(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 200.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -424,15 +495,13 @@ fun ActivityTypeDialog(
             }
         },
         confirmButton = {
-            // <<< USE activityTypeToEdit.isDefault
-            if (activityTypeToEdit?.isDefault != true) {
+            if (!isViewOnly) {
                 Button(
                     onClick = {
                         if (displayName.isNotBlank()) {
                             val internalName = activityTypeToEdit?.name ?: run {
-                                // <<< CORRECTED REGEX AND QUOTE
                                 val base = displayName.trim().uppercase()
-                                    .replace(Regex("\\s+"), "_") // Use double backslash for \s
+                                    .replace(Regex("\\s+"), "_")
                                     .replace(Regex("[^A-Z0-9_]"), "")
                                 "${selectedIconName.uppercase()}_${base}_${System.currentTimeMillis().toString().takeLast(4)}".take(50)
                             }
@@ -449,8 +518,7 @@ fun ActivityTypeDialog(
         },
         dismissButton = {
             FilledTonalButton(onClick = onDismiss) {
-                // <<< USE activityTypeToEdit.isDefault
-                Text(if (activityTypeToEdit?.isDefault == true) "Close" else "Cancel")
+                Text(if (isViewOnly) "Close" else "Cancel")
             }
         }
     )
