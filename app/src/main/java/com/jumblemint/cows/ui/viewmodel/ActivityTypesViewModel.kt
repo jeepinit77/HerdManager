@@ -83,16 +83,19 @@ class ActivityTypesViewModel(
         viewModelScope.launch {
             val userId = getUserId()
             val existingTypes = repository.getAllActivityTypesSync()
+            
+            // Create a map of existing types by name for quick lookup
+            val existingByName = existingTypes.associateBy { it.name }
 
             // Soft delete all custom (non-default) activity types
             existingTypes.filter { !it.isDefault }.forEach { customType ->
-                if (!customType.isDeleted) { // Only delete if not already deleted
+                if (!customType.isDeleted) {
                     val deletedCustomType = customType.copy(
                         isDeleted = true,
                         updatedAt = System.currentTimeMillis(),
                         updatedBy = userId
                     )
-                    repository.upsertActivityType(deletedCustomType) // <<< USE UPSERT
+                    repository.upsertActivityType(deletedCustomType)
                     syncService.syncItemImmediately(userId, deletedCustomType)
                 }
             }
@@ -100,23 +103,24 @@ class ActivityTypesViewModel(
             // Get the standard default types
             val defaultTypes = ActivityTypeConfig.getDefaultActivityTypes()
             defaultTypes.forEach { defaultType ->
-                // Check if this default type already exists (by name, as ID might differ if user deleted and restored)
-                val existingDefault = existingTypes.find { it.name == defaultType.name && it.isDefault }
-                val typeToUpsert = if (existingDefault != null) {
-                    // If it exists, ensure it's not deleted and has correct properties
-                    existingDefault.copy(
-                        displayName = defaultType.displayName, // Ensure display name is current
-                        iconName = defaultType.iconName, // Ensure icon is current
-                        description = defaultType.description ?: existingDefault.description, // Keep existing desc if new is null
-                        isDeleted = false, // Ensure it's not marked as deleted
-                        isActive = true, // Ensure it's active
+                // Check if this default type already exists by name
+                val existing = existingByName[defaultType.name]
+                val typeToUpsert = if (existing != null) {
+                    // Update existing record to ensure it has current default properties
+                    existing.copy(
+                        displayName = defaultType.displayName,
+                        iconName = defaultType.iconName,
+                        description = defaultType.description,
+                        isDeleted = false,
+                        isActive = true,
+                        isDefault = true,
                         updatedAt = System.currentTimeMillis(),
                         updatedBy = userId
                     )
                 } else {
-                    // If it doesn't exist, prepare it for insertion (ID will be new if not found)
+                    // Create new default with unique ID
                     defaultType.copy(
-                        id = UUID.randomUUID().toString(), // New ID for a fresh default
+                        id = UUID.randomUUID().toString(),
                         updatedAt = System.currentTimeMillis(),
                         updatedBy = userId,
                         isDeleted = false

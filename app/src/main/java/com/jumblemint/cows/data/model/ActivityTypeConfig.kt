@@ -1,10 +1,14 @@
 package com.jumblemint.cows.data.model
 
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.util.*
 
-@Entity(tableName = "activity_type_configs")
+@Entity(
+    tableName = "activity_type_configs",
+    indices = [Index(value = ["name"], unique = true)]
+)
 data class ActivityTypeConfig(
     @PrimaryKey
     val id: String = UUID.randomUUID().toString(),
