@@ -2,6 +2,7 @@ package com.jumblemint.cows.ui.screens.activities
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material3.*
@@ -12,7 +13,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
-import androidx.compose.ui.text.input.KeyboardOptions
+//import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.jumblemint.cows.data.model.Classification
@@ -20,6 +21,7 @@ import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.preferences.TipsManager
 import com.jumblemint.cows.ui.components.DatePickerField
+import com.jumblemint.cows.ui.components.DropdownField
 import com.jumblemint.cows.ui.components.ParentPicker
 import com.jumblemint.cows.ui.components.ParentSelectionField
 import com.jumblemint.cows.ui.components.formatParentDisplay

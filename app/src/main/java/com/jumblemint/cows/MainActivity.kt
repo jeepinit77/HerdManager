@@ -30,30 +30,24 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import android.widget.Toast
 import androidx.compose.foundation.layout.size
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.Alignment
 
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.navigation.*
 import com.jumblemint.cows.navigation.SETTINGS_PAGE_INDEX
-import com.jumblemint.cows.ui.screens.settings.SettingsScreen
 import com.jumblemint.cows.ui.theme.CowsTheme
 import com.jumblemint.cows.util.AgeUtils
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModelFactory
-import com.jumblemint.cows.ui.components.GlobalSnackbarState
 import com.jumblemint.cows.ui.components.LocalGlobalSnackbarState
 import com.jumblemint.cows.ui.components.rememberGlobalSnackbarState
 import com.jumblemint.cows.ui.theme.ThemeManager
 import com.jumblemint.cows.ui.theme.ThemeMode
-import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.ui.components.InitialSampleDataDialog
 
 class MainActivity : ComponentActivity() {
@@ -220,7 +214,7 @@ fun CattleManagerApp() {
                     currentScreenForUI == Screen.AddActivityWithId ||
                     currentScreenForUI == Screen.AddBirth
                 ) {
-                    val detailTitle: String = when (currentScreenForUI) {
+                    val detailTitle: String? = when (currentScreenForUI) {
                         Screen.CowDetail -> {
                             val cowId = navBackStackEntry?.arguments?.getLong("cowId") ?: 0L
                             val contextLocal = LocalContext.current
@@ -492,9 +486,9 @@ fun CattleManagerApp() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AppTopBar(
-    title: String,
-    navigationIcon: (@Composable () -> Unit)? = null,
-    actions: @Composable RowScope.() -> Unit = {}
+    title: String?,
+    navigationIcon: @Composable (() -> Unit)? = null,
+    actions: @Composable (RowScope.() -> Unit) = {}
 ) {
     val context = LocalContext.current
     val database = CattleDatabase.getDatabase(context)
@@ -507,7 +501,11 @@ fun AppTopBar(
         )
     }
     CenterAlignedTopAppBar(
-        title = { Text(title) },
+        title = {
+            if (title != null) {
+                Text(title)
+            }
+        },
         navigationIcon = { navigationIcon?.invoke() },
         actions = actions
     )
