@@ -1,43 +1,50 @@
 package com.jumblemint.cows.ui.screens.activities
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-// Icons for TopAppBar were here, will be handled by parent
-import com.jumblemint.cows.data.preferences.TipsManager 
-import com.jumblemint.cows.ui.components.TipOverlay 
-import com.jumblemint.cows.ui.components.WobblingLightbulbIcon 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextRange
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.jumblemint.cows.CattleApplication
-import com.jumblemint.cows.data.database.CattleDatabase
+import com.jumblemint.cows.data.model.Classification
+import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Gender
-import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.data.preferences.TipsManager
 import com.jumblemint.cows.ui.components.DatePickerField
-import com.jumblemint.cows.ui.components.DropdownField
-import com.jumblemint.cows.ui.viewmodel.AddBirthViewModel
-import com.jumblemint.cows.ui.viewmodel.AddBirthViewModelFactory
-import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.ui.components.ParentPicker
 import com.jumblemint.cows.ui.components.SectionTitle
+import com.jumblemint.cows.ui.components.TipOverlay
+import com.jumblemint.cows.ui.components.UnsavedChangesDialog
+import com.jumblemint.cows.ui.components.WobblingLightbulbIcon
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import com.jumblemint.cows.ui.theme.getCardColors
+import com.jumblemint.cows.ui.viewmodel.AddBirthViewModel
+import kotlin.collections.buildMap
 
 // Removed @OptIn(ExperimentalMaterial3Api::class) if TopAppBar is removed, 
 // but keeping it if other Material3 components are used directly.
-@OptIn(ExperimentalMaterial3Api::class) // Keep for Card, OutlinedTextField etc.
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddBirthScreen(
-    onNavigateBack: () -> Unit, // This will be used by parent's navigation icon
-    viewModel: AddBirthViewModel, // Hoist or provide viewModel for parent's save action
-    modifier: Modifier = Modifier
+    onNavigateBack: () -> Unit,
+    viewModel: AddBirthViewModel,
+    modifier: Modifier = Modifier,
+    saveTriggered: Boolean = false,
+    onSaveHandled: () -> Unit = {},
+    onUnsavedChangesChanged: (Boolean) -> Unit = {},
+    backPressed: Boolean = false,
+    onBackHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current // Still needed for TipsManager, etc.
     // application, database, repository, and local viewModel instantiation removed if 
@@ -46,16 +53,101 @@ fun AddBirthScreen(
 
     val uiState by viewModel.uiState.collectAsState()
 
+    var showMotherPicker by remember { mutableStateOf(false) }
+    var showFatherPicker by remember { mutableStateOf(false) }
+    var showUnsavedChangesDialog by remember { mutableStateOf(false) }
+
+    val pastureNames = remember(uiState.availablePastures) {
+        buildMap<String?, String> {
+            put(null, "Unassigned")
+            uiState.availablePastures.sortedBy { it.name }.forEach { pasture ->
+                put(pasture.id, pasture.name)
+            }
+        }
+    }
+
+    val selectedMother = remember(uiState.motherId, uiState.availableMothers) {
+        uiState.availableMothers.find { it.id == uiState.motherId }
+    }
+    val selectedFather = remember(uiState.fatherId, uiState.availableFathers) {
+        uiState.availableFathers.find { it.id == uiState.fatherId }
+    }
+    val motherDisplay = selectedMother?.let { formatParentDisplay(it) } ?: ""
+    val fatherDisplay = selectedFather?.let { formatParentDisplay(it) } ?: ""
+    val motherError = uiState.error?.contains("Mother") == true
+
     LaunchedEffect(uiState.isSaved) {
         if (uiState.isSaved) {
-            onNavigateBack() // This remains, as it's a side effect of saving
+            showUnsavedChangesDialog = false
+            onNavigateBack()
+        }
+    }
+
+    LaunchedEffect(uiState.hasUnsavedChanges) {
+        onUnsavedChangesChanged(uiState.hasUnsavedChanges)
+    }
+
+    LaunchedEffect(saveTriggered) {
+        if (saveTriggered) {
+            viewModel.recordBirth()
+            onSaveHandled()
+        }
+    }
+
+    LaunchedEffect(backPressed) {
+        if (backPressed) {
+            if (uiState.hasUnsavedChanges) {
+                showUnsavedChangesDialog = true
+            } else {
+                onNavigateBack()
+            }
+            onBackHandled()
         }
     }
 
     val tipsManager = remember { TipsManager(context) }
-    val tipId = "add_birth_screen_info_tip" 
+    val tipId = "add_birth_screen_info_tip"
     val tipIconVisible by tipsManager.isTipVisible(tipId).collectAsState(initial = true)
     var showTipOverlay by remember { mutableStateOf(false) }
+
+    if (showUnsavedChangesDialog) {
+        UnsavedChangesDialog(
+            onDismiss = { showUnsavedChangesDialog = false },
+            onSave = {
+                showUnsavedChangesDialog = false
+                viewModel.recordBirth()
+            },
+            onDiscard = {
+                showUnsavedChangesDialog = false
+                onNavigateBack()
+            }
+        )
+    }
+
+    if (showMotherPicker) {
+        ParentPicker(
+            title = "Select Mother",
+            animals = uiState.availableMothers,
+            pastureNames = pastureNames,
+            classificationOptions = listOf(Classification.COW, Classification.HEIFER),
+            enablePastureFilter = true,
+            onSelect = { cow -> viewModel.updateMother(cow.id) },
+            onDismiss = { showMotherPicker = false }
+        )
+    }
+
+    if (showFatherPicker) {
+        ParentPicker(
+            title = "Select Father",
+            animals = uiState.availableFathers,
+            pastureNames = pastureNames,
+            enablePastureFilter = true,
+            allowClearSelection = true,
+            onSelect = { cow -> viewModel.updateFather(cow.id) },
+            onClearSelection = { viewModel.updateFather(null) },
+            onDismiss = { showFatherPicker = false }
+        )
+    }
 
     // Scaffold and TopAppBar are removed.
     // The main content Column is now the top-level composable.
@@ -90,26 +182,27 @@ fun AddBirthScreen(
                             label = "Birth Date",
                             modifier = Modifier.fillMaxWidth()
                         )
-                        DropdownField(
-                            value = uiState.motherName ?: "",
-                            onValueChange = { name ->
-                                val mother = uiState.availableMothers.find { it.name == name || it.tagNumber == name }
-                                viewModel.updateMother(mother?.id)
-                            },
+                        ParentSelectionField(
                             label = "Mother*",
-                            options = uiState.availableMothers.mapNotNull { it.name?.takeIf { n -> n.isNotBlank() } ?: it.tagNumber },
+                            value = motherDisplay,
+                            onClick = { showMotherPicker = true },
                             modifier = Modifier.fillMaxWidth(),
-                            isError = uiState.error?.contains("Mother") == true
+                            isError = motherError,
+                            placeholder = "Tap to select a mother"
                         )
-                        DropdownField(
-                            value = uiState.fatherName ?: "",
-                            onValueChange = { name ->
-                                val father = uiState.availableFathers.find { it.name == name || it.tagNumber == name }
-                                viewModel.updateFather(father?.id)
-                            },
+                        if (motherError) {
+                            Text(
+                                text = "Mother selection is required.",
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                        ParentSelectionField(
                             label = "Father (Optional)",
-                            options = listOf("") + uiState.availableFathers.mapNotNull { it.name?.takeIf { n -> n.isNotBlank() } ?: it.tagNumber },
-                            modifier = Modifier.fillMaxWidth()
+                            value = fatherDisplay,
+                            onClick = { showFatherPicker = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            placeholder = "Tap to choose a bull"
                         )
                     }
                 }
@@ -254,3 +347,53 @@ fun AddBirthScreen(
         }
     }
 }
+
+@Composable
+private fun ParentSelectionField(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isError: Boolean = false,
+    placeholder: String? = null
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    Box(modifier = modifier) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            label = { Text(label) },
+            placeholder = placeholder?.let { { Text(it) } },
+            readOnly = true,
+            isError = isError,
+            trailingIcon = { Icon(Icons.Filled.ArrowDropDown, contentDescription = null) },
+            colors = defaultOutlinedTextFieldColors(),
+            modifier = Modifier.fillMaxWidth()
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clip(MaterialTheme.shapes.small)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                    onClick = onClick
+                )
+        )
+    }
+}
+
+private fun formatParentDisplay(cow: Cow): String {
+    val name = cow.name?.takeIf { it.isNotBlank() }
+    val tag = cow.tagNumber?.takeIf { it.isNotBlank() }
+    return when {
+        name != null && tag != null -> "$name ($tag)"
+        name != null -> name
+        tag != null -> tag
+        else -> "Unnamed Animal"
+    }
+}
+
+// Suggested enhancements:
+// - Surface calf birth weight entry and quick pasture reassignment to streamline post-birth chores.
+// - Remember recently used sires to offer quick picks in the Father selector for faster data entry.

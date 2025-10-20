@@ -2,9 +2,9 @@ package com.jumblemint.cows.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.jumblemint.cows.auth.AuthService
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
-import com.jumblemint.cows.auth.AuthService
 import com.jumblemint.cows.sync.SyncService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,127 +19,154 @@ class AddBirthViewModel(
     private val authService: AuthService,
     private val syncService: SyncService
 ) : ViewModel() {
-    
+
     private val _uiState = MutableStateFlow(AddBirthUiState())
     val uiState: StateFlow<AddBirthUiState> = _uiState.asStateFlow()
-    
+
+    private var initialSnapshot: BirthFormSnapshot? = null
+
     init {
+        initialSnapshot = currentSnapshot(_uiState.value)
         loadData()
     }
-    
+
     private fun loadData() {
         viewModelScope.launch {
             try {
                 val tagColors = repository.getAllTagColors().first().map { it.name }
                 val mothers = repository.getActiveFemales().first()
                 val fathers = repository.getActiveMales().first()
-                
-                _uiState.value = _uiState.value.copy(
-                    tagColors = tagColors,
-                    availableMothers = mothers,
-                    availableFathers = fathers,
-                    isLoading = false
+                    .filter { it.classification == Classification.BULL }
+                val pastures = repository.getAllPastures().first()
+
+                setState(
+                    _uiState.value.copy(
+                        tagColors = tagColors,
+                        availableMothers = mothers,
+                        availableFathers = fathers,
+                        availablePastures = pastures,
+                        isLoading = false,
+                        isSaved = false,
+                        error = null
+                    ),
+                    resetInitial = true
                 )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    error = e.message,
-                    isLoading = false
+                setState(
+                    _uiState.value.copy(
+                        error = e.message,
+                        isLoading = false,
+                        isSaved = false
+                    )
                 )
             }
         }
     }
-    
+
     fun updateBirthDate(date: LocalDate?) {
-        val currentCalfName = _uiState.value.calfName
-        val previouslySelectedMotherId = _uiState.value.motherId
-        _uiState.value = _uiState.value.copy(birthDate = date)
-
-        if (currentCalfName.isBlank() && previouslySelectedMotherId != null) {
-            val mother = _uiState.value.availableMothers.find { it.id == previouslySelectedMotherId }
-            if (mother != null) {
-                val motherIdentifier = mother.name?.takeIf { it.isNotBlank() } ?: mother.tagNumber ?: ""
+        val state = _uiState.value
+        val updatedState = state.copy(birthDate = date, error = null, isSaved = false)
+        val newCalfName = if (updatedState.calfName.isBlank() && updatedState.motherId != null) {
+            val mother = updatedState.availableMothers.find { it.id == updatedState.motherId }
+            mother?.let {
+                val motherIdentifier = it.name?.takeIf { name -> name.isNotBlank() } ?: it.tagNumber ?: ""
                 if (motherIdentifier.isNotBlank()) {
-                    val birthYear = _uiState.value.birthDate?.year?.toString() ?: LocalDate.now().year.toString()
-                    val newCalfName = "$motherIdentifier $birthYear"
-                    _uiState.value = _uiState.value.copy(calfName = newCalfName)
+                    val birthYear = updatedState.birthDate?.year?.toString() ?: LocalDate.now().year.toString()
+                    "$motherIdentifier $birthYear"
+                } else {
+                    updatedState.calfName
                 }
-            }
+            } ?: updatedState.calfName
         } else {
-            // If calfName was not blank, or no mother selected, keep existing calfName
-            // (which is already done as calfName wasn't changed in the initial copy)
+            updatedState.calfName
         }
-    }
-    
-    fun updateMother(motherId: Long?) {
-        val mother = _uiState.value.availableMothers.find { it.id == motherId }
-        var newCalfName = _uiState.value.calfName // Start with current name
 
-        if (_uiState.value.calfName.isBlank()) { // Only auto-set if currently blank
+        setState(updatedState.copy(calfName = newCalfName))
+    }
+
+    fun updateMother(motherId: Long?) {
+        val state = _uiState.value
+        val mother = state.availableMothers.find { it.id == motherId }
+        val newCalfName = if (state.calfName.isBlank()) {
             if (mother != null) {
                 val motherIdentifier = mother.name?.takeIf { it.isNotBlank() } ?: mother.tagNumber ?: ""
                 if (motherIdentifier.isNotBlank()) {
-                    val birthYear = _uiState.value.birthDate?.year?.toString() ?: LocalDate.now().year.toString()
-                    newCalfName = "$motherIdentifier $birthYear"
+                    val birthYear = state.birthDate?.year?.toString() ?: LocalDate.now().year.toString()
+                    "$motherIdentifier $birthYear"
+                } else {
+                    ""
                 }
             } else {
-                 // Mother deselected and calf name was blank, so ensure newCalfName is blank
-                newCalfName = ""
+                ""
             }
-        }
-        // If calfName was not blank, newCalfName remains as the original _uiState.value.calfName
+        } else state.calfName
 
-        _uiState.value = _uiState.value.copy(
-            motherId = motherId,
-            motherName = mother?.name, 
-            calfName = newCalfName
+        setState(
+            state.copy(
+                motherId = motherId,
+                motherName = mother?.name,
+                calfName = newCalfName,
+                error = null,
+                isSaved = false
+            )
         )
     }
-    
+
     fun updateFather(fatherId: Long?) {
-        val father = _uiState.value.availableFathers.find { it.id == fatherId }
-        _uiState.value = _uiState.value.copy(
-            fatherId = fatherId,
-            fatherName = father?.name
+        val state = _uiState.value
+        val father = state.availableFathers.find { it.id == fatherId }
+        setState(
+            state.copy(
+                fatherId = fatherId,
+                fatherName = father?.name,
+                error = null,
+                isSaved = false
+            )
         )
     }
-    
+
     fun updateCalfName(name: String) {
-        _uiState.value = _uiState.value.copy(calfName = name)
+        val state = _uiState.value
+        setState(state.copy(calfName = name, isSaved = false))
     }
-    
+
     fun updateCalfGender(gender: Gender) {
-        _uiState.value = _uiState.value.copy(calfGender = gender)
+        val state = _uiState.value
+        setState(state.copy(calfGender = gender, error = null, isSaved = false))
     }
-    
+
     fun updateCalfTagNumber(tagNumber: String) {
-        _uiState.value = _uiState.value.copy(calfTagNumber = tagNumber)
+        val state = _uiState.value
+        setState(state.copy(calfTagNumber = tagNumber, isSaved = false))
     }
-    
+
     fun updateCalfTagColor(tagColor: String) {
-        _uiState.value = _uiState.value.copy(calfTagColor = tagColor)
+        val state = _uiState.value
+        setState(state.copy(calfTagColor = tagColor, isSaved = false))
     }
-    
+
     fun updateCalfColorMarkings(colorMarkings: String) {
-        _uiState.value = _uiState.value.copy(calfColorMarkings = colorMarkings)
+        val state = _uiState.value
+        setState(state.copy(calfColorMarkings = colorMarkings, isSaved = false))
     }
-    
+
     fun recordBirth() {
         viewModelScope.launch {
             val state = _uiState.value
             val currentUser = authService.currentUser.first()
 
             if (currentUser == null) {
-                _uiState.value = state.copy(error = "No authenticated user. Cannot record birth.")
+                setState(state.copy(error = "No authenticated user. Cannot record birth.", isSaved = false))
                 return@launch
             }
             val currentUserId = currentUser.uid
 
             if (state.motherId == null) {
-                _uiState.value = state.copy(error = "Please select a mother")
+                setState(state.copy(error = "Please select a mother", isSaved = false))
                 return@launch
             }
-            if (state.birthDate == null) { 
-                _uiState.value = state.copy(error = "Please select a birth date")
+            if (state.birthDate == null) {
+                setState(state.copy(error = "Please select a birth date", isSaved = false))
                 return@launch
             }
 
@@ -148,7 +175,7 @@ class AddBirthViewModel(
                 val selectedMother = state.availableMothers.find { it.id == state.motherId }
 
                 val newCalf = Cow(
-                    id = 0L, 
+                    id = 0L,
                     name = state.calfName.takeIf { it.isNotBlank() },
                     tagNumber = state.calfTagNumber.takeIf { it.isNotBlank() },
                     tagColor = state.calfTagColor.takeIf { it.isNotBlank() },
@@ -177,18 +204,37 @@ class AddBirthViewModel(
                 if (!currentUser.isLocalUser) {
                     syncService.syncItemImmediately(currentUserId, newCalf)
                         .onFailure {
-                             _uiState.value = state.copy(error = "Failed to sync new calf: ${it.message}")
-                             println("Error immediately syncing new calf: ${it.message}")
+                            setState(state.copy(error = "Failed to sync new calf: ${it.message}", isSaved = false))
+                            println("Error immediately syncing new calf: ${it.message}")
                         }
                 }
-                
-                _uiState.value = state.copy(isSaved = true, error = null)
-                
+
+                setState(state.copy(isSaved = true, error = null), resetInitial = true)
             } catch (e: Exception) {
-                _uiState.value = state.copy(error = "Error recording birth: ${e.message}", isSaved = false)
+                setState(state.copy(error = "Error recording birth: ${e.message}", isSaved = false))
                 e.printStackTrace()
             }
         }
+    }
+
+    private fun currentSnapshot(state: AddBirthUiState): BirthFormSnapshot = BirthFormSnapshot(
+        birthDate = state.birthDate,
+        motherId = state.motherId,
+        fatherId = state.fatherId,
+        calfName = state.calfName,
+        calfGender = state.calfGender,
+        calfTagNumber = state.calfTagNumber,
+        calfTagColor = state.calfTagColor,
+        calfColorMarkings = state.calfColorMarkings
+    )
+
+    private fun setState(newState: AddBirthUiState, resetInitial: Boolean = false) {
+        val snapshot = currentSnapshot(newState)
+        if (initialSnapshot == null || resetInitial) {
+            initialSnapshot = snapshot
+        }
+        val baseline = initialSnapshot ?: snapshot
+        _uiState.value = newState.copy(hasUnsavedChanges = snapshot != baseline)
     }
 }
 
@@ -206,7 +252,20 @@ data class AddBirthUiState(
     val tagColors: List<String> = emptyList(),
     val availableMothers: List<Cow> = emptyList(),
     val availableFathers: List<Cow> = emptyList(),
+    val availablePastures: List<Pasture> = emptyList(),
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val hasUnsavedChanges: Boolean = false
+)
+
+private data class BirthFormSnapshot(
+    val birthDate: LocalDate?,
+    val motherId: Long?,
+    val fatherId: Long?,
+    val calfName: String,
+    val calfGender: Gender,
+    val calfTagNumber: String,
+    val calfTagColor: String,
+    val calfColorMarkings: String
 )

@@ -479,10 +479,21 @@ fun CattleNavigation(
                 )
             )
 
+            var hasUnsavedChanges by remember { mutableStateOf(false) }
+
+            LaunchedEffect(hasUnsavedChanges) {
+                onUnsavedChangesChanged(hasUnsavedChanges)
+            }
+
             AddBirthScreen(
                 modifier = screenModifierWithPadding,
                 onNavigateBack = { navController.popBackStack() },
-                viewModel = addBirthViewModel
+                viewModel = addBirthViewModel,
+                saveTriggered = saveTriggered,
+                onSaveHandled = onSaveHandled,
+                onUnsavedChangesChanged = { hasUnsavedChanges = it },
+                backPressed = backPressed,
+                onBackHandled = onBackHandled
             )
         }
         composable(Screen.AddPasture.route) {

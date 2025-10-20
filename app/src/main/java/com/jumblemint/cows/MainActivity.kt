@@ -217,7 +217,8 @@ fun CattleManagerApp() {
                     currentScreenForUI == Screen.CowDetail ||
                     currentScreenForUI == Screen.NoteDetail ||
                     currentScreenForUI == Screen.AddActivity ||
-                    currentScreenForUI == Screen.AddActivityWithId
+                    currentScreenForUI == Screen.AddActivityWithId ||
+                    currentScreenForUI == Screen.AddBirth
                 ) {
                     val detailTitle: String = when (currentScreenForUI) {
                         Screen.CowDetail -> {
@@ -249,6 +250,7 @@ fun CattleManagerApp() {
                         }
                         Screen.AddActivity -> "Add Activity"
                         Screen.AddActivityWithId -> "Edit Activity"
+                        Screen.AddBirth -> Screen.AddBirth.title
                         else -> "Details"
                     }
 
