@@ -337,24 +337,32 @@ class CattleRepository(
     fun getAllNotes(): Flow<List<Note>> = noteDao?.getAllNotes() ?: kotlinx.coroutines.flow.flowOf(emptyList())
 
     suspend fun initializeDefaultData() {
-        if (tagColorDao != null && getAllTagColors().first().isEmpty()) {
-            val defaultColors = com.jumblemint.cows.data.model.TagColor.getDefaultColors()
-            defaultColors.forEach { tagColor ->
-                insertTagColor(tagColor)
-            }
-        }
+        // Only initialize if this is truly the first install (no data at all)
+        val hasAnyExistingData = getAllCows().first().isNotEmpty() || 
+                                 getAllPastures().first().isNotEmpty() ||
+                                 getAllActivities().first().isNotEmpty()
         
-        if (activityTypeConfigDao != null && getAllActivityTypes().first().isEmpty()) {
-            val defaultActivityTypes = com.jumblemint.cows.data.model.ActivityTypeConfig.getDefaultActivityTypes()
-            defaultActivityTypes.forEach { activityType ->
-                insertActivityType(activityType)
+        // Only auto-create defaults on first install when there's no data
+        if (!hasAnyExistingData) {
+            if (tagColorDao != null && getAllTagColors().first().isEmpty()) {
+                val defaultColors = com.jumblemint.cows.data.model.TagColor.getDefaultColors()
+                defaultColors.forEach { tagColor ->
+                    insertTagColor(tagColor)
+                }
             }
-        }
-        
-        if (breedDao != null && getAllBreeds().first().isEmpty()) {
-            val defaultBreeds = com.jumblemint.cows.data.model.Breed.getDefaultBreeds()
-            defaultBreeds.forEach { breed ->
-                insertBreed(breed)
+            
+            if (activityTypeConfigDao != null && getAllActivityTypes().first().isEmpty()) {
+                val defaultActivityTypes = com.jumblemint.cows.data.model.ActivityTypeConfig.getDefaultActivityTypes()
+                defaultActivityTypes.forEach { activityType ->
+                    insertActivityType(activityType)
+                }
+            }
+            
+            if (breedDao != null && getAllBreeds().first().isEmpty()) {
+                val defaultBreeds = com.jumblemint.cows.data.model.Breed.getDefaultBreeds()
+                defaultBreeds.forEach { breed ->
+                    insertBreed(breed)
+                }
             }
         }
         
