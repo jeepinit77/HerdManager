@@ -40,6 +40,7 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.navigation.*
 import com.jumblemint.cows.navigation.SETTINGS_PAGE_INDEX
+import com.jumblemint.cows.data.model.ActivityTypeConfig
 import com.jumblemint.cows.data.model.Breed
 import com.jumblemint.cows.data.model.Settings
 import com.jumblemint.cows.data.model.SettingsKeys
@@ -78,6 +79,7 @@ class MainActivity : ComponentActivity() {
 
             val defaultBreeds = remember { Breed.getDefaultBreeds() }
             val defaultTagColors = remember { TagColor.getDefaultColors() }
+            val defaultActivityTypes = remember { ActivityTypeConfig.getDefaultActivityTypes() }
 
             var showInitialSetup by remember { mutableStateOf(false) }
             var showSetupWizard by remember { mutableStateOf(false) }
@@ -131,6 +133,7 @@ class MainActivity : ComponentActivity() {
                     SetupWizardDialog(
                         defaultBreeds = defaultBreeds,
                         defaultTagColors = defaultTagColors,
+                        defaultActivityTypes = defaultActivityTypes,
                         onExit = { showSetupWizard = false },
                         onFinished = {
                             showSetupWizard = false
@@ -166,8 +169,17 @@ class MainActivity : ComponentActivity() {
                                 repository.insertOrUpdateSetting(Settings(SettingsKeys.TAG_COLORS, ""))
                             }
                         },
+                        onSaveActivities = { activityTypes ->
+                            repository.deleteAllActivityTypeConfigs()
+                            if (activityTypes.isNotEmpty()) {
+                                repository.insertActivityTypes(activityTypes)
+                            }
+                        },
                         onSavePastures = { pastures ->
-                            pastures.forEach { repository.insertPasture(it) }
+                            repository.deleteAllPastures()
+                            if (pastures.isNotEmpty()) {
+                                pastures.forEach { repository.insertPasture(it) }
+                            }
                         }
                     )
                 }

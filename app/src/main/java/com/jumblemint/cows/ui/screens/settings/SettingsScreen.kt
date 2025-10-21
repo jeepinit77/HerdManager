@@ -40,6 +40,12 @@ import com.jumblemint.cows.ui.theme.SmartText
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Added/Ensured import
 import com.jumblemint.cows.ui.components.SecondaryButton
+import com.jumblemint.cows.data.model.ActivityTypeConfig
+import com.jumblemint.cows.data.model.Breed
+import com.jumblemint.cows.data.model.Settings
+import com.jumblemint.cows.data.model.SettingsKeys
+import com.jumblemint.cows.data.model.TagColor
+import com.jumblemint.cows.ui.components.SetupWizardDialog
 
 // Helper data class for quadruple values
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
@@ -91,7 +97,13 @@ fun SettingsScreen(
     var showImportDialog by remember { mutableStateOf(false) }
     var showSampleDataDialog by remember { mutableStateOf(false) }
     var showDeleteDataDialog by remember { mutableStateOf(false) }
+    var showSetupWizardConfirmation by remember { mutableStateOf(false) }
+    var showSetupWizard by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val defaultBreeds = remember { Breed.getDefaultBreeds() }
+    val defaultTagColors = remember { TagColor.getDefaultColors() }
+    val defaultActivityTypes = remember { ActivityTypeConfig.getDefaultActivityTypes() }
     
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -197,6 +209,12 @@ fun SettingsScreen(
                         subtitle = "Manage available cattle breeds",
                         icon = Icons.Filled.Pets,
                         onClick = { onNavigateToBreeds?.invoke() }
+                    )
+                    SettingsRow(
+                        title = "Run Setup Wizard",
+                        subtitle = "Reset breeds, pastures, tag colors, and activities",
+                        icon = Icons.Filled.AutoAwesome,
+                        onClick = { showSetupWizardConfirmation = true }
                     )
                     SettingsRow(
                         title = "Theme Settings",
@@ -417,6 +435,90 @@ fun SettingsScreen(
                     coroutineScope.launch { application.authService.startUserSync(application.syncService) }
                 }
                 showSampleDataDialog = false
+            }
+        )
+    }
+
+    if (showSetupWizardConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showSetupWizardConfirmation = false },
+            title = { Text("Run Setup Wizard?") },
+            text = {
+                Text(
+                    "You'll choose new breeds, pastures, tag colors, and activity types. " +
+                        "Animals, existing recorded activities, and notes will not be changed. " +
+                        "We'll erase your current breeds, pastures, tag colors, and activity types and replace them with your selections."
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    showSetupWizardConfirmation = false
+                    showSetupWizard = true
+                }) {
+                    Text("Continue")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSetupWizardConfirmation = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showSetupWizard) {
+        SetupWizardDialog(
+            defaultBreeds = defaultBreeds,
+            defaultTagColors = defaultTagColors,
+            defaultActivityTypes = defaultActivityTypes,
+            onExit = { showSetupWizard = false },
+            onFinished = {
+                showSetupWizard = false
+                coroutineScope.launch {
+                    try {
+                        repository.markInitialSetupComplete()
+                        snackbarHostState.showSnackbar("Setup wizard completed.")
+                    } catch (t: Throwable) {
+                        snackbarHostState.showSnackbar(
+                            "Setup saved but status update failed: ${t.localizedMessage ?: "Unknown error"}"
+                        )
+                    }
+                }
+            },
+            onSaveIdentifierMode = { mode ->
+                repository.setAnimalIdentifierMode(mode)
+            },
+            onSaveBreeds = { breeds ->
+                repository.deleteAllBreeds()
+                if (breeds.isNotEmpty()) {
+                    repository.insertBreeds(breeds)
+                }
+            },
+            onSaveTagColors = { colors ->
+                repository.deleteAllTagColors()
+                if (colors.isNotEmpty()) {
+                    repository.insertTagColors(colors)
+                    repository.insertOrUpdateSetting(
+                        Settings(
+                            SettingsKeys.TAG_COLORS,
+                            colors.joinToString(separator = ",") { it.name }
+                        )
+                    )
+                } else {
+                    repository.insertOrUpdateSetting(Settings(SettingsKeys.TAG_COLORS, ""))
+                }
+            },
+            onSaveActivities = { activityTypes ->
+                repository.deleteAllActivityTypeConfigs()
+                if (activityTypes.isNotEmpty()) {
+                    repository.insertActivityTypes(activityTypes)
+                }
+            },
+            onSavePastures = { pastures ->
+                repository.deleteAllPastures()
+                if (pastures.isNotEmpty()) {
+                    pastures.forEach { repository.insertPasture(it) }
+                }
             }
         )
     }

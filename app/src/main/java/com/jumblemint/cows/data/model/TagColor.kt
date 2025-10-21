@@ -61,7 +61,11 @@ data class TagColor(
                 TagColor(name = "Orange", colorValue = Color(0xFFFFA500).toArgb(), isDefault = true),
                 TagColor(name = "Yellow", colorValue = Color.Yellow.toArgb(), isDefault = true),
                 TagColor(name = "Red", colorValue = Color.Red.toArgb(), isDefault = true),
-                TagColor(name = "White", colorValue = Color.White.toArgb(), isDefault = true)
+                TagColor(name = "White", colorValue = Color.White.toArgb(), isDefault = true),
+                TagColor(name = "Brown", colorValue = Color(0xFF795548).toArgb(), isDefault = true),
+                TagColor(name = "Black", colorValue = Color.Black.toArgb(), isDefault = true),
+                TagColor(name = "Pink", colorValue = Color(0xFFFFC0CB).toArgb(), isDefault = true),
+                TagColor(name = "Purple", colorValue = Color(0xFF9C27B0).toArgb(), isDefault = true)
             )
         }
     }

@@ -51,6 +51,7 @@ import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.jumblemint.cows.data.model.ActivityTypeConfig
 import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.model.Breed
 import com.jumblemint.cows.data.model.Pasture
@@ -58,9 +59,10 @@ import com.jumblemint.cows.data.model.TagColor
 import com.jumblemint.cows.ui.screens.settings.TagColorDialog
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import kotlinx.coroutines.launch
+import java.util.Locale
 import java.util.UUID
 
-private const val SETUP_WIZARD_STEP_COUNT = 4
+private val SETUP_WIZARD_STEP_COUNT = SetupWizardStep.entries.size
 
 enum class SetupWizardStep(val title: String, val description: String) {
     IDENTIFIERS(
@@ -74,6 +76,10 @@ enum class SetupWizardStep(val title: String, val description: String) {
     TAG_COLORS(
         title = "Tag Colors",
         description = "Pick the tag colors you use and add any custom colors."
+    ),
+    ACTIVITIES(
+        title = "Activity Types",
+        description = "Choose the activity types you track and add any custom ones."
     ),
     PASTURES(
         title = "Add Pastures",
@@ -92,6 +98,28 @@ private data class CustomBreedField(
     val id: String = UUID.randomUUID().toString(),
     val value: String = ""
 )
+
+private data class SetupWizardActivityDraft(
+    val id: String = UUID.randomUUID().toString(),
+    val name: String,
+    val description: String
+)
+
+private fun MutableSet<String>.generateActivityTypeName(displayName: String): String {
+    val sanitizedBase = displayName.trim()
+        .uppercase(Locale.US)
+        .replace(Regex("[^A-Z0-9]+"), "_")
+        .trim('_')
+        .ifEmpty { "CUSTOM_ACTIVITY" }
+
+    var candidate = sanitizedBase
+    var suffix = 1
+    while (contains(candidate)) {
+        candidate = "${sanitizedBase}_${suffix++}"
+    }
+    add(candidate)
+    return candidate
+}
 
 @Composable
 fun InitialSetupLandingDialog(
@@ -155,7 +183,7 @@ fun InitialSetupLandingDialog(
 
                     InitialSetupOptionCard(
                         title = "Setup Wizard - $SETUP_WIZARD_STEP_COUNT steps",
-                        subtitle = "Set up pasture names, choose your tag colors and breeds.",
+                        subtitle = "Set up pasture names, choose your tag colors, breeds, and activity types.",
                         onClick = onStartWizard,
                         containerColor = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
@@ -197,11 +225,13 @@ private fun InitialSetupOptionCard(
 fun SetupWizardDialog(
     defaultBreeds: List<Breed>,
     defaultTagColors: List<TagColor>,
+    defaultActivityTypes: List<ActivityTypeConfig>,
     onExit: () -> Unit,
     onFinished: () -> Unit,
     onSaveIdentifierMode: suspend (AnimalIdentifierMode) -> Unit,
     onSaveBreeds: suspend (List<Breed>) -> Unit,
     onSaveTagColors: suspend (List<TagColor>) -> Unit,
+    onSaveActivities: suspend (List<ActivityTypeConfig>) -> Unit,
     onSavePastures: suspend (List<Pasture>) -> Unit
 ) {
     Dialog(
@@ -219,7 +249,7 @@ fun SetupWizardDialog(
             var currentStepIndex by remember { mutableStateOf(0) }
             var selectedIdentifierMode by remember { mutableStateOf<AnimalIdentifierMode?>(null) }
             var selectedDefaultBreedIds by remember {
-                mutableStateOf(defaultBreeds.map { it.id }.toSet())
+                mutableStateOf(emptySet<String>())
             }
             var customBreedFields by remember { mutableStateOf(listOf(CustomBreedField())) }
 
@@ -227,8 +257,15 @@ fun SetupWizardDialog(
                 mutableStateOf(defaultTagColors)
             }
             var selectedColorIds by remember {
-                mutableStateOf(defaultTagColors.map { it.id }.toSet())
+                mutableStateOf(emptySet<String>())
             }
+
+            var selectedDefaultActivityIds by remember {
+                mutableStateOf(emptySet<String>())
+            }
+            var activityDrafts by remember { mutableStateOf(emptyList<SetupWizardActivityDraft>()) }
+            var activityName by remember { mutableStateOf("") }
+            var activityDescription by remember { mutableStateOf("") }
 
             var pastureDrafts by remember { mutableStateOf(emptyList<SetupWizardPastureDraft>()) }
             var pastureName by remember { mutableStateOf("") }
@@ -392,6 +429,37 @@ fun SetupWizardDialog(
                             )
                         }
 
+                        SetupWizardStep.ACTIVITIES -> {
+                            ActivitySelectionStep(
+                                defaultActivities = defaultActivityTypes,
+                                selectedDefaultIds = selectedDefaultActivityIds,
+                                activityName = activityName,
+                                activityDescription = activityDescription,
+                                customActivities = activityDrafts,
+                                onToggleDefault = { activityId ->
+                                    selectedDefaultActivityIds = selectedDefaultActivityIds.toMutableSet().apply {
+                                        if (contains(activityId)) remove(activityId) else add(activityId)
+                                    }
+                                },
+                                onActivityNameChanged = { activityName = it },
+                                onActivityDescriptionChanged = { activityDescription = it },
+                                onAddCustomActivity = {
+                                    val trimmedName = activityName.trim()
+                                    if (trimmedName.isEmpty()) return@onAddCustomActivity
+                                    val draft = SetupWizardActivityDraft(
+                                        name = trimmedName,
+                                        description = activityDescription.trim()
+                                    )
+                                    activityDrafts = activityDrafts + draft
+                                    activityName = ""
+                                    activityDescription = ""
+                                },
+                                onRemoveCustomActivity = { id ->
+                                    activityDrafts = activityDrafts.filterNot { it.id == id }
+                                }
+                            )
+                        }
+
                         SetupWizardStep.PASTURES -> {
                             PastureSetupStep(
                                 pastureName = pastureName,
@@ -518,6 +586,38 @@ fun SetupWizardDialog(
                                         }
                                     }
 
+                                    SetupWizardStep.ACTIVITIES -> {
+                                        val selectedDefaults = defaultActivityTypes.filter {
+                                            selectedDefaultActivityIds.contains(it.id)
+                                        }
+                                        val nameRegistry = mutableSetOf<String>().apply {
+                                            addAll(selectedDefaults.map { it.name.uppercase(Locale.US) })
+                                        }
+                                        val customActivities = activityDrafts.map { draft ->
+                                            val displayName = draft.name.trim()
+                                            val generatedName = nameRegistry.generateActivityTypeName(displayName)
+                                            ActivityTypeConfig(
+                                                name = generatedName,
+                                                displayName = displayName,
+                                                description = draft.description.takeIf { it.isNotBlank() }
+                                            )
+                                        }
+                                        val activitiesToSave = selectedDefaults + customActivities
+
+                                        coroutineScope.launch {
+                                            isSaving = true
+                                            errorMessage = null
+                                            try {
+                                                onSaveActivities(activitiesToSave)
+                                                moveToNextStep()
+                                            } catch (t: Throwable) {
+                                                errorMessage = t.localizedMessage ?: "Unable to save activity types"
+                                            } finally {
+                                                isSaving = false
+                                            }
+                                        }
+                                    }
+
                                     SetupWizardStep.PASTURES -> {
                                         val pasturesToSave = pastureDrafts.map { draft ->
                                             Pasture(
@@ -632,6 +732,11 @@ private fun BreedSelectionStep(
             Text("Default Breeds", style = MaterialTheme.typography.titleSmall)
             defaultBreeds.sortedBy { it.name }.forEach { breed ->
                 Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onToggleDefault(breed.id) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
@@ -641,7 +746,8 @@ private fun BreedSelectionStep(
                     )
                     Text(
                         text = breed.name,
-                        style = MaterialTheme.typography.bodyLarge
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.weight(1f)
                     )
                 }
             }
@@ -715,6 +821,118 @@ private fun TagColorSelectionStep(
             Icon(Icons.Default.Add, contentDescription = null)
             Spacer(Modifier.size(8.dp))
             Text("Custom color")
+        }
+    }
+}
+
+@Composable
+private fun ActivitySelectionStep(
+    defaultActivities: List<ActivityTypeConfig>,
+    selectedDefaultIds: Set<String>,
+    activityName: String,
+    activityDescription: String,
+    customActivities: List<SetupWizardActivityDraft>,
+    onToggleDefault: (String) -> Unit,
+    onActivityNameChanged: (String) -> Unit,
+    onActivityDescriptionChanged: (String) -> Unit,
+    onAddCustomActivity: () -> Unit,
+    onRemoveCustomActivity: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            text = "Choose the activity types you want to track. You can add more later in Settings.",
+            style = MaterialTheme.typography.bodyMedium
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Default Activity Types", style = MaterialTheme.typography.titleSmall)
+            defaultActivities.sortedBy { it.displayName.uppercase(Locale.US) }.forEach { activity ->
+                val isSelected = selectedDefaultIds.contains(activity.id)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onToggleDefault(activity.id) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    androidx.compose.material3.Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onToggleDefault(activity.id) }
+                    )
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(activity.displayName, style = MaterialTheme.typography.bodyLarge)
+                        activity.description?.takeIf { it.isNotBlank() }?.let { desc ->
+                            Text(desc, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+
+        Divider()
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Add Custom Activity Type", style = MaterialTheme.typography.titleSmall)
+
+            OutlinedTextField(
+                value = activityName,
+                onValueChange = onActivityNameChanged,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Activity name*") },
+                singleLine = true,
+                colors = defaultOutlinedTextFieldColors()
+            )
+
+            OutlinedTextField(
+                value = activityDescription,
+                onValueChange = onActivityDescriptionChanged,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Description") },
+                minLines = 2,
+                colors = defaultOutlinedTextFieldColors()
+            )
+
+            Button(
+                onClick = onAddCustomActivity,
+                enabled = activityName.isNotBlank(),
+                modifier = Modifier.align(Alignment.End)
+            ) {
+                Text("Add Activity Type")
+            }
+
+            if (customActivities.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Custom activity types", style = MaterialTheme.typography.titleSmall)
+                    customActivities.forEach { draft ->
+                        Card(
+                            shape = RoundedCornerShape(16.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Text(draft.name, style = MaterialTheme.typography.titleMedium)
+                                    if (draft.description.isNotBlank()) {
+                                        Text(draft.description, style = MaterialTheme.typography.bodyMedium)
+                                    }
+                                }
+                                IconButton(onClick = { onRemoveCustomActivity(draft.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Remove activity type")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
