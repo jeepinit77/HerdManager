@@ -3,6 +3,7 @@ package com.jumblemint.cows.ui.components
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -22,8 +24,10 @@ import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -45,9 +49,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -443,9 +447,9 @@ fun SetupWizardDialog(
                                 },
                                 onActivityNameChanged = { activityName = it },
                                 onActivityDescriptionChanged = { activityDescription = it },
-                                onAddCustomActivity = {
+                                onAddCustomActivity = addCustomActivity@{
                                     val trimmedName = activityName.trim()
-                                    if (trimmedName.isEmpty()) return@onAddCustomActivity
+                                    if (trimmedName.isEmpty()) return@addCustomActivity
                                     val draft = SetupWizardActivityDraft(
                                         name = trimmedName,
                                         description = activityDescription.trim()
@@ -654,6 +658,7 @@ fun SetupWizardDialog(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun IdentifierPreferenceStep(
     selected: AnimalIdentifierMode?,
@@ -670,15 +675,22 @@ private fun IdentifierPreferenceStep(
             AnimalIdentifierMode.BOTH to "Both"
         )
 
-        androidx.compose.material3.SingleChoiceSegmentedButtonRow {
-            options.forEachIndexed { index, (mode, label) ->
-                androidx.compose.material3.SegmentedButton(
-                    selected = selected == mode,
+        // SegmentedButton is not available on older M3 versions.
+        // Use stable FilterChips to create a single-choice, segmented-like row.
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { (mode, label) ->
+                val isSelected = selected == mode
+                FilterChip(
+                    selected = isSelected,
                     onClick = { onSelect(mode) },
-                    shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(index, options.size)
-                ) {
-                    Text(label)
-                }
+                    label = { Text(label) },
+                    leadingIcon = if (isSelected) {
+                        { Icon(Icons.Default.Check, contentDescription = null) }
+                    } else null
+                )
             }
         }
 
@@ -740,7 +752,7 @@ private fun BreedSelectionStep(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    androidx.compose.material3.Checkbox(
+                    Checkbox(
                         checked = selectedDefaultIds.contains(breed.id),
                         onCheckedChange = { onToggleDefault(breed.id) }
                     )
@@ -755,6 +767,7 @@ private fun BreedSelectionStep(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun TagColorSelectionStep(
     tagColors: List<TagColor>,
@@ -970,7 +983,7 @@ private fun PastureSetupStep(
             modifier = Modifier.fillMaxWidth(),
             label = { Text("Size (acres)") },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = androidx.compose.ui.text.input.KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             colors = defaultOutlinedTextFieldColors()
         )
 
