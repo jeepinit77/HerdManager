@@ -1,10 +1,16 @@
 package com.jumblemint.cows.ui.screens.settings
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,11 +22,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
@@ -139,7 +148,6 @@ fun ThemeSettingsScreen(
             themeManager = themeManager,
             themeSettings = themeSettings,
             isDarkTheme = previewDark,
-            currentMode = currentMode,
             scope = scope,
             resetCount = resetCount,
             onShowResetConfirm = { showResetConfirm = true },
@@ -148,11 +156,14 @@ fun ThemeSettingsScreen(
     }
 }
 
+// TODO: Offer a mini preview carousel so users can see palette changes on actual list tiles.
+// TODO: Surface accessibility hints when chosen colors fall below recommended contrast ratios.
+// TODO: Add optional haptic feedback and snackbars for critical theme actions to reinforce success.
+
 @Composable
 private fun TintRow(
     currentSeedColor: SeedColor,
     row: List<SeedColor>,
-    isDarkTheme: Boolean,
     onPick: (SeedColor) -> Unit
 ) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -201,6 +212,83 @@ private fun PresetChip(
             name,
             style = MaterialTheme.typography.bodySmall,
             modifier = Modifier.padding(top = 6.dp)
+        )
+    }
+}
+
+@Composable
+private fun GenderPaletteDots(
+    palette: GenderColorPalette,
+    size: Dp = 14.dp
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        listOf(palette.male, palette.female, palette.neutral).forEach { color ->
+            Box(
+                modifier = Modifier
+                    .size(size)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+        }
+    }
+}
+
+@Composable
+private fun GenderPaletteOption(
+    palette: GenderColorPalette,
+    isSelected: Boolean,
+    onSelect: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onSelect,
+        modifier = modifier.widthIn(min = 180.dp),
+        border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.primary) else null,
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            GenderPaletteDots(palette = palette, size = 28.dp)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                GenderLegend(label = "M", color = palette.male)
+                GenderLegend(label = "F", color = palette.female)
+                GenderLegend(label = "U", color = palette.neutral)
+            }
+            Text(
+                text = if (isSelected) "Currently applied" else "Tap to apply",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
+            )
+        }
+    }
+}
+
+@Composable
+private fun GenderLegend(
+    label: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(22.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = FontWeight.SemiBold
         )
     }
 }
@@ -292,7 +380,6 @@ private fun ThemePicker(
     themeManager: ThemeManager,
     themeSettings: ThemeSettings,
     isDarkTheme: Boolean,
-    currentMode: ThemeMode,
     scope: CoroutineScope,
     resetCount: Int,
     onShowResetConfirm: () -> Unit,
@@ -311,37 +398,56 @@ private fun ThemePicker(
         surfaceTone = themeSettings.getSurfaceTone(isDarkTheme)
     }
 
+    val previewSettings = themeSettings.copy(style = style)
+
     // Generate current theme colors for preview
     val currentColorScheme = generateThemeFromSeed(
-        themeSettings.seedColor,
-        surfaceTone,
-        navBarTone,
-        isDarkTheme,
-        style
+        themeSettings = previewSettings,
+        surfaceTone = surfaceTone,
+        navBarTone = navBarTone,
+        isDark = isDarkTheme,
+        style = style
     )
-    
+
     // Generate preview colors for each style
-    val coloredCardsScheme = generateThemeFromSeed(themeSettings.seedColor, surfaceTone, navBarTone, isDarkTheme, ThemeStyle.COLORED_CARDS)
-    val coloredBgScheme = generateThemeFromSeed(themeSettings.seedColor, surfaceTone, navBarTone, isDarkTheme, ThemeStyle.COLORED_BACKGROUND)
-    val grayCardsScheme = generateThemeFromSeed(themeSettings.seedColor, surfaceTone, navBarTone, isDarkTheme, ThemeStyle.GRAY_CARDS)
-    val grayBgScheme = generateThemeFromSeed(themeSettings.seedColor, surfaceTone, navBarTone, isDarkTheme, ThemeStyle.GRAY_BACKGROUND)
-
-    // Seed color rows
-    val tintRow1 = listOf(
-        SeedColor.DENIM_BLUE, SeedColor.SAGE_GREEN, SeedColor.LAVENDER_GRAPHITE,
-        SeedColor.OCHRE_GLOW, SeedColor.CRANBERRY
+    val coloredCardsScheme = generateThemeFromSeed(
+        themeSettings = previewSettings.copy(style = ThemeStyle.COLORED_CARDS),
+        surfaceTone = surfaceTone,
+        navBarTone = navBarTone,
+        isDark = isDarkTheme,
+        style = ThemeStyle.COLORED_CARDS
     )
-    val tintRow2 = listOf(
-        SeedColor.BRICK_RED, SeedColor.HONEY_GOLD, SeedColor.VERDANT_TEAL,
-        SeedColor.ESPRESSO_BROWN, SeedColor.SLATE_BLUE
+    val coloredBgScheme = generateThemeFromSeed(
+        themeSettings = previewSettings.copy(style = ThemeStyle.COLORED_BACKGROUND),
+        surfaceTone = surfaceTone,
+        navBarTone = navBarTone,
+        isDark = isDarkTheme,
+        style = ThemeStyle.COLORED_BACKGROUND
+    )
+    val grayCardsScheme = generateThemeFromSeed(
+        themeSettings = previewSettings.copy(style = ThemeStyle.GRAY_CARDS),
+        surfaceTone = surfaceTone,
+        navBarTone = navBarTone,
+        isDark = isDarkTheme,
+        style = ThemeStyle.GRAY_CARDS
+    )
+    val grayBgScheme = generateThemeFromSeed(
+        themeSettings = previewSettings.copy(style = ThemeStyle.GRAY_BACKGROUND),
+        surfaceTone = surfaceTone,
+        navBarTone = navBarTone,
+        isDark = isDarkTheme,
+        style = ThemeStyle.GRAY_BACKGROUND
     )
 
-    var showMoreThemes by remember { mutableStateOf(false) }
-
-    val curatedRow = listOf(
-        SeedColor.SLATE, SeedColor.CHARCOAL_GOLD,
-        SeedColor.COPPER_TEAL, SeedColor.TERRACOTTA_SAGE, SeedColor.MIDNIGHT_CLAY
-    )
+    val orderedSeedColors = remember { SeedColor.entries.toList() }
+    val primaryRows = remember(orderedSeedColors) { orderedSeedColors.take(10).chunked(5) }
+    val extraRows = remember(orderedSeedColors) { orderedSeedColors.drop(10).chunked(5) }
+    var showFullPalette by rememberSaveable(themeSettings.seedColor.name) { mutableStateOf(false) }
+    var genderSectionExpanded by rememberSaveable { mutableStateOf(false) }
+    val genderPaletteOptions = remember(themeSettings.seedColor) { themeSettings.seedColor.genderPaletteOptions() }
+    val paletteChoices = remember(themeSettings.genderPalette, genderPaletteOptions) {
+        (listOf(themeSettings.genderPalette) + genderPaletteOptions).distinctBy { it.signature() }
+    }
 
     Box(modifier.fillMaxSize().background(currentColorScheme.background)) {
         LazyColumn(
@@ -361,54 +467,49 @@ private fun ThemePicker(
                             style = MaterialTheme.typography.titleMedium
                         )
 
-                        TintRow(
-                            row = tintRow1,
-                            currentSeedColor = themeSettings.seedColor,
-                            isDarkTheme = isDarkTheme,
-                            onPick = { scope.launch { themeManager.setSeedColor(it) } }
-                        )
-
-                        TintRow(
-                            row = tintRow2,
-                            currentSeedColor = themeSettings.seedColor,
-                            isDarkTheme = isDarkTheme,
-                            onPick = { scope.launch { themeManager.setSeedColor(it) } }
-                        )
-
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { showMoreThemes = !showMoreThemes }
-                                .padding(vertical = 4.dp),
-                            horizontalArrangement = Arrangement.Center,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                if (showMoreThemes) "Show Less" else "Show More",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                            Icon(
-                                if (showMoreThemes) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                contentDescription = if (showMoreThemes) "Collapse" else "Expand",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
+                        primaryRows.forEach { row ->
+                            TintRow(
+                                row = row,
+                                currentSeedColor = themeSettings.seedColor,
+                                onPick = { scope.launch { themeManager.setSeedColor(it) } }
                             )
                         }
 
-                        if (showMoreThemes) {
+                        if (extraRows.isNotEmpty()) {
                             Row(
-                                Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showFullPalette = !showFullPalette }
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
                             ) {
-                                curatedRow.forEach { seedColor ->
-                                    PresetChip(
-                                        isSelected = themeSettings.seedColor == seedColor,
-                                        name = seedColor.displayName,
-                                        color = seedColor.color,
-                                        onClick = { scope.launch { themeManager.setSeedColor(seedColor) } },
-                                        modifier = Modifier.weight(1f)
-                                    )
+                                Text(
+                                    if (showFullPalette) "Hide full palette" else "Show full palette",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Icon(
+                                    if (showFullPalette) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                    contentDescription = if (showFullPalette) "Collapse" else "Expand",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+
+                            AnimatedVisibility(
+                                visible = showFullPalette,
+                                enter = expandVertically(),
+                                exit = shrinkVertically()
+                            ) {
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    extraRows.forEach { row ->
+                                        TintRow(
+                                            row = row,
+                                            currentSeedColor = themeSettings.seedColor,
+                                            onPick = { scope.launch { themeManager.setSeedColor(it) } }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -512,8 +613,13 @@ private fun ThemePicker(
                             )
                         }
 
+                        val toneLabel = if (style == ThemeStyle.COLORED_CARDS || style == ThemeStyle.GRAY_CARDS) {
+                            "Card Tone"
+                        } else {
+                            "Background Tone"
+                        }
                         Text(
-                            "Surface/Card Tone (${if (isDarkTheme) "Dark" else "Light"} Mode)",
+                            "$toneLabel (${if (isDarkTheme) "Dark" else "Light"} Mode)",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Slider(
@@ -542,6 +648,99 @@ private fun ThemePicker(
                 }
             }
 
+            // Gender Colors
+            item {
+                Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { genderSectionExpanded = !genderSectionExpanded },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Edit Gender Colors",
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    "Controls the highlights for male, female, and unknown animals.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            GenderPaletteDots(palette = themeSettings.genderPalette)
+                            Icon(
+                                if (genderSectionExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                contentDescription = if (genderSectionExpanded) "Collapse gender colors" else "Expand gender colors",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(start = 8.dp)
+                            )
+                        }
+
+                        AnimatedVisibility(
+                            visible = genderSectionExpanded,
+                            enter = expandVertically(),
+                            exit = shrinkVertically()
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text(
+                                    "These accents appear on herd lists, filter chips, and detail screens.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Checkbox(
+                                        checked = themeSettings.genderColorsLocked,
+                                        onCheckedChange = { checked ->
+                                            scope.launch { themeManager.setGenderColorsLock(checked) }
+                                        }
+                                    )
+                                    Text(
+                                        "Don't change gender colors when base theme color changes",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        modifier = Modifier.padding(start = 8.dp)
+                                    )
+                                }
+
+                                Row(
+                                    modifier = Modifier
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    paletteChoices.forEach { palette ->
+                                        GenderPaletteOption(
+                                            palette = palette,
+                                            isSelected = themeSettings.genderPalette.signature() == palette.signature(),
+                                            onSelect = {
+                                                scope.launch { themeManager.setGenderPalette(palette) }
+                                            }
+                                        )
+                                    }
+                                }
+
+                                Text(
+                                    text = if (themeSettings.genderColorsLocked) {
+                                        "Locked palettes stay put even when you experiment with new base colors."
+                                    } else {
+                                        "Unlocking lets each theme suggest fresh gender colors automatically."
+                                    },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
             // Reset Button
             item {
                 Card {
@@ -561,3 +760,7 @@ private fun ThemePicker(
         }
     }
 }
+
+// TODO: Offer a mini preview carousel so users can see palette changes on actual list tiles.
+// TODO: Surface accessibility hints when chosen colors fall below recommended contrast ratios.
+// TODO: Add optional haptic feedback and snackbars for critical theme actions to reinforce success.

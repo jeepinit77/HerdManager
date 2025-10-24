@@ -464,8 +464,8 @@ fun CattleManagerApp() {
                                 }
                             }
                             if (currentScreenForUI == Screen.ThemeSettings) {
-                                IconButton(onClick = { resetTriggered = true }) {
-                                    Icon(Icons.Filled.Refresh, contentDescription = "Reset Theme to Default", tint = MaterialTheme.colorScheme.onSurface)
+                                IconButton(onClick = { navController.popBackStack() }) {
+                                    Icon(Icons.Filled.Done, contentDescription = "Done", tint = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                             if (currentScreenForUI == Screen.CowInfo ||
