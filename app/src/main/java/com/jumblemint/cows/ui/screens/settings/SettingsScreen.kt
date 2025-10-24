@@ -442,12 +442,11 @@ fun SettingsScreen(
     if (showSetupWizardConfirmation) {
         AlertDialog(
             onDismissRequest = { showSetupWizardConfirmation = false },
-            title = { Text("Run Setup Wizard?") },
+            title = { Text("Replace setup with new choices?") },
             text = {
                 Text(
-                    "You'll choose new breeds, pastures, tag colors, and activity types. " +
-                        "Animals, existing recorded activities, and notes will not be changed. " +
-                        "We'll erase your current breeds, pastures, tag colors, and activity types and replace them with your selections."
+                    "We'll immediately delete your current breeds, pastures, tag colors, and activity types so you can pick new ones. " +
+                        "Animals, recorded activities, and notes stay untouched."
                 )
             },
             confirmButton = {
@@ -459,7 +458,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSetupWizardConfirmation = false }) {
+                SecondaryButton(onClick = { showSetupWizardConfirmation = false }) {
                     Text("Cancel")
                 }
             }

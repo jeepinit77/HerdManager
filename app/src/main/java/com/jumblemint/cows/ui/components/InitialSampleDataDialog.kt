@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -24,20 +23,21 @@ import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import com.jumblemint.cows.ui.components.SecondaryButton
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,7 +49,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -83,30 +82,27 @@ enum class SetupWizardStep(val title: String, val description: String) {
     ),
     ACTIVITIES(
         title = "Activity Types",
-        description = "Choose the activity types you track and add any custom ones."
+        description = "Choose the activity types you track. Add custom ones now or later in Settings."
     ),
     PASTURES(
         title = "Add Pastures",
-        description = "Create your pastures so you can start assigning animals right away."
+        description = "Add pasture names now. You can add acres and descriptions later in Settings."
     )
 }
-
-data class SetupWizardPastureDraft(
-    val id: String = UUID.randomUUID().toString(),
-    val name: String,
-    val size: String,
-    val details: String
-)
 
 private data class CustomBreedField(
     val id: String = UUID.randomUUID().toString(),
     val value: String = ""
 )
 
-private data class SetupWizardActivityDraft(
+private data class CustomActivityField(
     val id: String = UUID.randomUUID().toString(),
-    val name: String,
-    val description: String
+    val value: String = ""
+)
+
+private data class CustomPastureField(
+    val id: String = UUID.randomUUID().toString(),
+    val value: String = ""
 )
 
 private fun MutableSet<String>.generateActivityTypeName(displayName: String): String {
@@ -267,14 +263,9 @@ fun SetupWizardDialog(
             var selectedDefaultActivityIds by remember {
                 mutableStateOf(emptySet<String>())
             }
-            var activityDrafts by remember { mutableStateOf(emptyList<SetupWizardActivityDraft>()) }
-            var activityName by remember { mutableStateOf("") }
-            var activityDescription by remember { mutableStateOf("") }
+            var customActivityFields by remember { mutableStateOf(listOf(CustomActivityField())) }
 
-            var pastureDrafts by remember { mutableStateOf(emptyList<SetupWizardPastureDraft>()) }
-            var pastureName by remember { mutableStateOf("") }
-            var pastureSize by remember { mutableStateOf("") }
-            var pastureDetails by remember { mutableStateOf("") }
+            var customPastureFields by remember { mutableStateOf(listOf(CustomPastureField())) }
 
             var isSaving by remember { mutableStateOf(false) }
             var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -437,55 +428,43 @@ fun SetupWizardDialog(
                             ActivitySelectionStep(
                                 defaultActivities = defaultActivityTypes,
                                 selectedDefaultIds = selectedDefaultActivityIds,
-                                activityName = activityName,
-                                activityDescription = activityDescription,
-                                customActivities = activityDrafts,
+                                customFields = customActivityFields,
                                 onToggleDefault = { activityId ->
                                     selectedDefaultActivityIds = selectedDefaultActivityIds.toMutableSet().apply {
                                         if (contains(activityId)) remove(activityId) else add(activityId)
                                     }
                                 },
-                                onActivityNameChanged = { activityName = it },
-                                onActivityDescriptionChanged = { activityDescription = it },
-                                onAddCustomActivity = addCustomActivity@{
-                                    val trimmedName = activityName.trim()
-                                    if (trimmedName.isEmpty()) return@addCustomActivity
-                                    val draft = SetupWizardActivityDraft(
-                                        name = trimmedName,
-                                        description = activityDescription.trim()
-                                    )
-                                    activityDrafts = activityDrafts + draft
-                                    activityName = ""
-                                    activityDescription = ""
+                                onCustomValueChanged = { id, value ->
+                                    customActivityFields = customActivityFields.map { field ->
+                                        if (field.id == id) field.copy(value = value) else field
+                                    }
+                                    if (customActivityFields.lastOrNull()?.id == id && value.trim().isNotEmpty()) {
+                                        customActivityFields = customActivityFields + CustomActivityField()
+                                    }
                                 },
-                                onRemoveCustomActivity = { id ->
-                                    activityDrafts = activityDrafts.filterNot { it.id == id }
+                                onRemoveCustomField = { id ->
+                                    customActivityFields = customActivityFields
+                                        .filterNot { it.id == id }
+                                        .ifEmpty { listOf(CustomActivityField()) }
                                 }
                             )
                         }
 
                         SetupWizardStep.PASTURES -> {
                             PastureSetupStep(
-                                pastureName = pastureName,
-                                pastureSize = pastureSize,
-                                pastureDetails = pastureDetails,
-                                pastureDrafts = pastureDrafts,
-                                onNameChanged = { pastureName = it },
-                                onSizeChanged = { pastureSize = it },
-                                onDetailsChanged = { pastureDetails = it },
-                                onAddPasture = {
-                                    val draft = SetupWizardPastureDraft(
-                                        name = pastureName.trim(),
-                                        size = pastureSize.trim(),
-                                        details = pastureDetails.trim()
-                                    )
-                                    pastureDrafts = pastureDrafts + draft
-                                    pastureName = ""
-                                    pastureSize = ""
-                                    pastureDetails = ""
+                                customFields = customPastureFields,
+                                onCustomValueChanged = { id, value ->
+                                    customPastureFields = customPastureFields.map { field ->
+                                        if (field.id == id) field.copy(value = value) else field
+                                    }
+                                    if (customPastureFields.lastOrNull()?.id == id && value.trim().isNotEmpty()) {
+                                        customPastureFields = customPastureFields + CustomPastureField()
+                                    }
                                 },
-                                onRemoveDraft = { id ->
-                                    pastureDrafts = pastureDrafts.filterNot { it.id == id }
+                                onRemoveField = { id ->
+                                    customPastureFields = customPastureFields
+                                        .filterNot { it.id == id }
+                                        .ifEmpty { listOf(CustomPastureField()) }
                                 }
                             )
                         }
@@ -517,7 +496,21 @@ fun SetupWizardDialog(
                     )
 
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        TextButton(onClick = { if (!isSaving) handleSkip() }, enabled = !isSaving) {
+                        if (currentStepIndex > 0) {
+                            SecondaryButton(
+                                onClick = {
+                                    if (!isSaving) {
+                                        errorMessage = null
+                                        currentStepIndex--
+                                    }
+                                },
+                                enabled = !isSaving
+                            ) {
+                                Text("Back")
+                            }
+                        }
+
+                        SecondaryButton(onClick = { if (!isSaving) handleSkip() }, enabled = !isSaving) {
                             Text("Skip")
                         }
 
@@ -594,16 +587,19 @@ fun SetupWizardDialog(
                                         val selectedDefaults = defaultActivityTypes.filter {
                                             selectedDefaultActivityIds.contains(it.id)
                                         }
+                                        val trimmedCustomActivities = customActivityFields
+                                            .map { it.value.trim() }
+                                            .filter { it.isNotEmpty() }
+                                            .distinctBy { it.lowercase(Locale.US) }
                                         val nameRegistry = mutableSetOf<String>().apply {
                                             addAll(selectedDefaults.map { it.name.uppercase(Locale.US) })
                                         }
-                                        val customActivities = activityDrafts.map { draft ->
-                                            val displayName = draft.name.trim()
+                                        val customActivities = trimmedCustomActivities.map { displayName ->
                                             val generatedName = nameRegistry.generateActivityTypeName(displayName)
                                             ActivityTypeConfig(
                                                 name = generatedName,
                                                 displayName = displayName,
-                                                description = draft.description.takeIf { it.isNotBlank() }
+                                                description = null
                                             )
                                         }
                                         val activitiesToSave = selectedDefaults + customActivities
@@ -623,13 +619,16 @@ fun SetupWizardDialog(
                                     }
 
                                     SetupWizardStep.PASTURES -> {
-                                        val pasturesToSave = pastureDrafts.map { draft ->
-                                            Pasture(
-                                                id = draft.id,
-                                                name = draft.name,
-                                                description = draft.details.takeIf { it.isNotBlank() },
-                                                sizeAcres = draft.size.toDoubleOrNull()
-                                            )
+                                        val pasturesToSave = customPastureFields.mapNotNull { field ->
+                                            val trimmedName = field.value.trim()
+                                            if (trimmedName.isEmpty()) {
+                                                null
+                                            } else {
+                                                Pasture(
+                                                    id = field.id,
+                                                    name = trimmedName
+                                                )
+                                            }
                                         }
 
                                         coroutineScope.launch {
@@ -658,39 +657,31 @@ fun SetupWizardDialog(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun IdentifierPreferenceStep(
     selected: AnimalIdentifierMode?,
     onSelect: (AnimalIdentifierMode) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            text = "Choose how you'd like to identify animals in the app.",
-            style = MaterialTheme.typography.bodyMedium
-        )
         val options = listOf(
             AnimalIdentifierMode.NAMES to "Animal Names",
             AnimalIdentifierMode.TAG_NUMBERS to "Tag Numbers",
             AnimalIdentifierMode.BOTH to "Both"
         )
 
-        // SegmentedButton is not available on older M3 versions.
-        // Use stable FilterChips to create a single-choice, segmented-like row.
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            options.forEach { (mode, label) ->
-                val isSelected = selected == mode
-                FilterChip(
-                    selected = isSelected,
+        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+            options.forEachIndexed { index, (mode, label) ->
+                SegmentedButton(
+                    selected = selected == mode,
                     onClick = { onSelect(mode) },
-                    label = { Text(label) },
-                    leadingIcon = if (isSelected) {
-                        { Icon(Icons.Default.Check, contentDescription = null) }
-                    } else null
-                )
+                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.primary,
+                        activeContentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text(label)
+                }
             }
         }
 
@@ -712,11 +703,6 @@ private fun BreedSelectionStep(
     onRemoveCustomField: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            text = "Select the breeds you manage. Add any custom breeds as needed.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Custom Breeds", style = MaterialTheme.typography.titleSmall)
             customFields.forEach { field ->
@@ -752,7 +738,7 @@ private fun BreedSelectionStep(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Checkbox(
+                    androidx.compose.material3.Checkbox(
                         checked = selectedDefaultIds.contains(breed.id),
                         onCheckedChange = { onToggleDefault(breed.id) }
                     )
@@ -777,11 +763,6 @@ private fun TagColorSelectionStep(
     onAddCustom: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            text = "Select the tag colors you use. Add custom colors for your operation.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -842,20 +823,34 @@ private fun TagColorSelectionStep(
 private fun ActivitySelectionStep(
     defaultActivities: List<ActivityTypeConfig>,
     selectedDefaultIds: Set<String>,
-    activityName: String,
-    activityDescription: String,
-    customActivities: List<SetupWizardActivityDraft>,
+    customFields: List<CustomActivityField>,
     onToggleDefault: (String) -> Unit,
-    onActivityNameChanged: (String) -> Unit,
-    onActivityDescriptionChanged: (String) -> Unit,
-    onAddCustomActivity: () -> Unit,
-    onRemoveCustomActivity: (String) -> Unit
+    onCustomValueChanged: (String, String) -> Unit,
+    onRemoveCustomField: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            text = "Choose the activity types you want to track. You can add more later in Settings.",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Custom Activity Types", style = MaterialTheme.typography.titleSmall)
+            customFields.forEach { field ->
+                OutlinedTextField(
+                    value = field.value,
+                    onValueChange = { onCustomValueChanged(field.id, it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Add a custom activity type") },
+                    singleLine = true,
+                    trailingIcon = {
+                        if (field.value.isNotBlank()) {
+                            IconButton(onClick = { onRemoveCustomField(field.id) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Remove custom activity")
+                            }
+                        }
+                    },
+                    colors = defaultOutlinedTextFieldColors()
+                )
+            }
+        }
+
+        Divider()
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Default Activity Types", style = MaterialTheme.typography.titleSmall)
@@ -883,165 +878,34 @@ private fun ActivitySelectionStep(
                 }
             }
         }
-
-        Divider()
-
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Add Custom Activity Type", style = MaterialTheme.typography.titleSmall)
-
-            OutlinedTextField(
-                value = activityName,
-                onValueChange = onActivityNameChanged,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Activity name*") },
-                singleLine = true,
-                colors = defaultOutlinedTextFieldColors()
-            )
-
-            OutlinedTextField(
-                value = activityDescription,
-                onValueChange = onActivityDescriptionChanged,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Description") },
-                minLines = 2,
-                colors = defaultOutlinedTextFieldColors()
-            )
-
-            Button(
-                onClick = onAddCustomActivity,
-                enabled = activityName.isNotBlank(),
-                modifier = Modifier.align(Alignment.End)
-            ) {
-                Text("Add Activity Type")
-            }
-
-            if (customActivities.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Custom activity types", style = MaterialTheme.typography.titleSmall)
-                    customActivities.forEach { draft ->
-                        Card(
-                            shape = RoundedCornerShape(16.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.Top
-                            ) {
-                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Text(draft.name, style = MaterialTheme.typography.titleMedium)
-                                    if (draft.description.isNotBlank()) {
-                                        Text(draft.description, style = MaterialTheme.typography.bodyMedium)
-                                    }
-                                }
-                                IconButton(onClick = { onRemoveCustomActivity(draft.id) }) {
-                                    Icon(Icons.Default.Delete, contentDescription = "Remove activity type")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 }
 
 @Composable
 private fun PastureSetupStep(
-    pastureName: String,
-    pastureSize: String,
-    pastureDetails: String,
-    pastureDrafts: List<SetupWizardPastureDraft>,
-    onNameChanged: (String) -> Unit,
-    onSizeChanged: (String) -> Unit,
-    onDetailsChanged: (String) -> Unit,
-    onAddPasture: () -> Unit,
-    onRemoveDraft: (String) -> Unit
+    customFields: List<CustomPastureField>,
+    onCustomValueChanged: (String, String) -> Unit,
+    onRemoveField: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(
-            text = "Add the pastures you want to manage right away. You can edit these later in Settings.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-
-        OutlinedTextField(
-            value = pastureName,
-            onValueChange = onNameChanged,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Pasture name*") },
-            singleLine = true,
-            colors = defaultOutlinedTextFieldColors()
-        )
-
-        OutlinedTextField(
-            value = pastureSize,
-            onValueChange = onSizeChanged,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Size (acres)") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-            colors = defaultOutlinedTextFieldColors()
-        )
-
-        OutlinedTextField(
-            value = pastureDetails,
-            onValueChange = onDetailsChanged,
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Details") },
-            minLines = 2,
-            colors = defaultOutlinedTextFieldColors()
-        )
-
-        Button(
-            onClick = onAddPasture,
-            enabled = pastureName.isNotBlank(),
-            modifier = Modifier.align(Alignment.End)
-        ) {
-            Text("Add Pasture")
-        }
-
-        if (pastureDrafts.isNotEmpty()) {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("Pastures to create", style = MaterialTheme.typography.titleSmall)
-                pastureDrafts.forEach { draft ->
-                    Card(
-                        shape = RoundedCornerShape(16.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(draft.name, style = MaterialTheme.typography.titleMedium)
-                                if (draft.size.isNotBlank()) {
-                                    Text(
-                                        text = "Size: ${draft.size} acres",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                                if (draft.details.isNotBlank()) {
-                                    Text(
-                                        text = draft.details,
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                            }
-                            IconButton(onClick = { onRemoveDraft(draft.id) }) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Pasture Names", style = MaterialTheme.typography.titleSmall)
+            customFields.forEach { field ->
+                OutlinedTextField(
+                    value = field.value,
+                    onValueChange = { onCustomValueChanged(field.id, it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Add a pasture name") },
+                    singleLine = true,
+                    trailingIcon = {
+                        if (field.value.isNotBlank()) {
+                            IconButton(onClick = { onRemoveField(field.id) }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Remove pasture")
                             }
                         }
-                    }
-                }
+                    },
+                    colors = defaultOutlinedTextFieldColors()
+                )
             }
         }
     }
