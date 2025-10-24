@@ -1,5 +1,8 @@
+@file:OptIn(ExperimentalFoundationApi::class)
+
 package com.jumblemint.cows.ui.components
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -67,6 +70,10 @@ import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import kotlinx.coroutines.launch
 import java.util.Locale
 import java.util.UUID
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.LaunchedEffect
+import kotlinx.coroutines.delay
 
 private val SETUP_WIZARD_STEP_COUNT = SetupWizardStep.entries.size
 
@@ -224,6 +231,7 @@ private fun InitialSetupOptionCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SetupWizardDialog(
     defaultBreeds: List<Breed>,
@@ -491,14 +499,17 @@ fun SetupWizardDialog(
                     Text(
                         text = "Exit Wizard",
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = MaterialTheme.colorScheme.secondary,
                         textDecoration = TextDecoration.Underline,
                         modifier = Modifier
                             .padding(vertical = 12.dp)
                             .clickable(enabled = !isSaving, onClick = onExit)
                     )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         if (currentStepIndex > 0) {
                             SecondaryButton(
                                 onClick = {
@@ -513,8 +524,10 @@ fun SetupWizardDialog(
                             }
                         }
 
-                        SecondaryButton(onClick = { if (!isSaving) handleSkip() }, enabled = !isSaving) {
-                            Text("Skip")
+                        if (currentStepIndex < steps.lastIndex) {
+                            SecondaryButton(onClick = { if (!isSaving) handleSkip() }, enabled = !isSaving) {
+                                Text("Skip")
+                            }
                         }
 
                         val saveButtonLabel = if (currentStepIndex == steps.lastIndex) "Save & Finish" else "Save & Next"
@@ -701,6 +714,7 @@ private fun IdentifierPreferenceStep(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 private fun BreedSelectionStep(
     defaultBreeds: List<Breed>,
@@ -710,14 +724,30 @@ private fun BreedSelectionStep(
     onCustomValueChanged: (String, String) -> Unit,
     onRemoveCustomField: (String) -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+
+    LaunchedEffect(customFields.size) {
+        if (customFields.size > 1) {
+            coroutineScope.launch {
+                delay(200)
+                bringIntoViewRequester.bringIntoView()
+            }
+        }
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Custom Breeds", style = MaterialTheme.typography.titleSmall)
-            customFields.forEach { field ->
+            customFields.forEachIndexed { index, field ->
                 OutlinedTextField(
                     value = field.value,
                     onValueChange = { onCustomValueChanged(field.id, it) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = if (index == customFields.lastIndex) {
+                        Modifier.fillMaxWidth().bringIntoViewRequester(bringIntoViewRequester)
+                    } else {
+                        Modifier.fillMaxWidth()
+                    },
                     label = { Text("Add a custom breed") },
                     singleLine = true,
                     trailingIcon = {
@@ -830,6 +860,7 @@ private fun TagColorSelectionStep(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ActivitySelectionStep(
     defaultActivities: List<ActivityTypeConfig>,
@@ -839,14 +870,30 @@ private fun ActivitySelectionStep(
     onCustomValueChanged: (String, String) -> Unit,
     onRemoveCustomField: (String) -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+
+    LaunchedEffect(customFields.size) {
+        if (customFields.size > 1) {
+            coroutineScope.launch {
+                delay(200)
+                bringIntoViewRequester.bringIntoView()
+            }
+        }
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Custom Activity Types", style = MaterialTheme.typography.titleSmall)
-            customFields.forEach { field ->
+            customFields.forEachIndexed { index, field ->
                 OutlinedTextField(
                     value = field.value,
                     onValueChange = { onCustomValueChanged(field.id, it) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = if (index == customFields.lastIndex) {
+                        Modifier.fillMaxWidth().bringIntoViewRequester(bringIntoViewRequester)
+                    } else {
+                        Modifier.fillMaxWidth()
+                    },
                     label = { Text("Add a custom activity type") },
                     singleLine = true,
                     trailingIcon = {
@@ -898,20 +945,37 @@ private fun ActivitySelectionStep(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PastureSetupStep(
     customFields: List<CustomPastureField>,
     onCustomValueChanged: (String, String) -> Unit,
     onRemoveField: (String) -> Unit
 ) {
+    val coroutineScope = rememberCoroutineScope()
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+
+    LaunchedEffect(customFields.size) {
+        if (customFields.size > 1) {
+            coroutineScope.launch {
+                delay(200)
+                bringIntoViewRequester.bringIntoView()
+            }
+        }
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Pasture Names", style = MaterialTheme.typography.titleSmall)
-            customFields.forEach { field ->
+            customFields.forEachIndexed { index, field ->
                 OutlinedTextField(
                     value = field.value,
                     onValueChange = { onCustomValueChanged(field.id, it) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = if (index == customFields.lastIndex) {
+                        Modifier.fillMaxWidth().bringIntoViewRequester(bringIntoViewRequester)
+                    } else {
+                        Modifier.fillMaxWidth()
+                    },
                     label = { Text("Add a pasture name") },
                     singleLine = true,
                     trailingIcon = {
