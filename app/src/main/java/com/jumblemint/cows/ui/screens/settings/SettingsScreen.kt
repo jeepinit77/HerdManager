@@ -440,7 +440,7 @@ fun SettingsScreen(
     }
 
     if (showSetupWizardConfirmation) {
-        AlertDialog(
+        com.jumblemint.cows.ui.components.AppAlertDialog(
             onDismissRequest = { showSetupWizardConfirmation = false },
             title = { Text("Replace setup with new choices?") },
             text = {
