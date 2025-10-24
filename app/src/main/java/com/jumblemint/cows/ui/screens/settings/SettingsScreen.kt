@@ -35,6 +35,7 @@ import com.jumblemint.cows.data.import.ConflictResolution
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
+import com.jumblemint.cows.ui.components.AppAlertDialog
 import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.theme.SmartText
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -440,7 +441,7 @@ fun SettingsScreen(
     }
 
     if (showSetupWizardConfirmation) {
-        com.jumblemint.cows.ui.components.AppAlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showSetupWizardConfirmation = false },
             title = { Text("Replace setup with new choices?") },
             text = {
@@ -700,7 +701,7 @@ fun ExportDataDialog(
 ) {
     var selectedFormat by remember { mutableStateOf("CSV") }
 
-    com.jumblemint.cows.ui.components.AppAlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = { 
             Icon(
@@ -758,7 +759,7 @@ fun SampleDataDialog(
     onInstall: () -> Unit,
     onRemove: () -> Unit
 ) {
-    com.jumblemint.cows.ui.components.AppAlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(if (isSampleDataInstalled) Icons.Filled.DeleteSweep else Icons.Filled.PlaylistAdd, contentDescription = "Sample Data") },
         title = { Text(if (isSampleDataInstalled) "Remove Sample Data" else "Add Sample Data") },
@@ -805,7 +806,7 @@ fun DeleteDataCategoryDialog(
     var deleteBreeds by remember { mutableStateOf(false) }
     var deleteSettings by remember { mutableStateOf(false) }
 
-    com.jumblemint.cows.ui.components.AppAlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Filled.WarningAmber, contentDescription = "Delete Data") },
         title = { Text("Delete Data by Category") },
@@ -907,7 +908,7 @@ fun ImportDataDialog(
     onDismiss: () -> Unit,
     onImport: () -> Unit
 ) {
-    com.jumblemint.cows.ui.components.AppAlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = { 
             Icon(
@@ -963,7 +964,7 @@ fun ConflictResolutionDialog(
     onDismiss: () -> Unit,
     onResolve: (ConflictResolution) -> Unit
 ) {
-    com.jumblemint.cows.ui.components.AppAlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         icon = { 
             Icon(
