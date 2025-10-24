@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -141,33 +142,35 @@ fun AnimalFilterScreen(
                                         true -> false
                                         false -> null
                                     }
-                                    currentFilterState = currentFilterState.copy(isWatched = nextState)
+                                    currentFilterState =
+                                        currentFilterState.copy(isWatched = nextState)
                                 })
-                                .padding(vertical = 0.dp), 
+                                .padding(vertical = 0.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Text(
-                                text = "Watched Status", 
+                                text = "Watched Status",
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Checkbox(
-                                checked = currentFilterState.isWatched ?: false, 
-                                onCheckedChange = { 
-                                     val nextState = when (currentFilterState.isWatched) {
+                                checked = currentFilterState.isWatched ?: false,
+                                onCheckedChange = {
+                                    val nextState = when (currentFilterState.isWatched) {
                                         null -> true
                                         true -> false
                                         false -> null
                                     }
-                                    currentFilterState = currentFilterState.copy(isWatched = nextState)
+                                    currentFilterState =
+                                        currentFilterState.copy(isWatched = nextState)
                                 },
                                 colors = CheckboxDefaults.colors(
                                     checkedColor = MaterialTheme.colorScheme.primary,
                                 )
                             )
                         }
-                         Text(
+                        Text(
                             text = when (currentFilterState.isWatched) {
                                 true -> "Only showing watched"
                                 false -> "Only showing not watched"
@@ -177,10 +180,11 @@ fun AnimalFilterScreen(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(start = 8.dp, bottom = 0.dp)
                         )
-                        Divider(
+                        HorizontalDivider(
                             modifier = Modifier
-                                .padding(top = 1.dp) 
-                                .fillMaxWidth() 
+                                .padding(top = 1.dp)
+                                .fillMaxWidth(),
+                            thickness = DividerDefaults.Thickness, color = DividerDefaults.color
                         )
                     }
 
@@ -275,17 +279,17 @@ private fun CollapsibleFilterSection(
     val bringIntoViewRequester = remember { BringIntoViewRequester() }
     val scope = rememberCoroutineScope() 
 
-    Column(modifier = Modifier.padding(vertical = 0.dp)) { 
+    Column(modifier = Modifier.padding(vertical = 0.dp)) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { isExpanded = !isExpanded } 
-                .padding(vertical = 0.dp), 
+                .clickable { isExpanded = !isExpanded }
+                .padding(vertical = 0.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = title, 
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -297,7 +301,7 @@ private fun CollapsibleFilterSection(
 
         LaunchedEffect(isExpanded) {
             if (isExpanded) {
-                scope.launch { 
+                scope.launch {
                     bringIntoViewRequester.bringIntoView()
                 }
             }
@@ -308,10 +312,11 @@ private fun CollapsibleFilterSection(
                 content()
             }
         }
-        Divider(
+        HorizontalDivider(
             modifier = Modifier
-                .padding(top = 1.dp) 
-                .fillMaxWidth() 
+                .padding(top = 1.dp)
+                .fillMaxWidth(),
+            thickness = DividerDefaults.Thickness, color = DividerDefaults.color
         )
     }
 }
@@ -326,16 +331,16 @@ private fun <T> MultiSelectChipGroup(
     onSelectionChanged: (List<T>) -> Unit,
     itemLabel: (T) -> String
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) { 
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) {
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 0.dp), 
-            verticalAlignment = Alignment.CenterVertically, 
+                .padding(vertical = 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = title, 
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -350,7 +355,7 @@ private fun <T> MultiSelectChipGroup(
             }
         }
         FlowRow(
-            modifier = Modifier.fillMaxWidth().padding(top = 0.dp), 
+            modifier = Modifier.fillMaxWidth().padding(top = 0.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -368,22 +373,31 @@ private fun <T> MultiSelectChipGroup(
                         onSelectionChanged(newSelection)
                     },
                     label = { Text(itemLabel(option)) },
-                    leadingIcon = if (isSelected) { { Icon(Icons.Filled.Check, "Selected", modifier = Modifier.size(FilterChipDefaults.IconSize)) } } else null,
+                    leadingIcon = if (isSelected) {
+                        {
+                            Icon(
+                                Icons.Filled.Check,
+                                "Selected",
+                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                            )
+                        }
+                    } else null,
                     colors = FilterChipDefaults.filterChipColors(
                         containerColor = MaterialTheme.colorScheme.surface,
                         labelColor = MaterialTheme.colorScheme.onSurface,
                         iconColor = MaterialTheme.colorScheme.onSurface,
-                        selectedContainerColor = MaterialTheme.colorScheme.primary, 
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary, 
-                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary 
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
                     )
                 )
             }
         }
-        Divider(
+        HorizontalDivider(
             modifier = Modifier
-                .padding(top = 1.dp) 
-                .fillMaxWidth() 
+                .padding(top = 1.dp)
+                .fillMaxWidth(),
+            thickness = DividerDefaults.Thickness, color = DividerDefaults.color
         )
     }
 }
@@ -400,28 +414,29 @@ private fun <T> ConditionalMultiSelectFilter(
 ) {
     if (options.isEmpty()) return
 
-    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) { 
+    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) {
         var showDialog by remember { mutableStateOf(false) }
 
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 0.dp), 
-            verticalAlignment = Alignment.CenterVertically, 
+                .padding(vertical = 0.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                text = title, 
+                text = title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            val showClearButton = selectedOptions.isNotEmpty() && options.size <= chipDisplayThreshold
+            val showClearButton =
+                selectedOptions.isNotEmpty() && options.size <= chipDisplayThreshold
             val showSelectEditButton = options.size > chipDisplayThreshold
 
             TextButton(
-                onClick = { 
-                    if (showClearButton) onSelectionChanged(emptyList()) 
-                    else if (showSelectEditButton) showDialog = true 
+                onClick = {
+                    if (showClearButton) onSelectionChanged(emptyList())
+                    else if (showSelectEditButton) showDialog = true
                 },
                 enabled = showClearButton || showSelectEditButton,
                 modifier = Modifier
@@ -432,7 +447,7 @@ private fun <T> ConditionalMultiSelectFilter(
                     if (showSelectEditButton) {
                         if (selectedOptions.isEmpty()) "Select" else "Edit"
                     } else {
-                        "Clear" 
+                        "Clear"
                     }
                 )
             }
@@ -440,7 +455,7 @@ private fun <T> ConditionalMultiSelectFilter(
 
         if (options.size <= chipDisplayThreshold) {
             FlowRow(
-                modifier = Modifier.fillMaxWidth().padding(top = 0.dp), 
+                modifier = Modifier.fillMaxWidth().padding(top = 0.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
@@ -458,22 +473,30 @@ private fun <T> ConditionalMultiSelectFilter(
                             onSelectionChanged(newSelection)
                         },
                         label = { Text(itemLabel(option)) },
-                        leadingIcon = if (isSelected) { { Icon(Icons.Filled.Check, "Selected", modifier = Modifier.size(FilterChipDefaults.IconSize)) } } else null,
+                        leadingIcon = if (isSelected) {
+                            {
+                                Icon(
+                                    Icons.Filled.Check,
+                                    "Selected",
+                                    modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                )
+                            }
+                        } else null,
                         colors = FilterChipDefaults.filterChipColors(
                             containerColor = MaterialTheme.colorScheme.surface,
                             labelColor = MaterialTheme.colorScheme.onSurface,
                             iconColor = MaterialTheme.colorScheme.onSurface,
-                            selectedContainerColor = MaterialTheme.colorScheme.primary, 
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary, 
-                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary 
+                            selectedContainerColor = MaterialTheme.colorScheme.primary,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary
                         )
                     )
                 }
             }
-        } else { 
+        } else {
             SecondaryButton(
                 onClick = { showDialog = true },
-                modifier = Modifier.fillMaxWidth().padding(top = 8.dp) 
+                modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
             ) {
                 Text(if (selectedOptions.isEmpty()) "Select $title..." else "${selectedOptions.size} selected - Edit")
             }
@@ -489,10 +512,11 @@ private fun <T> ConditionalMultiSelectFilter(
                 )
             }
         }
-        Divider(
+        HorizontalDivider(
             modifier = Modifier
-                .padding(top = 1.dp) 
-                .fillMaxWidth() 
+                .padding(top = 1.dp)
+                .fillMaxWidth(),
+            thickness = DividerDefaults.Thickness, color = DividerDefaults.color
         )
     }
 }

@@ -50,6 +50,7 @@ import androidx.compose.ui.window.DialogProperties
 import com.jumblemint.cows.ui.components.AppDatePickerDialog
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.HorizontalDivider
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
 private enum class DateFilterType { PRESET, CUSTOM, ALL_DATES }
@@ -449,11 +450,13 @@ private fun DateRangeSection(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
             DateFilterType.PRESET -> {
                 val today = LocalDate.now()
                 val thisMonth = Pair(today.withDayOfMonth(1), today)
                 val lastMonthStart = today.minusMonths(1).withDayOfMonth(1)
-                val lastMonthEnd = today.minusMonths(1).withDayOfMonth(today.minusMonths(1).lengthOfMonth())
+                val lastMonthEnd =
+                    today.minusMonths(1).withDayOfMonth(today.minusMonths(1).lengthOfMonth())
                 val lastMonth = Pair(lastMonthStart, lastMonthEnd)
                 val last30Days = Pair(today.minusDays(30), today)
                 val last90Days = Pair(today.minusDays(90), today)
@@ -475,7 +478,8 @@ private fun DateRangeSection(
                 val last2Years = Pair(today.minusYears(2).plusDays(1), today)
                 val thisYearStart = LocalDate.of(today.year, 1, 1)
                 val thisYear = Pair(thisYearStart, today)
-                val lastYear = Pair(LocalDate.of(today.year - 1, 1, 1), LocalDate.of(today.year - 1, 12, 31))
+                val lastYear =
+                    Pair(LocalDate.of(today.year - 1, 1, 1), LocalDate.of(today.year - 1, 12, 31))
 
                 val presets = listOf(
                     "This Month" to thisMonth,
@@ -510,6 +514,7 @@ private fun DateRangeSection(
                                         Spacer(Modifier.width(8.dp))
                                     }
                                 }
+
                                 is Pair<*, *> -> {
                                     @Suppress("UNCHECKED_CAST")
                                     val pair = item as? Pair<String, Pair<LocalDate, LocalDate>>
@@ -532,6 +537,7 @@ private fun DateRangeSection(
                     Spacer(Modifier.height(4.dp))
                 }
             }
+
             DateFilterType.CUSTOM -> {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -543,7 +549,12 @@ private fun DateRangeSection(
                         onDateSelected = { newStart ->
                             if (newStart != null) {
                                 val end = currentRange?.second ?: LocalDate.now()
-                                onRangeSelected(if (!newStart.isAfter(end)) Pair(newStart, end) else Pair(newStart, end))
+                                onRangeSelected(
+                                    if (!newStart.isAfter(end)) Pair(
+                                        newStart,
+                                        end
+                                    ) else Pair(newStart, end)
+                                )
                             } else onRangeSelected(null)
                         },
                         formatter = formatter,
@@ -555,7 +566,12 @@ private fun DateRangeSection(
                         onDateSelected = { newEnd ->
                             if (newEnd != null) {
                                 val start = currentRange?.first ?: newEnd
-                                onRangeSelected(if (!start.isAfter(newEnd)) Pair(start, newEnd) else Pair(start, newEnd))
+                                onRangeSelected(
+                                    if (!start.isAfter(newEnd)) Pair(
+                                        start,
+                                        newEnd
+                                    ) else Pair(start, newEnd)
+                                )
                             } else onRangeSelected(null)
                         },
                         formatter = formatter,
@@ -565,10 +581,11 @@ private fun DateRangeSection(
             }
         }
 
-        Divider(
+        HorizontalDivider(
             modifier = Modifier
                 .padding(top = 1.dp)
-                .fillMaxWidth()
+                .fillMaxWidth(),
+            thickness = DividerDefaults.Thickness, color = DividerDefaults.color
         )
     }
 }
@@ -620,7 +637,13 @@ private fun ActivityTypeSection(
                     onClick = { onToggleType(t) },
                     label = { Text(t.displayName) },
                     leadingIcon = if (isSelected) {
-                        { Icon(Icons.Filled.Check, contentDescription = "Selected", modifier = Modifier.size(FilterChipDefaults.IconSize)) }
+                        {
+                            Icon(
+                                Icons.Filled.Check,
+                                contentDescription = "Selected",
+                                modifier = Modifier.size(FilterChipDefaults.IconSize)
+                            )
+                        }
                     } else null,
                     colors = FilterChipDefaults.filterChipColors(
                         containerColor = MaterialTheme.colorScheme.surface,
@@ -634,10 +657,11 @@ private fun ActivityTypeSection(
             }
         }
 
-        Divider(
+        HorizontalDivider(
             modifier = Modifier
                 .padding(top = 1.dp)
-                .fillMaxWidth()
+                .fillMaxWidth(),
+            thickness = DividerDefaults.Thickness, color = DividerDefaults.color
         )
     }
 }

@@ -24,9 +24,10 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -439,7 +440,11 @@ private fun ParentPickerItem(
                 )
             }
         }
-        Divider(color = MaterialTheme.colorScheme.outlineVariant)
+        HorizontalDivider(
+            Modifier,
+            DividerDefaults.Thickness,
+            color = MaterialTheme.colorScheme.outlineVariant
+        )
     }
 }
 

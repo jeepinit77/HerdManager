@@ -5,10 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -23,8 +25,9 @@ import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -669,7 +672,11 @@ private fun IdentifierPreferenceStep(
             AnimalIdentifierMode.BOTH to "Both"
         )
 
-        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(IntrinsicSize.Min)
+        ) {
             options.forEachIndexed { index, (mode, label) ->
                 SegmentedButton(
                     selected = selected == mode,
@@ -678,7 +685,8 @@ private fun IdentifierPreferenceStep(
                     colors = SegmentedButtonDefaults.colors(
                         activeContainerColor = MaterialTheme.colorScheme.primary,
                         activeContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    ),
+                    modifier = Modifier.fillMaxHeight()
                 ) {
                     Text(label)
                 }
@@ -715,7 +723,10 @@ private fun BreedSelectionStep(
                     trailingIcon = {
                         if (field.value.isNotBlank()) {
                             IconButton(onClick = { onRemoveCustomField(field.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Remove custom breed")
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Remove custom breed"
+                                )
                             }
                         }
                     },
@@ -724,7 +735,7 @@ private fun BreedSelectionStep(
             }
         }
 
-        Divider()
+        HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Default Breeds", style = MaterialTheme.typography.titleSmall)
@@ -841,7 +852,10 @@ private fun ActivitySelectionStep(
                     trailingIcon = {
                         if (field.value.isNotBlank()) {
                             IconButton(onClick = { onRemoveCustomField(field.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Remove custom activity")
+                                Icon(
+                                    Icons.Default.Delete,
+                                    contentDescription = "Remove custom activity"
+                                )
                             }
                         }
                     },
@@ -850,7 +864,7 @@ private fun ActivitySelectionStep(
             }
         }
 
-        Divider()
+        HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Default Activity Types", style = MaterialTheme.typography.titleSmall)
@@ -869,7 +883,10 @@ private fun ActivitySelectionStep(
                         checked = isSelected,
                         onCheckedChange = { onToggleDefault(activity.id) }
                     )
-                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
                         Text(activity.displayName, style = MaterialTheme.typography.bodyLarge)
                         activity.description?.takeIf { it.isNotBlank() }?.let { desc ->
                             Text(desc, style = MaterialTheme.typography.bodySmall)
