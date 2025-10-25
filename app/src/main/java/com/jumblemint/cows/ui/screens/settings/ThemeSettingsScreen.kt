@@ -695,7 +695,7 @@ private fun ThemePicker(
     val paletteChoices = remember(themeSettings.genderPalette, genderPaletteOptions) {
         (listOf(themeSettings.genderPalette) + genderPaletteOptions).distinctBy { it.signature() }
     }
-    var genderEditTarget by remember { mutableStateOf<GenderEditTarget?>(null) }
+    var genderEditTarget by remember { mutableStateOf<GenderSwatch?>(null) }
     val currentPalette by rememberUpdatedState(newValue = themeSettings.genderPalette)
     val genderLocked by rememberUpdatedState(newValue = themeSettings.genderColorsLocked)
 
