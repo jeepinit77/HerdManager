@@ -126,7 +126,11 @@ fun ThemeSettingsScreen(
         Surface(tonalElevation = 2.dp, modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("App Theme", style = MaterialTheme.typography.bodyMedium)
-                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                SingleChoiceSegmentedButtonRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Min)
+                ) {
                     val modes = listOf(
                         ThemeMode.LIGHT to "Light",
                         ThemeMode.DARK to "Dark",
@@ -134,7 +138,9 @@ fun ThemeSettingsScreen(
                     )
                     modes.forEachIndexed { index, (mode, label) ->
                         SegmentedButton(
-                            modifier = Modifier.heightIn(min = SegmentedButtonMinHeight),
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .defaultMinSize(minHeight = SegmentedButtonMinHeight),
                             shape = SegmentedButtonDefaults.itemShape(index, modes.size),
                             selected = currentMode == mode,
                             onClick = {
@@ -593,7 +599,6 @@ private fun ThemePicker(
     )
 
     val seedColors = remember { SeedColor.entries.sortedBy { it.color.toHct().hue } }
-    var genderSectionExpanded by rememberSaveable { mutableStateOf(false) }
     var advancedSectionExpanded by rememberSaveable { mutableStateOf(false) }
     var genderEditTarget by remember { mutableStateOf<GenderSwatch?>(null) }
     val currentPalette by rememberUpdatedState(newValue = themeSettings.genderPalette)
@@ -638,7 +643,9 @@ private fun ThemePicker(
                             style = MaterialTheme.typography.titleMedium
                         )
                         Row(
-                            Modifier.fillMaxWidth(),
+                            Modifier
+                                .fillMaxWidth()
+                                .height(IntrinsicSize.Min),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             PhoneStyleButton(
@@ -648,11 +655,13 @@ private fun ThemePicker(
                                 navColor = MaterialTheme.colorScheme.primary,
                                 isSelected = style == ThemeStyle.COLORED_CARDS,
                                 selectedColor = MaterialTheme.colorScheme.primary,
-                                onClick = { 
+                                onClick = {
                                     style = ThemeStyle.COLORED_CARDS
                                     scope.launch { themeManager.setThemeStyle(ThemeStyle.COLORED_CARDS) }
                                 },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
                             PhoneStyleButton(
                                 title = "Colored Background",
@@ -665,7 +674,9 @@ private fun ThemePicker(
                                     style = ThemeStyle.COLORED_BACKGROUND
                                     scope.launch { themeManager.setThemeStyle(ThemeStyle.COLORED_BACKGROUND) }
                                 },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
                             PhoneStyleButton(
                                 title = "Gray Cards",
@@ -674,11 +685,13 @@ private fun ThemePicker(
                                 navColor = MaterialTheme.colorScheme.primary,
                                 isSelected = style == ThemeStyle.GRAY_CARDS,
                                 selectedColor = MaterialTheme.colorScheme.primary,
-                                onClick = { 
+                                onClick = {
                                     style = ThemeStyle.GRAY_CARDS
                                     scope.launch { themeManager.setThemeStyle(ThemeStyle.GRAY_CARDS) }
                                 },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
                             PhoneStyleButton(
                                 title = "Gray Background",
@@ -691,40 +704,15 @@ private fun ThemePicker(
                                     style = ThemeStyle.GRAY_BACKGROUND
                                     scope.launch { themeManager.setThemeStyle(ThemeStyle.GRAY_BACKGROUND) }
                                 },
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             )
-                        }
-
-                        val toneLabel = if (style == ThemeStyle.COLORED_CARDS || style == ThemeStyle.GRAY_CARDS) {
-                            "Card Tone"
-                        } else {
-                            "Background Tone"
                         }
                         Text(
-                            "$toneLabel (${if (isDarkTheme) "Dark" else "Light"} Mode)",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Slider(
-                            value = surfaceTone,
-                            onValueChange = { surfaceTone = it },
-                            onValueChangeFinished = {
-                                scope.launch {
-                                    if (isDarkTheme) {
-                                        themeManager.setSurfaceToneDark(surfaceTone)
-                                    } else {
-                                        themeManager.setSurfaceToneLight(surfaceTone)
-                                    }
-                                }
-                            },
-                            valueRange = 10f..98f,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(32.dp),
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.onSurface,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                            )
+                            "Adjust tones for each mode in Advanced settings below.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
@@ -767,223 +755,243 @@ private fun ThemePicker(
                             exit = shrinkVertically()
                         ) {
                             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Text(
-                                        "Tone Adjustments",
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    tonalElevation = 2.dp,
+                                    color = MaterialTheme.colorScheme.surface
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        Text(
+                                            "Tone Adjustments",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
 
-                                    val toneOptions = listOf(
-                                        false to "Reset tone with base color",
-                                        true to "Keep custom tone"
-                                    )
-                                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                                        toneOptions.forEachIndexed { index, (locked, label) ->
-                                            SegmentedButton(
-                                                modifier = Modifier.heightIn(min = SegmentedButtonMinHeight),
-                                                shape = SegmentedButtonDefaults.itemShape(index, toneOptions.size),
-                                                selected = themeSettings.toneLocked == locked,
-                                                onClick = {
-                                                    scope.launch {
-                                                        themeManager.setToneLock(locked)
-                                                    }
-                                                },
-                                                colors = SegmentedButtonDefaults.colors(
-                                                    activeContainerColor = MaterialTheme.colorScheme.primary,
-                                                    activeContentColor = MaterialTheme.colorScheme.onPrimary
-                                                )
-                                            ) {
-                                                Text(label)
+                                        val toneOptions = listOf(
+                                            false to "Reset tone with base color",
+                                            true to "Keep custom tone"
+                                        )
+                                        SingleChoiceSegmentedButtonRow(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(IntrinsicSize.Min)
+                                        ) {
+                                            toneOptions.forEachIndexed { index, (locked, label) ->
+                                                SegmentedButton(
+                                                    modifier = Modifier
+                                                        .fillMaxHeight()
+                                                        .defaultMinSize(minHeight = SegmentedButtonMinHeight),
+                                                    shape = SegmentedButtonDefaults.itemShape(index, toneOptions.size),
+                                                    selected = themeSettings.toneLocked == locked,
+                                                    onClick = {
+                                                        scope.launch {
+                                                            themeManager.setToneLock(locked)
+                                                        }
+                                                    },
+                                                    colors = SegmentedButtonDefaults.colors(
+                                                        activeContainerColor = MaterialTheme.colorScheme.primary,
+                                                        activeContentColor = MaterialTheme.colorScheme.onPrimary
+                                                    )
+                                                ) {
+                                                    Text(label)
+                                                }
                                             }
                                         }
-                                    }
 
-                                    val toneSupport = if (themeSettings.toneLocked) {
-                                        "Tone sliders stay put even after changing the base color."
-                                    } else {
-                                        "We’ll reset these tones whenever you pick a new base color."
-                                    }
-                                    Text(
-                                        toneSupport,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-
-                                    Text(
-                                        "Navigation Bar Tone (${if (isDarkTheme) "Dark" else "Light"} Mode)",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Slider(
-                                        value = navBarTone,
-                                        onValueChange = { navBarTone = it },
-                                        onValueChangeFinished = {
-                                            scope.launch {
-                                                if (isDarkTheme) {
-                                                    themeManager.setNavBarToneDark(navBarTone)
-                                                } else {
-                                                    themeManager.setNavBarToneLight(navBarTone)
-                                                }
-                                            }
-                                        },
-                                        valueRange = 10f..90f,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(32.dp),
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.onSurface,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                                            inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                        val toneSupport = if (themeSettings.toneLocked) {
+                                            "Tone sliders stay put even after changing the base color."
+                                        } else {
+                                            "We’ll reset these tones whenever you pick a new base color."
+                                        }
+                                        Text(
+                                            toneSupport,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
-                                    )
 
-                                    val toneLabel = if (style == ThemeStyle.COLORED_CARDS || style == ThemeStyle.GRAY_CARDS) {
-                                        "Card Tone"
-                                    } else {
-                                        "Background Tone"
-                                    }
-                                    Text(
-                                        "$toneLabel (${if (isDarkTheme) "Dark" else "Light"} Mode)",
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                    Slider(
-                                        value = surfaceTone,
-                                        onValueChange = { surfaceTone = it },
-                                        onValueChangeFinished = {
-                                            scope.launch {
-                                                if (isDarkTheme) {
-                                                    themeManager.setSurfaceToneDark(surfaceTone)
-                                                } else {
-                                                    themeManager.setSurfaceToneLight(surfaceTone)
-                                                }
-                                            }
-                                        },
-                                        valueRange = 10f..98f,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .height(32.dp),
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.onSurface,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                                            inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                        Text(
+                                            "Navigation Bar Tone (${if (isDarkTheme) "Dark" else "Light"} Mode)",
+                                            style = MaterialTheme.typography.bodyMedium
                                         )
-                                    )
+                                        Slider(
+                                            value = navBarTone,
+                                            onValueChange = { navBarTone = it },
+                                            onValueChangeFinished = {
+                                                scope.launch {
+                                                    if (isDarkTheme) {
+                                                        themeManager.setNavBarToneDark(navBarTone)
+                                                    } else {
+                                                        themeManager.setNavBarToneLight(navBarTone)
+                                                    }
+                                                }
+                                            },
+                                            valueRange = 10f..90f,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(32.dp),
+                                            colors = SliderDefaults.colors(
+                                                thumbColor = MaterialTheme.colorScheme.onSurface,
+                                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                            )
+                                        )
 
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.End
-                                    ) {
-                                        TextButton(onClick = { scope.launch { themeManager.resetToneToDefaults() } }) {
-                                            Text("Reset tone to defaults")
+                                        val toneLabel = if (style == ThemeStyle.COLORED_CARDS || style == ThemeStyle.GRAY_CARDS) {
+                                            "Card Tone"
+                                        } else {
+                                            "Background Tone"
+                                        }
+                                        Text(
+                                            "$toneLabel (${if (isDarkTheme) "Dark" else "Light"} Mode)",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        Slider(
+                                            value = surfaceTone,
+                                            onValueChange = { surfaceTone = it },
+                                            onValueChangeFinished = {
+                                                scope.launch {
+                                                    if (isDarkTheme) {
+                                                        themeManager.setSurfaceToneDark(surfaceTone)
+                                                    } else {
+                                                        themeManager.setSurfaceToneLight(surfaceTone)
+                                                    }
+                                                }
+                                            },
+                                            valueRange = 10f..98f,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(32.dp),
+                                            colors = SliderDefaults.colors(
+                                                thumbColor = MaterialTheme.colorScheme.onSurface,
+                                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                            )
+                                        )
+
+                                        Text(
+                                            text = "Light and dark mode keep their own tone settings. Switch the app mode above to fine-tune the other one.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.End
+                                        ) {
+                                            TextButton(onClick = { scope.launch { themeManager.resetToneToDefaults() } }) {
+                                                Text("Reset tone to defaults")
+                                            }
                                         }
                                     }
                                 }
 
-                                Divider(modifier = Modifier.fillMaxWidth())
-
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { genderSectionExpanded = !genderSectionExpanded },
-                                        verticalAlignment = Alignment.CenterVertically
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(12.dp),
+                                    tonalElevation = 2.dp,
+                                    color = MaterialTheme.colorScheme.surface
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp)
                                     ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                "Edit Gender Colors",
-                                                style = MaterialTheme.typography.titleSmall,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                            Text(
-                                                "Controls the highlights for male, female, and unknown animals.",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                        GenderPaletteDots(palette = themeSettings.genderPalette)
-                                        Icon(
-                                            if (genderSectionExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                            contentDescription = if (genderSectionExpanded) "Collapse gender colors" else "Expand gender colors",
-                                            tint = MaterialTheme.colorScheme.primary,
-                                            modifier = Modifier.padding(start = 8.dp)
-                                        )
-                                    }
-
-                                    AnimatedVisibility(
-                                        visible = genderSectionExpanded,
-                                        enter = expandVertically(),
-                                        exit = shrinkVertically()
-                                    ) {
-                                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                            Text(
-                                                "These accents appear on herd lists, filter chips, and detail screens.",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-
-                                            val genderColorOptions = listOf(
-                                                false to "Use theme colors",
-                                                true to "Use custom colors"
-                                            )
-                                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                                                genderColorOptions.forEachIndexed { index, (locked, label) ->
-                                                    SegmentedButton(
-                                                        modifier = Modifier.heightIn(min = SegmentedButtonMinHeight),
-                                                        shape = SegmentedButtonDefaults.itemShape(index, genderColorOptions.size),
-                                                        selected = themeSettings.genderColorsLocked == locked,
-                                                        onClick = {
-                                                            scope.launch {
-                                                                genderEditTarget = null
-                                                                themeManager.setGenderColorsLock(locked)
-                                                            }
-                                                        },
-                                                        colors = SegmentedButtonDefaults.colors(
-                                                            activeContainerColor = MaterialTheme.colorScheme.primary,
-                                                            activeContentColor = MaterialTheme.colorScheme.onPrimary
-                                                        )
-                                                    ) {
-                                                        Text(label)
-                                                    }
-                                                }
-                                            }
-
-                                            val supportText = if (themeSettings.genderColorsLocked) {
-                                                "Custom colors stay put when you pick a new base color."
-                                            } else {
-                                                "Theme colors update automatically whenever you change the base color."
-                                            }
-                                            Text(
-                                                text = supportText,
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-
-                                            Divider(modifier = Modifier.fillMaxWidth())
-
-                                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
                                                 Text(
-                                                    "Tap a swatch to fine-tune that accent color.",
+                                                    "Edit Gender Colors",
+                                                    style = MaterialTheme.typography.titleSmall,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                                Text(
+                                                    "Controls the highlights for male, female, and unknown animals.",
                                                     style = MaterialTheme.typography.bodySmall,
                                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                                 )
-                                                Row(
-                                                    modifier = Modifier.fillMaxWidth(),
-                                                    horizontalArrangement = Arrangement.SpaceEvenly,
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    GenderSwatch.values().forEach { swatch ->
-                                                        val swatchColor = when (swatch) {
-                                                            GenderSwatch.Male -> themeSettings.genderPalette.male
-                                                            GenderSwatch.Female -> themeSettings.genderPalette.female
-                                                            GenderSwatch.Neutral -> themeSettings.genderPalette.neutral
+                                            }
+                                            GenderPaletteDots(palette = themeSettings.genderPalette)
+                                        }
+
+                                        Text(
+                                            "These accents appear on herd lists, filter chips, and detail screens.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        val genderColorOptions = listOf(
+                                            false to "Use theme colors",
+                                            true to "Use custom colors"
+                                        )
+                                        SingleChoiceSegmentedButtonRow(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(IntrinsicSize.Min)
+                                        ) {
+                                            genderColorOptions.forEachIndexed { index, (locked, label) ->
+                                                SegmentedButton(
+                                                    modifier = Modifier
+                                                        .fillMaxHeight()
+                                                        .defaultMinSize(minHeight = SegmentedButtonMinHeight),
+                                                    shape = SegmentedButtonDefaults.itemShape(index, genderColorOptions.size),
+                                                    selected = themeSettings.genderColorsLocked == locked,
+                                                    onClick = {
+                                                        scope.launch {
+                                                            genderEditTarget = null
+                                                            themeManager.setGenderColorsLock(locked)
                                                         }
-                                                        GenderSwatchChip(
-                                                            swatch = swatch,
-                                                            color = swatchColor,
-                                                            enabled = themeSettings.genderColorsLocked,
-                                                            onClick = { genderEditTarget = swatch }
-                                                        )
+                                                    },
+                                                    colors = SegmentedButtonDefaults.colors(
+                                                        activeContainerColor = MaterialTheme.colorScheme.primary,
+                                                        activeContentColor = MaterialTheme.colorScheme.onPrimary
+                                                    )
+                                                ) {
+                                                    Text(label)
+                                                }
+                                            }
+                                        }
+
+                                        val supportText = if (themeSettings.genderColorsLocked) {
+                                            "Custom colors stay put when you pick a new base color."
+                                        } else {
+                                            "Theme colors update automatically whenever you change the base color."
+                                        }
+                                        Text(
+                                            text = supportText,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        Divider(modifier = Modifier.fillMaxWidth())
+
+                                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                            Text(
+                                                "Tap a swatch to fine-tune that accent color.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                GenderSwatch.values().forEach { swatch ->
+                                                    val swatchColor = when (swatch) {
+                                                        GenderSwatch.Male -> themeSettings.genderPalette.male
+                                                        GenderSwatch.Female -> themeSettings.genderPalette.female
+                                                        GenderSwatch.Neutral -> themeSettings.genderPalette.neutral
                                                     }
+                                                    GenderSwatchChip(
+                                                        swatch = swatch,
+                                                        color = swatchColor,
+                                                        enabled = themeSettings.genderColorsLocked,
+                                                        onClick = { genderEditTarget = swatch }
+                                                    )
                                                 }
                                             }
                                         }
