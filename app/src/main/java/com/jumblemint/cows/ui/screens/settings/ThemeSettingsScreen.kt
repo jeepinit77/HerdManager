@@ -21,6 +21,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronLeft
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.WarningAmber
@@ -238,38 +240,60 @@ private fun BaseColorPager(
     onPick: (SeedColor) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val canScrollBackward = pagerState.currentPage > 0 && pages.isNotEmpty()
+    val canScrollForward = pages.isNotEmpty() && pagerState.currentPage < pages.lastIndex
+
     Column(modifier) {
-        HorizontalPager(
-            state = pagerState,
-            contentPadding = PaddingValues(horizontal = 4.dp),
-            pageSpacing = 12.dp,
-            flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
-            modifier = Modifier.fillMaxWidth()
-        ) { page ->
-            val palettePage = pages.getOrNull(page)
-            val rows = (palettePage?.colors ?: emptyList()).chunked(5)
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                palettePage?.let {
-                    Text(
-                        text = it.title,
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            HorizontalPager(
+                state = pagerState,
+                contentPadding = PaddingValues(horizontal = 4.dp),
+                pageSpacing = 12.dp,
+                flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.Center)
+            ) { page ->
+                val palettePage = pages.getOrNull(page)
+                val rows = (palettePage?.colors ?: emptyList()).chunked(5)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    rows.forEach { row ->
+                        TintRow(
+                            currentSeedColor = currentSeedColor,
+                            row = row,
+                            onPick = onPick
+                        )
+                    }
+                    if (rows.size == 1) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
-                rows.forEach { row ->
-                    TintRow(
-                        currentSeedColor = currentSeedColor,
-                        row = row,
-                        onPick = onPick
-                    )
-                }
-                if (rows.size == 1) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
+            }
+
+            if (canScrollBackward) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronLeft,
+                    contentDescription = "Scroll left for more colors",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 4.dp)
+                )
+            }
+            if (canScrollForward) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronRight,
+                    contentDescription = "Scroll right for more colors",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 4.dp)
+                )
             }
         }
         if (pages.size > 1) {
@@ -296,7 +320,7 @@ private fun BaseColorPager(
                 }
             }
             Text(
-                "Swipe to explore more color families",
+                "Swipe sideways to explore more colors",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier
@@ -325,64 +349,47 @@ private fun GenderPaletteDots(
     }
 }
 
-private enum class GenderSwatch(val label: String, val dialogLabel: String, val supporting: String) {
+private enum class GenderSwatch(val label: String, val dialogLabel: String) {
     Male(
-        label = "Male accent",
-        dialogLabel = "Male accent",
-        supporting = "Used on cards, chips, and charts for bulls and male calves."
+        label = "Male",
+        dialogLabel = "Male accent"
     ),
     Female(
-        label = "Female accent",
-        dialogLabel = "Female accent",
-        supporting = "Highlights cows and female calves across the app."
+        label = "Female",
+        dialogLabel = "Female accent"
     ),
     Neutral(
-        label = "Unknown accent",
-        dialogLabel = "Unknown accent",
-        supporting = "Appears when an animal's gender is unset or undisclosed."
+        label = "TBD",
+        dialogLabel = "Unknown accent"
     )
 }
 
 @Composable
-private fun GenderColorEditorRow(
-    label: String,
-    description: String,
+private fun GenderSwatchChip(
+    swatch: GenderSwatch,
     color: Color,
-    onEdit: () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier
+            .widthIn(min = 72.dp)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(color)
-                    .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape)
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            FilledTonalButton(onClick = onEdit) {
-                Text("Adjust")
-            }
-        }
+        Box(
+            modifier = Modifier
+                .size(48.dp)
+                .clip(CircleShape)
+                .background(color)
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f), CircleShape)
+        )
+        Text(
+            text = swatch.label,
+            style = MaterialTheme.typography.labelLarge,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
@@ -677,18 +684,10 @@ private fun ThemePicker(
 
     val colorsPerPage = 10
     val colorPages = remember {
-        PaletteFamily.values().flatMap { family ->
-            val familyColors = SeedColor.entries
-                .filter { it.paletteFamily() == family }
-                .sortedBy { it.color.toHct().hue }
-            familyColors.chunked(colorsPerPage).mapIndexed { index, chunk ->
-                val titleSuffix = if (familyColors.size > colorsPerPage) " ${index + 1}" else ""
-                PalettePage(
-                    title = family.displayName + titleSuffix,
-                    colors = chunk
-                )
-            }
-        }
+        SeedColor.entries
+            .sortedBy { it.color.toHct().hue }
+            .chunked(colorsPerPage)
+            .map { chunk -> PalettePage(colors = chunk) }
     }
     var genderSectionExpanded by rememberSaveable { mutableStateOf(false) }
     val genderPaletteOptions = remember(themeSettings.seedColor) { themeSettings.seedColor.genderPaletteOptions() }
@@ -980,9 +979,9 @@ private fun ThemePicker(
                                     )
                                     Text(
                                         if (themeSettings.genderColorsLocked) {
-                                            "Keep these gender colors when you pick a new base color"
+                                            "Keep the gender colors I set here when I pick a new base color"
                                         } else {
-                                            "Let new base colors refresh the gender accents automatically"
+                                            "Update gender colors automatically when I choose a new base color"
                                         },
                                         style = MaterialTheme.typography.bodyMedium,
                                         modifier = Modifier.padding(start = 8.dp)
@@ -1017,18 +1016,28 @@ private fun ThemePicker(
 
                                 Divider(modifier = Modifier.fillMaxWidth())
 
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    GenderSwatch.values().forEach { swatch ->
-                                        GenderColorEditorRow(
-                                            label = swatch.label,
-                                            description = swatch.supporting,
-                                            color = when (swatch) {
-                                                GenderSwatch.Male -> themeSettings.genderPalette.male
-                                                GenderSwatch.Female -> themeSettings.genderPalette.female
-                                                GenderSwatch.Neutral -> themeSettings.genderPalette.neutral
-                                            },
-                                            onEdit = { genderEditTarget = swatch }
-                                        )
+                                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                    Text(
+                                        "Tap a swatch to fine-tune that accent color.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceEvenly,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        GenderSwatch.values().forEach { swatch ->
+                                            GenderSwatchChip(
+                                                swatch = swatch,
+                                                color = when (swatch) {
+                                                    GenderSwatch.Male -> themeSettings.genderPalette.male
+                                                    GenderSwatch.Female -> themeSettings.genderPalette.female
+                                                    GenderSwatch.Neutral -> themeSettings.genderPalette.neutral
+                                                },
+                                                onClick = { genderEditTarget = swatch }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -1086,47 +1095,7 @@ private fun ThemePicker(
 
 private data class ContrastIssue(val area: String, val ratio: Double)
 
-private data class PalettePage(val title: String, val colors: List<SeedColor>)
-
-private enum class PaletteFamily(val displayName: String) {
-    COOL("Cool & aquatic"),
-    BOTANICAL("Botanical greens"),
-    WARM("Warm sunrise"),
-    EARTH("Earthy neutrals"),
-    NEUTRAL("Moody & soft")
-}
-
-private fun SeedColor.paletteFamily(): PaletteFamily = when (this) {
-    SeedColor.DENIM_BLUE,
-    SeedColor.SLATE_BLUE,
-    SeedColor.SKY_NAVY,
-    SeedColor.COPPER_TEAL,
-    SeedColor.VERDANT_TEAL,
-    SeedColor.MIDNIGHT_CLAY -> PaletteFamily.COOL
-
-    SeedColor.SAGE_GREEN,
-    SeedColor.MOSS_OLIVE,
-    SeedColor.FROSTED_FOREST,
-    SeedColor.TERRACOTTA_SAGE -> PaletteFamily.BOTANICAL
-
-    SeedColor.HONEY_GOLD,
-    SeedColor.SUN_MIST,
-    SeedColor.OCHRE_GLOW,
-    SeedColor.CORAL_RUST,
-    SeedColor.BRICK_RED,
-    SeedColor.CRANBERRY -> PaletteFamily.WARM
-
-    SeedColor.CEDARWOOD,
-    SeedColor.ESPRESSO_BROWN,
-    SeedColor.CLAY_TAUPE,
-    SeedColor.SAND_SEA -> PaletteFamily.EARTH
-
-    SeedColor.SLATE,
-    SeedColor.CHARCOAL_GOLD,
-    SeedColor.LAVENDER_GRAPHITE,
-    SeedColor.ASH_MIST,
-    SeedColor.PEARL_INK -> PaletteFamily.NEUTRAL
-}
+private data class PalettePage(val colors: List<SeedColor>)
 
 private fun contrastRatio(colorA: Color, colorB: Color): Double {
     val luminanceA = colorA.luminance()
