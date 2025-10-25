@@ -45,6 +45,10 @@ object SettingsKeys {
     const val NAV_BAR_TONE = "nav_bar_tone" // HCT tone for navigation bars (0-100)
     const val SURFACE_TONE = "surface_tone" // HCT tone for cards/surfaces (0-100)
     const val THEME_STYLE = "theme_style" // Stores the ThemeStyle enum name
+    const val THEME_GENDER_LOCKED = "theme_gender_locked"
+    const val THEME_GENDER_MALE = "theme_gender_male"
+    const val THEME_GENDER_FEMALE = "theme_gender_female"
+    const val THEME_GENDER_NEUTRAL = "theme_gender_neutral"
     
     // General App Settings
     const val CURRENT_THEME_NAME = "current_theme_name" // Stores the enum name of the current preset or "CUSTOM"

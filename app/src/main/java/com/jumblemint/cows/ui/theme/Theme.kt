@@ -35,7 +35,7 @@ fun CowsTheme(
     }
 
     val colorScheme = generateThemeFromSeed(
-        seedColor = themeSettings.seedColor,
+        themeSettings = themeSettings,
         surfaceTone = themeSettings.getSurfaceTone(isDark),
         navBarTone = themeSettings.getNavBarTone(isDark),
         isDark = isDark,
