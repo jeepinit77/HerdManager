@@ -189,6 +189,7 @@ private fun AdvancedSection(
     title: String,
     description: String? = null,
     modifier: Modifier = Modifier,
+    horizontalInset: Dp = 16.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Column(
@@ -199,20 +200,27 @@ private fun AdvancedSection(
                 .fillMaxWidth()
                 .drawBehind {
                     val strokeWidth = 1.dp.toPx()
+                    val insetPx = horizontalInset.toPx()
+
+                    drawRect(
+                        color = MaterialTheme.colorScheme.surface,
+                        topLeft = Offset(-insetPx, 0f),
+                        size = Size(size.width + insetPx * 2f, size.height)
+                    )
+
                     drawLine(
                         color = Color.Black,
-                        start = Offset(0f, strokeWidth / 2f),
-                        end = Offset(size.width, strokeWidth / 2f),
+                        start = Offset(-insetPx, strokeWidth / 2f),
+                        end = Offset(size.width + insetPx, strokeWidth / 2f),
                         strokeWidth = strokeWidth
                     )
                 }
-                .background(MaterialTheme.colorScheme.secondaryContainer)
         ) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
             )
         }
