@@ -30,7 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.drawRoundRect
+//import androidx.compose.ui.graphics.drawscope.drawRoundRect
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -174,10 +174,10 @@ fun ThemeSettingsScreen(
 // TODO: Allow saving custom color bundles as sharable presets for team members.
 // TODO: Add optional haptic feedback and snackbars for critical theme actions to reinforce success.
 
-@Composable
 private const val COLOR_GRID_MAX_ROWS = 3
 private val SegmentedButtonMinHeight = 44.dp
 
+@Composable
 private fun TintRow(
     currentSeedColor: SeedColor,
     row: List<SeedColor>,
@@ -262,6 +262,8 @@ private fun BaseColorGrid(
             Spacer(modifier = Modifier.height(4.dp))
         }
 
+        val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+        val indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
         Canvas(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
@@ -269,8 +271,6 @@ private fun BaseColorGrid(
                 .width(4.dp)
                 .padding(vertical = 8.dp)
         ) {
-            val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
-            val indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
             val trackWidth = size.width
             drawRoundRect(
                 color = trackColor,

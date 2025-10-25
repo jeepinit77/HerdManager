@@ -475,8 +475,9 @@ class ThemeManager(private val repository: CattleRepository) {
         }
     }
 
-    suspend fun resetToneToDefaults(seedColor: SeedColor = getCurrentSeedColor()) {
-        val defaults = seedColor.toneDefaults()
+    suspend fun resetToneToDefaults(seedColor: SeedColor? = null) {
+        val resolvedSeedColor = seedColor ?: getCurrentSeedColor()
+        val defaults = resolvedSeedColor.toneDefaults()
         setNavBarToneLight(defaults.navBarToneLight)
         setNavBarToneDark(defaults.navBarToneDark)
         setSurfaceToneLight(defaults.surfaceToneLight)
