@@ -3,23 +3,19 @@ package com.jumblemint.cows.ui.screens.settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerDefaults
-import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.WarningAmber
@@ -27,18 +23,23 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.drawRoundRect
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.times
 import com.github.skydoves.colorpicker.compose.BrightnessSlider
 import com.github.skydoves.colorpicker.compose.ColorEnvelope
 import com.github.skydoves.colorpicker.compose.HsvColorPicker
@@ -133,6 +134,7 @@ fun ThemeSettingsScreen(
                     )
                     modes.forEachIndexed { index, (mode, label) ->
                         SegmentedButton(
+                            modifier = Modifier.heightIn(min = SegmentedButtonMinHeight),
                             shape = SegmentedButtonDefaults.itemShape(index, modes.size),
                             selected = currentMode == mode,
                             onClick = {
@@ -173,6 +175,9 @@ fun ThemeSettingsScreen(
 // TODO: Add optional haptic feedback and snackbars for critical theme actions to reinforce success.
 
 @Composable
+private const val COLOR_GRID_MAX_ROWS = 3
+private val SegmentedButtonMinHeight = 44.dp
+
 private fun TintRow(
     currentSeedColor: SeedColor,
     row: List<SeedColor>,
@@ -228,103 +233,66 @@ private fun PresetChip(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BaseColorPager(
-    pagerState: PagerState,
-    pages: List<PalettePage>,
+private fun BaseColorGrid(
+    colors: List<SeedColor>,
     currentSeedColor: SeedColor,
     onPick: (SeedColor) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val canScrollBackward = pagerState.currentPage > 0 && pages.isNotEmpty()
-    val canScrollForward = pages.isNotEmpty() && pagerState.currentPage < pages.lastIndex
-
-    Column(modifier) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            HorizontalPager(
-                state = pagerState,
-                contentPadding = PaddingValues(horizontal = 4.dp),
-                pageSpacing = 12.dp,
-                flingBehavior = PagerDefaults.flingBehavior(state = pagerState),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.Center)
-            ) { page ->
-                val palettePage = pages.getOrNull(page)
-                val rows = (palettePage?.colors ?: emptyList()).chunked(5)
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    rows.forEach { row ->
-                        TintRow(
-                            currentSeedColor = currentSeedColor,
-                            row = row,
-                            onPick = onPick
-                        )
-                    }
-                    if (rows.size == 1) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                }
-            }
-
-            if (canScrollBackward) {
-                Icon(
-                    imageVector = Icons.Filled.ChevronLeft,
-                    contentDescription = "Scroll left for more colors",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = 4.dp)
+    val rows = remember(colors) { colors.chunked(5) }
+    val scrollState = rememberScrollState()
+    val gridHeight = remember { 84.dp * COLOR_GRID_MAX_ROWS }
+    Box(modifier = modifier.heightIn(max = gridHeight)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 6.dp)
+                .heightIn(max = gridHeight)
+                .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            rows.forEach { row ->
+                TintRow(
+                    currentSeedColor = currentSeedColor,
+                    row = row,
+                    onPick = onPick
                 )
             }
-            if (canScrollForward) {
-                Icon(
-                    imageVector = Icons.Filled.ChevronRight,
-                    contentDescription = "Scroll right for more colors",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 4.dp)
-                )
-            }
+            Spacer(modifier = Modifier.height(4.dp))
         }
-        if (pages.size > 1) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                pages.forEachIndexed { index, _ ->
-                    val isSelected = pagerState.currentPage == index
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 4.dp)
-                            .height(4.dp)
-                            .width(if (isSelected) 28.dp else 14.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(
-                                if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                            )
-                    )
-                }
-            }
-            Text(
-                "Swipe sideways to explore more colors",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 6.dp),
-                textAlign = TextAlign.Center
+
+        Canvas(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .fillMaxHeight()
+                .width(4.dp)
+                .padding(vertical = 8.dp)
+        ) {
+            val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f)
+            val indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.65f)
+            val trackWidth = size.width
+            drawRoundRect(
+                color = trackColor,
+                size = Size(trackWidth, size.height),
+                cornerRadius = CornerRadius(trackWidth / 2f)
             )
+
+            if (scrollState.maxValue > 0) {
+                val viewportHeightPx = size.height
+                val contentHeightPx = scrollState.maxValue.toFloat() + viewportHeightPx
+                val indicatorHeight = (viewportHeightPx * (viewportHeightPx / contentHeightPx))
+                    .coerceAtLeast(trackWidth * 2f)
+                val fraction = scrollState.value / scrollState.maxValue.toFloat()
+                val indicatorTop = (viewportHeightPx - indicatorHeight) * fraction
+
+                drawRoundRect(
+                    color = indicatorColor,
+                    topLeft = Offset(0f, indicatorTop),
+                    size = Size(trackWidth, indicatorHeight),
+                    cornerRadius = CornerRadius(trackWidth / 2f)
+                )
+            }
         }
     }
 }
@@ -624,26 +592,12 @@ private fun ThemePicker(
         style = ThemeStyle.GRAY_BACKGROUND
     )
 
-    val colorsPerPage = 10
-    val colorPages = remember {
-        SeedColor.entries
-            .sortedBy { it.color.toHct().hue }
-            .chunked(colorsPerPage)
-            .map { chunk -> PalettePage(colors = chunk) }
-    }
+    val seedColors = remember { SeedColor.entries.sortedBy { it.color.toHct().hue } }
     var genderSectionExpanded by rememberSaveable { mutableStateOf(false) }
+    var advancedSectionExpanded by rememberSaveable { mutableStateOf(false) }
     var genderEditTarget by remember { mutableStateOf<GenderSwatch?>(null) }
     val currentPalette by rememberUpdatedState(newValue = themeSettings.genderPalette)
     val genderLocked by rememberUpdatedState(newValue = themeSettings.genderColorsLocked)
-
-    val pagerState = rememberPagerState(pageCount = { colorPages.size.coerceAtLeast(1) })
-
-    LaunchedEffect(themeSettings.seedColor, colorPages) {
-        val targetPage = colorPages.indexOfFirst { page -> themeSettings.seedColor in page.colors }
-        if (targetPage >= 0 && pagerState.currentPage != targetPage) {
-            pagerState.animateScrollToPage(targetPage)
-        }
-    }
 
     Box(modifier.fillMaxSize().background(currentColorScheme.background)) {
         LazyColumn(
@@ -663,38 +617,10 @@ private fun ThemePicker(
                             style = MaterialTheme.typography.titleMedium
                         )
 
-                        BaseColorPager(
-                            pagerState = pagerState,
-                            pages = colorPages,
+                        BaseColorGrid(
+                            colors = seedColors,
                             currentSeedColor = themeSettings.seedColor,
                             onPick = { seed -> scope.launch { themeManager.setSeedColor(seed) } }
-                        )
-
-                        Text(
-                            "Navigation Bar Tone (${if (isDarkTheme) "Dark" else "Light"} Mode)",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Slider(
-                            value = navBarTone,
-                            onValueChange = { navBarTone = it },
-                            onValueChangeFinished = {
-                                scope.launch {
-                                    if (isDarkTheme) {
-                                        themeManager.setNavBarToneDark(navBarTone)
-                                    } else {
-                                        themeManager.setNavBarToneLight(navBarTone)
-                                    }
-                                }
-                            },
-                            valueRange = 10f..90f,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(32.dp),
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.onSurface,
-                                activeTrackColor = MaterialTheme.colorScheme.primary,
-                                inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
-                            )
                         )
                     }
                 }
@@ -804,7 +730,7 @@ private fun ThemePicker(
                 }
             }
 
-            // Gender Colors
+            // Advanced Options
             item {
                 Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Column(
@@ -814,102 +740,252 @@ private fun ThemePicker(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { genderSectionExpanded = !genderSectionExpanded },
+                                .clickable { advancedSectionExpanded = !advancedSectionExpanded },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
-                                    "Edit Gender Colors",
+                                    "Advanced",
                                     style = MaterialTheme.typography.titleMedium
                                 )
                                 Text(
-                                    "Controls the highlights for male, female, and unknown animals.",
+                                    "Fine-tune tones and specialty accents.",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            GenderPaletteDots(palette = themeSettings.genderPalette)
                             Icon(
-                                if (genderSectionExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                                contentDescription = if (genderSectionExpanded) "Collapse gender colors" else "Expand gender colors",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.padding(start = 8.dp)
+                                imageVector = if (advancedSectionExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                contentDescription = if (advancedSectionExpanded) "Collapse advanced options" else "Expand advanced options",
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
 
                         AnimatedVisibility(
-                            visible = genderSectionExpanded,
+                            visible = advancedSectionExpanded,
                             enter = expandVertically(),
                             exit = shrinkVertically()
                         ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text(
-                                    "These accents appear on herd lists, filter chips, and detail screens.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    Text(
+                                        "Tone Adjustments",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
 
-                                val genderColorOptions = listOf(
-                                    false to "Use theme colors",
-                                    true to "Use custom colors"
-                                )
-                                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-                                    genderColorOptions.forEachIndexed { index, (locked, label) ->
-                                        SegmentedButton(
-                                            shape = SegmentedButtonDefaults.itemShape(index, genderColorOptions.size),
-                                            selected = themeSettings.genderColorsLocked == locked,
-                                            onClick = {
-                                                scope.launch {
-                                                    genderEditTarget = null
-                                                    themeManager.setGenderColorsLock(locked)
+                                    val toneOptions = listOf(
+                                        false to "Reset tone with base color",
+                                        true to "Keep custom tone"
+                                    )
+                                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                        toneOptions.forEachIndexed { index, (locked, label) ->
+                                            SegmentedButton(
+                                                modifier = Modifier.heightIn(min = SegmentedButtonMinHeight),
+                                                shape = SegmentedButtonDefaults.itemShape(index, toneOptions.size),
+                                                selected = themeSettings.toneLocked == locked,
+                                                onClick = {
+                                                    scope.launch {
+                                                        themeManager.setToneLock(locked)
+                                                    }
+                                                },
+                                                colors = SegmentedButtonDefaults.colors(
+                                                    activeContainerColor = MaterialTheme.colorScheme.primary,
+                                                    activeContentColor = MaterialTheme.colorScheme.onPrimary
+                                                )
+                                            ) {
+                                                Text(label)
+                                            }
+                                        }
+                                    }
+
+                                    val toneSupport = if (themeSettings.toneLocked) {
+                                        "Tone sliders stay put even after changing the base color."
+                                    } else {
+                                        "We’ll reset these tones whenever you pick a new base color."
+                                    }
+                                    Text(
+                                        toneSupport,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    Text(
+                                        "Navigation Bar Tone (${if (isDarkTheme) "Dark" else "Light"} Mode)",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Slider(
+                                        value = navBarTone,
+                                        onValueChange = { navBarTone = it },
+                                        onValueChangeFinished = {
+                                            scope.launch {
+                                                if (isDarkTheme) {
+                                                    themeManager.setNavBarToneDark(navBarTone)
+                                                } else {
+                                                    themeManager.setNavBarToneLight(navBarTone)
                                                 }
-                                            },
-                                            colors = SegmentedButtonDefaults.colors(
-                                                activeContainerColor = MaterialTheme.colorScheme.primary,
-                                                activeContentColor = MaterialTheme.colorScheme.onPrimary
-                                            )
-                                        ) {
-                                            Text(label)
+                                            }
+                                        },
+                                        valueRange = 10f..90f,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(32.dp),
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = MaterialTheme.colorScheme.onSurface,
+                                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                                            inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                        )
+                                    )
+
+                                    val toneLabel = if (style == ThemeStyle.COLORED_CARDS || style == ThemeStyle.GRAY_CARDS) {
+                                        "Card Tone"
+                                    } else {
+                                        "Background Tone"
+                                    }
+                                    Text(
+                                        "$toneLabel (${if (isDarkTheme) "Dark" else "Light"} Mode)",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    Slider(
+                                        value = surfaceTone,
+                                        onValueChange = { surfaceTone = it },
+                                        onValueChangeFinished = {
+                                            scope.launch {
+                                                if (isDarkTheme) {
+                                                    themeManager.setSurfaceToneDark(surfaceTone)
+                                                } else {
+                                                    themeManager.setSurfaceToneLight(surfaceTone)
+                                                }
+                                            }
+                                        },
+                                        valueRange = 10f..98f,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(32.dp),
+                                        colors = SliderDefaults.colors(
+                                            thumbColor = MaterialTheme.colorScheme.onSurface,
+                                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                                            inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                                        )
+                                    )
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.End
+                                    ) {
+                                        TextButton(onClick = { scope.launch { themeManager.resetToneToDefaults() } }) {
+                                            Text("Reset tone to defaults")
                                         }
                                     }
                                 }
 
-                                val supportText = if (themeSettings.genderColorsLocked) {
-                                    "Custom colors stay put when you pick a new base color."
-                                } else {
-                                    "Theme colors update automatically whenever you change the base color."
-                                }
-                                Text(
-                                    text = supportText,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-
                                 Divider(modifier = Modifier.fillMaxWidth())
 
-                                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    Text(
-                                        "Tap a swatch to fine-tune that accent color.",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                     Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceEvenly,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { genderSectionExpanded = !genderSectionExpanded },
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        GenderSwatch.values().forEach { swatch ->
-                                            val swatchColor = when (swatch) {
-                                                GenderSwatch.Male -> themeSettings.genderPalette.male
-                                                GenderSwatch.Female -> themeSettings.genderPalette.female
-                                                GenderSwatch.Neutral -> themeSettings.genderPalette.neutral
-                                            }
-                                            GenderSwatchChip(
-                                                swatch = swatch,
-                                                color = swatchColor,
-                                                enabled = themeSettings.genderColorsLocked,
-                                                onClick = { genderEditTarget = swatch }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                "Edit Gender Colors",
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.SemiBold
                                             )
+                                            Text(
+                                                "Controls the highlights for male, female, and unknown animals.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                        GenderPaletteDots(palette = themeSettings.genderPalette)
+                                        Icon(
+                                            if (genderSectionExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                                            contentDescription = if (genderSectionExpanded) "Collapse gender colors" else "Expand gender colors",
+                                            tint = MaterialTheme.colorScheme.primary,
+                                            modifier = Modifier.padding(start = 8.dp)
+                                        )
+                                    }
+
+                                    AnimatedVisibility(
+                                        visible = genderSectionExpanded,
+                                        enter = expandVertically(),
+                                        exit = shrinkVertically()
+                                    ) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                            Text(
+                                                "These accents appear on herd lists, filter chips, and detail screens.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+
+                                            val genderColorOptions = listOf(
+                                                false to "Use theme colors",
+                                                true to "Use custom colors"
+                                            )
+                                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                                genderColorOptions.forEachIndexed { index, (locked, label) ->
+                                                    SegmentedButton(
+                                                        modifier = Modifier.heightIn(min = SegmentedButtonMinHeight),
+                                                        shape = SegmentedButtonDefaults.itemShape(index, genderColorOptions.size),
+                                                        selected = themeSettings.genderColorsLocked == locked,
+                                                        onClick = {
+                                                            scope.launch {
+                                                                genderEditTarget = null
+                                                                themeManager.setGenderColorsLock(locked)
+                                                            }
+                                                        },
+                                                        colors = SegmentedButtonDefaults.colors(
+                                                            activeContainerColor = MaterialTheme.colorScheme.primary,
+                                                            activeContentColor = MaterialTheme.colorScheme.onPrimary
+                                                        )
+                                                    ) {
+                                                        Text(label)
+                                                    }
+                                                }
+                                            }
+
+                                            val supportText = if (themeSettings.genderColorsLocked) {
+                                                "Custom colors stay put when you pick a new base color."
+                                            } else {
+                                                "Theme colors update automatically whenever you change the base color."
+                                            }
+                                            Text(
+                                                text = supportText,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+
+                                            Divider(modifier = Modifier.fillMaxWidth())
+
+                                            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                                                Text(
+                                                    "Tap a swatch to fine-tune that accent color.",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.SpaceEvenly,
+                                                    verticalAlignment = Alignment.CenterVertically
+                                                ) {
+                                                    GenderSwatch.values().forEach { swatch ->
+                                                        val swatchColor = when (swatch) {
+                                                            GenderSwatch.Male -> themeSettings.genderPalette.male
+                                                            GenderSwatch.Female -> themeSettings.genderPalette.female
+                                                            GenderSwatch.Neutral -> themeSettings.genderPalette.neutral
+                                                        }
+                                                        GenderSwatchChip(
+                                                            swatch = swatch,
+                                                            color = swatchColor,
+                                                            enabled = themeSettings.genderColorsLocked,
+                                                            onClick = { genderEditTarget = swatch }
+                                                        )
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -965,8 +1041,6 @@ private fun ThemePicker(
         )
     }
 }
-
-private data class PalettePage(val colors: List<SeedColor>)
 
 // TODO: Offer a mini preview carousel so users can see palette changes on actual list tiles.
 // TODO: Allow saving custom color bundles as sharable presets for team members.

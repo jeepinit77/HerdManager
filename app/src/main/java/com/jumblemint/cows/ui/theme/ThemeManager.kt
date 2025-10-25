@@ -87,6 +87,13 @@ data class GenderColorPalette(
     fun signature(): String = listOf(male.toArgb(), female.toArgb(), neutral.toArgb()).joinToString(separator = "_")
 }
 
+data class ToneDefaults(
+    val navBarToneLight: Float,
+    val navBarToneDark: Float,
+    val surfaceToneLight: Float,
+    val surfaceToneDark: Float
+)
+
 private enum class SeedFamily { COOL, BOTANICAL, WARM, EARTH, NEUTRAL }
 
 private fun SeedColor.family(): SeedFamily = when (this) {
@@ -208,6 +215,34 @@ fun SeedColor.genderPaletteOptions(): List<GenderColorPalette> {
     return listOf(base, vibrant, contrast).distinctBy { it.signature() }
 }
 
+fun SeedColor.toneDefaults(): ToneDefaults = when (this) {
+    SeedColor.DENIM_BLUE -> ToneDefaults(78f, 24f, 93f, 17f)
+    SeedColor.SLATE_BLUE -> ToneDefaults(76f, 24f, 92f, 18f)
+    SeedColor.SKY_NAVY -> ToneDefaults(74f, 22f, 92f, 16f)
+    SeedColor.COPPER_TEAL -> ToneDefaults(75f, 26f, 92f, 20f)
+    SeedColor.VERDANT_TEAL -> ToneDefaults(77f, 26f, 92f, 20f)
+    SeedColor.SAGE_GREEN -> ToneDefaults(80f, 26f, 94f, 20f)
+    SeedColor.MOSS_OLIVE -> ToneDefaults(78f, 28f, 92f, 22f)
+    SeedColor.FROSTED_FOREST -> ToneDefaults(84f, 22f, 96f, 24f)
+    SeedColor.HONEY_GOLD -> ToneDefaults(76f, 28f, 90f, 22f)
+    SeedColor.SUN_MIST -> ToneDefaults(78f, 28f, 92f, 24f)
+    SeedColor.OCHRE_GLOW -> ToneDefaults(74f, 30f, 90f, 24f)
+    SeedColor.CORAL_RUST -> ToneDefaults(75f, 26f, 92f, 24f)
+    SeedColor.BRICK_RED -> ToneDefaults(74f, 24f, 91f, 22f)
+    SeedColor.CRANBERRY -> ToneDefaults(76f, 24f, 92f, 22f)
+    SeedColor.TERRACOTTA_SAGE -> ToneDefaults(78f, 26f, 93f, 22f)
+    SeedColor.CEDARWOOD -> ToneDefaults(72f, 26f, 89f, 20f)
+    SeedColor.ESPRESSO_BROWN -> ToneDefaults(70f, 24f, 88f, 18f)
+    SeedColor.CLAY_TAUPE -> ToneDefaults(80f, 24f, 94f, 18f)
+    SeedColor.SAND_SEA -> ToneDefaults(82f, 26f, 95f, 20f)
+    SeedColor.SLATE -> ToneDefaults(80f, 22f, 92f, 18f)
+    SeedColor.CHARCOAL_GOLD -> ToneDefaults(72f, 22f, 90f, 16f)
+    SeedColor.MIDNIGHT_CLAY -> ToneDefaults(74f, 24f, 92f, 17f)
+    SeedColor.LAVENDER_GRAPHITE -> ToneDefaults(84f, 24f, 95f, 18f)
+    SeedColor.ASH_MIST -> ToneDefaults(86f, 24f, 96f, 20f)
+    SeedColor.PEARL_INK -> ToneDefaults(88f, 26f, 97f, 22f)
+}
+
 private fun Color.adaptTone(isDark: Boolean, lightTone: Float, darkTone: Float): Color {
     val hct = toHct()
     val tone = if (isDark) darkTone else lightTone
@@ -258,17 +293,20 @@ enum class SeedColor(val displayName: String, val color: Color) {
     PEARL_INK("Pearl", Color(0xFFF7F5F3))
 }
 
+private val DefaultToneDefaults = SeedColor.DENIM_BLUE.toneDefaults()
+
 // ---- Theme Settings ----
 data class ThemeSettings(
     val seedColor: SeedColor = SeedColor.DENIM_BLUE,
-    val navBarToneLight: Float = 80f,
-    val navBarToneDark: Float = 20f,
-    val surfaceToneLight: Float = 95f,
-    val surfaceToneDark: Float = 15f,
+    val navBarToneLight: Float = DefaultToneDefaults.navBarToneLight,
+    val navBarToneDark: Float = DefaultToneDefaults.navBarToneDark,
+    val surfaceToneLight: Float = DefaultToneDefaults.surfaceToneLight,
+    val surfaceToneDark: Float = DefaultToneDefaults.surfaceToneDark,
     val mode: ThemeMode = ThemeMode.SYSTEM,
     val style: ThemeStyle = ThemeStyle.COLORED_BACKGROUND,
     val genderPalette: GenderColorPalette = defaultGenderPalette(SeedColor.DENIM_BLUE),
-    val genderColorsLocked: Boolean = false
+    val genderColorsLocked: Boolean = false,
+    val toneLocked: Boolean = false
 ) {
     fun getNavBarTone(isDark: Boolean) = if (isDark) navBarToneDark else navBarToneLight
     fun getSurfaceTone(isDark: Boolean) = if (isDark) surfaceToneDark else surfaceToneLight
@@ -400,6 +438,9 @@ class ThemeManager(private val repository: CattleRepository) {
         if (!isGenderColorsLocked()) {
             setGenderPalette(defaultGenderPalette(seedColor))
         }
+        if (!isToneLocked()) {
+            resetToneToDefaults(seedColor)
+        }
     }
 
     fun getSeedColorFlow(): Flow<SeedColor> =
@@ -411,20 +452,35 @@ class ThemeManager(private val repository: CattleRepository) {
 
     // Light Mode Tones
     suspend fun setNavBarToneLight(tone: Float) {
-        repository.insertOrUpdateSetting(Settings("NAV_BAR_TONE_LIGHT", tone.toString()))
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.NAV_BAR_TONE_LIGHT, tone.toString()))
     }
-    
+
     suspend fun setSurfaceToneLight(tone: Float) {
-        repository.insertOrUpdateSetting(Settings("SURFACE_TONE_LIGHT", tone.toString()))
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.SURFACE_TONE_LIGHT, tone.toString()))
     }
-    
+
     // Dark Mode Tones
     suspend fun setNavBarToneDark(tone: Float) {
-        repository.insertOrUpdateSetting(Settings("NAV_BAR_TONE_DARK", tone.toString()))
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.NAV_BAR_TONE_DARK, tone.toString()))
     }
-    
+
     suspend fun setSurfaceToneDark(tone: Float) {
-        repository.insertOrUpdateSetting(Settings("SURFACE_TONE_DARK", tone.toString()))
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.SURFACE_TONE_DARK, tone.toString()))
+    }
+
+    suspend fun setToneLock(locked: Boolean) {
+        repository.insertOrUpdateSetting(Settings(SettingsKeys.THEME_TONE_LOCKED, locked.toString()))
+        if (!locked) {
+            resetToneToDefaults()
+        }
+    }
+
+    suspend fun resetToneToDefaults(seedColor: SeedColor = getCurrentSeedColor()) {
+        val defaults = seedColor.toneDefaults()
+        setNavBarToneLight(defaults.navBarToneLight)
+        setNavBarToneDark(defaults.navBarToneDark)
+        setSurfaceToneLight(defaults.surfaceToneLight)
+        setSurfaceToneDark(defaults.surfaceToneDark)
     }
 
     // Theme Style
@@ -456,16 +512,19 @@ class ThemeManager(private val repository: CattleRepository) {
                 neutral = map[SettingsKeys.THEME_GENDER_NEUTRAL]?.toColorOrNull() ?: fallbackPalette.neutral
             )
 
+            val toneDefaults = seedColor.toneDefaults()
+
             ThemeSettings(
                 seedColor = seedColor,
-                navBarToneLight = map["NAV_BAR_TONE_LIGHT"]?.toFloatOrNull() ?: 80f,
-                navBarToneDark = map["NAV_BAR_TONE_DARK"]?.toFloatOrNull() ?: 20f,
-                surfaceToneLight = map["SURFACE_TONE_LIGHT"]?.toFloatOrNull() ?: 95f,
-                surfaceToneDark = map["SURFACE_TONE_DARK"]?.toFloatOrNull() ?: 15f,
+                navBarToneLight = map[SettingsKeys.NAV_BAR_TONE_LIGHT]?.toFloatOrNull() ?: toneDefaults.navBarToneLight,
+                navBarToneDark = map[SettingsKeys.NAV_BAR_TONE_DARK]?.toFloatOrNull() ?: toneDefaults.navBarToneDark,
+                surfaceToneLight = map[SettingsKeys.SURFACE_TONE_LIGHT]?.toFloatOrNull() ?: toneDefaults.surfaceToneLight,
+                surfaceToneDark = map[SettingsKeys.SURFACE_TONE_DARK]?.toFloatOrNull() ?: toneDefaults.surfaceToneDark,
                 mode = mode,
                 style = style,
                 genderPalette = genderPalette,
-                genderColorsLocked = map[SettingsKeys.THEME_GENDER_LOCKED]?.toBooleanStrictOrNull() ?: false
+                genderColorsLocked = map[SettingsKeys.THEME_GENDER_LOCKED]?.toBooleanStrictOrNull() ?: false,
+                toneLocked = map[SettingsKeys.THEME_TONE_LOCKED]?.toBooleanStrictOrNull() ?: false
             )
         }
 
@@ -486,18 +545,19 @@ class ThemeManager(private val repository: CattleRepository) {
     private suspend fun isGenderColorsLocked(): Boolean =
         repository.getSettingByKey(SettingsKeys.THEME_GENDER_LOCKED)?.value?.toBooleanStrictOrNull() ?: false
 
+    private suspend fun isToneLocked(): Boolean =
+        repository.getSettingByKey(SettingsKeys.THEME_TONE_LOCKED)?.value?.toBooleanStrictOrNull() ?: false
+
     private suspend fun getCurrentSeedColor(): SeedColor {
         val stored = repository.getSettingByKey(SettingsKeys.SEED_COLOR)?.value
         return stored?.let { runCatching { SeedColor.valueOf(it) }.getOrNull() } ?: SeedColor.DENIM_BLUE
     }
 
     suspend fun resetToDefaults() {
+        setToneLock(false)
         setSeedColor(SeedColor.DENIM_BLUE)
         setThemeMode(ThemeMode.SYSTEM)
-        setNavBarToneLight(80f)
-        setNavBarToneDark(20f)
-        setSurfaceToneLight(95f)
-        setSurfaceToneDark(15f)
+        resetToneToDefaults(SeedColor.DENIM_BLUE)
         setThemeStyle(ThemeStyle.COLORED_BACKGROUND)
         setGenderColorsLock(false)
         setGenderPalette(defaultGenderPalette(SeedColor.DENIM_BLUE))
