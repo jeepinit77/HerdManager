@@ -237,7 +237,7 @@ fun SetupWizardDialog(
     defaultBreeds: List<Breed>,
     defaultTagColors: List<TagColor>,
     defaultActivityTypes: List<ActivityTypeConfig>,
-    initialIdentifierMode: AnimalIdentifierMode = AnimalIdentifierMode.BOTH,
+    initialIdentifierMode: AnimalIdentifierMode? = null,
     onExit: () -> Unit,
     onFinished: () -> Unit,
     onSaveIdentifierMode: suspend (AnimalIdentifierMode) -> Unit,
@@ -311,8 +311,14 @@ fun SetupWizardDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
+                        val currentStep = steps[currentStepIndex]
+                        val isNamesOnly = selectedIdentifierMode == AnimalIdentifierMode.NAMES
+                        val stepTitle = when {
+                            currentStep == SetupWizardStep.TAG_COLORS && isNamesOnly -> "Tagging Colors"
+                            else -> currentStep.title
+                        }
                         Text(
-                            text = steps[currentStepIndex].title,
+                            text = stepTitle,
                             style = MaterialTheme.typography.headlineSmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -335,7 +341,10 @@ fun SetupWizardDialog(
                 )
 
                 Text(
-                    text = steps[currentStepIndex].description,
+                    text = when {
+                        steps[currentStepIndex] == SetupWizardStep.TAG_COLORS && selectedIdentifierMode == AnimalIdentifierMode.NAMES -> "Pick any colors you use for organizing and classifying animals, or for unnumbered tags."
+                        else -> steps[currentStepIndex].description
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -432,7 +441,8 @@ fun SetupWizardDialog(
                                         selectedColorIds = selectedColorIds - colorId
                                     }
                                 },
-                                onAddCustom = { showColorDialog = true }
+                                onAddCustom = { showColorDialog = true },
+                                showTaggingGuidance = selectedIdentifierMode == AnimalIdentifierMode.NAMES
                             )
                         }
 
@@ -802,9 +812,17 @@ private fun TagColorSelectionStep(
     selectedIds: Set<String>,
     onToggle: (String) -> Unit,
     onRemoveCustom: (String) -> Unit,
-    onAddCustom: () -> Unit
+    onAddCustom: () -> Unit,
+    showTaggingGuidance: Boolean
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (showTaggingGuidance) {
+            Text(
+                text = "Tip: You can add custom colors with names that aren't the color name. You can choose a yellow, and the name can be 'Bought', then add a blue color named 'Raised'. These will show on your cow cards.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)

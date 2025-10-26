@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -132,7 +132,7 @@ fun CowCard(
                                         val unwatchedColor = if (grayContrast > 0.3f) Color.Gray else genderColor.contrastingTextColor().copy(alpha = 0.5f)
                                         val tint = if (cow.isWatched) watchedColor else unwatchedColor
                                         Icon(
-                                            imageVector = Icons.Filled.Star,
+                                            imageVector = Icons.Filled.Visibility,
                                             contentDescription = if (cow.isWatched) "Unwatch" else "Watch",
                                             tint = tint
                                         )

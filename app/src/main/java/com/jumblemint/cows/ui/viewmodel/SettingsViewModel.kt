@@ -220,7 +220,7 @@ class SettingsViewModel(
                 if (selection.tagColors) {
                     repository.deleteAllTagColors()
                     repository.ensureDefaultTagColorsExist()
-                    deletedCategories.add("Tag Colors")
+                    deletedCategories.add("Tagging Colors")
                 }
                 if (selection.activityTypes) {
                     repository.deleteAllActivityTypeConfigs()

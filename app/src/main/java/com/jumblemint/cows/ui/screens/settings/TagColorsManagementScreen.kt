@@ -100,7 +100,7 @@ fun TagColorsManagementScreen(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        "No tag colors found.", 
+                        "No tagging colors found.",
                         style = MaterialTheme.typography.headlineSmall,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -126,7 +126,7 @@ fun TagColorsManagementScreen(
                             scope.launch {
                                 globalSnackbarState?.let { snackbarState ->
                                     val result = snackbarState.showSnackbar(
-                                        message = "Tag color '${colorToDelete.name}' deleted",
+                                        message = "Tagging color '${colorToDelete.name}' deleted",
                                         actionLabel = "Undo",
                                         duration = SnackbarDuration.Short
                                     )
@@ -150,8 +150,8 @@ fun TagColorsManagementScreen(
             contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
             Icon(
-                Icons.Default.Add, 
-                contentDescription = "Add Tag Color",
+                Icons.Default.Add,
+                contentDescription = "Add Color",
                 tint = MaterialTheme.colorScheme.onPrimary
             )
         }
@@ -167,8 +167,8 @@ fun TagColorsManagementScreen(
                     tint = MaterialTheme.colorScheme.error
                 ) 
             },
-            title = { Text("Reset Tag Colors?") },
-            text = { Text("This will remove all custom tag colors and restore the default set. This action cannot be undone.") },
+            title = { Text("Reset Tagging Colors?") },
+            text = { Text("This will remove all custom tagging colors and restore the default set. This action cannot be undone.") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -293,9 +293,9 @@ fun TagColorDialog(
         onDismissRequest = onDismiss,
         title = { 
             Text(
-                if (tagColorToEdit != null) "Edit Tag Color" else "Add New Tag Color",
+                if (tagColorToEdit != null) "Edit Color" else "Add New Color",
                 color = MaterialTheme.colorScheme.onSurface
-            ) 
+            )
         },
         text = {
             Column(
@@ -307,7 +307,7 @@ fun TagColorDialog(
                         name = it
                         nameError = if (it.isBlank()) "Name cannot be empty" else null
                     },
-                    label = { Text("Color Name*") },
+                    label = { Text("Name*") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     isError = nameError != null,

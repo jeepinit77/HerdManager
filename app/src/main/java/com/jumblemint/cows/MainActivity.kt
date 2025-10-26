@@ -136,7 +136,7 @@ class MainActivity : ComponentActivity() {
                         defaultBreeds = defaultBreeds,
                         defaultTagColors = defaultTagColors,
                         defaultActivityTypes = defaultActivityTypes,
-                        initialIdentifierMode = identifierMode,
+                        initialIdentifierMode = null,
                         onExit = { showSetupWizard = false },
                         onFinished = {
                             showSetupWizard = false

@@ -101,6 +101,7 @@ fun SettingsScreen(
     var showDeleteDataDialog by remember { mutableStateOf(false) }
     var showSetupWizardConfirmation by remember { mutableStateOf(false) }
     var showSetupWizard by remember { mutableStateOf(false) }
+    var showIdentifierModeDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val defaultBreeds = remember { Breed.getDefaultBreeds() }
@@ -194,18 +195,26 @@ fun SettingsScreen(
             }
             item {
                 SettingsGroup {
-                    IdentifierModeSetting(
-                        mode = uiState.identifierMode,
-                        onModeChange = { mode -> viewModel.updateAnimalIdentifierMode(mode) }
+                    val identifierSummary = when (uiState.identifierMode) {
+                        AnimalIdentifierMode.NAMES -> "Use animal names"
+                        AnimalIdentifierMode.TAG_NUMBERS -> "Use tag numbers"
+                        AnimalIdentifierMode.BOTH -> "Use both names and tags"
+                    }
+                    SettingsRow(
+                        title = "Animal Identification",
+                        subtitle = identifierSummary,
+                        icon = Icons.Filled.Label,
+                        onClick = { showIdentifierModeDialog = true }
                     )
                     HorizontalDivider(
                         Modifier.padding(horizontal = 16.dp),
                         DividerDefaults.Thickness,
                         color = MaterialTheme.colorScheme.outlineVariant
                     )
+                    val isNamesOnly = uiState.identifierMode == AnimalIdentifierMode.NAMES
                     SettingsRow(
-                        title = "Tag Colors",
-                        subtitle = "Manage available tag colors",
+                        title = if (isNamesOnly) "Tagging Colors" else "Tag Colors",
+                        subtitle = if (isNamesOnly) "Edit colors you use" else "Manage available tag colors",
                         icon = Icons.Filled.ColorLens,
                         onClick = { onNavigateToTagColors?.invoke() }
                     )
@@ -481,7 +490,7 @@ fun SettingsScreen(
             defaultBreeds = defaultBreeds,
             defaultTagColors = defaultTagColors,
             defaultActivityTypes = defaultActivityTypes,
-            initialIdentifierMode = uiState.identifierMode,
+            initialIdentifierMode = null,
             onExit = { showSetupWizard = false },
             onFinished = {
                 showSetupWizard = false
@@ -569,6 +578,55 @@ fun SettingsScreen(
             onResolve = { resolution -> viewModel.resolveConflict(resolution) }
         )
     }
+
+    if (showIdentifierModeDialog) {
+        var pendingMode by remember(uiState.identifierMode) { mutableStateOf(uiState.identifierMode) }
+        AlertDialog(
+            onDismissRequest = { showIdentifierModeDialog = false },
+            title = { Text("Animal Identification") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Choose how you identify animals throughout the app.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    val options = listOf(
+                        AnimalIdentifierMode.NAMES to "Names",
+                        AnimalIdentifierMode.TAG_NUMBERS to "Tag Numbers",
+                        AnimalIdentifierMode.BOTH to "Both"
+                    )
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                        options.forEachIndexed { index, (mode, label) ->
+                            SegmentedButton(
+                                selected = pendingMode == mode,
+                                onClick = { pendingMode = mode },
+                                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                                colors = SegmentedButtonDefaults.colors(
+                                    activeContainerColor = MaterialTheme.colorScheme.primary,
+                                    activeContentColor = MaterialTheme.colorScheme.onPrimary
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(label)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.updateAnimalIdentifierMode(pendingMode)
+                        showIdentifierModeDialog = false
+                    }
+                ) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showIdentifierModeDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 }
 
 @Composable
@@ -586,56 +644,6 @@ fun SettingsGroup(
     ) {
         Column {
             content()
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun IdentifierModeSetting(
-    mode: AnimalIdentifierMode,
-    onModeChange: (AnimalIdentifierMode) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = "Animal Identification",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = "Choose how you identify animals throughout the app.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        val options = listOf(
-            AnimalIdentifierMode.NAMES to "Names",
-            AnimalIdentifierMode.TAG_NUMBERS to "Tag Numbers",
-            AnimalIdentifierMode.BOTH to "Both"
-        )
-        SingleChoiceSegmentedButtonRow(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            options.forEachIndexed { index, (value, label) ->
-                SegmentedButton(
-                    selected = mode == value,
-                    onClick = { onModeChange(value) },
-                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
-                    colors = SegmentedButtonDefaults.colors(
-                        activeContainerColor = MaterialTheme.colorScheme.primary,
-                        activeContentColor = MaterialTheme.colorScheme.onPrimary
-                    ),
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(label)
-                }
-            }
         }
     }
 }
@@ -900,7 +908,7 @@ fun DeleteDataCategoryDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 
-                CategoryCheckbox("Tag Colors (resets to defaults)", deleteTagColors) { deleteTagColors = it }
+                CategoryCheckbox("Tagging Colors (resets to defaults)", deleteTagColors) { deleteTagColors = it }
                 CategoryCheckbox("Activity Types (resets to defaults)", deleteActivityTypes) { deleteActivityTypes = it }
                 CategoryCheckbox("Breeds (resets to defaults)", deleteBreeds) { deleteBreeds = it }
                 CategoryCheckbox("App Settings", deleteSettings) { deleteSettings = it }

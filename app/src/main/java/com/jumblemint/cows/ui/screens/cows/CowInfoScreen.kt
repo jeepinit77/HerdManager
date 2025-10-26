@@ -35,6 +35,10 @@ import com.jumblemint.cows.ui.viewmodel.CowInfoViewModelFactory // Assuming fact
 import com.jumblemint.cows.util.primaryIdentifier
 import com.jumblemint.cows.util.secondaryIdentifier
 import com.jumblemint.cows.util.usesTags
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.luminance
 import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
@@ -107,14 +111,40 @@ fun CowInfoScreen(
                             ) {
                                 val primaryIdentifier = identifierMode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "Unnamed Animal")
                                 val secondaryIdentifier = identifierMode.secondaryIdentifier(cow.name, cow.tagNumber)
+                                val resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap)
                                 val showTagBadge = identifierMode.usesTags() && (cow.tagNumber != null || cow.tagColor != null)
                                 if (showTagBadge) {
                                     CattleTagBadge(
                                         tagNumber = cow.tagNumber,
                                         tagColor = cow.tagColor,
                                         modifier = Modifier.size(width = 72.dp, height = 96.dp),
-                                        backgroundColor = resolveTagColor(cow.tagColor, tagColorMap)
+                                        backgroundColor = resolvedTagColor
                                     )
+                                } else if (identifierMode == AnimalIdentifierMode.NAMES && !cow.tagColor.isNullOrBlank() && resolvedTagColor != null) {
+                                    val swatchTextColor = if (resolvedTagColor.luminance() > 0.5f) {
+                                        MaterialTheme.colorScheme.onSurface
+                                    } else {
+                                        MaterialTheme.colorScheme.onPrimary
+                                    }
+                                    Box(
+                                        modifier = Modifier
+                                            .size(width = 72.dp, height = 96.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(resolvedTagColor),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = cow.tagColor!!,
+                                            color = swatchTextColor,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            modifier = Modifier
+                                                .background(
+                                                    color = resolvedTagColor.copy(alpha = 0.7f),
+                                                    shape = RoundedCornerShape(12.dp)
+                                                )
+                                                .padding(horizontal = 8.dp, vertical = 6.dp)
+                                        )
+                                    }
                                 }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
@@ -172,7 +202,7 @@ fun CowInfoScreen(
                                 InfoRow("Status", cow.status.name.lowercase().replaceFirstChar { it.uppercase() })
                                 uiState.pastureName?.let { InfoRow("Pasture", it) }
                                 cow.herdId?.takeIf { it.isNotBlank() }?.let { InfoRow("Herd ID", it) }
-                                InfoRow("Watched", if (cow.isWatched) "⭐ Yes" else "No")
+                                InfoRow("Watched", if (cow.isWatched) "👁 Yes" else "No")
                             }
                         }
 
