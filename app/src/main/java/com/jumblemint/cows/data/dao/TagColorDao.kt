@@ -50,4 +50,7 @@ interface TagColorDao {
 
     @Query("SELECT COUNT(*) FROM tag_colors")
     suspend fun count(): Int
+
+    @Query("DELETE FROM tag_colors")
+    suspend fun clearAllTagColors()
 }

@@ -853,8 +853,13 @@ class CattleRepository(
     suspend fun deleteAllPastures() = pastureDao.deleteAllPastures()
     suspend fun deleteAllActivities() = activityDao.deleteAllActivities()
     suspend fun deleteAllNotes() = noteDao?.deleteAllNotes()
-    suspend fun deleteAllTagColors() {
+    suspend fun deleteAllTagColors(hardDelete: Boolean = false) {
         tagColorDao?.let { dao ->
+            if (hardDelete) {
+                dao.clearAllTagColors()
+                return
+            }
+
             val now = System.currentTimeMillis()
             val all = dao.getAllTagColorsSync()
             if (all.isNotEmpty()) {

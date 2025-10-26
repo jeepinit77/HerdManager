@@ -200,7 +200,7 @@ class AuthViewModel(
                     repository.deleteAllNotes()
                     repository.deleteAllCows()
                     repository.deleteAllPastures()
-                    repository.deleteAllTagColors()
+                    repository.deleteAllTagColors(hardDelete = true)
                     repository.deleteAllActivityTypeConfigs()
                     repository.deleteAllBreeds()
                     repository.deleteAllSettings()
