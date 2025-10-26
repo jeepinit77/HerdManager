@@ -105,7 +105,7 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     val defaultBreeds = remember { Breed.getDefaultBreeds() }
-    val defaultTagColors = remember { TagColor.getDefaultColors() }
+    val wizardTagColors = remember { TagColor.getWizardColorOptions() }
     val defaultActivityTypes = remember { ActivityTypeConfig.getDefaultActivityTypes() }
     
     val importLauncher = rememberLauncherForActivityResult(
@@ -488,7 +488,7 @@ fun SettingsScreen(
     if (showSetupWizard) {
         SetupWizardDialog(
             defaultBreeds = defaultBreeds,
-            defaultTagColors = defaultTagColors,
+            availableTagColors = wizardTagColors,
             defaultActivityTypes = defaultActivityTypes,
             initialIdentifierMode = null,
             onExit = { showSetupWizard = false },

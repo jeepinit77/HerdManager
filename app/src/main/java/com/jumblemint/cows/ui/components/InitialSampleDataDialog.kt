@@ -235,7 +235,7 @@ private fun InitialSetupOptionCard(
 @Composable
 fun SetupWizardDialog(
     defaultBreeds: List<Breed>,
-    defaultTagColors: List<TagColor>,
+    availableTagColors: List<TagColor>,
     defaultActivityTypes: List<ActivityTypeConfig>,
     initialIdentifierMode: AnimalIdentifierMode? = null,
     onExit: () -> Unit,
@@ -257,16 +257,34 @@ fun SetupWizardDialog(
             shape = RoundedCornerShape(24.dp),
             tonalElevation = AlertDialogDefaults.TonalElevation
         ) {
-            val steps = remember { SetupWizardStep.entries.toList() }
-            var currentStepIndex by remember { mutableStateOf(0) }
+            val allSteps = remember { SetupWizardStep.entries.toList() }
+            var currentStep by remember { mutableStateOf(SetupWizardStep.IDENTIFIERS) }
             var selectedIdentifierMode by remember { mutableStateOf<AnimalIdentifierMode?>(initialIdentifierMode) }
             var selectedDefaultBreedIds by remember {
                 mutableStateOf(emptySet<String>())
             }
             var customBreedFields by remember { mutableStateOf(listOf(CustomBreedField())) }
 
+            val steps = remember(allSteps, selectedIdentifierMode) {
+                if (selectedIdentifierMode == AnimalIdentifierMode.NAMES) {
+                    allSteps.filterNot { it == SetupWizardStep.TAG_COLORS }
+                } else {
+                    allSteps
+                }
+            }
+
+            LaunchedEffect(steps) {
+                if (currentStep !in steps) {
+                    val currentIndex = allSteps.indexOf(currentStep)
+                    val nextStep = steps.firstOrNull { allSteps.indexOf(it) > currentIndex } ?: steps.last()
+                    currentStep = nextStep
+                }
+            }
+
+            val currentStepIndex = steps.indexOf(currentStep).let { if (it >= 0) it else 0 }
+
             var colorOptions by remember {
-                mutableStateOf(defaultTagColors)
+                mutableStateOf(availableTagColors)
             }
             var selectedColorIds by remember {
                 mutableStateOf(emptySet<String>())
@@ -286,18 +304,21 @@ fun SetupWizardDialog(
 
             fun moveToNextStep() {
                 errorMessage = null
-                if (currentStepIndex < steps.lastIndex) {
-                    currentStepIndex++
+                val index = steps.indexOf(currentStep)
+                if (index in 0 until steps.lastIndex) {
+                    currentStep = steps[index + 1]
                 } else {
                     onFinished()
                 }
             }
 
             fun handleSkip() {
-                if (currentStepIndex == steps.lastIndex) {
+                val index = steps.indexOf(currentStep)
+                if (index == steps.lastIndex || index == -1) {
                     onFinished()
                 } else {
-                    moveToNextStep()
+                    errorMessage = null
+                    currentStep = steps[index + 1]
                 }
             }
 
@@ -311,7 +332,6 @@ fun SetupWizardDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        val currentStep = steps[currentStepIndex]
                         val isNamesOnly = selectedIdentifierMode == AnimalIdentifierMode.NAMES
                         val stepTitle = when {
                             currentStep == SetupWizardStep.TAG_COLORS && isNamesOnly -> "Tagging Colors"
@@ -342,8 +362,8 @@ fun SetupWizardDialog(
 
                 Text(
                     text = when {
-                        steps[currentStepIndex] == SetupWizardStep.TAG_COLORS && selectedIdentifierMode == AnimalIdentifierMode.NAMES -> "Pick any colors you use for organizing and classifying animals, or for unnumbered tags."
-                        else -> steps[currentStepIndex].description
+                        currentStep == SetupWizardStep.TAG_COLORS && selectedIdentifierMode == AnimalIdentifierMode.NAMES -> "Pick any colors you use for organizing and classifying animals, or for unnumbered tags."
+                        else -> currentStep.description
                     },
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.padding(bottom = 16.dp)
@@ -357,7 +377,7 @@ fun SetupWizardDialog(
                         .verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    when (steps[currentStepIndex]) {
+                    when (currentStep) {
                         SetupWizardStep.IDENTIFIERS -> {
                             IdentifierPreferenceStep(
                                 selected = selectedIdentifierMode,
@@ -526,7 +546,7 @@ fun SetupWizardDialog(
                                 onClick = {
                                     if (!isSaving) {
                                         errorMessage = null
-                                        currentStepIndex--
+                                        currentStep = steps[currentStepIndex - 1]
                                     }
                                 },
                                 enabled = !isSaving
@@ -542,7 +562,7 @@ fun SetupWizardDialog(
                         }
 
                         val saveButtonLabel = if (currentStepIndex == steps.lastIndex) "Save & Finish" else "Save & Next"
-                        val saveEnabled = when (steps[currentStepIndex]) {
+                        val saveEnabled = when (currentStep) {
                             SetupWizardStep.IDENTIFIERS -> selectedIdentifierMode != null && !isSaving
                             SetupWizardStep.PASTURES -> !isSaving
                             else -> !isSaving
@@ -551,7 +571,7 @@ fun SetupWizardDialog(
                         Button(
                             onClick = {
                                 if (isSaving) return@Button
-                                when (steps[currentStepIndex]) {
+                                when (currentStep) {
                                     SetupWizardStep.IDENTIFIERS -> {
                                         val mode = selectedIdentifierMode ?: return@Button
                                         coroutineScope.launch {
@@ -854,7 +874,7 @@ private fun TagColorSelectionStep(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        if (!tagColor.isDefault) {
+                        if (!TagColor.isSystemProvidedColor(tagColor.name)) {
                             IconButton(
                                 onClick = { onRemoveCustom(tagColor.id) },
                                 modifier = Modifier.size(20.dp)

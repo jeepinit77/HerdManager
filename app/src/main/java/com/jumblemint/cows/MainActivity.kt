@@ -80,7 +80,7 @@ class MainActivity : ComponentActivity() {
             val identifierMode by repository.getAnimalIdentifierModeFlow().collectAsState(initial = AnimalIdentifierMode.BOTH)
 
             val defaultBreeds = remember { Breed.getDefaultBreeds() }
-            val defaultTagColors = remember { TagColor.getDefaultColors() }
+            val wizardTagColors = remember { TagColor.getWizardColorOptions() }
             val defaultActivityTypes = remember { ActivityTypeConfig.getDefaultActivityTypes() }
 
             var showInitialSetup by remember { mutableStateOf(false) }
@@ -134,7 +134,7 @@ class MainActivity : ComponentActivity() {
                 if (showInitialSetup && showSetupWizard) {
                     SetupWizardDialog(
                         defaultBreeds = defaultBreeds,
-                        defaultTagColors = defaultTagColors,
+                        availableTagColors = wizardTagColors,
                         defaultActivityTypes = defaultActivityTypes,
                         initialIdentifierMode = null,
                         onExit = { showSetupWizard = false },

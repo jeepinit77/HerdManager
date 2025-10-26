@@ -390,7 +390,7 @@ class CattleRepository(
             insertOrUpdateSetting(
                 Settings(
                     SettingsKeys.TAG_COLORS,
-                    "Blue,Green,Orange,Yellow,Red,White"
+                    "Blue,Green,Red,Orange,White,Yellow"
                 )
             )
         }

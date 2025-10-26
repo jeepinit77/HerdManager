@@ -24,8 +24,7 @@ class TagColorsViewModel(
     fun addTagColor(name: String, argb: Int) {
         viewModelScope.launch {
             // Check if this is a default color name and prevent duplicates
-            val defaultNames = TagColor.getDefaultColors().map { it.name }
-            if (name in defaultNames && repository.getTagColorByName(name) != null) {
+            if (TagColor.isSystemProvidedColor(name) && repository.getTagColorByName(name) != null) {
                 return@launch // Don't create duplicate default colors
             }
             

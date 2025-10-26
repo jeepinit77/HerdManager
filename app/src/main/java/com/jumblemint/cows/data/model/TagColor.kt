@@ -53,20 +53,44 @@ data class TagColor(
             )
         }
 
+        private val defaultColorSpecs = listOf(
+            "Blue" to Color.Blue,
+            "Green" to Color.Green,
+            "Red" to Color.Red,
+            "Orange" to Color(0xFFFFA500),
+            "White" to Color.White,
+            "Yellow" to Color.Yellow
+        )
+
+        private val additionalColorSpecs = listOf(
+            "Brown" to Color(0xFF795548),
+            "Black" to Color.Black,
+            "Pink" to Color(0xFFFFC0CB),
+            "Purple" to Color(0xFF9C27B0)
+        )
+
         // Predefined colors that match common color names
         fun getDefaultColors(): List<TagColor> {
-            return listOf(
-                TagColor(name = "Blue", colorValue = Color.Blue.toArgb(), isDefault = true),
-                TagColor(name = "Green", colorValue = Color.Green.toArgb(), isDefault = true),
-                TagColor(name = "Orange", colorValue = Color(0xFFFFA500).toArgb(), isDefault = true),
-                TagColor(name = "Yellow", colorValue = Color.Yellow.toArgb(), isDefault = true),
-                TagColor(name = "Red", colorValue = Color.Red.toArgb(), isDefault = true),
-                TagColor(name = "White", colorValue = Color.White.toArgb(), isDefault = true),
-                TagColor(name = "Brown", colorValue = Color(0xFF795548).toArgb(), isDefault = true),
-                TagColor(name = "Black", colorValue = Color.Black.toArgb(), isDefault = true),
-                TagColor(name = "Pink", colorValue = Color(0xFFFFC0CB).toArgb(), isDefault = true),
-                TagColor(name = "Purple", colorValue = Color(0xFF9C27B0).toArgb(), isDefault = true)
-            )
+            return defaultColorSpecs.map { (name, color) ->
+                TagColor(name = name, colorValue = color.toArgb(), isDefault = true)
+            }
+        }
+
+        fun getAdditionalColorOptions(): List<TagColor> {
+            return additionalColorSpecs.map { (name, color) ->
+                TagColor(name = name, colorValue = color.toArgb(), isDefault = false)
+            }
+        }
+
+        fun getWizardColorOptions(): List<TagColor> {
+            return getDefaultColors() + getAdditionalColorOptions()
+        }
+
+        fun isSystemProvidedColor(name: String): Boolean {
+            val normalized = name.trim().lowercase()
+            return (defaultColorSpecs + additionalColorSpecs).any { (colorName, _) ->
+                colorName.lowercase() == normalized
+            }
         }
     }
 }
