@@ -551,17 +551,26 @@ fun SettingsScreen(
                     if (isSignedIn && currentUser?.isLocalUser == false) {
                         val uid = currentUser?.uid
                         if (uid != null) {
+                            val remoteCollections = selection.toRemoteCollections()
+                            val hasSelection = selection.hasAnySelection()
                             try {
                                 application.syncService.stopRealtimeSync(uid)
                                 viewModel.deleteSelectedData(selection)
-                                application.syncService.startRealtimeSync(uid)
+                                if (remoteCollections.isNotEmpty()) {
+                                    application.syncService.clearServerCollections(uid, remoteCollections)
+                                }
+                                if (hasSelection) {
+                                    application.syncService.syncUserData(uid)
+                                }
                             } catch (e: Exception) {
-                                 snackbarHostState.showSnackbar("Error during selective delete: ${e.message}")
+                                snackbarHostState.showSnackbar("Error during selective delete: ${e.message}")
+                            } finally {
+                                application.syncService.startRealtimeSync(uid)
                             }
                         } else {
-                             snackbarHostState.showSnackbar("User ID not found for sync reset.")
+                            snackbarHostState.showSnackbar("User ID not found for sync reset.")
                         }
-                    } else { 
+                    } else {
                         viewModel.deleteSelectedData(selection)
                     }
                 }

@@ -50,8 +50,16 @@ class TagColorsViewModel(
 
     fun deleteTagColor(tagColor: TagColor) {
         viewModelScope.launch {
-            repository.deleteTagColor(tagColor)
-            syncService.syncItemImmediately(getUserId(), tagColor.copy(isDeleted = true, updatedAt = System.currentTimeMillis()))
+            if (tagColor.isDeleted) return@launch
+            val deletionTimestamp = System.currentTimeMillis()
+            val deleted = tagColor.copy(
+                isDeleted = true,
+                isActive = false,
+                updatedAt = deletionTimestamp,
+                firestoreId = tagColor.firestoreId ?: tagColor.id
+            )
+            repository.upsertTagColor(deleted)
+            syncService.syncItemImmediately(getUserId(), deleted)
         }
     }
 
@@ -65,14 +73,26 @@ class TagColorsViewModel(
 
     fun resetToDefaults() {
         viewModelScope.launch {
-            // Delete ALL existing tag colors first
-            repository.deleteAllTagColors()
-            // Insert fresh default colors (each will be unique)
+            val userId = getUserId()
+            val existing = repository.getAllTagColorsSync()
+            if (existing.isNotEmpty()) {
+                val deletionTimestamp = System.currentTimeMillis()
+                existing.filter { !it.isDeleted }.forEach { tagColor ->
+                    val deleted = tagColor.copy(
+                        isDeleted = true,
+                        isActive = false,
+                        updatedAt = deletionTimestamp,
+                        firestoreId = tagColor.firestoreId ?: tagColor.id
+                    )
+                    repository.upsertTagColor(deleted)
+                    syncService.syncItemImmediately(userId, deleted)
+                }
+            }
+
             val defaults = TagColor.getDefaultColors()
-            repository.insertTagColors(defaults)
-            // Sync the new defaults
+            repository.upsertTagColors(defaults)
             defaults.forEach { def ->
-                syncService.syncItemImmediately(getUserId(), def)
+                syncService.syncItemImmediately(userId, def)
             }
         }
     }

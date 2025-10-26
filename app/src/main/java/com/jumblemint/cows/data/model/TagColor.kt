@@ -37,6 +37,11 @@ data class TagColor(
     }
 
     companion object {
+        private fun stableIdForName(name: String): String {
+            val normalized = name.trim().lowercase()
+            return UUID.nameUUIDFromBytes("tag_color::$normalized".toByteArray()).toString()
+        }
+
         fun fromFirestoreMap(id: String, data: Map<String, Any>): TagColor {
             return TagColor(
                 id = id,
@@ -71,14 +76,33 @@ data class TagColor(
 
         // Predefined colors that match common color names
         fun getDefaultColors(): List<TagColor> {
+            val timestamp = System.currentTimeMillis()
             return defaultColorSpecs.map { (name, color) ->
-                TagColor(name = name, colorValue = color.toArgb(), isDefault = true)
+                val id = stableIdForName(name)
+                TagColor(
+                    id = id,
+                    name = name,
+                    colorValue = color.toArgb(),
+                    isDefault = true,
+                    createdAt = timestamp,
+                    updatedAt = timestamp,
+                    firestoreId = id,
+                    isDeleted = false
+                )
             }
         }
 
         fun getAdditionalColorOptions(): List<TagColor> {
             return additionalColorSpecs.map { (name, color) ->
-                TagColor(name = name, colorValue = color.toArgb(), isDefault = false)
+                val id = stableIdForName(name)
+                TagColor(
+                    id = id,
+                    name = name,
+                    colorValue = color.toArgb(),
+                    isDefault = false,
+                    firestoreId = id,
+                    isDeleted = false
+                )
             }
         }
 

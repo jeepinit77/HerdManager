@@ -853,7 +853,23 @@ class CattleRepository(
     suspend fun deleteAllPastures() = pastureDao.deleteAllPastures()
     suspend fun deleteAllActivities() = activityDao.deleteAllActivities()
     suspend fun deleteAllNotes() = noteDao?.deleteAllNotes()
-    suspend fun deleteAllTagColors() { tagColorDao?.let { dao -> val all = dao.getAllTagColorsSync(); for (tc in all) dao.deleteById(tc.id) } }
+    suspend fun deleteAllTagColors() {
+        tagColorDao?.let { dao ->
+            val now = System.currentTimeMillis()
+            val all = dao.getAllTagColorsSync()
+            if (all.isNotEmpty()) {
+                val markedDeleted = all.map { tagColor ->
+                    tagColor.copy(
+                        firestoreId = tagColor.firestoreId ?: tagColor.id,
+                        isDeleted = true,
+                        isActive = false,
+                        updatedAt = now
+                    )
+                }
+                dao.upsertAll(markedDeleted)
+            }
+        }
+    }
     suspend fun deleteAllActivityTypeConfigs() { activityTypeConfigDao?.deleteAllActivityTypes() }
     suspend fun deleteAllBreeds() = breedDao?.deleteAllBreeds()
     suspend fun deleteAllSettings() { settingsDao?.let { dao -> val settings = dao.getAllSettings().first(); for (s in settings) dao.deleteSetting(s) } }
@@ -902,14 +918,23 @@ class CattleRepository(
     suspend fun upsertTagColor(tagColor: TagColor) = tagColorDao?.upsert(tagColor)
     suspend fun upsertTagColors(tagColors: List<TagColor>) = tagColorDao?.upsertAll(tagColors)
     suspend fun updateTagColor(tagColor: TagColor) = tagColorDao?.updateTagColor(tagColor)
-    suspend fun deleteTagColor(tagColor: TagColor) = tagColorDao?.deleteTagColor(tagColor)
+    suspend fun deleteTagColor(tagColor: TagColor) {
+        tagColorDao?.upsert(
+            tagColor.copy(
+                firestoreId = tagColor.firestoreId ?: tagColor.id,
+                isDeleted = true,
+                isActive = false,
+                updatedAt = System.currentTimeMillis()
+            )
+        )
+    }
     suspend fun updateTagColorActiveStatus(id: String, isActive: Boolean) = tagColorDao?.updateTagColorActiveStatus(id, isActive)
     suspend fun ensureDefaultTagColorsExist() {
         val existing = tagColorDao?.getAllTagColorsSync() ?: emptyList()
-        val existingNames = existing.map { it.name.lowercase() }.toSet()
+        val activeNames = existing.filter { !it.isDeleted }.map { it.name.lowercase() }.toSet()
         val defaults = TagColor.getDefaultColors()
-        val missing = defaults.filter { it.name.lowercase() !in existingNames }
-        if (missing.isNotEmpty()) { insertTagColors(missing) }
+        val missing = defaults.filter { it.name.lowercase() !in activeNames }
+        if (missing.isNotEmpty()) { upsertTagColors(missing) }
     }
     
     // Activity Type Config operations

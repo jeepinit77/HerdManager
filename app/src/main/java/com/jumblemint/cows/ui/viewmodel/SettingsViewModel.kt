@@ -88,7 +88,22 @@ class SettingsViewModel(
         val activityTypes: Boolean = false,
         val breeds: Boolean = false,
         val settings: Boolean = false
-    )
+    ) {
+        fun hasAnySelection(): Boolean =
+            cows || pastures || activities || notes || tagColors || activityTypes || settings
+
+        fun toRemoteCollections(): List<String> {
+            val collections = mutableListOf<String>()
+            if (cows) collections += "cows"
+            if (pastures) collections += "pastures"
+            if (activities) collections += "activities"
+            if (notes) collections += "notes"
+            if (tagColors) collections += "tagColors"
+            if (activityTypes) collections += "activityTypes"
+            if (settings) collections += "settings"
+            return collections
+        }
+    }
 
     fun exportData(format: String) {
         viewModelScope.launch {
@@ -194,62 +209,60 @@ class SettingsViewModel(
         }
     }
 
-    fun deleteSelectedData(selection: DeleteSelection) {
-        viewModelScope.launch {
-            try {
-                _uiState.value = _uiState.value.copy(message = null, error = null, isLoading = true)
-                
-                val deletedCategories = mutableListOf<String>()
-                
-                if (selection.activities) {
-                    repository.deleteAllActivities()
-                    deletedCategories.add("Activities")
-                }
-                if (selection.cows) {
-                    repository.deleteAllCows()
-                    deletedCategories.add("Cattle")
-                }
-                if (selection.pastures) {
-                    repository.deleteAllPastures()
-                    deletedCategories.add("Pastures")
-                }
-                if (selection.notes) {
-                    repository.deleteAllNotes()
-                    deletedCategories.add("Notes")
-                }
-                if (selection.tagColors) {
-                    repository.deleteAllTagColors()
-                    repository.ensureDefaultTagColorsExist()
-                    deletedCategories.add("Tagging Colors")
-                }
-                if (selection.activityTypes) {
-                    repository.deleteAllActivityTypeConfigs()
-                    repository.ensureDefaultActivityTypesExist()
-                    deletedCategories.add("Activity Types")
-                }
-                if (selection.breeds) {
-                    repository.restoreDefaultBreeds()
-                    deletedCategories.add("Breeds")
-                }
-                if (selection.settings) {
-                    repository.deleteAllSettings()
-                    deletedCategories.add("Settings")
-                }
+    suspend fun deleteSelectedData(selection: DeleteSelection) {
+        try {
+            _uiState.value = _uiState.value.copy(message = null, error = null, isLoading = true)
 
-                val message = if (deletedCategories.isNotEmpty()) {
-                    "Deleted: ${deletedCategories.joinToString(", ")}"
-                } else {
-                    "No categories selected for deletion"
-                }
+            val deletedCategories = mutableListOf<String>()
 
-                _uiState.value = _uiState.value.copy(
-                    message = message,
-                    isLoading = false,
-                    isSampleDataInstalled = if (selection.cows || selection.pastures) repository.isSampleDataInstalled() else _uiState.value.isSampleDataInstalled
-                )
-            } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = "Failed to delete selected data: ${e.message}", isLoading = false)
+            if (selection.activities) {
+                repository.deleteAllActivities()
+                deletedCategories.add("Activities")
             }
+            if (selection.cows) {
+                repository.deleteAllCows()
+                deletedCategories.add("Cattle")
+            }
+            if (selection.pastures) {
+                repository.deleteAllPastures()
+                deletedCategories.add("Pastures")
+            }
+            if (selection.notes) {
+                repository.deleteAllNotes()
+                deletedCategories.add("Notes")
+            }
+            if (selection.tagColors) {
+                repository.deleteAllTagColors()
+                repository.ensureDefaultTagColorsExist()
+                deletedCategories.add("Tagging Colors")
+            }
+            if (selection.activityTypes) {
+                repository.deleteAllActivityTypeConfigs()
+                repository.ensureDefaultActivityTypesExist()
+                deletedCategories.add("Activity Types")
+            }
+            if (selection.breeds) {
+                repository.restoreDefaultBreeds()
+                deletedCategories.add("Breeds")
+            }
+            if (selection.settings) {
+                repository.deleteAllSettings()
+                deletedCategories.add("Settings")
+            }
+
+            val message = if (deletedCategories.isNotEmpty()) {
+                "Deleted: ${deletedCategories.joinToString(", ")}"
+            } else {
+                "No categories selected for deletion"
+            }
+
+            _uiState.value = _uiState.value.copy(
+                message = message,
+                isLoading = false,
+                isSampleDataInstalled = if (selection.cows || selection.pastures) repository.isSampleDataInstalled() else _uiState.value.isSampleDataInstalled
+            )
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(error = "Failed to delete selected data: ${e.message}", isLoading = false)
         }
     }
 
