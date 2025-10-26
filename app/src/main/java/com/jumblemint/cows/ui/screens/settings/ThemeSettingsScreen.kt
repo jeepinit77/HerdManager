@@ -193,6 +193,7 @@ private fun AdvancedSection(
     horizontalInset: Dp = 16.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val surfaceColor = MaterialTheme.colorScheme.surface
     Column(
         modifier = modifier.fillMaxWidth()
     ) {
@@ -204,7 +205,7 @@ private fun AdvancedSection(
                     val insetPx = horizontalInset.toPx()
 
                     drawRect(
-                        color = MaterialTheme.colorScheme.surfaceVariant,
+                        color = surfaceColor,
                         topLeft = Offset(-insetPx, 0f),
                         size = Size(size.width + insetPx * 2f, size.height)
                     )
