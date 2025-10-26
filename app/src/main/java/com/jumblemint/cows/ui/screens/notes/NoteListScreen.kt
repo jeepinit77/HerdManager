@@ -62,6 +62,7 @@ import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.viewmodel.NotesUiState
 import com.jumblemint.cows.ui.viewmodel.NotesViewModel
+import com.jumblemint.cows.ui.viewmodel.TodoCompletionFilter
 import com.jumblemint.cows.ui.viewmodel.TodoStatusFilter
 import java.text.SimpleDateFormat
 import java.time.Instant
@@ -204,10 +205,12 @@ fun NotesScreen(
             initialStartDate = uiState.startDateMillis,
             initialEndDate = uiState.endDateMillis,
             initialTodoFilter = uiState.todoFilter,
-            onApply = { start, end, todo ->
+            initialTodoCompletionFilter = uiState.todoCompletionFilter,
+            onApply = { start, end, todo, todoCompletion ->
                 viewModel.updateStartDate(start)
                 viewModel.updateEndDate(end)
                 viewModel.updateTodoFilter(todo)
+                viewModel.updateTodoCompletionFilter(todoCompletion)
                 showFilterDialog = false
             },
             onClear = {
@@ -411,7 +414,8 @@ private fun NoteFiltersDialog(
     initialStartDate: Long?,
     initialEndDate: Long?,
     initialTodoFilter: TodoStatusFilter,
-    onApply: (Long?, Long?, TodoStatusFilter) -> Unit,
+    initialTodoCompletionFilter: TodoCompletionFilter,
+    onApply: (Long?, Long?, TodoStatusFilter, TodoCompletionFilter) -> Unit,
     onClear: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -419,6 +423,11 @@ private fun NoteFiltersDialog(
     var startDate by remember(initialStartDate) { mutableStateOf(initialStartDate?.let { Instant.ofEpochMilli(it).atZone(zoneId).toLocalDate() }) }
     var endDate by remember(initialEndDate) { mutableStateOf(initialEndDate?.let { Instant.ofEpochMilli(it).atZone(zoneId).toLocalDate() }) }
     var todoFilter by remember(initialTodoFilter) { mutableStateOf(initialTodoFilter) }
+    var todoCompletionFilter by remember(initialTodoFilter, initialTodoCompletionFilter) {
+        mutableStateOf(
+            if (initialTodoFilter == TodoStatusFilter.NON_TODO) TodoCompletionFilter.ALL else initialTodoCompletionFilter
+        )
+    }
 
     AppAlertDialog(
         onDismissRequest = onDismiss,
@@ -428,6 +437,7 @@ private fun NoteFiltersDialog(
                     startDate = null
                     endDate = null
                     todoFilter = TodoStatusFilter.ALL
+                    todoCompletionFilter = TodoCompletionFilter.ALL
                     onClear()
                 }) {
                     Text("Clear")
@@ -435,7 +445,7 @@ private fun NoteFiltersDialog(
                 Button(onClick = {
                     val startMillis = startDate?.atStartOfDay(zoneId)?.toInstant()?.toEpochMilli()
                     val endMillis = endDate?.plusDays(1)?.atStartOfDay(zoneId)?.toInstant()?.toEpochMilli()?.minus(1)
-                    onApply(startMillis, endMillis, todoFilter)
+                    onApply(startMillis, endMillis, todoFilter, todoCompletionFilter)
                 }) {
                     Text("Apply")
                 }
@@ -481,7 +491,12 @@ private fun NoteFiltersDialog(
                         TodoStatusFilter.values().forEachIndexed { index, filter ->
                             SegmentedButton(
                                 shape = SegmentedButtonDefaults.itemShape(index = index, count = TodoStatusFilter.values().size),
-                                onClick = { todoFilter = filter },
+                                onClick = {
+                                    todoFilter = filter
+                                    if (filter == TodoStatusFilter.NON_TODO) {
+                                        todoCompletionFilter = TodoCompletionFilter.ALL
+                                    }
+                                },
                                 selected = todoFilter == filter,
                                 modifier = Modifier.defaultMinSize(minHeight = SegmentedButtonMinHeight),
                                 colors = SegmentedButtonDefaults.colors(
@@ -494,6 +509,28 @@ private fun NoteFiltersDialog(
                         }
                     }
                 }
+
+                if (todoFilter != TodoStatusFilter.NON_TODO) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Todo status", style = MaterialTheme.typography.titleMedium)
+                        SingleChoiceSegmentedButtonRow {
+                            TodoCompletionFilter.values().forEachIndexed { index, completion ->
+                                SegmentedButton(
+                                    shape = SegmentedButtonDefaults.itemShape(index = index, count = TodoCompletionFilter.values().size),
+                                    onClick = { todoCompletionFilter = completion },
+                                    selected = todoCompletionFilter == completion,
+                                    modifier = Modifier.defaultMinSize(minHeight = SegmentedButtonMinHeight),
+                                    colors = SegmentedButtonDefaults.colors(
+                                        activeContainerColor = MaterialTheme.colorScheme.primary,
+                                        activeContentColor = MaterialTheme.colorScheme.onPrimary
+                                    )
+                                ) {
+                                    Text(completion.label, maxLines = 2)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     )
@@ -502,7 +539,12 @@ private fun NoteFiltersDialog(
 private val SegmentedButtonMinHeight = 44.dp
 
 private fun hasActiveFilters(uiState: NotesUiState): Boolean {
-    return uiState.startDateMillis != null || uiState.endDateMillis != null || uiState.todoFilter != TodoStatusFilter.ALL
+    val hasTodoCompletionFilter =
+        uiState.todoFilter != TodoStatusFilter.NON_TODO && uiState.todoCompletionFilter != TodoCompletionFilter.ALL
+    return uiState.startDateMillis != null ||
+        uiState.endDateMillis != null ||
+        uiState.todoFilter != TodoStatusFilter.ALL ||
+        hasTodoCompletionFilter
 }
 
 private fun getActiveFilterCount(uiState: NotesUiState): Int {
@@ -510,6 +552,7 @@ private fun getActiveFilterCount(uiState: NotesUiState): Int {
     if (uiState.startDateMillis != null) count++
     if (uiState.endDateMillis != null) count++
     if (uiState.todoFilter != TodoStatusFilter.ALL) count++
+    if (uiState.todoFilter != TodoStatusFilter.NON_TODO && uiState.todoCompletionFilter != TodoCompletionFilter.ALL) count++
     return count
 }
 

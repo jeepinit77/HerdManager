@@ -41,7 +41,8 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                                 searchQuery = updated.searchQuery,
                                 startDateMillis = updated.startDateMillis,
                                 endDateMillis = updated.endDateMillis,
-                                todoFilter = updated.todoFilter
+                                todoFilter = updated.todoFilter,
+                                todoCompletionFilter = updated.todoCompletionFilter
                             )
                         )
                     }
@@ -207,7 +208,8 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                     searchQuery = trimmed,
                     startDateMillis = current.startDateMillis,
                     endDateMillis = current.endDateMillis,
-                    todoFilter = current.todoFilter
+                    todoFilter = current.todoFilter,
+                    todoCompletionFilter = current.todoCompletionFilter
                 )
             )
         }
@@ -226,7 +228,8 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                     searchQuery = current.searchQuery,
                     startDateMillis = newStart,
                     endDateMillis = finalEnd,
-                    todoFilter = current.todoFilter
+                    todoFilter = current.todoFilter,
+                    todoCompletionFilter = current.todoCompletionFilter
                 )
             )
         }
@@ -248,7 +251,8 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                     searchQuery = current.searchQuery,
                     startDateMillis = finalStart,
                     endDateMillis = newEnd,
-                    todoFilter = current.todoFilter
+                    todoFilter = current.todoFilter,
+                    todoCompletionFilter = current.todoCompletionFilter
                 )
             )
         }
@@ -256,14 +260,42 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateTodoFilter(filter: TodoStatusFilter) {
         _uiState.update { current ->
+            val completionFilter = if (filter == TodoStatusFilter.NON_TODO) {
+                TodoCompletionFilter.ALL
+            } else {
+                current.todoCompletionFilter
+            }
             current.copy(
                 todoFilter = filter,
+                todoCompletionFilter = completionFilter,
                 filteredNotes = applyFilters(
                     notes = current.allNotes,
                     searchQuery = current.searchQuery,
                     startDateMillis = current.startDateMillis,
                     endDateMillis = current.endDateMillis,
-                    todoFilter = filter
+                    todoFilter = filter,
+                    todoCompletionFilter = completionFilter
+                )
+            )
+        }
+    }
+
+    fun updateTodoCompletionFilter(filter: TodoCompletionFilter) {
+        _uiState.update { current ->
+            val appliedFilter = if (current.todoFilter == TodoStatusFilter.NON_TODO) {
+                TodoCompletionFilter.ALL
+            } else {
+                filter
+            }
+            current.copy(
+                todoCompletionFilter = appliedFilter,
+                filteredNotes = applyFilters(
+                    notes = current.allNotes,
+                    searchQuery = current.searchQuery,
+                    startDateMillis = current.startDateMillis,
+                    endDateMillis = current.endDateMillis,
+                    todoFilter = current.todoFilter,
+                    todoCompletionFilter = appliedFilter
                 )
             )
         }
@@ -275,12 +307,14 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                 startDateMillis = null,
                 endDateMillis = null,
                 todoFilter = TodoStatusFilter.ALL,
+                todoCompletionFilter = TodoCompletionFilter.ALL,
                 filteredNotes = applyFilters(
                     notes = current.allNotes,
                     searchQuery = current.searchQuery,
                     startDateMillis = null,
                     endDateMillis = null,
-                    todoFilter = TodoStatusFilter.ALL
+                    todoFilter = TodoStatusFilter.ALL,
+                    todoCompletionFilter = TodoCompletionFilter.ALL
                 )
             )
         }
@@ -291,7 +325,8 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
         searchQuery: String,
         startDateMillis: Long?,
         endDateMillis: Long?,
-        todoFilter: TodoStatusFilter
+        todoFilter: TodoStatusFilter,
+        todoCompletionFilter: TodoCompletionFilter
     ): List<Note> {
         if (notes.isEmpty()) return emptyList()
 
@@ -327,7 +362,17 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                     TodoStatusFilter.NON_TODO -> !note.isTodo
                 }
 
-                matchesSearch && matchesStart && matchesEnd && matchesTodo
+                val matchesTodoCompletion = if (!note.isTodo || todoFilter == TodoStatusFilter.NON_TODO) {
+                    true
+                } else {
+                    when (todoCompletionFilter) {
+                        TodoCompletionFilter.ALL -> true
+                        TodoCompletionFilter.ACTIVE -> !note.isCompleted
+                        TodoCompletionFilter.DONE -> note.isCompleted
+                    }
+                }
+
+                matchesSearch && matchesStart && matchesEnd && matchesTodo && matchesTodoCompletion
             }
             .sortedByDescending { it.timestamp }
             .toList()
@@ -342,11 +387,18 @@ data class NotesUiState(
     val searchQuery: String = "",
     val startDateMillis: Long? = null,
     val endDateMillis: Long? = null,
-    val todoFilter: TodoStatusFilter = TodoStatusFilter.ALL
+    val todoFilter: TodoStatusFilter = TodoStatusFilter.ALL,
+    val todoCompletionFilter: TodoCompletionFilter = TodoCompletionFilter.ALL
 )
 
 enum class TodoStatusFilter(val label: String) {
     ALL("All"),
     TODO_ONLY("Todos"),
     NON_TODO("Notes")
+}
+
+enum class TodoCompletionFilter(val label: String) {
+    ALL("All"),
+    ACTIVE("Active"),
+    DONE("Done")
 }
