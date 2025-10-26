@@ -259,9 +259,9 @@ private fun String.toColorOrNull(): Color? = runCatching {
 enum class SeedColor(val displayName: String, val color: Color) {
     // Cool & aquatic hues
     DENIM_BLUE("Denim", Color(0xFF3A6DA8)),
-    SLATE_BLUE("Harbor", Color(0xFF4C6780)),
+    SLATE_BLUE("Cove", Color(0xFF4C6780)),
     SKY_NAVY("Navy", Color(0xFF2E4E73)),
-    COPPER_TEAL("Lagoon", Color(0xFF2E7C78)),
+    COPPER_TEAL("Tidal", Color(0xFF2E7C78)),
     VERDANT_TEAL("Teal", Color(0xFF3C8C7A)),
 
     // Botanical greens
@@ -280,15 +280,15 @@ enum class SeedColor(val displayName: String, val color: Color) {
 
     // Earthen neutrals
     CEDARWOOD("Cedar", Color(0xFF9C5A3A)),
-    ESPRESSO_BROWN("Espresso", Color(0xFF4B342A)),
+    ESPRESSO_BROWN("Mocha", Color(0xFF4B342A)),
     CLAY_TAUPE("Clay", Color(0xFF8A7563)),
     SAND_SEA("Dune", Color(0xFFC1A57B)),
 
     // Moody & soft palettes
     SLATE("Slate", Color(0xFF586474)),
-    CHARCOAL_GOLD("Charcoal", Color(0xFF3C3C3C)),
-    MIDNIGHT_CLAY("Midnight", Color(0xFF374458)),
-    LAVENDER_GRAPHITE("Lavender", Color(0xFF8D7FA9)),
+    CHARCOAL_GOLD("Coal", Color(0xFF3C3C3C)),
+    MIDNIGHT_CLAY("Night", Color(0xFF374458)),
+    LAVENDER_GRAPHITE("Lilac", Color(0xFF8D7FA9)),
     ASH_MIST("Ash", Color(0xFFCFCBC4)),
     PEARL_INK("Pearl", Color(0xFFF7F5F3))
 }

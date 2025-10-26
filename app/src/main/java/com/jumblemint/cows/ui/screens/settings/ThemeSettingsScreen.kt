@@ -38,6 +38,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
@@ -203,7 +204,7 @@ private fun AdvancedSection(
                     val insetPx = horizontalInset.toPx()
 
                     drawRect(
-                        color = MaterialTheme.colorScheme.surface,
+                        color = MaterialTheme.colorScheme.surfaceVariant,
                         topLeft = Offset(-insetPx, 0f),
                         size = Size(size.width + insetPx * 2f, size.height)
                     )
@@ -296,7 +297,9 @@ private fun PresetChip(
         Text(
             name,
             style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 6.dp)
+            modifier = Modifier.padding(top = 6.dp),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
