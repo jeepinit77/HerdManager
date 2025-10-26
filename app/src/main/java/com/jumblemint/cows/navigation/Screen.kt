@@ -64,8 +64,15 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
     data object Sync : Screen("sync_route", "Sync", false) 
     data object WorkingList : Screen("working_list_route", "Working List", false)
     data object HerdSelection : Screen("herd_selection_route", "Select Herd", false)
-    data object NoteDetail : Screen("note_detail_route/{noteId}", "Note Details", false) {
-        fun createRoute(noteId: Long): String = route.replace("{noteId}", noteId.toString())
+    data object NoteDetail : Screen("note_detail_route/{noteId}?isTodoDefault={isTodoDefault}", "Note Details", false) {
+        fun createRoute(noteId: Long, isTodoDefault: Boolean? = null): String {
+            val replaced = route.replace("{noteId}", noteId.toString())
+            return if (isTodoDefault != null) {
+                replaced.replace("{isTodoDefault}", isTodoDefault.toString())
+            } else {
+                replaced.substringBefore("?")
+            }
+        }
     }
     data object NoteInfo : Screen("note_info_route/{noteId}", "Note Info", false) {
         fun createRoute(noteId: Long): String = route.replace("{noteId}", noteId.toString())

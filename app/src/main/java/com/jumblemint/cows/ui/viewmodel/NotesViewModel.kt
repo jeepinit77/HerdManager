@@ -8,7 +8,9 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.Note
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Locale
 
 class NotesViewModel(application: Application) : AndroidViewModel(application) {
     // Corrected: Single argument for getDatabase and explicit type for database
@@ -31,16 +33,33 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                     _uiState.value = _uiState.value.copy(error = e.message)
                 }
                 // Corrected: Explicit type for notes
-                .collect { notes: List<Note> -> 
-                    _uiState.value = _uiState.value.copy(
-                        notes = notes,
-                        isLoading = false
-                    )
+                .collect { notes: List<Note> ->
+                    _uiState.update { current ->
+                        val updated = current.copy(
+                            allNotes = notes,
+                            isLoading = false
+                        )
+                        updated.copy(
+                            filteredNotes = applyFilters(
+                                notes = notes,
+                                searchQuery = updated.searchQuery,
+                                startDateMillis = updated.startDateMillis,
+                                endDateMillis = updated.endDateMillis,
+                                todoFilter = updated.todoFilter
+                            )
+                        )
+                    }
                 }
         }
     }
-    
-    fun addNote(title: String, text: String, isTodo: Boolean = false, dueDate: Long? = null) {
+
+    fun addNote(
+        title: String,
+        text: String,
+        isTodo: Boolean = false,
+        dueDate: Long? = null,
+        isCompleted: Boolean = false
+    ) {
         viewModelScope.launch {
             try {
                 val note = Note(
@@ -48,7 +67,8 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                     text = text,
                     timestamp = Date().time,
                     isTodo = isTodo,
-                    dueDate = dueDate
+                    dueDate = dueDate,
+                    isCompleted = if (isTodo) isCompleted else false
                 )
                 val noteId = noteDao.insert(note)
                 val savedNote = note.copy(id = noteId)
@@ -100,7 +120,14 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
     
-    fun updateNote(note: Note, newTitle: String, newText: String, isTodo: Boolean = false, dueDate: Long? = null) {
+    fun updateNote(
+        note: Note,
+        newTitle: String,
+        newText: String,
+        isTodo: Boolean = false,
+        dueDate: Long? = null,
+        isCompleted: Boolean = false
+    ) {
         viewModelScope.launch {
             try {
                 val updatedNote = note.copy(
@@ -108,7 +135,8 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                     text = newText,
                     timestamp = Date().time, // Update timestamp when edited
                     isTodo = isTodo,
-                    dueDate = dueDate
+                    dueDate = dueDate,
+                    isCompleted = if (isTodo) isCompleted else false
                 )
                 noteDao.insert(updatedNote) // Using insert with REPLACE strategy
                 
@@ -174,8 +202,144 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
     }
 }
 
+    fun updateSearchQuery(query: String) {
+        _uiState.update { current ->
+            val trimmed = query.trim()
+            current.copy(
+                searchQuery = trimmed,
+                filteredNotes = applyFilters(
+                    notes = current.allNotes,
+                    searchQuery = trimmed,
+                    startDateMillis = current.startDateMillis,
+                    endDateMillis = current.endDateMillis,
+                    todoFilter = current.todoFilter
+                )
+            )
+        }
+    }
+
+    fun updateStartDate(millis: Long?) {
+        _uiState.update { current ->
+            val adjustedEnd = current.endDateMillis
+            val newStart = millis
+            val finalEnd = if (newStart != null && adjustedEnd != null && newStart > adjustedEnd) newStart else adjustedEnd
+            current.copy(
+                startDateMillis = newStart,
+                endDateMillis = finalEnd,
+                filteredNotes = applyFilters(
+                    notes = current.allNotes,
+                    searchQuery = current.searchQuery,
+                    startDateMillis = newStart,
+                    endDateMillis = finalEnd,
+                    todoFilter = current.todoFilter
+                )
+            )
+        }
+    }
+
+    fun updateEndDate(millis: Long?) {
+        _uiState.update { current ->
+            val newEnd = millis
+            val finalStart = if (newEnd != null && current.startDateMillis != null && newEnd < current.startDateMillis) newEnd else current.startDateMillis
+            current.copy(
+                startDateMillis = finalStart,
+                endDateMillis = newEnd,
+                filteredNotes = applyFilters(
+                    notes = current.allNotes,
+                    searchQuery = current.searchQuery,
+                    startDateMillis = finalStart,
+                    endDateMillis = newEnd,
+                    todoFilter = current.todoFilter
+                )
+            )
+        }
+    }
+
+    fun updateTodoFilter(filter: TodoStatusFilter) {
+        _uiState.update { current ->
+            current.copy(
+                todoFilter = filter,
+                filteredNotes = applyFilters(
+                    notes = current.allNotes,
+                    searchQuery = current.searchQuery,
+                    startDateMillis = current.startDateMillis,
+                    endDateMillis = current.endDateMillis,
+                    todoFilter = filter
+                )
+            )
+        }
+    }
+
+    fun clearAllFilters() {
+        _uiState.update { current ->
+            current.copy(
+                startDateMillis = null,
+                endDateMillis = null,
+                todoFilter = TodoStatusFilter.ALL,
+                filteredNotes = applyFilters(
+                    notes = current.allNotes,
+                    searchQuery = current.searchQuery,
+                    startDateMillis = null,
+                    endDateMillis = null,
+                    todoFilter = TodoStatusFilter.ALL
+                )
+            )
+        }
+    }
+
+    private fun applyFilters(
+        notes: List<Note>,
+        searchQuery: String,
+        startDateMillis: Long?,
+        endDateMillis: Long?,
+        todoFilter: TodoStatusFilter
+    ): List<Note> {
+        if (notes.isEmpty()) return emptyList()
+
+        val query = searchQuery.lowercase(Locale.getDefault())
+        val timestampFormatter = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
+        val dateFormatter = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+
+        return notes.asSequence()
+            .filter { note ->
+                val matchesSearch = if (query.isBlank()) {
+                    true
+                } else {
+                    val titleMatch = note.title.lowercase(Locale.getDefault()).contains(query)
+                    val textMatch = note.text.lowercase(Locale.getDefault()).contains(query)
+                    val timestampMatch = timestampFormatter.format(Date(note.timestamp)).lowercase(Locale.getDefault()).contains(query)
+                    val dueDateMatch = note.dueDate?.let { dateFormatter.format(Date(it)).lowercase(Locale.getDefault()).contains(query) } ?: false
+                    titleMatch || textMatch || timestampMatch || dueDateMatch
+                }
+
+                val matchesStart = startDateMillis?.let { note.timestamp >= it } ?: true
+                val matchesEnd = endDateMillis?.let { note.timestamp <= it } ?: true
+                val matchesTodo = when (todoFilter) {
+                    TodoStatusFilter.ALL -> true
+                    TodoStatusFilter.TODO_ONLY -> note.isTodo
+                    TodoStatusFilter.NON_TODO -> !note.isTodo
+                }
+
+                matchesSearch && matchesStart && matchesEnd && matchesTodo
+            }
+            .sortedByDescending { it.timestamp }
+            .toList()
+    }
+}
+
 data class NotesUiState(
-    val notes: List<Note> = emptyList(),
+    val allNotes: List<Note> = emptyList(),
+    val filteredNotes: List<Note> = emptyList(),
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val searchQuery: String = "",
+    val startDateMillis: Long? = null,
+    val endDateMillis: Long? = null,
+    val todoFilter: TodoStatusFilter = TodoStatusFilter.ALL
 )
+
+enum class TodoStatusFilter(val label: String) {
+    ALL("All"),
+    TODO_ONLY("Todos"),
+    NON_TODO("Notes")
+}

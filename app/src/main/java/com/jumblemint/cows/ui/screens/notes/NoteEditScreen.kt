@@ -43,35 +43,43 @@ fun NoteEditScreen(
     backPressed: Boolean = false,
     onBackHandled: () -> Unit = {},
     viewModel: NotesViewModel = viewModel(),
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    defaultIsTodo: Boolean = false
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val note = if (noteId == 0L) null else uiState.notes.find { it.id == noteId }
+    val note = if (noteId == 0L) null else uiState.allNotes.find { it.id == noteId }
 
-    var title by remember { mutableStateOf("") }
-    var text by remember { mutableStateOf("") }
-    var isTodo by remember { mutableStateOf(false) }
-    var dueDate by remember { mutableStateOf<LocalDate?>(null) }
+    var title by remember(noteId) { mutableStateOf("") }
+    var text by remember(noteId) { mutableStateOf("") }
+    var isTodo by remember(noteId, defaultIsTodo) { mutableStateOf(if (noteId == 0L) defaultIsTodo else false) }
+    var isCompleted by remember(noteId) { mutableStateOf(false) }
+    var dueDate by remember(noteId) { mutableStateOf<LocalDate?>(null) }
     var titleError by remember { mutableStateOf<String?>(null) }
 
     val originalTitle = remember(note) { note?.title ?: "" }
     val originalText = remember(note) { note?.text ?: "" }
-    val originalIsTodo = remember(note) { note?.isTodo ?: false }
+    val originalIsTodo = remember(note) { note?.isTodo ?: defaultIsTodo }
+    val originalIsCompleted = remember(note) { note?.isCompleted ?: false }
     val originalDueDate = remember(note) {
         note?.dueDate?.let {
             java.time.Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate()
         }
     }
-    val hasChanges = title != originalTitle || text != originalText || isTodo != originalIsTodo || dueDate != originalDueDate
+    val hasChanges = title != originalTitle || text != originalText || isTodo != originalIsTodo || dueDate != originalDueDate || (if (isTodo) isCompleted else false) != originalIsCompleted
 
-    LaunchedEffect(note) {
-        note?.let {
-            title = it.title
-            text = it.text
-            isTodo = it.isTodo
-            dueDate = it.dueDate?.let { timestamp ->
+    LaunchedEffect(note, defaultIsTodo) {
+        if (note != null) {
+            title = note.title
+            text = note.text
+            isTodo = note.isTodo
+            isCompleted = note.isCompleted
+            dueDate = note.dueDate?.let { timestamp ->
                 java.time.Instant.ofEpochMilli(timestamp).atZone(ZoneId.systemDefault()).toLocalDate()
             }
+        } else {
+            isTodo = defaultIsTodo
+            isCompleted = false
+            dueDate = null
         }
     }
 
@@ -80,18 +88,19 @@ fun NoteEditScreen(
     }
 
     LaunchedEffect(saveTriggered) {
-        if (saveTriggered) {
-            if (title.isNotBlank()) {
-                val dueDateMillis = dueDate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
-                if (note != null) {
-                    viewModel.updateNote(note, title, text, isTodo, dueDateMillis)
+            if (saveTriggered) {
+                if (title.isNotBlank()) {
+                    val dueDateMillis = dueDate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+                    val finalIsCompleted = if (isTodo) isCompleted else false
+                    if (note != null) {
+                        viewModel.updateNote(note, title, text, isTodo, dueDateMillis, finalIsCompleted)
+                    } else {
+                        viewModel.addNote(title, text, isTodo, dueDateMillis, finalIsCompleted)
+                    }
+                    onNavigateBack()
                 } else {
-                    viewModel.addNote(title, text, isTodo, dueDateMillis)
+                    titleError = "Title is required"
                 }
-                onNavigateBack()
-            } else {
-                titleError = "Title is required"
-            }
             onSaveHandled()
         }
     }
@@ -138,7 +147,10 @@ fun NoteEditScreen(
                 checked = isTodo,
                 onCheckedChange = {
                     isTodo = it
-                    if (!it) dueDate = null
+                    if (!it) {
+                        dueDate = null
+                        isCompleted = false
+                    }
                 }
             )
             Spacer(modifier = Modifier.width(8.dp))
@@ -155,6 +167,21 @@ fun NoteEditScreen(
                 label = "Due Date (optional)",
                 modifier = Modifier.fillMaxWidth()
             )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Checkbox(
+                    checked = isCompleted,
+                    onCheckedChange = { isCompleted = it }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = if (isCompleted) "Marked as done" else "Mark as done",
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+            }
         }
 
         OutlinedTextField(
@@ -175,10 +202,11 @@ fun NoteEditScreen(
                 showUnsavedDialog = false
                 if (title.isNotBlank()) {
                     val dueDateMillis = dueDate?.atStartOfDay(ZoneId.systemDefault())?.toInstant()?.toEpochMilli()
+                    val finalIsCompleted = if (isTodo) isCompleted else false
                     if (note != null) {
-                        viewModel.updateNote(note, title, text, isTodo, dueDateMillis)
+                        viewModel.updateNote(note, title, text, isTodo, dueDateMillis, finalIsCompleted)
                     } else {
-                        viewModel.addNote(title, text, isTodo, dueDateMillis)
+                        viewModel.addNote(title, text, isTodo, dueDateMillis, finalIsCompleted)
                     }
                     onNavigateBack()
                 } else {

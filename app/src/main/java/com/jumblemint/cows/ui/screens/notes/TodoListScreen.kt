@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material3.*
@@ -28,6 +29,7 @@ import java.time.format.DateTimeFormatter
 fun TodoListScreen(
     onNavigateBack: () -> Unit,
     onNavigateToDetail: (Long) -> Unit,
+    onAddTodo: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: NotesViewModel = viewModel()
 ) {
@@ -160,6 +162,17 @@ fun TodoListScreen(
             hostState = snackbarHostState,
             modifier = Modifier.align(Alignment.BottomCenter)
         )
+
+        FloatingActionButton(
+            onClick = onAddTodo,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(16.dp),
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        ) {
+            Icon(Icons.Default.Add, contentDescription = "Add Todo")
+        }
     }
 }
 

@@ -665,10 +665,15 @@ fun CattleNavigation(
         composable(
             route = Screen.NoteDetail.route,
             arguments = listOf(
-                navArgument("noteId") { type = NavType.LongType }
+                navArgument("noteId") { type = NavType.LongType },
+                navArgument("isTodoDefault") {
+                    type = NavType.BoolType
+                    defaultValue = false
+                }
             )
         ) { backStackEntry ->
             val noteId = backStackEntry.arguments?.getLong("noteId") ?: 0L
+            val defaultIsTodo = backStackEntry.arguments?.getBoolean("isTodoDefault") ?: false
             com.jumblemint.cows.ui.screens.notes.NoteEditScreen(
                 modifier = screenModifierWithPadding,
                 noteId = noteId,
@@ -677,7 +682,8 @@ fun CattleNavigation(
                 onSaveHandled = onSaveHandled,
                 onUnsavedChangesChanged = onUnsavedChangesChanged,
                 backPressed = backPressed,
-                onBackHandled = onBackHandled
+                onBackHandled = onBackHandled,
+                defaultIsTodo = defaultIsTodo
             )
         }
         
@@ -704,7 +710,8 @@ fun CattleNavigation(
             com.jumblemint.cows.ui.screens.notes.TodoListScreen(
                 modifier = screenModifierWithPadding,
                 onNavigateBack = { navController.popBackStack() },
-                onNavigateToDetail = { noteId -> navController.navigate(Screen.NoteInfo.createRoute(noteId)) }
+                onNavigateToDetail = { noteId -> navController.navigate(Screen.NoteInfo.createRoute(noteId)) },
+                onAddTodo = { navController.navigate(Screen.NoteDetail.createRoute(0L, isTodoDefault = true)) }
             )
         }
     }

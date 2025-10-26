@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,7 +28,7 @@ fun NoteDetailScreen(
     modifier: Modifier = Modifier
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val note = uiState.notes.find { it.id == noteId }
+    val note = uiState.allNotes.find { it.id == noteId }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
     if (uiState.isLoading) {
@@ -90,14 +92,28 @@ fun NoteDetailScreen(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                     if (note.isTodo) {
-                        Text(
-                            text = "Todo Item",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                        note.dueDate?.let { dueDate ->
+                        val dueDateText = note.dueDate?.let { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(it)) }
+                        val icon = if (note.isCompleted) Icons.Default.CheckCircle else Icons.Default.Schedule
+                        val statusText = if (note.isCompleted) "Todo completed" else "Todo active"
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                tint = if (note.isCompleted) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.tertiary
+                            )
                             Text(
-                                text = "Due: ${SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(dueDate))}",
+                                text = statusText,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+
+                        dueDateText?.let { formatted ->
+                            Text(
+                                text = "Due: $formatted",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onPrimary
                             )
