@@ -40,6 +40,8 @@ import java.time.LocalDate
 // Period is not directly used here anymore, AgeUtils handles it.
 import java.util.Locale
 
+private fun Cow.isUnassignedPasture(): Boolean = pastureId.isNullOrBlank()
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CowListScreen(
@@ -121,15 +123,18 @@ fun CowListScreen(
                     }
                 }
                 "classification" -> active.filter { it.classification.name == value }
-                "pasture" -> active.filter { it.pastureId == value }
+                "pasture" -> {
+                    val targetPastureId = value?.takeUnless { it.isBlank() }
+                    active.filter { cow -> cow.pastureId == targetPastureId }
+                }
                 "pastureName" -> {
                     if (value == "Unassigned") {
-                        active.filter { it.pastureId == null }
+                        active.filter { it.isUnassignedPasture() }
                     } else {
                         active
                     }
                 }
-                "unassigned" -> active.filter { it.pastureId == null }
+                "unassigned" -> active.filter { it.isUnassignedPasture() }
                 "notCalved" -> {
                     val nineMonthsAgo = LocalDate.now().minusMonths(9)
                     val female = active.filter { it.gender == Gender.FEMALE && it.classification in listOf(Classification.COW, Classification.HEIFER) }

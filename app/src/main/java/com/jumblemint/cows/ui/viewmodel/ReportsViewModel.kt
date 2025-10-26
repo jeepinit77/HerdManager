@@ -88,7 +88,7 @@ class ReportsViewModel(
 
                 // Pasture breakdown computed from cows and pastures snapshot
                 val pastureNameById = pastures.associate { it.id to it.name }
-                val cowsByPastureId = activeCows.groupBy { it.pastureId }
+                val cowsByPastureId = activeCows.groupBy { it.pastureId?.takeUnless { id -> id.isBlank() } }
                 val pastureBreakdown = mutableMapOf<String, Int>()
                 cowsByPastureId.forEach { (pastureId, cowsInPasture) ->
                     val name = pastureId?.let { pastureNameById[it] } ?: "Unassigned"

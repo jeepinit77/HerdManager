@@ -43,7 +43,7 @@ class WorkingListViewModel(
             val classificationMatch = state.selectedClassifications.isEmpty() || state.selectedClassifications.contains(cow.classification)
             val genderMatch = state.selectedGenders.isEmpty() || state.selectedGenders.contains(cow.gender)
             val pastureMatch = state.selectedPastures.isEmpty() || state.selectedPastures.any { selectedPasture ->
-                if (selectedPasture == "Unassigned") cow.pastureId == null
+                if (selectedPasture == "Unassigned") cow.pastureId.isNullOrBlank()
                 else pastures.find { it.name == selectedPasture }?.id?.toString() == cow.pastureId
             }
             val breedMatch = state.selectedBreeds.isEmpty() || state.selectedBreeds.contains(cow.breed)

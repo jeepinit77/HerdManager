@@ -311,7 +311,7 @@ fun ParentPicker(
                                 cow.classification in selectedClassifications
                         val matchesPasture = when (selectedPastureKey) {
                             ALL_PASTURES_KEY -> true
-                            UNASSIGNED_PASTURE_KEY -> cow.pastureId == null
+                            UNASSIGNED_PASTURE_KEY -> cow.pastureId.isNullOrBlank()
                             else -> cow.pastureId == selectedPastureKey
                         }
                         matchesSearch && matchesClassification && matchesPasture

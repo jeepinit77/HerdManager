@@ -94,7 +94,7 @@ fun AddActivityScreen(
             val matchesClassification = filterState.classifications.isEmpty() || cow.classification in filterState.classifications
             val matchesPasture = filterState.pastures.isEmpty() ||
                 (cow.pastureId in filterState.pastures) ||
-                (cow.pastureId == null && "Unassigned" in filterState.pastures)
+                (cow.pastureId.isNullOrBlank() && "Unassigned" in filterState.pastures)
             val matchesBreed = filterState.breeds.isEmpty() || (cow.breed != null && cow.breed in filterState.breeds)
             val matchesTagColor = filterState.tagColors.isEmpty() || (cow.tagColor != null && cow.tagColor in filterState.tagColors)
             val matchesWatched = filterState.isWatched?.let { cow.isWatched == it } ?: true
