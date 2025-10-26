@@ -2,8 +2,10 @@ package com.jumblemint.cows.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +21,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.shape.RoundedCornerShape
 // import androidx.compose.ui.unit.Dp // Not strictly needed as a param type if using dp directly
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -103,127 +107,181 @@ fun AnimalFilterScreen(
                 }
                 Spacer(modifier = Modifier.height(16.dp)) 
 
-                Column(modifier = Modifier.weight(1f).verticalScroll(scrollState)) {
-                    MultiSelectChipGroup(
-                        title = "Gender",
-                        options = Gender.entries.toList(), 
-                        selectedOptions = currentFilterState.genders,
-                        onSelectionChanged = { currentFilterState = currentFilterState.copy(genders = it) },
-                        itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.titlecase() } }
-                    )
-
-                    MultiSelectChipGroup(
-                        title = "Type", 
-                        options = Classification.entries.toList(), 
-                        selectedOptions = currentFilterState.classifications,
-                        onSelectionChanged = { currentFilterState = currentFilterState.copy(classifications = it) },
-                        itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.titlecase() } }
-                    )
-
-                    MultiSelectChipGroup(
-                        title = "Age Range",
-                        options = AgeUtils.ageRanges, 
-                        selectedOptions = currentFilterState.selectedAgeRanges.mapNotNull { key -> 
-                            AgeUtils.ageRanges.find { it.key == key } 
-                        },
-                        onSelectionChanged = { selectedAgeRangeObjects -> 
-                            currentFilterState = currentFilterState.copy(selectedAgeRanges = selectedAgeRangeObjects.map { it.key })
-                        },
-                        itemLabel = { it.label }
-                    )
-                    
-                    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) {
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable(onClick = {
-                                    val nextState = when (currentFilterState.isWatched) {
-                                        null -> true
-                                        true -> false
-                                        false -> null
-                                    }
-                                    currentFilterState =
-                                        currentFilterState.copy(isWatched = nextState)
-                                })
-                                .padding(vertical = 0.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "Watched Status",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Checkbox(
-                                checked = currentFilterState.isWatched ?: false,
-                                onCheckedChange = {
-                                    val nextState = when (currentFilterState.isWatched) {
-                                        null -> true
-                                        true -> false
-                                        false -> null
-                                    }
-                                    currentFilterState =
-                                        currentFilterState.copy(isWatched = nextState)
-                                },
-                                colors = CheckboxDefaults.colors(
-                                    checkedColor = MaterialTheme.colorScheme.primary,
-                                )
-                            )
-                        }
-                        Text(
-                            text = when (currentFilterState.isWatched) {
-                                true -> "Only showing watched"
-                                false -> "Only showing not watched"
-                                null -> "Showing all (watched & not watched)"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 8.dp, bottom = 0.dp)
-                        )
-                        HorizontalDivider(
-                            modifier = Modifier
-                                .padding(top = 1.dp)
-                                .fillMaxWidth(),
-                            thickness = DividerDefaults.Thickness, color = DividerDefaults.color
-                        )
-                    }
-
-                    ConditionalMultiSelectFilter(
-                        title = "Pasture",
-                        options = availablePastures,
-                        selectedOptions = currentFilterState.pastures,
-                        onSelectionChanged = { currentFilterState = currentFilterState.copy(pastures = it) },
-                        itemLabel = { it },
-                        chipDisplayThreshold = CHIP_DISPLAY_THRESHOLD
-                    )
-
-                    ConditionalMultiSelectFilter(
-                        title = "Breed",
-                        options = availableBreeds,
-                        selectedOptions = currentFilterState.breeds,
-                        onSelectionChanged = { currentFilterState = currentFilterState.copy(breeds = it) },
-                        itemLabel = { it },
-                        chipDisplayThreshold = CHIP_DISPLAY_THRESHOLD
-                    )
-
-                    CollapsibleFilterSection(title = "More Filters") {
+                Box(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(scrollState)
+                            .padding(end = 12.dp)
+                    ) {
                         MultiSelectChipGroup(
-                            title = "Status",
-                            options = Status.entries.toList(), 
-                            selectedOptions = currentFilterState.statuses,
-                            onSelectionChanged = { currentFilterState = currentFilterState.copy(statuses = it) },
+                            title = "Gender",
+                            options = Gender.entries.toList(),
+                            selectedOptions = currentFilterState.genders,
+                            onSelectionChanged = { currentFilterState = currentFilterState.copy(genders = it) },
                             itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.titlecase() } }
                         )
+
+                        MultiSelectChipGroup(
+                            title = "Type",
+                            options = Classification.entries.toList(),
+                            selectedOptions = currentFilterState.classifications,
+                            onSelectionChanged = { currentFilterState = currentFilterState.copy(classifications = it) },
+                            itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.titlecase() } }
+                        )
+
+                        MultiSelectChipGroup(
+                            title = "Age Range",
+                            options = AgeUtils.ageRanges,
+                            selectedOptions = currentFilterState.selectedAgeRanges.mapNotNull { key ->
+                                AgeUtils.ageRanges.find { it.key == key }
+                            },
+                            onSelectionChanged = { selectedAgeRangeObjects ->
+                                currentFilterState = currentFilterState.copy(selectedAgeRanges = selectedAgeRangeObjects.map { it.key })
+                            },
+                            itemLabel = { it.label }
+                        )
+
+                        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 0.dp, top = 0.dp)) {
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable(onClick = {
+                                        val nextState = when (currentFilterState.isWatched) {
+                                            null -> true
+                                            true -> false
+                                            false -> null
+                                        }
+                                        currentFilterState =
+                                            currentFilterState.copy(isWatched = nextState)
+                                    })
+                                    .padding(vertical = 0.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "Watched Status",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Checkbox(
+                                    checked = currentFilterState.isWatched ?: false,
+                                    onCheckedChange = {
+                                        val nextState = when (currentFilterState.isWatched) {
+                                            null -> true
+                                            true -> false
+                                            false -> null
+                                        }
+                                        currentFilterState =
+                                            currentFilterState.copy(isWatched = nextState)
+                                    },
+                                    colors = CheckboxDefaults.colors(
+                                        checkedColor = MaterialTheme.colorScheme.primary,
+                                    )
+                                )
+                            }
+                            Text(
+                                text = when (currentFilterState.isWatched) {
+                                    true -> "Only showing watched"
+                                    false -> "Only showing not watched"
+                                    null -> "Showing all (watched & not watched)"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(start = 8.dp, bottom = 0.dp)
+                            )
+                            HorizontalDivider(
+                                modifier = Modifier
+                                    .padding(top = 1.dp)
+                                    .fillMaxWidth(),
+                                thickness = DividerDefaults.Thickness, color = DividerDefaults.color
+                            )
+                        }
+
                         ConditionalMultiSelectFilter(
-                            title = "Tag Color",
-                            options = availableTagColors,
-                            selectedOptions = currentFilterState.tagColors,
-                            onSelectionChanged = { currentFilterState = currentFilterState.copy(tagColors = it) },
+                            title = "Pasture",
+                            options = availablePastures,
+                            selectedOptions = currentFilterState.pastures,
+                            onSelectionChanged = { currentFilterState = currentFilterState.copy(pastures = it) },
                             itemLabel = { it },
                             chipDisplayThreshold = CHIP_DISPLAY_THRESHOLD
                         )
+
+                        ConditionalMultiSelectFilter(
+                            title = "Breed",
+                            options = availableBreeds,
+                            selectedOptions = currentFilterState.breeds,
+                            onSelectionChanged = { currentFilterState = currentFilterState.copy(breeds = it) },
+                            itemLabel = { it },
+                            chipDisplayThreshold = CHIP_DISPLAY_THRESHOLD
+                        )
+
+                        CollapsibleFilterSection(title = "More Filters") {
+                            MultiSelectChipGroup(
+                                title = "Status",
+                                options = Status.entries.toList(),
+                                selectedOptions = currentFilterState.statuses,
+                                onSelectionChanged = { currentFilterState = currentFilterState.copy(statuses = it) },
+                                itemLabel = { it.name.lowercase().replaceFirstChar { char -> char.titlecase() } }
+                            )
+                            ConditionalMultiSelectFilter(
+                                title = "Tag Color",
+                                options = availableTagColors,
+                                selectedOptions = currentFilterState.tagColors,
+                                onSelectionChanged = { currentFilterState = currentFilterState.copy(tagColors = it) },
+                                itemLabel = { it },
+                                chipDisplayThreshold = CHIP_DISPLAY_THRESHOLD
+                            )
+                        }
                     }
-                } 
+
+                    if (scrollState.maxValue > 0) {
+                        val trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                        val indicatorColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+
+                        BoxWithConstraints(
+                            modifier = Modifier
+                                .align(Alignment.CenterEnd)
+                                .padding(vertical = 8.dp)
+                                .width(4.dp)
+                                .fillMaxHeight()
+                        ) {
+                            val density = LocalDensity.current
+                            val totalScrollRange = scrollState.maxValue + scrollState.viewportSize
+                            val indicatorHeightFraction = if (totalScrollRange > 0) {
+                                scrollState.viewportSize.toFloat() / totalScrollRange.toFloat()
+                            } else {
+                                1f
+                            }.coerceIn(0.1f, 1f)
+                            val indicatorOffsetFraction = if (scrollState.maxValue > 0) {
+                                scrollState.value.toFloat() / scrollState.maxValue.toFloat()
+                            } else {
+                                0f
+                            }
+
+                            val trackShape = RoundedCornerShape(2.dp)
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .background(trackColor, trackShape)
+                            )
+
+                            val availableHeightPx = constraints.maxHeight.toFloat()
+                            val indicatorHeightPx = (availableHeightPx * indicatorHeightFraction).toInt().coerceAtLeast(1)
+                            val maxOffsetPx = (availableHeightPx - indicatorHeightPx).coerceAtLeast(0f)
+                            val indicatorOffsetPx = (maxOffsetPx * indicatorOffsetFraction)
+                                .coerceIn(0f, maxOffsetPx)
+
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(with(density) { indicatorHeightPx.toDp() })
+                                    .offset(y = with(density) { indicatorOffsetPx.toDp() })
+                                    .background(indicatorColor, trackShape)
+                            )
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 

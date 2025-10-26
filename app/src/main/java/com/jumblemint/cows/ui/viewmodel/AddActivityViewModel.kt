@@ -33,12 +33,16 @@ class AddActivityViewModel(
             try {
                 val allCows = repository.getAllCows().first()
                 val allPastures = repository.getAllPastures().first()
-                
+                val activityTypes = repository.getAllActiveActivityTypes().first()
+                    .filter { it.isActive && !it.isDeleted }
+                    .sortedBy { it.displayName }
+
                 val activeCows = allCows.filter { it.status == Status.ACTIVE }
-                
+
                 var baseState = _uiState.value.copy(
                     availableCows = activeCows,
                     availablePastures = allPastures,
+                    availableActivityTypes = activityTypes,
                     isLoading = false
                 )
 
@@ -61,6 +65,21 @@ class AddActivityViewModel(
                             selectedCows = selectedCowIds
                         )
                         originalState = baseState
+                    }
+                }
+
+                baseState.activityType?.let { selectedType ->
+                    if (baseState.availableActivityTypes.none { it.name == selectedType.name }) {
+                        baseState = baseState.copy(
+                            availableActivityTypes = (baseState.availableActivityTypes +
+                                ActivityTypeConfig(
+                                    name = selectedType.name,
+                                    displayName = selectedType.displayName,
+                                    isActive = true,
+                                    isDefault = true
+                                )
+                            ).sortedBy { it.displayName }
+                        )
                     }
                 }
 
@@ -269,6 +288,7 @@ data class AddActivityUiState(
     val selectedCows: Set<Long> = emptySet(),
     val availableCows: List<Cow> = emptyList(),
     val availablePastures: List<Pasture> = emptyList(),
+    val availableActivityTypes: List<ActivityTypeConfig> = emptyList(),
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
     val error: String? = null,

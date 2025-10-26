@@ -2,12 +2,15 @@ package com.jumblemint.cows.ui.screens.activities
 
 import android.app.Application
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -68,18 +71,34 @@ fun AddActivityScreen(
     var showAnimalFilterDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
     var filterState by remember { mutableStateOf(AnimalFilterState()) }
+    val listState = rememberLazyListState()
+
+    val selectedActivityDisplayName = remember(uiState.activityType, uiState.availableActivityTypes) {
+        uiState.activityType?.let { selectedType ->
+            uiState.availableActivityTypes
+                .firstOrNull { it.name == selectedType.name }
+                ?.displayName ?: selectedType.displayName
+        } ?: ""
+    }
+    val activityTypeOptions = remember(uiState.availableActivityTypes) {
+        uiState.availableActivityTypes.map { it.displayName }
+    }
 
     val filteredCows = remember(uiState.availableCows, filterState, searchQuery) {
         uiState.availableCows.filter { cow ->
             val matchesGender = filterState.genders.isEmpty() || cow.gender in filterState.genders
             val matchesClassification = filterState.classifications.isEmpty() || cow.classification in filterState.classifications
-            val matchesPasture = filterState.pastures.isEmpty() || 
-                (cow.pastureId in filterState.pastures) || 
+            val matchesPasture = filterState.pastures.isEmpty() ||
+                (cow.pastureId in filterState.pastures) ||
                 (cow.pastureId == null && "Unassigned" in filterState.pastures)
+            val matchesBreed = filterState.breeds.isEmpty() || (cow.breed != null && cow.breed in filterState.breeds)
+            val matchesTagColor = filterState.tagColors.isEmpty() || (cow.tagColor != null && cow.tagColor in filterState.tagColors)
+            val matchesWatched = filterState.isWatched?.let { cow.isWatched == it } ?: true
             val matchesSearch = searchQuery.isBlank() ||
                 cow.name?.contains(searchQuery, ignoreCase = true) == true ||
                 cow.tagNumber?.contains(searchQuery, ignoreCase = true) == true
-            matchesGender && matchesClassification && matchesPasture && matchesSearch
+            matchesGender && matchesClassification && matchesPasture &&
+                matchesBreed && matchesTagColor && matchesWatched && matchesSearch
         }
     }
 
@@ -144,6 +163,12 @@ fun AddActivityScreen(
         )
     }
 
+    LaunchedEffect(uiState.error) {
+        if (uiState.error != null) {
+            listState.animateScrollToItem(0)
+        }
+    }
+
     if (uiState.isLoading && editId != null) {
         Box(
             modifier = modifier,
@@ -155,9 +180,10 @@ fun AddActivityScreen(
         LazyColumn(
             modifier = modifier
                 .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            state = listState
+        ) {
                 // Show all errors at the very top
                 uiState.error?.let { error ->
                     item {
@@ -193,13 +219,18 @@ fun AddActivityScreen(
                             )
 
                             DropdownField(
-                                value = uiState.activityType?.name ?: "",
+                                value = selectedActivityDisplayName,
                                 onValueChange = { typeName ->
-                                    val type = ActivityType.entries.find { it.name == typeName }
-                                    viewModel.updateActivityType(type)
+                                    val selectedTypeConfig = uiState.availableActivityTypes
+                                        .firstOrNull { it.displayName == typeName }
+                                    val type = selectedTypeConfig?.let { config ->
+                                        runCatching { ActivityType.valueOf(config.name) }.getOrNull()
+                                    }
+                                    val fallbackType = ActivityType.entries.firstOrNull { it.displayName == typeName }
+                                    viewModel.updateActivityType(type ?: fallbackType)
                                 },
                                 label = "Activity Type",
-                                options = ActivityType.entries.map { it.name },
+                                options = activityTypeOptions,
                                 modifier = Modifier.fillMaxWidth(),
                                 isError = uiState.error?.contains("Activity Type") == true // <<< USING isError
                             )
@@ -297,20 +328,70 @@ fun AddActivityScreen(
                                 )
                             }
 
-                            OutlinedTextField(
-                                value = searchQuery,
-                                onValueChange = { searchQuery = it },
-                                label = { Text("Search by name or tag") },
-                                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
-                                trailingIcon = if (searchQuery.isNotEmpty()) {
-                                    { IconButton(onClick = { searchQuery = "" }) { Icon(Icons.Default.Clear, contentDescription = "Clear search") } }
-                                } else null,
-                                modifier = Modifier.fillMaxWidth(),
-                                singleLine = true,
-                                colors = defaultOutlinedTextFieldColors()
-                            )
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = searchQuery,
+                                    onValueChange = { searchQuery = it },
+                                    placeholder = { Text("Search by name or tag") },
+                                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                                    trailingIcon = if (searchQuery.isNotEmpty()) {
+                                        {
+                                            IconButton(onClick = { searchQuery = "" }) {
+                                                Icon(Icons.Default.Clear, contentDescription = "Clear search")
+                                            }
+                                        }
+                                    } else null,
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .defaultMinSize(minHeight = 56.dp)
+                                        .alignBy { it.measuredHeight / 2 },
+                                    singleLine = true,
+                                    colors = defaultOutlinedTextFieldColors()
+                                )
+
+                                val activeFilterCount = getActiveFilterCount(filterState)
+                                FilterChip(
+                                    onClick = { showAnimalFilterDialog = true },
+                                    label = {
+                                        if (activeFilterCount > 0) {
+                                            Text("($activeFilterCount)")
+                                        } else {
+                                            Text("Filters")
+                                        }
+                                    },
+                                    selected = hasActiveFilters(filterState),
+                                    leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") },
+                                    modifier = Modifier
+                                        .defaultMinSize(minHeight = 56.dp)
+                                        .alignBy { it.measuredHeight / 2 },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        labelColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                                        iconColor = MaterialTheme.colorScheme.background.contrastingTextColor(),
+                                        selectedLabelColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
+                                        selectedLeadingIconColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
+                                        containerColor = MaterialTheme.colorScheme.background,
+                                        selectedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        disabledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.12f)
+                                    ),
+                                    border = FilterChipDefaults.filterChipBorder(
+                                        enabled = true,
+                                        selected = hasActiveFilters(filterState),
+                                        borderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.3f),
+                                        selectedBorderColor = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor().copy(alpha = 0.3f)
+                                    )
+                                )
+                            }
 
                             Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(IntrinsicSize.Min),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -319,31 +400,22 @@ fun AddActivityScreen(
                                         val filteredCowIds = filteredCows.map { it.id }.toSet()
                                         filteredCowIds.forEach { viewModel.selectCow(it) }
                                     },
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
                                     enabled = filteredCows.isNotEmpty()
                                 ) {
                                     Text("Select All Filtered")
                                 }
                                 Button(
                                     onClick = { viewModel.clearSelection() },
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight(),
                                     enabled = uiState.selectedCows.isNotEmpty()
                                 ) {
                                     Text("Clear Selection")
                                 }
-                                FilterChip(
-                                    onClick = { showAnimalFilterDialog = true },
-                                    label = { 
-                                        val activeFilterCount = getActiveFilterCount(filterState)
-                                        if (activeFilterCount > 0) {
-                                            Text("($activeFilterCount)")
-                                        } else {
-                                            Text("Filters")
-                                        }
-                                    },
-                                    selected = hasActiveFilters(filterState),
-                                    leadingIcon = { Icon(Icons.Default.FilterList, contentDescription = "Filters") }
-                                )
                             }
                             
                             if (hasActiveFilters(filterState) || searchQuery.isNotBlank()) {
@@ -405,7 +477,12 @@ fun AddActivityScreen(
 private fun hasActiveFilters(filterState: AnimalFilterState): Boolean {
     return filterState.classifications.isNotEmpty() ||
            filterState.genders.isNotEmpty() ||
-           filterState.pastures.isNotEmpty()
+           filterState.pastures.isNotEmpty() ||
+           filterState.breeds.isNotEmpty() ||
+           filterState.statuses.isNotEmpty() ||
+           filterState.tagColors.isNotEmpty() ||
+           filterState.selectedAgeRanges.isNotEmpty() ||
+           filterState.isWatched != null
 }
 
 private fun getActiveFilterCount(filterState: AnimalFilterState): Int {
@@ -413,6 +490,11 @@ private fun getActiveFilterCount(filterState: AnimalFilterState): Int {
     if (filterState.classifications.isNotEmpty()) count++
     if (filterState.genders.isNotEmpty()) count++
     if (filterState.pastures.isNotEmpty()) count++
+    if (filterState.breeds.isNotEmpty()) count++
+    if (filterState.statuses.isNotEmpty()) count++
+    if (filterState.tagColors.isNotEmpty()) count++
+    if (filterState.selectedAgeRanges.isNotEmpty()) count++
+    if (filterState.isWatched != null) count++
     return count
 }
 

@@ -3,14 +3,12 @@ package com.jumblemint.cows.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
@@ -98,36 +96,52 @@ fun DropdownField(
                         expanded = false
                     }
                 )
+                if (options.any { it.isNotEmpty() }) {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
+                    )
+                }
             }
 
-            options.forEach { option ->
-                if (option.isNotEmpty()) {
-                    val optionBgColor = optionBackgroundColor?.invoke(option)
-                    val optionContrast = optionBgColor?.let { if (it.luminance() < 0.5f) Color.White else Color.Black }
-                    
-                    DropdownMenuItem(
-                        text = { 
-                            Text(
-                                text = option,
-                                color = optionContrast ?: LocalContentColor.current
-                            ) 
-                        },
-                        onClick = {
-                            onValueChange(option)
-                            expanded = false
-                        },
-                        colors = if (optionBgColor != null) {
-                            MenuDefaults.itemColors(
-                                textColor = optionContrast ?: LocalContentColor.current
-                            )
-                        } else {
-                            MenuDefaults.itemColors()
-                        },
-                        modifier = if (optionBgColor != null) {
-                            Modifier.background(optionBgColor) 
-                        } else {
-                            Modifier
-                        }
+            val nonEmptyOptions = options.filter { it.isNotEmpty() }
+            nonEmptyOptions.forEachIndexed { index, option ->
+                val optionBgColor = optionBackgroundColor?.invoke(option)
+                val optionContrast = optionBgColor?.let { if (it.luminance() < 0.5f) Color.White else Color.Black }
+
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = option,
+                            color = optionContrast ?: LocalContentColor.current
+                        )
+                    },
+                    onClick = {
+                        onValueChange(option)
+                        expanded = false
+                    },
+                    colors = if (optionBgColor != null) {
+                        MenuDefaults.itemColors(
+                            textColor = optionContrast ?: LocalContentColor.current
+                        )
+                    } else {
+                        MenuDefaults.itemColors()
+                    },
+                    modifier = if (optionBgColor != null) {
+                        Modifier.background(optionBgColor)
+                    } else {
+                        Modifier
+                    }
+                )
+
+                if (index < nonEmptyOptions.lastIndex) {
+                    HorizontalDivider(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
                     )
                 }
             }
