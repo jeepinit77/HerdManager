@@ -476,7 +476,8 @@ fun CattleManagerApp() {
                                 currentScreenForUI == Screen.CowList ||
                                 currentScreenForUI == Screen.ActivityInfo ||
                                 currentScreenForUI == Screen.WorkingList ||
-                                currentScreenForUI == Screen.NoteInfo
+                                currentScreenForUI == Screen.NoteInfo ||
+                                currentScreenForUI == Screen.TodoList
                             ) {
                                 IconButton(onClick = {
                                     navController.popBackStack(Screen.MainPager.route, inclusive = false)

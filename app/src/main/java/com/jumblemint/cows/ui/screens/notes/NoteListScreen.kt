@@ -22,9 +22,11 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -347,7 +349,7 @@ private fun NotesSearchAndFilterRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -421,17 +423,8 @@ private fun NoteFiltersDialog(
     AppAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
-            TextButton(onClick = {
-                val startMillis = startDate?.atStartOfDay(zoneId)?.toInstant()?.toEpochMilli()
-                val endMillis = endDate?.plusDays(1)?.atStartOfDay(zoneId)?.toInstant()?.toEpochMilli()?.minus(1)
-                onApply(startMillis, endMillis, todoFilter)
-            }) {
-                Text("Apply")
-            }
-        },
-        dismissButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = {
+                FilledTonalButton(onClick = {
                     startDate = null
                     endDate = null
                     todoFilter = TodoStatusFilter.ALL
@@ -439,9 +432,18 @@ private fun NoteFiltersDialog(
                 }) {
                     Text("Clear")
                 }
-                TextButton(onClick = onDismiss) {
-                    Text("Cancel")
+                Button(onClick = {
+                    val startMillis = startDate?.atStartOfDay(zoneId)?.toInstant()?.toEpochMilli()
+                    val endMillis = endDate?.plusDays(1)?.atStartOfDay(zoneId)?.toInstant()?.toEpochMilli()?.minus(1)
+                    onApply(startMillis, endMillis, todoFilter)
+                }) {
+                    Text("Apply")
                 }
+            }
+        },
+        dismissButton = {
+            FilledTonalButton(onClick = onDismiss) {
+                Text("Cancel")
             }
         },
         title = { Text("Filter notes") },
