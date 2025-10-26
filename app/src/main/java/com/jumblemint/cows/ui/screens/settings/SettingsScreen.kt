@@ -10,6 +10,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.documentfile.provider.DocumentFile
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -581,7 +582,7 @@ fun SettingsScreen(
 
     if (showIdentifierModeDialog) {
         var pendingMode by remember(uiState.identifierMode) { mutableStateOf(uiState.identifierMode) }
-        AlertDialog(
+        AppAlertDialog(
             onDismissRequest = { showIdentifierModeDialog = false },
             title = { Text("Animal Identification") },
             text = {
@@ -596,7 +597,11 @@ fun SettingsScreen(
                         AnimalIdentifierMode.TAG_NUMBERS to "Tag Numbers",
                         AnimalIdentifierMode.BOTH to "Both"
                     )
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(IntrinsicSize.Max)
+                    ) {
                         options.forEachIndexed { index, (mode, label) ->
                             SegmentedButton(
                                 selected = pendingMode == mode,
@@ -606,7 +611,9 @@ fun SettingsScreen(
                                     activeContainerColor = MaterialTheme.colorScheme.primary,
                                     activeContentColor = MaterialTheme.colorScheme.onPrimary
                                 ),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
                             ) {
                                 Text(label)
                             }

@@ -2,7 +2,6 @@ package com.jumblemint.cows.ui.components
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import com.jumblemint.cows.ui.theme.getGenderColor
 import com.jumblemint.cows.ui.theme.getCardBackgroundColor
@@ -52,6 +51,7 @@ fun CowCard(
     resolvedTagColor: Color? = null
 ) {
     val usesTags = identifierMode.usesTags()
+    val usesNamesOnly = identifierMode.usesNames() && !usesTags
     val primaryIdentifier = identifierMode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "Unnamed Animal")
     val secondaryIdentifier = identifierMode.secondaryIdentifier(cow.name, cow.tagNumber)
     val genderColor = getGenderColor(cow.gender)
@@ -91,6 +91,14 @@ fun CowCard(
                             modifier = Modifier.size(width = 72.dp, height = 96.dp),
                             backgroundColor = resolvedTagColor
                         )
+                    } else if (usesNamesOnly) {
+                        cow.tagColor?.takeIf { it.isNotBlank() }?.let { colorName ->
+                            TagColorSwatch(
+                                tagColorName = colorName,
+                                resolvedColor = resolvedTagColor,
+                                modifier = Modifier.size(width = 72.dp, height = 96.dp)
+                            )
+                        }
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Row(
@@ -305,5 +313,36 @@ fun CattleTagBadge(tagNumber: String?, tagColor: String?, modifier: Modifier = M
             )
             }
         } // End of BackgroundColorProvider
+    }
+}
+
+@Composable
+fun TagColorSwatch(tagColorName: String, resolvedColor: Color?, modifier: Modifier = Modifier) {
+    val swatchColor = resolvedColor ?: MaterialTheme.colorScheme.secondaryContainer
+    val displayName = tagColorName.trim().ifEmpty { tagColorName }
+
+    Surface(
+        modifier = modifier,
+        shape = MaterialTheme.shapes.medium,
+        color = swatchColor,
+        tonalElevation = 0.dp,
+        shadowElevation = 0.dp,
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(8.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            SmartText(
+                text = displayName,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                maxLines = 2,
+                backgroundColor = swatchColor
+            )
+        }
     }
 }
