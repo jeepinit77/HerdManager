@@ -275,12 +275,14 @@ fun WorkingListItem(
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = cow.tagNumber,
-                        color = if (tagBackgroundColor.luminance() > 0.5f) Color.Black else Color.White, // Using unqualified Color.Black/White
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    cow.tagNumber?.let {
+                        Text(
+                            text = it,
+                            color = if (tagBackgroundColor.luminance() > 0.5f) Color.Black else Color.White, // Using unqualified Color.Black/White
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
