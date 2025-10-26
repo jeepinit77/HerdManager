@@ -148,16 +148,25 @@ class AuthViewModel(
     fun signInWithDataMergeOption(account: GoogleSignInAccount, mergeOption: DataMergeOption) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            
+
             val result = authService.signInWithGoogle(account)
             result.fold(
                 onSuccess = { user ->
-                    // Handle data merge based on selected option
-                    handleDataMerge(user.uid, mergeOption)
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        error = null
-                    )
+                    runCatching {
+                        handleDataMerge(user.uid, mergeOption)
+                    }.onSuccess {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = null,
+                            showDataMergeDialog = false
+                        )
+                    }.onFailure { mergeError ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            error = "Data merge failed: ${mergeError.message}",
+                            showDataMergeDialog = true
+                        )
+                    }
                 },
                 onFailure = { exception ->
                     _uiState.value = _uiState.value.copy(
@@ -171,10 +180,13 @@ class AuthViewModel(
     
     private suspend fun handleDataMerge(userId: String, mergeOption: DataMergeOption) {
         try {
+            runCatching { syncService.stopRealtimeSync(userId) }
+                .onFailure { println("AuthViewModel: Unable to stop real-time sync before merge: ${it.message}") }
+
             when (mergeOption) {
                 DataMergeOption.MERGE_WITH_SERVER -> {
                     // Trigger a normal sync that merges data
-                    syncService.syncUserData(userId)
+                    syncService.syncUserData(userId).getOrThrow()
                 }
                 DataMergeOption.REPLACE_SERVER_WITH_DEVICE -> {
                     // Clear server data and upload all local data
@@ -190,15 +202,18 @@ class AuthViewModel(
                     repository.deleteAllPastures()
                     repository.deleteAllTagColors()
                     repository.deleteAllActivityTypeConfigs()
+                    repository.deleteAllBreeds()
                     repository.deleteAllSettings()
                     // Now download from server
-                    syncService.syncUserData(userId)
+                    syncService.syncUserData(userId).getOrThrow()
                 }
             }
         } catch (e: Exception) {
-            _uiState.value = _uiState.value.copy(
-                error = "Data merge failed: ${e.message}"
-            )
+            println("AuthViewModel: Data merge failed for option $mergeOption: ${e.message}")
+            throw e
+        } finally {
+            runCatching { syncService.startRealtimeSync(userId) }
+                .onFailure { println("AuthViewModel: Unable to restart real-time sync after merge: ${it.message}") }
         }
     }
 }

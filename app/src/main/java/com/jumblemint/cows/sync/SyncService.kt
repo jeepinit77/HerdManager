@@ -61,7 +61,16 @@ class SyncService(
     suspend fun clearServerData(userId: String) {
         println("Clearing all server data for user ID: $userId")
         try {
-            val collectionsToDelete = listOf("cows", "pastures", "activities", "notes", "settings", "tagColors", "activityTypes")
+            val collectionsToDelete = listOf(
+                "cows",
+                "pastures",
+                "activities",
+                "notes",
+                "settings",
+                "tagColors",
+                "activityTypes",
+                "breeds"
+            )
             clearServerCollections(userId, collectionsToDelete)
             println("Successfully cleared all specified server data for user $userId.")
         } catch (e: Exception) {
@@ -116,17 +125,19 @@ class SyncService(
             val localPastures = repository.getAllPasturesSync()
             println("Found ${localPastures.size} local pastures to force upload.")
             for (pasture in localPastures) {
-                val firestoreId = pasture.firestoreId ?: UUID.randomUUID().toString() // Ensure ID consistency here
+                val firestoreId = pasture.firestoreId ?: pasture.id.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
                 val pastureData = pasture.toFirestoreMap(userId)
                 val updatedTimestamp = pastureData["updatedAt"] as? Long ?: System.currentTimeMillis()
                 firestore.collection("users").document(userId).collection("pastures").document(firestoreId).set(pastureData).await()
-                // Assuming pasture.id IS already firestoreId if Step 2 of plan is done
-                repository.updatePasture(pasture.copy(
-                    firestoreId = firestoreId, // This should be redundant if pasture.id = firestoreId
-                    id = firestoreId, // Ensure local PK is also the firestoreId
+
+                val shouldUpdatePrimaryKey = pasture.id.isBlank()
+                val normalizedPasture = pasture.copy(
+                    id = if (shouldUpdatePrimaryKey) firestoreId else pasture.id,
+                    firestoreId = firestoreId,
                     lastSyncAt = updatedTimestamp,
                     updatedBy = userId
-                ))
+                )
+                repository.updatePasture(normalizedPasture)
                 println("Force uploaded pasture: ${pasture.name} (FS ID: $firestoreId)")
             }
 
@@ -192,6 +203,28 @@ class SyncService(
                 println("Force uploaded tag color: ${tagColor.name} (FS ID: $firestoreId)")
             }
 
+            val localBreeds = repository.getAllBreedsSync()
+            println("Found ${localBreeds.size} local breeds to force upload.")
+            for (breed in localBreeds) {
+                val firestoreId = breed.firestoreId ?: breed.id
+                val breedData = breed.toFirestoreMap(userId)
+                val updatedTimestamp = breedData["updatedAt"] as? Long ?: System.currentTimeMillis()
+                val collection = firestore.collection("users").document(userId).collection("breeds").document(firestoreId)
+                if (breed.isDeleted) {
+                    collection.delete().await()
+                } else {
+                    collection.set(breedData).await()
+                }
+                repository.updateBreed(
+                    breed.copy(
+                        firestoreId = firestoreId,
+                        lastSyncAt = updatedTimestamp,
+                        updatedBy = userId
+                    )
+                )
+                println("Force uploaded breed: ${breed.name} (FS ID: $firestoreId)")
+            }
+
             // Force upload activity types
             val localActivityTypes = repository.getAllActivityTypesSync()
             println("Found ${localActivityTypes.size} local activity types to force upload.")
@@ -236,6 +269,8 @@ class SyncService(
             syncUserSettings(userId)
             println("Syncing tag colors...")
             syncUserTagColors(userId)
+            println("Syncing breeds...")
+            syncUserBreeds(userId)
             println("Syncing activity types...")
             syncUserActivityTypes(userId)
             println("Syncing pastures...")
@@ -345,6 +380,19 @@ class SyncService(
             }
         activeListeners["$userId-tagColors"] = tagColorsListener
 
+        val breedsListener = firestore.collection("users").document(userId)
+            .collection("breeds")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    println("Real-time sync error for breeds: ${error.message}")
+                    return@addSnapshotListener
+                }
+                snapshot?.documentChanges?.forEach { change ->
+                    CoroutineScope(Dispatchers.IO).launch { handleRealtimeBreedChange(change, userId) }
+                }
+            }
+        activeListeners["$userId-breeds"] = breedsListener
+
         val activityTypesListener = firestore.collection("users").document(userId)
             .collection("activityTypes")
             .addSnapshotListener { snapshot, error ->
@@ -362,7 +410,7 @@ class SyncService(
     }
     
     fun stopRealtimeSync(userId: String) {
-        listOf("cows", "pastures", "activities", "notes", "settings", "tagColors", "activityTypes").forEach { collection ->
+        listOf("cows", "pastures", "activities", "notes", "settings", "tagColors", "breeds", "activityTypes").forEach { collection ->
             activeListeners["$userId-$collection"]?.remove()
             activeListeners.remove("$userId-$collection")
         }
@@ -399,6 +447,28 @@ class SyncService(
                         // Otherwise upload the data
                         firestore.collection("users").document(userId).collection("tagColors").document(firestoreId).set(tagColorData).await()
                         println("Immediately synced tag color: ${item.name} with FS ID: $firestoreId")
+                    }
+                }
+                is Breed -> {
+                    val firestoreId = item.firestoreId ?: item.id
+                    val breedData = item.toFirestoreMap(userId)
+                    val updatedTimestamp = breedData["updatedAt"] as? Long ?: System.currentTimeMillis()
+
+                    repository.updateBreed(
+                        item.copy(
+                            firestoreId = firestoreId,
+                            lastSyncAt = updatedTimestamp,
+                            updatedBy = userId
+                        )
+                    )
+
+                    val docRef = firestore.collection("users").document(userId).collection("breeds").document(firestoreId)
+                    if (item.isDeleted) {
+                        docRef.delete().await()
+                        println("Immediately deleted breed: ${item.name} with FS ID: $firestoreId")
+                    } else {
+                        docRef.set(breedData).await()
+                        println("Immediately synced breed: ${item.name} with FS ID: $firestoreId")
                     }
                 }
                 is ActivityTypeConfig -> {
@@ -439,19 +509,29 @@ class SyncService(
                     println("Immediately synced cow: ${item.name} with FS ID: $firestoreId")
                 }
                 is Pasture -> {
-                    val firestoreId = item.firestoreId ?: UUID.randomUUID().toString() 
-                    val pastureData = item.toFirestoreMap(userId)
-                    val updatedTimestamp = pastureData.get("updatedAt") as? Long ?: System.currentTimeMillis()
-                    
-                    // Update local item with firestoreId BEFORE writing to Firestore
-                    repository.updatePasture(item.copy(
+                    val firestoreId = item.firestoreId
+                        ?: item.id.takeUnless { it.isBlank() }
+                        ?: UUID.randomUUID().toString()
+
+                    val normalizedPasture = item.copy(
                         firestoreId = firestoreId,
-                        id = firestoreId, // Ensure local PK is also the firestoreId
-                        lastSyncAt = updatedTimestamp,
+                        id = if (item.id.isBlank()) firestoreId else item.id,
                         updatedBy = userId
-                    ))
-                    
-                    firestore.collection("users").document(userId).collection("pastures").document(firestoreId).set(pastureData).await()
+                    )
+
+                    val pastureData = normalizedPasture.toFirestoreMap(userId)
+                    val updatedTimestamp = pastureData["updatedAt"] as? Long ?: System.currentTimeMillis()
+
+                    // Persist updated sync metadata before writing to Firestore to avoid listener races
+                    repository.updatePasture(
+                        normalizedPasture.copy(lastSyncAt = updatedTimestamp)
+                    )
+
+                    firestore.collection("users").document(userId)
+                        .collection("pastures")
+                        .document(firestoreId)
+                        .set(pastureData)
+                        .await()
                     println("Immediately synced pasture: ${item.name} with FS ID: $firestoreId")
                 }
                 is Activity -> {
@@ -510,11 +590,16 @@ class SyncService(
                 try {
                     // If pasture.id is already a UUID (set at local creation), it will be used.
                     // If pasture.firestoreId is also set to pasture.id, this ?: is a fallback for older data.
-                    val firestoreId = pasture.firestoreId ?: pasture.id // Prioritize firestoreId field, then local id
+                    val firestoreId = pasture.firestoreId ?: pasture.id.takeUnless { it.isBlank() } ?: UUID.randomUUID().toString()
                     val remoteData = remotePasturesMap[firestoreId]
-                    val pastureData = pasture.toFirestoreMap(userId) // This sets/updates createdBy, updatedBy, updatedAt
+                    val normalizedPasture = pasture.copy(
+                        firestoreId = firestoreId,
+                        id = if (pasture.id.isBlank()) firestoreId else pasture.id,
+                        updatedBy = userId
+                    )
+                    val pastureData = normalizedPasture.toFirestoreMap(userId) // This sets/updates createdBy, updatedBy, updatedAt
                     val localUpdatedAt = pastureData["updatedAt"] as? Long ?: pasture.lastSyncAt
-                    
+
                     val shouldUpload = when {
                         pasture.firestoreId == null -> true // New local item not yet uploaded
                         remoteData == null -> true      // Item exists locally but not on server (should be uploaded)
@@ -524,29 +609,28 @@ class SyncService(
                         }
                     }
                     if (shouldUpload) {
-                        firestore.collection("users").document(userId).collection("pastures").document(firestoreId).set(pastureData).await()
-                        repository.updatePasture(pasture.copy(
-                            firestoreId = firestoreId, // Ensure this is set
-                            id = firestoreId, // Ensure PK is aligned
-                            lastSyncAt = localUpdatedAt, 
-                            updatedBy = userId
-                        ))
+                        firestore.collection("users").document(userId)
+                            .collection("pastures")
+                            .document(firestoreId)
+                            .set(pastureData)
+                            .await()
+                        repository.updatePasture(normalizedPasture.copy(lastSyncAt = localUpdatedAt))
                         println("Uploaded pasture: ${pasture.name} (FS ID: $firestoreId)")
                     }
                 } catch (e: Exception) { println("Error uploading pasture ${pasture.name}: ${e.message}") }
             }
 
             // Download remote changes to local
-            val currentLocalPastures = repository.getAllPasturesSync().associateBy { it.id } // Use primary key `id`
+            val currentLocalPastures = repository.getAllPasturesSync().associateBy { it.firestoreId ?: it.id }
             remotePasturesMap.forEach { (firestoreId, data) ->
                 try {
-                    val localPasture = currentLocalPastures[firestoreId] // Try to find by firestoreId (which should be local PK)
+                    val localPasture = currentLocalPastures[firestoreId]
                     val remoteUpdatedAt = data["updatedAt"] as? Long ?: 0L
                     val isRemoteDeleted = data["isDeleted"] as? Boolean ?: false
 
                     val shouldProcess = when {
                         isRemoteDeleted -> {
-                            localPasture?.let { 
+                            localPasture?.let {
                                 if (!it.isDeleted) repository.updatePasture(it.copy(isDeleted = true, lastSyncAt = remoteUpdatedAt, updatedBy = data["updatedBy"] as? String))
                             }
                             false // Processed deletion, no further processing needed for this item
@@ -556,8 +640,9 @@ class SyncService(
                     }
 
                     if (shouldProcess && !isRemoteDeleted) {
+                        val resolvedLocalId = localPasture?.id?.takeUnless { it.isBlank() } ?: firestoreId
                         val remotePasture = Pasture(
-                            id = firestoreId, // Use firestoreId as the local primary key
+                            id = resolvedLocalId,
                             name = data["name"] as? String ?: "",
                             description = data["description"] as? String,
                             sizeAcres = (data["sizeAcres"] as? Number)?.toDouble(),
@@ -648,6 +733,8 @@ class SyncService(
                             gender = try { Gender.valueOf(data["gender"] as? String ?: Gender.TBD.name) } catch (e: Exception) { Gender.TBD },
                             classification = try { Classification.valueOf(data["classification"] as? String ?: Classification.CALF.name) } catch (e: Exception) { Classification.CALF },
                             colorMarkings = data["colorMarkings"] as? String,
+                            registrationNumber = data["registrationNumber"] as? String,
+                            breed = data["breed"] as? String,
                             motherId = localMotherCow?.id ?: (data["motherId"] as? Number)?.toLong(), // Use local mother ID if found, fallback to stored ID
                             fatherId = localFatherCow?.id ?: (data["fatherId"] as? Number)?.toLong(), // Use local father ID if found, fallback to stored ID
                             status = try { Status.valueOf(data["status"] as? String ?: Status.ACTIVE.name) } catch (e: Exception) { Status.ACTIVE },
@@ -655,6 +742,8 @@ class SyncService(
                             photos = (data["photos"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
                             isWatched = data["isWatched"] as? Boolean ?: false,
                             herdId = data["herdId"] as? String,
+                            createdAt = (data["createdDate"] as? String)?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() },
+                            updatedAt = (data["updatedDate"] as? String)?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() },
                             firestoreId = firestoreId,
                             lastSyncAt = remoteUpdatedAt,
                             isDeleted = false,
@@ -725,20 +814,36 @@ class SyncService(
                     }
 
                     if (shouldProcess && !isRemoteDeleted) {
-                        // Try to resolve cow reference using cowFirestoreId first, then fallback to cowId
-                        val cowFirestoreId = data["cowFirestoreId"] as? String
-                        val localCow = if (cowFirestoreId != null) {
-                            firestoreIdToLocalCow[cowFirestoreId]
-                        } else {
-                            // Fallback: try to find by the stored cowId (might work if IDs happen to match)
-                            val remoteCowId = (data["cowId"] as? Number)?.toLong() ?: 0L
-                            repository.getCowById(remoteCowId)
+                        val primaryCowFirestoreId = data["cowFirestoreId"] as? String
+                        val remoteCowFirestoreIds = (data["cowFirestoreIds"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+                        val resolvedCowIds = LinkedHashSet<Long>()
+                        remoteCowFirestoreIds.forEach { fsId ->
+                            firestoreIdToLocalCow[fsId]?.id?.let { resolvedCowIds += it }
                         }
 
-                        if (localCow != null) {
+                        if (resolvedCowIds.isEmpty()) {
+                            val remoteCowIdList = (data["cowIds"] as? List<*>)?.mapNotNull { (it as? Number)?.toLong() } ?: emptyList()
+                            remoteCowIdList.forEach { resolvedCowIds += it }
+                        }
+
+                        val fallbackCowId = (data["cowId"] as? Number)?.toLong()
+                        val primaryCowId = resolvedCowIds.firstOrNull() ?: fallbackCowId
+                        val primaryCow = when {
+                            primaryCowId != null -> repository.getCowById(primaryCowId)
+                            primaryCowFirestoreId != null -> firestoreIdToLocalCow[primaryCowFirestoreId]
+                            else -> null
+                        }
+
+                        if (primaryCow != null) {
+                            val cowIdsForActivity = if (resolvedCowIds.isNotEmpty()) {
+                                resolvedCowIds.toList()
+                            } else {
+                                listOf(primaryCow.id)
+                            }
+
                             val remoteActivity = Activity(
                                 id = localActivity?.id ?: 0L, // Keep local Long ID
-                                cowId = localCow.id, // Use local cow ID
+                                cowId = primaryCow.id,
                                 date = (data["date"] as? String)?.let { try { java.time.LocalDate.parse(it) } catch (e: Exception) { java.time.LocalDate.now() } } ?: java.time.LocalDate.now(),
                                 activityType = try { ActivityType.valueOf(data["activityType"] as? String ?: ActivityType.OTHER.name) } catch (e: Exception) { ActivityType.OTHER },
                                 notes = data["notes"] as? String,
@@ -746,20 +851,25 @@ class SyncService(
                                 toPastureId = data["toPastureId"] as? String,
                                 details = data["details"] as? String,
                                 groupId = data["groupId"] as? String,
+                                result = data["result"] as? String,
+                                quantity = (data["quantity"] as? Number)?.toDouble(),
+                                technician = data["technician"] as? String,
+                                cost = (data["cost"] as? Number)?.toDouble(),
                                 herdId = data["herdId"] as? String,
                                 firestoreId = firestoreId,
                                 lastSyncAt = remoteUpdatedAt,
                                 isDeleted = false,
                                 createdBy = data["createdBy"] as? String,
-                                updatedBy = data["updatedBy"] as? String
+                                updatedBy = data["updatedBy"] as? String,
+                                cowIds = cowIdsForActivity
                             )
-                            
+
                             if (localActivity == null) repository.insertActivity(remoteActivity)
                             else repository.updateActivity(remoteActivity.copy(id = localActivity.id))
-                            println("Downloaded activity: ${remoteActivity.activityType} for cow ${localCow.name} (ID: ${localCow.id})")
+                            println("Downloaded activity: ${remoteActivity.activityType} for cow ${primaryCow.name} (ID: ${primaryCow.id})")
                         } else {
-                            val remoteCowId = (data["cowId"] as? Number)?.toLong() ?: 0L
-                            println("Skipping activity ${data["activityType"]} - referenced cow not found locally (cowFirestoreId: $cowFirestoreId, cowId: $remoteCowId)")
+                            val remoteCowId = fallbackCowId ?: 0L
+                            println("Skipping activity ${data["activityType"]} - referenced cow not found locally (cowFirestoreId: $primaryCowFirestoreId, cowId: $remoteCowId)")
                         }
                     }
                 } catch (e: Exception) { println("Error downloading activity $firestoreId: ${e.message}") }
@@ -823,6 +933,9 @@ class SyncService(
                             title = data["title"] as? String ?: "",
                             text = data["text"] as? String ?: "",
                             timestamp = (data["timestamp"] as? Number)?.toLong() ?: System.currentTimeMillis(),
+                            isTodo = data["isTodo"] as? Boolean ?: false,
+                            dueDate = (data["dueDate"] as? Number)?.toLong(),
+                            isCompleted = data["isCompleted"] as? Boolean ?: false,
                             herdId = data["herdId"] as? String,
                             firestoreId = firestoreId,
                             lastSyncAt = remoteUpdatedAt,
@@ -982,7 +1095,111 @@ class SyncService(
             println("Tag colors sync completed")
         } catch (e: Exception) { println("Error in syncUserTagColors: ${e.message}"); throw e }
     }
-    
+
+    private suspend fun syncUserBreeds(userId: String) {
+        try {
+            val localBreeds = repository.getAllBreedsSync()
+            val remoteSnapshot = firestore.collection("users").document(userId).collection("breeds").get().await()
+            val remoteBreedsMap = remoteSnapshot.documents.associate { it.id to (it.data ?: emptyMap<String, Any>()) }
+
+            localBreeds.forEach { breed ->
+                try {
+                    val firestoreId = breed.firestoreId ?: breed.id
+                    val remoteData = remoteBreedsMap[firestoreId]
+                    val breedData = breed.toFirestoreMap(userId)
+                    val localUpdatedAt = breedData["updatedAt"] as? Long ?: breed.updatedAt
+
+                    val shouldUpload = when {
+                        breed.firestoreId == null -> true
+                        remoteData == null -> true
+                        else -> {
+                            val remoteUpdatedAt = remoteData["updatedAt"] as? Long ?: 0L
+                            (localUpdatedAt > remoteUpdatedAt) || (breed.isDeleted && !(remoteData["isDeleted"] as? Boolean ?: false))
+                        }
+                    }
+
+                    if (shouldUpload) {
+                        val docRef = firestore.collection("users").document(userId).collection("breeds").document(firestoreId)
+                        if (breed.isDeleted) {
+                            docRef.delete().await()
+                        } else {
+                            docRef.set(breedData).await()
+                        }
+                        repository.updateBreed(
+                            breed.copy(
+                                firestoreId = firestoreId,
+                                lastSyncAt = localUpdatedAt,
+                                updatedBy = userId
+                            )
+                        )
+                        println("Uploaded breed: ${breed.name}${if (breed.isDeleted) " (deleted)" else ""}")
+                    }
+                } catch (e: Exception) {
+                    println("Error uploading breed ${breed.name}: ${e.message}")
+                }
+            }
+
+            val currentLocalBreeds = repository.getAllBreedsSync()
+            remoteBreedsMap.forEach { (firestoreId, data) ->
+                try {
+                    val localBreed = currentLocalBreeds.find { it.firestoreId == firestoreId || it.id == firestoreId }
+                    val remoteUpdatedAt = data["updatedAt"] as? Long ?: 0L
+                    val isRemoteDeleted = data["isDeleted"] as? Boolean ?: false
+
+                    val shouldProcess = when {
+                        isRemoteDeleted -> {
+                            localBreed?.let {
+                                if (!it.isDeleted) {
+                                    repository.updateBreed(
+                                        it.copy(
+                                            isActive = false,
+                                            isDeleted = true,
+                                            lastSyncAt = remoteUpdatedAt,
+                                            updatedBy = data["updatedBy"] as? String
+                                        )
+                                    )
+                                }
+                            }
+                            false
+                        }
+                        localBreed == null -> true
+                        else -> remoteUpdatedAt > (localBreed.lastSyncAt ?: 0L) && !localBreed.isDeleted
+                    }
+
+                    if (shouldProcess && !isRemoteDeleted) {
+                        val remoteBreed = Breed(
+                            id = localBreed?.id ?: firestoreId,
+                            name = data["name"] as? String ?: "",
+                            isActive = data["isActive"] as? Boolean ?: true,
+                            isDefault = data["isDefault"] as? Boolean ?: false,
+                            createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
+                            updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                            firestoreId = firestoreId,
+                            lastSyncAt = remoteUpdatedAt,
+                            updatedBy = data["updatedBy"] as? String,
+                            isDeleted = false
+                        )
+
+                        if (localBreed == null) {
+                            repository.insertBreed(remoteBreed)
+                            println("Downloaded breed: ${remoteBreed.name}")
+                        } else {
+                            repository.updateBreed(remoteBreed.copy(id = localBreed.id))
+                            println("Updated breed from remote: ${remoteBreed.name}")
+                        }
+                    }
+                } catch (e: Exception) {
+                    println("Error downloading breed $firestoreId: ${e.message}")
+                }
+            }
+
+            println("Breed sync completed")
+        } catch (e: Exception) {
+            println("Error in syncUserBreeds: ${e.message}")
+            throw e
+        }
+    }
+
     private suspend fun syncUserActivityTypes(userId: String) {
         try {
             val localActivityTypes = repository.getAllActivityTypesSync()
@@ -1038,6 +1255,7 @@ class SyncService(
                             name = data["name"] as? String ?: "",
                             displayName = data["displayName"] as? String ?: "",
                             description = data["description"] as? String,
+                            iconName = data["iconName"] as? String,
                             isActive = data["isActive"] as? Boolean ?: true,
                             isDefault = data["isDefault"] as? Boolean ?: false,
                             createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
@@ -1083,7 +1301,7 @@ class SyncService(
             val localFatherCow = fatherFirestoreId?.let { fsId -> localCows.find { it.firestoreId == fsId } }
             
             val remoteCow = Cow(
-                id = 0L, 
+                id = 0L,
                 name = data["name"] as? String,
                 tagNumber = data["tagNumber"] as? String,
                 tagColor = data["tagColor"] as? String,
@@ -1091,6 +1309,8 @@ class SyncService(
                 gender = try { Gender.valueOf(data["gender"] as? String ?: Gender.TBD.name) } catch (e: Exception) { Gender.TBD },
                 classification = try { Classification.valueOf(data["classification"] as? String ?: Classification.CALF.name) } catch (e: Exception) { Classification.CALF },
                 colorMarkings = data["colorMarkings"] as? String,
+                registrationNumber = data["registrationNumber"] as? String,
+                breed = data["breed"] as? String,
                 motherId = localMotherCow?.id ?: (data["motherId"] as? Number)?.toLong(), // Use local mother ID if found, fallback to stored ID
                 fatherId = localFatherCow?.id ?: (data["fatherId"] as? Number)?.toLong(), // Use local father ID if found, fallback to stored ID
                 status = try { Status.valueOf(data["status"] as? String ?: Status.ACTIVE.name) } catch (e: Exception) { Status.ACTIVE },
@@ -1098,6 +1318,8 @@ class SyncService(
                 photos = (data["photos"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList(),
                 isWatched = data["isWatched"] as? Boolean ?: false,
                 herdId = data["herdId"] as? String,
+                createdAt = (data["createdDate"] as? String)?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() },
+                updatedAt = (data["updatedDate"] as? String)?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() },
                 firestoreId = firestoreId,
                 lastSyncAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
                 isDeleted = data["isDeleted"] as? Boolean ?: false,
@@ -1174,8 +1396,12 @@ class SyncService(
             }
             val firestoreId = doc.id
            
+            val localPastures = repository.getAllPasturesSync()
+            val existingLocalPasture = localPastures.find { it.firestoreId == firestoreId || it.id == firestoreId }
+            val resolvedLocalId = existingLocalPasture?.id?.takeUnless { it.isBlank() } ?: firestoreId
+
             val remotePasture = Pasture(
-                id = firestoreId, // Corrected: Use firestoreId as the local primary key directly
+                id = resolvedLocalId,
                 name = data["name"] as? String ?: "Unknown Pasture",
                 description = data["description"] as? String,
                 sizeAcres = (data["sizeAcres"] as? Number)?.toDouble(),
@@ -1191,7 +1417,6 @@ class SyncService(
 
             when (change.type) {
                 DocumentChange.Type.ADDED -> {
-                    val existingLocalPasture = repository.getAllPasturesSync().find { it.id == firestoreId } // Find by primary key
                     if (existingLocalPasture == null) {
                         if (!remotePasture.isDeleted) {
                             println("Real-time ADDED (local copy missing): Inserting pasture '${remotePasture.name}'. FS ID: $firestoreId")
@@ -1202,7 +1427,7 @@ class SyncService(
                     } else {
                         println("Real-time ADDED (local copy exists): Pasture '${remotePasture.name}'. FS ID: $firestoreId. Checking for update.")
                         if (existingLocalPasture.lastSyncAt < remotePasture.lastSyncAt || remotePasture.isDeleted != existingLocalPasture.isDeleted) {
-                            repository.updatePasture(remotePasture) // id matches, so it's an update
+                            repository.updatePasture(remotePasture)
                             println("Real-time ADDED (local copy exists): Updated local pasture '${remotePasture.name}'.")
                         } else {
                             println("Real-time ADDED (local copy exists): Local pasture '${remotePasture.name}' is same or newer. No update needed.")
@@ -1210,7 +1435,6 @@ class SyncService(
                     }
                 }
                 DocumentChange.Type.MODIFIED -> {
-                    val existingLocalPasture = repository.getAllPasturesSync().find { it.id == firestoreId } // Find by primary key
                     if (existingLocalPasture == null) {
                         if (!remotePasture.isDeleted) {
                              println("Real-time MODIFIED: Pasture '${remotePasture.name}' not local. Inserting.")
@@ -1219,12 +1443,11 @@ class SyncService(
                     } else {
                         if (existingLocalPasture.lastSyncAt < remotePasture.lastSyncAt || remotePasture.isDeleted != existingLocalPasture.isDeleted) {
                             println("Real-time MODIFIED: Updating pasture '${remotePasture.name}'.")
-                            repository.updatePasture(remotePasture) // id matches, so it's an update
+                            repository.updatePasture(remotePasture)
                         }
                     }
                 }
                 DocumentChange.Type.REMOVED -> {
-                    val existingLocalPasture = repository.getAllPasturesSync().find { it.id == firestoreId } // Find by primary key
                      existingLocalPasture?.let {
                         if (!it.isDeleted) {
                             // Use a new timestamp for the deletion, and preserve original createdBy unless remote gives one for deletion
@@ -1252,26 +1475,38 @@ class SyncService(
             }
             val firestoreId = doc.id
             
-            // Try to resolve cow reference using cowFirestoreId first, then fallback to cowId
             val cowFirestoreId = data["cowFirestoreId"] as? String
             val localCows = repository.getAllCowsSync()
-            val localCow = if (cowFirestoreId != null) {
-                localCows.find { it.firestoreId == cowFirestoreId }
-            } else {
-                // Fallback: try to find by the stored cowId (might work if IDs happen to match)
-                val remoteCowId = (data["cowId"] as? Number)?.toLong() ?: 0L
-                repository.getCowById(remoteCowId)
+            val remoteCowFirestoreIds = (data["cowFirestoreIds"] as? List<*>)?.mapNotNull { it as? String } ?: emptyList()
+            val resolvedCowIds = LinkedHashSet<Long>()
+            remoteCowFirestoreIds.forEach { fsId ->
+                localCows.find { it.firestoreId == fsId }?.id?.let { resolvedCowIds += it }
             }
 
-            if (localCow == null) {
-                val remoteCowId = (data["cowId"] as? Number)?.toLong() ?: 0L
+            if (resolvedCowIds.isEmpty()) {
+                val remoteCowIdList = (data["cowIds"] as? List<*>)?.mapNotNull { (it as? Number)?.toLong() } ?: emptyList()
+                remoteCowIdList.forEach { resolvedCowIds += it }
+            }
+
+            val fallbackCowId = (data["cowId"] as? Number)?.toLong()
+            val primaryCowId = resolvedCowIds.firstOrNull() ?: fallbackCowId
+            val primaryCow = when {
+                primaryCowId != null -> localCows.find { it.id == primaryCowId } ?: repository.getCowById(primaryCowId)
+                cowFirestoreId != null -> localCows.find { it.firestoreId == cowFirestoreId }
+                else -> null
+            }
+
+            if (primaryCow == null) {
+                val remoteCowId = fallbackCowId ?: 0L
                 println("Real-time ${change.type} for activity '${data["activityType"]}' (FS ID: $firestoreId): Skipping - referenced cow not found locally (cowFirestoreId: $cowFirestoreId, cowId: $remoteCowId). Will sync during full sync.")
                 return
             }
-            
+
+            val cowIdsForActivity = if (resolvedCowIds.isNotEmpty()) resolvedCowIds.toList() else listOf(primaryCow.id)
+
             val remoteActivity = Activity(
-                id = 0L, 
-                cowId = localCow.id, // Use local cow ID
+                id = 0L,
+                cowId = primaryCow.id, // Use local cow ID
                 date = (data["date"] as? String)?.let { try { java.time.LocalDate.parse(it) } catch (e: Exception) { java.time.LocalDate.now() } } ?: java.time.LocalDate.now(),
                 activityType = try { ActivityType.valueOf(data["activityType"] as? String ?: ActivityType.OTHER.name) } catch (e: Exception) { ActivityType.OTHER },
                 notes = data["notes"] as? String,
@@ -1279,12 +1514,17 @@ class SyncService(
                 toPastureId = data["toPastureId"] as? String,
                 details = data["details"] as? String,
                 groupId = data["groupId"] as? String,
+                result = data["result"] as? String,
+                quantity = (data["quantity"] as? Number)?.toDouble(),
+                technician = data["technician"] as? String,
+                cost = (data["cost"] as? Number)?.toDouble(),
                 herdId = data["herdId"] as? String,
                 firestoreId = firestoreId,
                 lastSyncAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
                 isDeleted = data["isDeleted"] as? Boolean ?: false,
                 createdBy = data["createdBy"] as? String,
-                updatedBy = data["updatedBy"] as? String
+                updatedBy = data["updatedBy"] as? String,
+                cowIds = cowIdsForActivity
             )
 
             println("Real-time ${change.type} for activity '${remoteActivity.activityType}' (FS ID: $firestoreId), updatedBy: ${remoteActivity.updatedBy}, remoteUpdatedAt: ${remoteActivity.lastSyncAt}")
@@ -1294,15 +1534,15 @@ class SyncService(
                     val existingLocalActivity = repository.getAllActivitiesSync().find { it.firestoreId == firestoreId }
                     if (existingLocalActivity == null) {
                         if (!remoteActivity.isDeleted) {
-                            println("Real-time ADDED (local copy missing): Inserting activity '${remoteActivity.activityType}' for cow ${localCow.name}.")
+                            println("Real-time ADDED (local copy missing): Inserting activity '${remoteActivity.activityType}' for cow ${primaryCow.name}.")
                             repository.insertActivity(remoteActivity.copy(id = 0L))
                         }
                     } else {
                         if (existingLocalActivity.lastSyncAt < remoteActivity.lastSyncAt || remoteActivity.isDeleted != existingLocalActivity.isDeleted) {
-                            println("Real-time ADDED (conflict): Updating activity '${remoteActivity.activityType}' for cow ${localCow.name}.")
+                            println("Real-time ADDED (conflict): Updating activity '${remoteActivity.activityType}' for cow ${primaryCow.name}.")
                             repository.updateActivity(remoteActivity.copy(id = existingLocalActivity.id))
                         } else {
-                            println("Real-time ADDED (already up-to-date): Skipping activity '${remoteActivity.activityType}' for cow ${localCow.name}.")
+                            println("Real-time ADDED (already up-to-date): Skipping activity '${remoteActivity.activityType}' for cow ${primaryCow.name}.")
                         }
                     }
                 }
@@ -1310,12 +1550,12 @@ class SyncService(
                     val existingLocalActivity = repository.getAllActivitiesSync().find { it.firestoreId == firestoreId }
                     if (existingLocalActivity == null) {
                         if (!remoteActivity.isDeleted) {
-                            println("Real-time MODIFIED: Activity '${remoteActivity.activityType}' not local. Inserting for cow ${localCow.name}.")
+                            println("Real-time MODIFIED: Activity '${remoteActivity.activityType}' not local. Inserting for cow ${primaryCow.name}.")
                             repository.insertActivity(remoteActivity.copy(id = 0L))
                         }
                     } else {
                         if (existingLocalActivity.lastSyncAt < remoteActivity.lastSyncAt || remoteActivity.isDeleted != existingLocalActivity.isDeleted) {
-                            println("Real-time MODIFIED: Updating activity '${remoteActivity.activityType}' for cow ${localCow.name}.")
+                            println("Real-time MODIFIED: Updating activity '${remoteActivity.activityType}' for cow ${primaryCow.name}.")
                             repository.updateActivity(remoteActivity.copy(id = existingLocalActivity.id))
                         }
                     }
@@ -1347,10 +1587,13 @@ class SyncService(
             val firestoreId = doc.id
             
             val remoteNote = Note(
-                id = 0L, 
+                id = 0L,
                 title = data["title"] as? String ?: "Unknown Note",
                 text = data["text"] as? String ?: "",
                 timestamp = (data["timestamp"] as? Number)?.toLong() ?: System.currentTimeMillis(),
+                isTodo = data["isTodo"] as? Boolean ?: false,
+                dueDate = (data["dueDate"] as? Number)?.toLong(),
+                isCompleted = data["isCompleted"] as? Boolean ?: false,
                 herdId = data["herdId"] as? String,
                 firestoreId = firestoreId,
                 lastSyncAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
@@ -1450,13 +1693,13 @@ class SyncService(
     private suspend fun handleRealtimeTagColorChange(change: DocumentChange, userId: String) {
         try {
             val doc = change.document
-            val data = doc.data 
+            val data = doc.data
             if (data == null) {
                 println("Real-time tag color change: data is null for doc ${doc.id}")
                 return
             }
             val firestoreId = doc.id
-            
+
             val remoteTagColor = TagColor(
                 id = firestoreId,
                 name = data["name"] as? String ?: "",
@@ -1470,7 +1713,7 @@ class SyncService(
                 isDeleted = data["isDeleted"] as? Boolean ?: false,
                 isDefault = data["isDefault"] as? Boolean ?: false
             )
-            
+
             println("Real-time ${change.type} for tag color '${remoteTagColor.name}' (FS ID: $firestoreId)")
 
             when (change.type) {
@@ -1508,10 +1751,82 @@ class SyncService(
         }
     }
 
+    private suspend fun handleRealtimeBreedChange(change: DocumentChange, userId: String) {
+        try {
+            val doc = change.document
+            val data = doc.data
+            if (data == null) {
+                println("Real-time breed change: data is null for doc ${doc.id}")
+                return
+            }
+            val firestoreId = doc.id
+
+            val remoteBreed = Breed(
+                id = firestoreId,
+                name = data["name"] as? String ?: "",
+                isActive = data["isActive"] as? Boolean ?: true,
+                isDefault = data["isDefault"] as? Boolean ?: false,
+                createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
+                updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                firestoreId = firestoreId,
+                lastSyncAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                updatedBy = data["updatedBy"] as? String,
+                isDeleted = data["isDeleted"] as? Boolean ?: false
+            )
+
+            println("Real-time ${change.type} for breed '${remoteBreed.name}' (FS ID: $firestoreId)")
+
+            when (change.type) {
+                DocumentChange.Type.ADDED, DocumentChange.Type.MODIFIED -> {
+                    val existingLocalBreed = repository.getAllBreedsSync().find { it.firestoreId == firestoreId || it.id == firestoreId }
+
+                    if (remoteBreed.isDeleted) {
+                        existingLocalBreed?.let {
+                            repository.updateBreed(
+                                it.copy(
+                                    isActive = false,
+                                    isDeleted = true,
+                                    lastSyncAt = remoteBreed.lastSyncAt,
+                                    updatedBy = remoteBreed.updatedBy
+                                )
+                            )
+                            println("Real-time ${change.type}: Deleted breed '${it.name}' (marked as deleted remotely)")
+                        }
+                    } else {
+                        if (existingLocalBreed == null) {
+                            repository.insertBreed(remoteBreed)
+                            println("Real-time ${change.type}: Inserted breed '${remoteBreed.name}'")
+                        } else if ((existingLocalBreed.lastSyncAt ?: 0L) < (remoteBreed.lastSyncAt ?: 0L)) {
+                            repository.updateBreed(remoteBreed.copy(id = existingLocalBreed.id))
+                            println("Real-time ${change.type}: Updated breed '${remoteBreed.name}'")
+                        }
+                    }
+                }
+                DocumentChange.Type.REMOVED -> {
+                    val existingLocalBreed = repository.getAllBreedsSync().find { it.firestoreId == firestoreId || it.id == firestoreId }
+                    existingLocalBreed?.let {
+                        repository.updateBreed(
+                            it.copy(
+                                isActive = false,
+                                isDeleted = true,
+                                lastSyncAt = System.currentTimeMillis(),
+                                updatedBy = remoteBreed.updatedBy ?: userId
+                            )
+                        )
+                        println("Real-time REMOVED: Marked breed '${it.name}' as deleted.")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            println("Error handling real-time breed change for doc ${change.document.id}: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+
     private suspend fun handleRealtimeActivityTypeChange(change: DocumentChange, userId: String) {
         try {
             val doc = change.document
-            val data = doc.data 
+            val data = doc.data
             if (data == null) {
                 println("Real-time activity type change: data is null for doc ${doc.id}")
                 return
@@ -1523,6 +1838,7 @@ class SyncService(
                 name = data["name"] as? String ?: "",
                 displayName = data["displayName"] as? String ?: "",
                 description = data["description"] as? String,
+                iconName = data["iconName"] as? String,
                 isActive = data["isActive"] as? Boolean ?: true,
                 isDefault = data["isDefault"] as? Boolean ?: false,
                 createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
@@ -1601,6 +1917,10 @@ private suspend fun Cow.toFirestoreMap(userId: String, repository: CattleReposit
         "gender" to gender.name,
         "classification" to classification.name,
         "colorMarkings" to colorMarkings,
+        "registrationNumber" to registrationNumber,
+        "breed" to breed,
+        "createdDate" to createdAt?.toString(),
+        "updatedDate" to updatedAt?.toString(),
         "motherId" to motherId, // Keep for backward compatibility
         "motherFirestoreId" to motherCow?.firestoreId, // Use this for cross-device mother referencing
         "fatherId" to fatherId, // Keep for backward compatibility
@@ -1621,7 +1941,8 @@ private suspend fun Activity.toFirestoreMap(userId: String, repository: CattleRe
     // Get the cow's firestoreId for proper cross-device referencing
     val cow = repository.getCowById(cowId)
     val cowFirestoreId = cow?.firestoreId
-    
+    val associatedCowFirestoreIds = cowIds.mapNotNull { repository.getCowById(it)?.firestoreId }
+
     return mapOf(
         "cowId" to cowId, // Keep for backward compatibility
         "cowFirestoreId" to cowFirestoreId, // Use this for cross-device cow referencing
@@ -1632,6 +1953,12 @@ private suspend fun Activity.toFirestoreMap(userId: String, repository: CattleRe
         "toPastureId" to toPastureId,
         "details" to details,
         "groupId" to groupId,
+        "result" to result,
+        "quantity" to quantity,
+        "technician" to technician,
+        "cost" to cost,
+        "cowIds" to cowIds,
+        "cowFirestoreIds" to associatedCowFirestoreIds,
         "herdId" to herdId,
         "isDeleted" to isDeleted,
         "createdBy" to (createdBy ?: userId),
@@ -1660,6 +1987,9 @@ private fun Note.toFirestoreMap(userId: String): Map<String, Any?> {
         "title" to title,
         "text" to text,
         "timestamp" to timestamp,
+        "isTodo" to isTodo,
+        "dueDate" to dueDate,
+        "isCompleted" to isCompleted,
         "herdId" to herdId,
         "isDeleted" to isDeleted,
         "createdBy" to (createdBy ?: userId),
@@ -1680,6 +2010,7 @@ private fun Settings.toFirestoreMap(userId: String): Map<String, Any?> {
 }
 
 private fun TagColor.toFirestoreMap(userId: String): Map<String, Any?> {
+    val effectiveUpdatedAt = if (updatedAt > 0L) updatedAt else System.currentTimeMillis()
     return mapOf(
         "name" to name,
         "colorValue" to colorValue,
@@ -1687,21 +2018,23 @@ private fun TagColor.toFirestoreMap(userId: String): Map<String, Any?> {
         "isDefault" to isDefault,
         "createdAt" to createdAt,
         "updatedBy" to userId,
-        "updatedAt" to System.currentTimeMillis(),
+        "updatedAt" to effectiveUpdatedAt,
         "isDeleted" to isDeleted
     )
 }
 
 private fun ActivityTypeConfig.toFirestoreMap(userId: String): Map<String, Any?> {
+    val effectiveUpdatedAt = if (updatedAt > 0L) updatedAt else System.currentTimeMillis()
     return mapOf(
         "name" to name,
         "displayName" to displayName,
         "description" to description,
+        "iconName" to iconName,
         "isActive" to isActive,
         "isDefault" to isDefault,
         "createdAt" to createdAt,
         "updatedBy" to userId,
-        "updatedAt" to System.currentTimeMillis(),
+        "updatedAt" to effectiveUpdatedAt,
         "isDeleted" to isDeleted
     )
 }
