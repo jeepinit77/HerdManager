@@ -54,6 +54,11 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalFocusManager
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Classification
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
+import com.jumblemint.cows.util.primaryIdentifier
+import com.jumblemint.cows.util.secondaryIdentifier
+import com.jumblemint.cows.util.usesNames
+import com.jumblemint.cows.util.usesTags
 import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
@@ -70,6 +75,7 @@ fun ParentPicker(
     enablePastureFilter: Boolean = true,
     allowClearSelection: Boolean = false,
     quickPicks: List<Cow> = emptyList(),
+    identifierMode: AnimalIdentifierMode,
     onSelect: (Cow) -> Unit,
     onClearSelection: (() -> Unit)? = null,
     onDismiss: () -> Unit
@@ -124,12 +130,18 @@ fun ParentPicker(
                     focusRequester.requestFocus()
                 }
 
+                val searchLabel = when {
+                    identifierMode.usesNames() && identifierMode.usesTags() -> "Search by name or tag"
+                    identifierMode.usesNames() -> "Search by name"
+                    else -> "Search by tag"
+                }
+
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                     label = {
                         Text(
-                            "Search by name or tag",
+                            searchLabel,
                             color = surfaceVariantContrast.copy(alpha = 0.85f)
                         )
                     },
@@ -161,8 +173,9 @@ fun ParentPicker(
                     colors = defaultOutlinedTextFieldColors()
                 )
 
-                val quickPickItems = remember(quickPicks, animals) {
-                    quickPicks.distinctBy { it.id }.filter { pick -> animals.any { it.id == pick.id } }
+                val quickPickItems = remember(quickPicks, animals, identifierMode) {
+                    quickPicks.distinctBy { it.id }
+                        .filter { pick -> animals.any { it.id == pick.id } }
                 }
 
                 if (quickPickItems.isNotEmpty()) {
@@ -189,7 +202,7 @@ fun ParentPicker(
                                     },
                                     label = {
                                         Text(
-                                            text = formatPrimaryLabel(cow),
+                                            text = formatPrimaryLabel(cow, identifierMode),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis,
                                             color = secondaryContainerContrast
@@ -284,11 +297,16 @@ fun ParentPicker(
                     )
                 }
 
-                val filteredAnimals = remember(animals, searchQuery, selectedClassifications, selectedPastureKey) {
+                val filteredAnimals = remember(animals, searchQuery, selectedClassifications, selectedPastureKey, identifierMode) {
                     animals.filter { cow ->
-                        val matchesSearch = searchQuery.isBlank() ||
-                                cow.name?.contains(searchQuery, ignoreCase = true) == true ||
-                                cow.tagNumber?.contains(searchQuery, ignoreCase = true) == true
+                        val matchesSearch = if (searchQuery.isBlank()) {
+                            true
+                        } else {
+                            val query = searchQuery.lowercase()
+                            val nameMatch = identifierMode.usesNames() && cow.name?.lowercase()?.contains(query) == true
+                            val tagMatch = identifierMode.usesTags() && cow.tagNumber?.lowercase()?.contains(query) == true
+                            nameMatch || tagMatch
+                        }
                         val matchesClassification = selectedClassifications.isEmpty() ||
                                 cow.classification in selectedClassifications
                         val matchesPasture = when (selectedPastureKey) {
@@ -352,6 +370,7 @@ fun ParentPicker(
                                 ParentPickerItem(
                                     cow = cow,
                                     pastureNames = pastureNames,
+                                    identifierMode = identifierMode,
                                     onClick = {
                                         focusManager.clearFocus()
                                         onSelect(cow)
@@ -371,11 +390,14 @@ fun ParentPicker(
 private fun ParentPickerItem(
     cow: Cow,
     pastureNames: Map<String?, String>,
+    identifierMode: AnimalIdentifierMode,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val name = cow.name?.takeIf { it.isNotBlank() }
     val tag = cow.tagNumber?.takeIf { it.isNotBlank() }
+    val primaryIdentifier = identifierMode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "Unnamed Animal")
+    val secondaryIdentifier = identifierMode.secondaryIdentifier(cow.name, cow.tagNumber)
     val pastureLabel = pastureNames[cow.pastureId] ?: pastureNames[null]
     val secondaryDetails = buildList {
         pastureLabel?.let { add(it) }
@@ -401,7 +423,7 @@ private fun ParentPickerItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = name ?: tag ?: "Unnamed Animal",
+                    text = if (primaryIdentifier.isNotBlank()) primaryIdentifier else "Unnamed Animal",
                     style = MaterialTheme.typography.titleMedium,
                     color = surfaceContrast,
                     fontWeight = FontWeight.SemiBold,
@@ -409,9 +431,9 @@ private fun ParentPickerItem(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
-                if (tag != null && name != null) {
+                if (secondaryIdentifier != null && identifierMode.usesNames() && identifierMode.usesTags()) {
                     Text(
-                        text = tag,
+                        text = secondaryIdentifier,
                         style = MaterialTheme.typography.titleMedium,
                         color = surfaceContrast,
                         fontWeight = FontWeight.SemiBold,
@@ -421,7 +443,7 @@ private fun ParentPickerItem(
                     )
                 }
             }
-            if (name == null && tag != null) {
+            if (!identifierMode.usesNames() && identifierMode.usesTags() && secondaryIdentifier == null && tag != null) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Tag $tag",
@@ -448,13 +470,12 @@ private fun ParentPickerItem(
     }
 }
 
-private fun formatPrimaryLabel(cow: Cow): String {
-    val name = cow.name?.takeIf { it.isNotBlank() }
-    val tag = cow.tagNumber?.takeIf { it.isNotBlank() }
-    return when {
-        name != null && tag != null -> "$name • $tag"
-        name != null -> name
-        tag != null -> tag
-        else -> "Unnamed Animal"
+private fun formatPrimaryLabel(cow: Cow, mode: AnimalIdentifierMode): String {
+    val primary = mode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "Unnamed Animal")
+    val secondary = mode.secondaryIdentifier(cow.name, cow.tagNumber)
+    return if (secondary != null && mode.usesNames() && mode.usesTags()) {
+        "$primary • $secondary"
+    } else {
+        primary
     }
 }

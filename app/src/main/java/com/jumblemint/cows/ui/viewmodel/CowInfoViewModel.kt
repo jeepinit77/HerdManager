@@ -3,6 +3,7 @@ package com.jumblemint.cows.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jumblemint.cows.data.model.Activity
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Pasture // Keep if pastures are used directly, which they are for name
 import com.jumblemint.cows.data.repository.CattleRepository
@@ -22,7 +23,8 @@ data class CowInfoUiState(
     val pastureName: String? = null,
     val activities: List<Activity> = emptyList(),
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val identifierMode: AnimalIdentifierMode = AnimalIdentifierMode.BOTH
 )
 
 // Removed @OptIn from class level
@@ -89,7 +91,8 @@ class CowInfoViewModel(
                     repository.getAllPastures(),// Flow<List<Pasture>>
                     repository.getActivitiesForCow(cowId), // Flow<List<Activity>>
                     maternalSiblingsFlow,       // Flow<List<Cow>>
-                    paternalSiblingsFlow        // Flow<List<Cow>>
+                    paternalSiblingsFlow,        // Flow<List<Cow>>
+                    repository.getAnimalIdentifierModeFlow()
                 )
             ) { values: Array<Any?> -> // Lambda now takes an Array<Any?>
                 // Extract and cast values by index
@@ -111,6 +114,7 @@ class CowInfoViewModel(
                 val matSiblings = values[7] as List<Cow>
                 @Suppress("UNCHECKED_CAST")
                 val patSiblings = values[8] as List<Cow>
+                val identifierMode = values[9] as AnimalIdentifierMode
 
                 val currentCow = currentCowNullable ?: return@combine CowInfoUiState(
                     isLoading = false,
@@ -133,7 +137,8 @@ class CowInfoViewModel(
                     pastureName = pastureName,
                     activities = activities.sortedByDescending { it.date },
                     isLoading = false,
-                    error = null
+                    error = null,
+                    identifierMode = identifierMode
                 )
             }.catch { e -> 
                 _uiState.value = CowInfoUiState(isLoading = false, error = "Error loading cow information: ${e.message}")

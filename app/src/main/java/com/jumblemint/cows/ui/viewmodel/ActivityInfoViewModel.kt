@@ -68,9 +68,12 @@ class ActivityInfoViewModel(
                         emptyList()
                     }
 
+                    val identifierMode = repository.getAnimalIdentifierMode()
+
                     _uiState.value = ActivityInfoUiState(
                         activity = primaryActivity,
                         associatedCows = associatedCows,
+                        identifierMode = identifierMode,
                         isLoading = false
                     )
                 } else {

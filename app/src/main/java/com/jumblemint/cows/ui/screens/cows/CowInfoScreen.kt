@@ -32,6 +32,9 @@ import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.ui.viewmodel.CowInfoViewModel
 import com.jumblemint.cows.ui.viewmodel.CowInfoViewModelFactory // Assuming factory is in this package
+import com.jumblemint.cows.util.primaryIdentifier
+import com.jumblemint.cows.util.secondaryIdentifier
+import com.jumblemint.cows.util.usesTags
 import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
@@ -67,6 +70,7 @@ fun CowInfoScreen(
     )
 
     val uiState by viewModel.uiState.collectAsState()
+    val identifierMode = uiState.identifierMode
     val tagColorMap = rememberTagColorMap(repository)
 
     Column(
@@ -98,24 +102,34 @@ fun CowInfoScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(16.dp),
-                                verticalAlignment = Alignment.Top, 
-                                horizontalArrangement = Arrangement.spacedBy(12.dp) 
+                                verticalAlignment = Alignment.Top,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                if (cow.tagNumber != null || cow.tagColor != null) {
+                                val primaryIdentifier = identifierMode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "Unnamed Animal")
+                                val secondaryIdentifier = identifierMode.secondaryIdentifier(cow.name, cow.tagNumber)
+                                val showTagBadge = identifierMode.usesTags() && (cow.tagNumber != null || cow.tagColor != null)
+                                if (showTagBadge) {
                                     CattleTagBadge(
                                         tagNumber = cow.tagNumber,
                                         tagColor = cow.tagColor,
-                                        modifier = Modifier.size(width = 72.dp, height = 96.dp), 
+                                        modifier = Modifier.size(width = 72.dp, height = 96.dp),
                                         backgroundColor = resolveTagColor(cow.tagColor, tagColorMap)
                                     )
                                 }
-                                Column(modifier = Modifier.weight(1f)) { 
+                                Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = cow.name ?: "Unnamed Animal",
+                                        text = primaryIdentifier,
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onPrimary
                                     )
+                                    if (secondaryIdentifier != null) {
+                                        Text(
+                                            text = secondaryIdentifier,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onPrimary
+                                        )
+                                    }
                                     Text(
                                         text = "${cow.classification.name} • ${cow.gender.name}",
                                         style = MaterialTheme.typography.titleMedium,
@@ -171,10 +185,10 @@ fun CowInfoScreen(
                                 ) {
                                     SectionTitle("Parentage")
                                     uiState.mother?.let { mother ->
-                                        RelatedCowRow(label = "Mother", cow = mother, onNavigateToCow = onNavigateToCow, showDivider = uiState.father != null)
+                                        RelatedCowRow(label = "Mother", cow = mother, identifierMode = identifierMode, onNavigateToCow = onNavigateToCow, showDivider = uiState.father != null)
                                     }
                                     uiState.father?.let { father ->
-                                        RelatedCowRow(label = "Father", cow = father, onNavigateToCow = onNavigateToCow, showDivider = false)
+                                        RelatedCowRow(label = "Father", cow = father, identifierMode = identifierMode, onNavigateToCow = onNavigateToCow, showDivider = false)
                                     }
                                 }
                             }
@@ -185,6 +199,7 @@ fun CowInfoScreen(
                             CollapsibleLazyColumnCard(
                                 title = "Progeny (${uiState.children.size})",
                                 items = uiState.children,
+                                identifierMode = identifierMode,
                                 onNavigateToCow = onNavigateToCow,
                                 initiallyExpanded = uiState.children.size <= 3
                             )
@@ -197,7 +212,7 @@ fun CowInfoScreen(
                                 initiallyExpanded = uiState.maternalSiblings.size <= 3
                             ) {
                                 uiState.maternalSiblings.forEachIndexed { index, sibling ->
-                                    RelatedCowRow(cow = sibling, onNavigateToCow = onNavigateToCow, showDivider = index < uiState.maternalSiblings.size - 1)
+                                    RelatedCowRow(cow = sibling, identifierMode = identifierMode, onNavigateToCow = onNavigateToCow, showDivider = index < uiState.maternalSiblings.size - 1)
                                 }
                             }
                         }
@@ -207,6 +222,7 @@ fun CowInfoScreen(
                             CollapsibleLazyColumnCard(
                                 title = "Paternal Siblings (${uiState.paternalSiblings.size})",
                                 items = uiState.paternalSiblings,
+                                identifierMode = identifierMode,
                                 onNavigateToCow = onNavigateToCow,
                                 initiallyExpanded = false
                             )
@@ -296,6 +312,7 @@ private fun InfoRow(label: String, value: String) {
 private fun RelatedCowRow(
     label: String? = null,
     cow: Cow,
+    identifierMode: AnimalIdentifierMode,
     onNavigateToCow: (Long) -> Unit,
     showDivider: Boolean = true
 ) {
@@ -317,16 +334,18 @@ private fun RelatedCowRow(
                     modifier = Modifier.padding(end = 4.dp)
                 )
             }
+            val primary = identifierMode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "Unnamed Animal")
+            val secondary = identifierMode.secondaryIdentifier(cow.name, cow.tagNumber)
             Text(
-                text = cow.name ?: "Unnamed",
+                text = primary,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
             )
-            cow.tagNumber?.takeIf { it.isNotBlank() }?.let {
+            if (secondary != null) {
                 Text(
-                    text = " ($it)",
+                    text = "($secondary)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 4.dp)
@@ -356,6 +375,7 @@ private fun RelatedCowRow(
 private fun CollapsibleLazyColumnCard(
     title: String,
     items: List<Cow>,
+    identifierMode: AnimalIdentifierMode,
     onNavigateToCow: (Long) -> Unit,
     initiallyExpanded: Boolean = false
 ) {
@@ -387,7 +407,7 @@ private fun CollapsibleLazyColumnCard(
                     verticalArrangement = Arrangement.spacedBy(4.dp) // Spacing between RelatedCowRow items
                 ) {
                     items(items.size) { index ->
-                        RelatedCowRow(cow = items[index], onNavigateToCow = onNavigateToCow, showDivider = index < items.size - 1)
+                        RelatedCowRow(cow = items[index], identifierMode = identifierMode, onNavigateToCow = onNavigateToCow, showDivider = index < items.size - 1)
                     }
                 }
             }

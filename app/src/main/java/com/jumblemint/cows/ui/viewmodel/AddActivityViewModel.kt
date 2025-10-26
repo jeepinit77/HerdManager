@@ -38,11 +38,13 @@ class AddActivityViewModel(
                     .sortedBy { it.displayName }
 
                 val activeCows = allCows.filter { it.status == Status.ACTIVE }
+                val identifierMode = repository.getAnimalIdentifierMode()
 
                 var baseState = _uiState.value.copy(
                     availableCows = activeCows,
                     availablePastures = allPastures,
                     availableActivityTypes = activityTypes,
+                    identifierMode = identifierMode,
                     isLoading = false
                 )
 
@@ -289,6 +291,7 @@ data class AddActivityUiState(
     val availableCows: List<Cow> = emptyList(),
     val availablePastures: List<Pasture> = emptyList(),
     val availableActivityTypes: List<ActivityTypeConfig> = emptyList(),
+    val identifierMode: AnimalIdentifierMode = AnimalIdentifierMode.BOTH,
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
     val error: String? = null,

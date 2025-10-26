@@ -10,6 +10,10 @@ import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.preferences.tipsDataStore
 import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.util.identifierRequirementMessage
+import com.jumblemint.cows.util.isIdentifierSatisfied
+import com.jumblemint.cows.util.usesNames
+import com.jumblemint.cows.util.usesTags
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -47,7 +51,8 @@ data class CowDetailUiState(
     val isSaved: Boolean = false,
     val error: String? = null,
     val isNameTagLinked: Boolean = false,
-    val hasUnsavedChanges: Boolean = false
+    val hasUnsavedChanges: Boolean = false,
+    val identifierMode: AnimalIdentifierMode = AnimalIdentifierMode.BOTH
 )
 
 class CowDetailViewModel(
@@ -69,6 +74,17 @@ class CowDetailViewModel(
     }
 
     init {
+        viewModelScope.launch {
+            repository.getAnimalIdentifierModeFlow().collect { mode ->
+                _uiState.update { current ->
+                    var updated = current.copy(identifierMode = mode)
+                    if (mode != AnimalIdentifierMode.BOTH && current.isNameTagLinked) {
+                        updated = updated.copy(isNameTagLinked = false)
+                    }
+                    updated
+                }
+            }
+        }
         loadInitialData()
     }
 
@@ -162,31 +178,46 @@ class CowDetailViewModel(
     }
 
     fun updateName(name: String) {
-        _uiState.update { 
-            if (it.isNameTagLinked) {
-                it.copy(name = name, tagNumber = name, error = if (name.isBlank() && it.tagNumber.isBlank()) it.error else null, hasUnsavedChanges = true)
+        _uiState.update {
+            val updated = if (it.isNameTagLinked) {
+                it.copy(name = name, tagNumber = name, hasUnsavedChanges = true)
             } else {
-                it.copy(name = name, error = if (name.isBlank() && it.tagNumber.isBlank()) it.error else null, hasUnsavedChanges = true)
+                it.copy(name = name, hasUnsavedChanges = true)
+            }
+            if (updated.identifierMode.isIdentifierSatisfied(updated.name, updated.tagNumber) &&
+                updated.error == updated.identifierMode.identifierRequirementMessage()
+            ) {
+                updated.copy(error = null)
+            } else {
+                updated
             }
         }
     }
 
     fun updateTagNumber(tagNumber: String) {
-        _uiState.update { 
-            if (it.isNameTagLinked) {
-                it.copy(name = tagNumber, tagNumber = tagNumber, error = if (tagNumber.isBlank() && it.name.isBlank()) it.error else null, hasUnsavedChanges = true)
+        _uiState.update {
+            val updated = if (it.isNameTagLinked) {
+                it.copy(name = tagNumber, tagNumber = tagNumber, hasUnsavedChanges = true)
             } else {
-                it.copy(tagNumber = tagNumber, error = if (tagNumber.isBlank() && it.name.isBlank()) it.error else null, hasUnsavedChanges = true)
+                it.copy(tagNumber = tagNumber, hasUnsavedChanges = true)
+            }
+            if (updated.identifierMode.isIdentifierSatisfied(updated.name, updated.tagNumber) &&
+                updated.error == updated.identifierMode.identifierRequirementMessage()
+            ) {
+                updated.copy(error = null)
+            } else {
+                updated
             }
         }
     }
 
     fun toggleNameTagLink() {
+        if (_uiState.value.identifierMode != AnimalIdentifierMode.BOTH) return
         val newLinkedState = !_uiState.value.isNameTagLinked
         _uiState.update { currentState ->
             val updatedState = if (newLinkedState) {
                 when {
-                    currentState.name.isNotBlank() && currentState.tagNumber.isBlank() -> 
+                    currentState.name.isNotBlank() && currentState.tagNumber.isBlank() ->
                         currentState.copy(isNameTagLinked = true, tagNumber = currentState.name)
                     currentState.name.isBlank() && currentState.tagNumber.isNotBlank() -> 
                         currentState.copy(isNameTagLinked = true, name = currentState.tagNumber)
@@ -198,7 +229,8 @@ class CowDetailViewModel(
             }
             // Clear name/tag error if either is now populated due to linking
             if (updatedState.name.isNotBlank() || updatedState.tagNumber.isNotBlank()) {
-                updatedState.copy(error = if (updatedState.error == "Please enter a Name or a Tag Number.") null else updatedState.error)
+                val requirementMessage = updatedState.identifierMode.identifierRequirementMessage()
+                updatedState.copy(error = if (updatedState.error == requirementMessage) null else updatedState.error)
             } else {
                 updatedState
             }
@@ -274,8 +306,9 @@ class CowDetailViewModel(
             _uiState.update { it.copy(error = null) } // Clear previous general error messages
             val currentState = _uiState.value
             
-            if (currentState.name.isBlank() && currentState.tagNumber.isBlank()) {
-                _uiState.update { it.copy(error = "Please enter a Name or a Tag Number.") }
+            if (!currentState.identifierMode.isIdentifierSatisfied(currentState.name, currentState.tagNumber)) {
+                val message = currentState.identifierMode.identifierRequirementMessage()
+                _uiState.update { it.copy(error = message) }
                 return@launch
             }
             if (currentState.gender == null) {

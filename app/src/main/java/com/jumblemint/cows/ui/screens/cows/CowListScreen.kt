@@ -88,6 +88,8 @@ fun CowListScreen(
     val cowsFlow by remember { mutableStateOf(repository.getAllCows()) }
     val allCows by cowsFlow.collectAsState(initial = emptyList())
     val tagColorMap = rememberTagColorMap(repository)
+    val identifierModeFlow by repository.getAnimalIdentifierModeFlow().collectAsState(initial = AnimalIdentifierMode.BOTH)
+    val identifierMode = cowsUiState?.value?.identifierMode ?: identifierModeFlow
 
     var showAnimalFilterDialog by remember { mutableStateOf(false) }
     val globalSnackbarState = LocalGlobalSnackbarState.current
@@ -284,7 +286,8 @@ fun CowListScreen(
             onCowEdit = onCowEdit,
             tagColorMap = tagColorMap,
             scope = scope,
-            globalSnackbarState = globalSnackbarState // Pass global snackbar state
+            globalSnackbarState = globalSnackbarState, // Pass global snackbar state
+            identifierMode = identifierMode
         )
 
         // Conditionally display FAB and SnackbarHost if they are part of this screen's features
@@ -320,7 +323,8 @@ private fun CowListContent(
     onCowEdit: ((Long) -> Unit)?,
     tagColorMap: Map<String, androidx.compose.ui.graphics.Color>,
     scope: kotlinx.coroutines.CoroutineScope,
-    globalSnackbarState: com.jumblemint.cows.ui.components.GlobalSnackbarState?
+    globalSnackbarState: com.jumblemint.cows.ui.components.GlobalSnackbarState?,
+    identifierMode: AnimalIdentifierMode
 ) {
     Column(
         modifier = modifier // This modifier is Modifier.fillMaxSize() from the Box above
@@ -414,6 +418,7 @@ private fun CowListContent(
                 items(list, key = { it.id }) { cow ->
                     CowCard(
                         cow = cow,
+                        identifierMode = identifierMode,
                         onClick = { onCowClick(cow.id) },
                         onToggleWatch = if (showSearchAndFilters && cowsViewModel != null) {{ cowsViewModel.toggleWatch(cow) }} else null,
                         onEdit = onCowEdit?.let { { onCowEdit(cow.id) } },

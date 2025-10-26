@@ -16,7 +16,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.ui.components.*
+import com.jumblemint.cows.util.primaryIdentifier
 import com.jumblemint.cows.ui.viewmodel.PastureDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.PastureDetailViewModelFactory
 import kotlinx.coroutines.launch
@@ -55,6 +57,7 @@ fun PastureDetailScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val tagColorMap = rememberTagColorMap(repository)
+    val identifierMode by repository.getAnimalIdentifierModeFlow().collectAsState(initial = AnimalIdentifierMode.BOTH)
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -227,6 +230,7 @@ fun PastureDetailScreen(
                     items(uiState.activeCows, key = { it.id }) { cow ->
                         CowCard(
                             cow = cow,
+                            identifierMode = identifierMode,
                             onClick = { onCowClick(cow.id) },
                             onToggleWatch = { viewModel.toggleWatch(cow) },
                             onEdit = { onCowEdit(cow.id) },
@@ -234,7 +238,7 @@ fun PastureDetailScreen(
                                 scope.launch {
                                     viewModel.deleteCow(cow) // Assumes ViewModel handles this
                                     val result = snackbarHostState.showSnackbar(
-                                        message = "${cow.name ?: cow.tagNumber ?: "Cow"} deleted",
+                                    message = identifierMode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "Cow") + " deleted",
                                         actionLabel = "UNDO",
                                         duration = SnackbarDuration.Long
                                     )

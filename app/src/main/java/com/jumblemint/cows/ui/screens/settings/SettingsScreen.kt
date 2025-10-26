@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Added/Ensured import
 import com.jumblemint.cows.ui.components.SecondaryButton
 import com.jumblemint.cows.data.model.ActivityTypeConfig
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.model.Breed
 import com.jumblemint.cows.data.model.Settings
 import com.jumblemint.cows.data.model.SettingsKeys
@@ -193,6 +194,15 @@ fun SettingsScreen(
             }
             item {
                 SettingsGroup {
+                    IdentifierModeSetting(
+                        mode = uiState.identifierMode,
+                        onModeChange = { mode -> viewModel.updateAnimalIdentifierMode(mode) }
+                    )
+                    HorizontalDivider(
+                        Modifier.padding(horizontal = 16.dp),
+                        DividerDefaults.Thickness,
+                        color = MaterialTheme.colorScheme.outlineVariant
+                    )
                     SettingsRow(
                         title = "Tag Colors",
                         subtitle = "Manage available tag colors",
@@ -471,6 +481,7 @@ fun SettingsScreen(
             defaultBreeds = defaultBreeds,
             defaultTagColors = defaultTagColors,
             defaultActivityTypes = defaultActivityTypes,
+            initialIdentifierMode = uiState.identifierMode,
             onExit = { showSetupWizard = false },
             onFinished = {
                 showSetupWizard = false
@@ -575,6 +586,56 @@ fun SettingsGroup(
     ) {
         Column {
             content()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun IdentifierModeSetting(
+    mode: AnimalIdentifierMode,
+    onModeChange: (AnimalIdentifierMode) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Animal Identification",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Choose how you identify animals throughout the app.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        val options = listOf(
+            AnimalIdentifierMode.NAMES to "Names",
+            AnimalIdentifierMode.TAG_NUMBERS to "Tag Numbers",
+            AnimalIdentifierMode.BOTH to "Both"
+        )
+        SingleChoiceSegmentedButtonRow(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            options.forEachIndexed { index, (value, label) ->
+                SegmentedButton(
+                    selected = mode == value,
+                    onClick = { onModeChange(value) },
+                    shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                    colors = SegmentedButtonDefaults.colors(
+                        activeContainerColor = MaterialTheme.colorScheme.primary,
+                        activeContentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(label)
+                }
+            }
         }
     }
 }

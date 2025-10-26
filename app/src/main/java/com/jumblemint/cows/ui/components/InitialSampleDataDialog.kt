@@ -237,6 +237,7 @@ fun SetupWizardDialog(
     defaultBreeds: List<Breed>,
     defaultTagColors: List<TagColor>,
     defaultActivityTypes: List<ActivityTypeConfig>,
+    initialIdentifierMode: AnimalIdentifierMode = AnimalIdentifierMode.BOTH,
     onExit: () -> Unit,
     onFinished: () -> Unit,
     onSaveIdentifierMode: suspend (AnimalIdentifierMode) -> Unit,
@@ -258,7 +259,7 @@ fun SetupWizardDialog(
         ) {
             val steps = remember { SetupWizardStep.entries.toList() }
             var currentStepIndex by remember { mutableStateOf(0) }
-            var selectedIdentifierMode by remember { mutableStateOf<AnimalIdentifierMode?>(null) }
+            var selectedIdentifierMode by remember { mutableStateOf<AnimalIdentifierMode?>(initialIdentifierMode) }
             var selectedDefaultBreedIds by remember {
                 mutableStateOf(emptySet<String>())
             }

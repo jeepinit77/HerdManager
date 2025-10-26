@@ -30,14 +30,20 @@ import com.jumblemint.cows.R
 import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.model.Status
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import java.time.LocalDate
 import java.time.Period
 import com.jumblemint.cows.ui.components.WobblingLightbulbIcon
+import com.jumblemint.cows.util.primaryIdentifier
+import com.jumblemint.cows.util.secondaryIdentifier
+import com.jumblemint.cows.util.usesNames
+import com.jumblemint.cows.util.usesTags
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CowCard(
     cow: Cow,
+    identifierMode: AnimalIdentifierMode,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onToggleWatch: (() -> Unit)? = null,
@@ -45,6 +51,9 @@ fun CowCard(
     onDelete: (() -> Unit)? = null,
     resolvedTagColor: Color? = null
 ) {
+    val usesTags = identifierMode.usesTags()
+    val primaryIdentifier = identifierMode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "Unnamed Animal")
+    val secondaryIdentifier = identifierMode.secondaryIdentifier(cow.name, cow.tagNumber)
     val genderColor = getGenderColor(cow.gender)
     val cardColors = CardDefaults.cardColors(
         containerColor = genderColor
@@ -75,7 +84,7 @@ fun CowCard(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.Top
                 ) {
-                    if (cow.tagNumber != null || cow.tagColor != null) {
+                    if (usesTags && (cow.tagNumber != null || cow.tagColor != null)) {
                         CattleTagBadge(
                             tagNumber = cow.tagNumber,
                             tagColor = cow.tagColor,
@@ -91,11 +100,19 @@ fun CowCard(
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 SmartText(
-                                    text = cow.name ?: "Unnamed Cow",
+                                    text = primaryIdentifier,
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
                                     backgroundColor = genderColor
                                 )
+                                if (secondaryIdentifier != null && identifierMode.usesNames() && identifierMode.usesTags()) {
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    SmartText(
+                                        text = "Tag: $secondaryIdentifier",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        backgroundColor = genderColor
+                                    )
+                                }
                                 SmartText(
                                     text = cow.classification.name,
                                     style = MaterialTheme.typography.bodyMedium,

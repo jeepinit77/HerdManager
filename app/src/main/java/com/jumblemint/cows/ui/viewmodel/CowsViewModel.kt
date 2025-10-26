@@ -3,13 +3,15 @@ package com.jumblemint.cows.ui.viewmodel
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.jumblemint.cows.CattleApplication
-import com.jumblemint.cows.data.model.Cow
-import com.jumblemint.cows.data.model.Status
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.model.Classification
+import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Gender
+import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.repository.CattleRepository
-import com.jumblemint.cows.util.AgeRangeKeys // Import centralized keys
 import com.jumblemint.cows.util.AgeUtils // Import centralized utils
+import com.jumblemint.cows.util.usesNames
+import com.jumblemint.cows.util.usesTags
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,8 +20,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.Period
-
-// Local AgeRangeKeys object removed, will use the one from com.jumblemint.cows.util
 
 class CowsViewModel(
     application: CattleApplication,
@@ -48,13 +48,14 @@ class CowsViewModel(
             combine(
                 repository.getAllCows(),
                 repository.getAllPastures(),
-                _uiState 
-            ) { allCows, pastures, currentState ->
+                repository.getAnimalIdentifierModeFlow(),
+                _uiState
+            ) { allCows, pastures, identifierMode, currentState ->
                 val pastureNames = pastures.map { it.name }
                 val availableBreeds = allCows.mapNotNull { it.breed }.distinct().sorted()
                 val availableTagColors = allCows.mapNotNull { it.tagColor }.distinct().sorted()
                 val today = LocalDate.now()
-                
+
                 val filteredCows = allCows.filter { cow ->
                     val statusMatch = currentState.selectedStatuses.isEmpty() || currentState.selectedStatuses.contains(cow.status)
                     val classificationMatch = currentState.selectedClassifications.isEmpty() || currentState.selectedClassifications.contains(cow.classification)
@@ -69,34 +70,47 @@ class CowsViewModel(
                     val tagColorMatch = currentState.selectedTagColors.isEmpty() || cow.tagColor?.let { currentState.selectedTagColors.contains(it) } == true
                     val watchedMatch = currentState.selectedIsWatched == null || cow.isWatched == currentState.selectedIsWatched
                     val ageMatch = cowMatchesSelectedAgeRanges(cow, currentState.selectedAgeRanges, today) // Updated to use new helper
-                    
-                    val searchMatch = if (currentState.searchQuery.isBlank()) {
-                        true
-                    } else {
-                        val query = currentState.searchQuery.lowercase()
-                        (cow.name?.lowercase()?.contains(query) == true) ||
-                        (cow.tagNumber?.lowercase()?.contains(query) == true) ||
-                        cow.classification.name.lowercase().contains(query) ||
-                        cow.gender.name.lowercase().contains(query) ||
-                        (cow.breed?.lowercase()?.contains(query) == true) ||
-                        (cow.status.name.lowercase().contains(query) == true) || 
-                        (cow.tagColor?.lowercase()?.contains(query) == true)
-                    }
-                    
+
+                    val searchMatch = cowMatchesSearchQuery(cow, currentState.searchQuery, identifierMode)
+
                     statusMatch && classificationMatch && genderMatch && pastureMatch && breedMatch && tagColorMatch && watchedMatch && ageMatch && searchMatch
                 }
-                
-                Quartet(filteredCows, pastureNames, availableBreeds, availableTagColors)
-            }.collect { (filteredCows, pastureNames, availableBreeds, availableTagColors) ->
-                _uiState.value = _uiState.value.copy(
+
+                currentState.copy(
                     cows = filteredCows,
                     availablePastures = pastureNames,
                     availableBreeds = availableBreeds,
                     availableTagColors = availableTagColors,
+                    identifierMode = identifierMode,
                     isLoading = false
                 )
+            }.collect { updatedState ->
+                _uiState.value = updatedState
             }
         }
+    }
+
+    private fun cowMatchesSearchQuery(
+        cow: Cow,
+        searchQuery: String,
+        identifierMode: AnimalIdentifierMode
+    ): Boolean {
+        if (searchQuery.isBlank()) return true
+
+        val query = searchQuery.lowercase()
+        val identifierMatch = when {
+            identifierMode.usesNames() && identifierMode.usesTags() -> listOfNotNull(cow.name, cow.tagNumber)
+            identifierMode.usesNames() -> listOfNotNull(cow.name)
+            identifierMode.usesTags() -> listOfNotNull(cow.tagNumber)
+            else -> emptyList()
+        }.any { it.lowercase().contains(query) }
+
+        return identifierMatch ||
+            cow.classification.name.lowercase().contains(query) ||
+            cow.gender.name.lowercase().contains(query) ||
+            (cow.breed?.lowercase()?.contains(query) == true) ||
+            (cow.status.name.lowercase().contains(query) == true) ||
+            (cow.tagColor?.lowercase()?.contains(query) == true)
     }
         
     fun toggleStatusFilter(status: Status) {
@@ -174,9 +188,10 @@ class CowsViewModel(
     ): Int {
         val allCows = repository.getAllCows().first()
         val pastures = repository.getAllPastures().first()
+        val identifierMode = repository.getAnimalIdentifierMode()
         val currentState = _uiState.value
         val today = LocalDate.now()
-        
+
         val filteredCows = allCows.filter { cow ->
             // Use preview filters
             val statusMatch = previewStatuses.isEmpty() || previewStatuses.contains(cow.status)
@@ -194,22 +209,11 @@ class CowsViewModel(
             val ageMatch = cowMatchesSelectedAgeRanges(cow, previewAgeRanges.toSet(), today)
             
             // Keep current search query
-            val searchMatch = if (currentState.searchQuery.isBlank()) {
-                true
-            } else {
-                val query = currentState.searchQuery.lowercase()
-                (cow.name?.lowercase()?.contains(query) == true) ||
-                (cow.tagNumber?.lowercase()?.contains(query) == true) ||
-                cow.classification.name.lowercase().contains(query) ||
-                cow.gender.name.lowercase().contains(query) ||
-                (cow.breed?.lowercase()?.contains(query) == true) ||
-                (cow.status.name.lowercase().contains(query) == true) || 
-                (cow.tagColor?.lowercase()?.contains(query) == true)
-            }
-            
+            val searchMatch = cowMatchesSearchQuery(cow, currentState.searchQuery, identifierMode)
+
             statusMatch && classificationMatch && genderMatch && pastureMatch && breedMatch && tagColorMatch && watchedMatch && ageMatch && searchMatch
         }
-        
+
         return filteredCows.size
     }
 
@@ -246,8 +250,6 @@ class CowsViewModel(
     }
 }
 
-data class Quartet<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
-
 data class CowsUiState(
     val cows: List<Cow> = emptyList(),
     val isLoading: Boolean = true,
@@ -263,5 +265,6 @@ data class CowsUiState(
     val availableTagColors: List<String> = emptyList(),
     val selectedIsWatched: Boolean? = null,
     val selectedAgeRanges: Set<String> = emptySet(),
-    val error: String? = null
+    val error: String? = null,
+    val identifierMode: AnimalIdentifierMode = AnimalIdentifierMode.BOTH
 )

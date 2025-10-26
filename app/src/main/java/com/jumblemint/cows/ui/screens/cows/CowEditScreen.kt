@@ -50,6 +50,10 @@ import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
 import com.jumblemint.cows.ui.viewmodel.CowDetailUiState
 import com.jumblemint.cows.ui.components.UnsavedChangesDialog
+import com.jumblemint.cows.util.identifierRequirementMessage
+import com.jumblemint.cows.util.isIdentifierSatisfied
+import com.jumblemint.cows.util.usesNames
+import com.jumblemint.cows.util.usesTags
 import kotlin.collections.buildMap
 import kotlinx.coroutines.launch
 
@@ -103,8 +107,8 @@ fun CowEditScreen(
     val selectedFather = remember(uiState.fatherId, uiState.availableFathers) {
         uiState.availableFathers.find { it.id == uiState.fatherId }
     }
-    val motherDisplay = selectedMother?.let { formatParentDisplay(it) } ?: uiState.motherName.orEmpty()
-    val fatherDisplay = selectedFather?.let { formatParentDisplay(it) } ?: uiState.fatherName.orEmpty()
+    val motherDisplay = selectedMother?.let { formatParentDisplay(it, uiState.identifierMode) } ?: uiState.motherName.orEmpty()
+    val fatherDisplay = selectedFather?.let { formatParentDisplay(it, uiState.identifierMode) } ?: uiState.fatherName.orEmpty()
 
     val fatherOptions = remember(uiState.availableFathers, uiState.fatherId) {
         val bulls = uiState.availableFathers.filter { it.classification == Classification.BULL }
@@ -147,6 +151,7 @@ fun CowEditScreen(
             classificationOptions = listOf(Classification.COW, Classification.HEIFER),
             enablePastureFilter = true,
             allowClearSelection = true,
+            identifierMode = uiState.identifierMode,
             onSelect = { cow -> viewModel.updateMother(cow.id) },
             onClearSelection = { viewModel.updateMother(null) },
             onDismiss = { showMotherPicker = false }
@@ -160,6 +165,7 @@ fun CowEditScreen(
             pastureNames = pastureNames,
             enablePastureFilter = true,
             allowClearSelection = true,
+            identifierMode = uiState.identifierMode,
             onSelect = { cow -> viewModel.updateFather(cow.id) },
             onClearSelection = { viewModel.updateFather(null) },
             onDismiss = { showFatherPicker = false }
@@ -202,8 +208,11 @@ fun CowEditScreen(
         viewModel.saveAttemptSignal.collect {
             saveAttempted = true
             // Use the uiState captured at the moment of the signal for initial error check
-            val uiStateAtSignalTime = uiState 
-            val missingOnProfile = (uiStateAtSignalTime.name.isBlank() && uiStateAtSignalTime.tagNumber.isBlank()) ||
+            val uiStateAtSignalTime = uiState
+            val missingOnProfile = (!uiStateAtSignalTime.identifierMode.isIdentifierSatisfied(
+                uiStateAtSignalTime.name,
+                uiStateAtSignalTime.tagNumber
+            )) ||
                     (uiStateAtSignalTime.gender == null) ||
                     (uiStateAtSignalTime.classification == null)
 
@@ -217,9 +226,20 @@ fun CowEditScreen(
                         // Now that the Profile tab (page 0) is visible, request focus based on LATEST uiState.
                         val latestUiState = viewModel.uiState.value
                         when {
-                            latestUiState.name.isBlank() && latestUiState.tagNumber.isBlank() -> {
-                                nameFocusRequester.requestFocus()
-                                keyboardController?.show()
+                            !latestUiState.identifierMode.isIdentifierSatisfied(
+                                latestUiState.name,
+                                latestUiState.tagNumber
+                            ) -> {
+                                when {
+                                    latestUiState.identifierMode.usesNames() -> {
+                                        nameFocusRequester.requestFocus()
+                                        keyboardController?.show()
+                                    }
+                                    latestUiState.identifierMode.usesTags() -> {
+                                        tagFocusRequester.requestFocus()
+                                        keyboardController?.show()
+                                    }
+                                }
                             }
                             latestUiState.gender == null -> {
                                 genderBringRequester.bringIntoView()
@@ -234,9 +254,20 @@ fun CowEditScreen(
                     scope.launch {
                         val latestUiState = viewModel.uiState.value
                         when {
-                            latestUiState.name.isBlank() && latestUiState.tagNumber.isBlank() -> {
-                                nameFocusRequester.requestFocus()
-                                keyboardController?.show()
+                            !latestUiState.identifierMode.isIdentifierSatisfied(
+                                latestUiState.name,
+                                latestUiState.tagNumber
+                            ) -> {
+                                when {
+                                    latestUiState.identifierMode.usesNames() -> {
+                                        nameFocusRequester.requestFocus()
+                                        keyboardController?.show()
+                                    }
+                                    latestUiState.identifierMode.usesTags() -> {
+                                        tagFocusRequester.requestFocus()
+                                        keyboardController?.show()
+                                    }
+                                }
                             }
                             latestUiState.gender == null -> {
                                 genderBringRequester.bringIntoView()
@@ -272,7 +303,9 @@ fun CowEditScreen(
             // Build a list of validation errors to show all at once
             val validationErrors = if (saveAttempted) {
                 buildList {
-                    if (uiState.name.isBlank() && uiState.tagNumber.isBlank()) add("Please enter a Name or a Tag Number.")
+                    if (!uiState.identifierMode.isIdentifierSatisfied(uiState.name, uiState.tagNumber)) {
+                        add(uiState.identifierMode.identifierRequirementMessage())
+                    }
                     if (uiState.gender == null) add("Please select a Gender.")
                     if (uiState.classification == null) add("Please select a Classification.")
                 }
@@ -305,7 +338,7 @@ fun CowEditScreen(
             ) {
                 tabTitles.forEachIndexed { index, title ->
                     val profileHasError = saveAttempted && (
-                        (uiState.name.isBlank() && uiState.tagNumber.isBlank()) ||
+                        !uiState.identifierMode.isIdentifierSatisfied(uiState.name, uiState.tagNumber) ||
                         uiState.gender == null ||
                         uiState.classification == null
                     )
@@ -398,96 +431,133 @@ private fun ProfileTabContent(
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Identification", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-        val fieldsBlankError = saveAttempted && uiState.name.isBlank() && uiState.tagNumber.isBlank()
+        val usesNames = uiState.identifierMode.usesNames()
+        val usesTags = uiState.identifierMode.usesTags()
+        val identifierError = saveAttempted && !uiState.identifierMode.isIdentifierSatisfied(uiState.name, uiState.tagNumber)
+        val requirementMessage = uiState.identifierMode.identifierRequirementMessage()
+        val showNameMessage = identifierError && usesNames && uiState.name.isBlank() && (!usesTags || uiState.tagNumber.isBlank())
+        val showTagMessage = identifierError && usesTags && uiState.tagNumber.isBlank() && (!usesNames || uiState.name.isBlank())
+        val nameLabel = if (uiState.identifierMode == AnimalIdentifierMode.NAMES) "Name*" else "Name"
+        val tagLabel = if (uiState.identifierMode == AnimalIdentifierMode.TAG_NUMBERS) "Tag Number*" else "Tag Number"
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically 
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp) 
-            ) {
-                OutlinedTextField(
-                    value = uiState.name,
-                    onValueChange = viewModel::updateName,
-                    label = { Text("Name*") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(nameFocusRequester),
-                    isError = fieldsBlankError,
-                    supportingText = if (fieldsBlankError && uiState.tagNumber.isBlank()) { 
-                        { Text("Name or Tag Number must be provided.") } 
-                    } else null,
-                    colors = defaultOutlinedTextFieldColors()
-                )
-
-                Box { 
-                    OutlinedTextField(
-                        value = uiState.tagNumber,
-                        onValueChange = viewModel::updateTagNumber,
-                        label = { Text("Tag Number*") },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .focusRequester(tagFocusRequester),
-                        enabled = !uiState.isNameTagLinked,
-                        isError = fieldsBlankError,
-                        supportingText = null, 
-                        colors = defaultOutlinedTextFieldColors()
-                    )
-                    if (uiState.isNameTagLinked) {
-                        Box(
+        when {
+            usesNames && usesTags -> {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = uiState.name,
+                            onValueChange = viewModel::updateName,
+                            label = { Text(nameLabel) },
                             modifier = Modifier
-                                .matchParentSize()
-                                .pointerInput(Unit) {},
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Box(
+                                .fillMaxWidth()
+                                .focusRequester(nameFocusRequester),
+                            isError = identifierError && uiState.name.isBlank() && uiState.tagNumber.isBlank(),
+                            supportingText = if (showNameMessage) { { Text(requirementMessage) } } else null,
+                            colors = defaultOutlinedTextFieldColors()
+                        )
+
+                        Box {
+                            OutlinedTextField(
+                                value = uiState.tagNumber,
+                                onValueChange = viewModel::updateTagNumber,
+                                label = { Text(tagLabel) },
                                 modifier = Modifier
-                                    .background(
-                                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
-                                        RoundedCornerShape(4.dp)
-                                    )
-                                    .padding(horizontal = 12.dp, vertical = 8.dp)
-                            ) {
-                                Text(
-                                    text = "Linked to name field",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.bodyLarge
-                                )
+                                    .fillMaxWidth()
+                                    .focusRequester(tagFocusRequester),
+                                enabled = !uiState.isNameTagLinked,
+                                isError = identifierError && uiState.name.isBlank() && uiState.tagNumber.isBlank(),
+                                supportingText = if (showTagMessage && !uiState.isNameTagLinked) { { Text(requirementMessage) } } else null,
+                                colors = defaultOutlinedTextFieldColors()
+                            )
+                            if (uiState.isNameTagLinked) {
+                                Box(
+                                    modifier = Modifier
+                                        .matchParentSize()
+                                        .pointerInput(Unit) {},
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(
+                                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+                                                RoundedCornerShape(4.dp)
+                                            )
+                                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                                    ) {
+                                        Text(
+                                            text = "Linked to name field",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            textAlign = TextAlign.Center,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    }
+                                }
                             }
                         }
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .width(IntrinsicSize.Min)
+                            .fillMaxHeight()
+                            .clickable(
+                                onClick = { viewModel.toggleNameTagLink() },
+                                role = Role.Button,
+                                onClickLabel = if (uiState.isNameTagLinked) "Unlink Name and Tag Number" else "Link Name and Tag Number"
+                            )
+                            .padding(horizontal = 2.dp)
+                            .semantics {
+                                contentDescription = if (uiState.isNameTagLinked) "Name and Tag Number are linked. Click to unlink."
+                                                   else "Name and Tag Number are unlinked. Click to link."
+                            },
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        val linkIndicatorColor = if (uiState.isNameTagLinked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                        Text("╗", color = linkIndicatorColor, style = MaterialTheme.typography.headlineSmall)
+                        Icon(
+                            imageVector = if (uiState.isNameTagLinked) Icons.Filled.Link else Icons.Filled.LinkOff,
+                            contentDescription = null,
+                            tint = linkIndicatorColor,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Text("╝", color = linkIndicatorColor, style = MaterialTheme.typography.headlineSmall)
                     }
                 }
             }
 
-            Column(
-                modifier = Modifier
-                    .width(IntrinsicSize.Min) 
-                    .fillMaxHeight() 
-                    .clickable(
-                        onClick = { viewModel.toggleNameTagLink() },
-                        role = Role.Button,
-                        onClickLabel = if (uiState.isNameTagLinked) "Unlink Name and Tag Number" else "Link Name and Tag Number"
-                    )
-                    .padding(horizontal = 2.dp) 
-                    .semantics { 
-                        contentDescription = if (uiState.isNameTagLinked) "Name and Tag Number are linked. Click to unlink." 
-                                           else "Name and Tag Number are unlinked. Click to link."
-                    },
-                horizontalAlignment = Alignment.End, 
-                verticalArrangement = Arrangement.SpaceEvenly 
-            ) {
-                val linkIndicatorColor = if (uiState.isNameTagLinked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                Text("╗", color = linkIndicatorColor, style = MaterialTheme.typography.headlineSmall) 
-                Icon(
-                    imageVector = if (uiState.isNameTagLinked) Icons.Filled.Link else Icons.Filled.LinkOff,
-                    contentDescription = null, 
-                    tint = linkIndicatorColor,
-                    modifier = Modifier.size(32.dp) 
+            usesNames -> {
+                OutlinedTextField(
+                    value = uiState.name,
+                    onValueChange = viewModel::updateName,
+                    label = { Text(nameLabel) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(nameFocusRequester),
+                    isError = identifierError,
+                    supportingText = if (showNameMessage) { { Text(requirementMessage) } } else null,
+                    colors = defaultOutlinedTextFieldColors()
                 )
-                Text("╝", color = linkIndicatorColor, style = MaterialTheme.typography.headlineSmall) 
+            }
+
+            usesTags -> {
+                OutlinedTextField(
+                    value = uiState.tagNumber,
+                    onValueChange = viewModel::updateTagNumber,
+                    label = { Text(tagLabel) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(tagFocusRequester),
+                    isError = identifierError,
+                    supportingText = if (showTagMessage) { { Text(requirementMessage) } } else null,
+                    colors = defaultOutlinedTextFieldColors()
+                )
             }
         }
 

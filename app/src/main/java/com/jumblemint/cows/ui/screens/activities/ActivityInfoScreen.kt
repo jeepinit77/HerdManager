@@ -118,9 +118,10 @@ fun ActivityInfoScreen(
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 if (uiState.associatedCows.isNotEmpty()) {
-                    uiState.associatedCows.forEach { cow -> 
+                    uiState.associatedCows.forEach { cow ->
                         CowCard(
                             cow = cow,
+                            identifierMode = uiState.identifierMode,
                             onClick = { onNavigateToCow(cow.id) }
                         )
                     }

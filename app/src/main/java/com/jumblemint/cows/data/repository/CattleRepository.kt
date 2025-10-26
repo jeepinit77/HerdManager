@@ -16,6 +16,7 @@ import com.jumblemint.cows.ui.viewmodel.PastureWithCowCount
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.util.LinkedHashSet
 import java.util.UUID
@@ -126,6 +127,17 @@ class CattleRepository(
 
     suspend fun setAnimalIdentifierMode(mode: AnimalIdentifierMode) {
         insertOrUpdateSetting(Settings(SettingsKeys.ANIMAL_IDENTIFIER_MODE, mode.name))
+    }
+
+    fun getAnimalIdentifierModeFlow(): Flow<AnimalIdentifierMode> =
+        getAllSettings().map { settings ->
+            val value = settings.firstOrNull { it.key == SettingsKeys.ANIMAL_IDENTIFIER_MODE }?.value
+            AnimalIdentifierMode.fromValue(value)
+        }
+
+    suspend fun getAnimalIdentifierMode(): AnimalIdentifierMode {
+        val setting = getSettingByKey(SettingsKeys.ANIMAL_IDENTIFIER_MODE)
+        return AnimalIdentifierMode.fromValue(setting?.value)
     }
 
     suspend fun markInitialSetupComplete() {

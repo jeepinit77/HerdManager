@@ -74,8 +74,8 @@ fun AddBirthScreen(
     val selectedFather = remember(uiState.fatherId, uiState.availableFathers) {
         uiState.availableFathers.find { it.id == uiState.fatherId }
     }
-    val motherDisplay = selectedMother?.let { formatParentDisplay(it) } ?: ""
-    val fatherDisplay = selectedFather?.let { formatParentDisplay(it) } ?: ""
+    val motherDisplay = selectedMother?.let { formatParentDisplay(it, uiState.identifierMode) } ?: ""
+    val fatherDisplay = selectedFather?.let { formatParentDisplay(it, uiState.identifierMode) } ?: ""
     val motherError = uiState.error?.contains("Mother") == true
 
     val pastureEntries = remember(pastureNames) {
@@ -138,6 +138,7 @@ fun AddBirthScreen(
             pastureNames = pastureNames,
             classificationOptions = listOf(Classification.COW, Classification.HEIFER),
             enablePastureFilter = true,
+            identifierMode = uiState.identifierMode,
             onSelect = { cow -> viewModel.updateMother(cow.id) },
             onDismiss = { showMotherPicker = false }
         )
@@ -151,6 +152,7 @@ fun AddBirthScreen(
             enablePastureFilter = true,
             allowClearSelection = true,
             quickPicks = uiState.recentSires,
+            identifierMode = uiState.identifierMode,
             onSelect = { cow -> viewModel.updateFather(cow.id) },
             onClearSelection = { viewModel.updateFather(null) },
             onDismiss = { showFatherPicker = false }

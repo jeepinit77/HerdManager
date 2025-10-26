@@ -41,6 +41,7 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.navigation.*
 import com.jumblemint.cows.navigation.SETTINGS_PAGE_INDEX
 import com.jumblemint.cows.data.model.ActivityTypeConfig
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.model.Breed
 import com.jumblemint.cows.data.model.Settings
 import com.jumblemint.cows.data.model.SettingsKeys
@@ -76,6 +77,7 @@ class MainActivity : ComponentActivity() {
             }
             val themeManager = remember(repository) { ThemeManager(repository) }
             val themeMode by themeManager.getThemeModeFlow().collectAsState(initial = ThemeMode.SYSTEM)
+            val identifierMode by repository.getAnimalIdentifierModeFlow().collectAsState(initial = AnimalIdentifierMode.BOTH)
 
             val defaultBreeds = remember { Breed.getDefaultBreeds() }
             val defaultTagColors = remember { TagColor.getDefaultColors() }
@@ -134,6 +136,7 @@ class MainActivity : ComponentActivity() {
                         defaultBreeds = defaultBreeds,
                         defaultTagColors = defaultTagColors,
                         defaultActivityTypes = defaultActivityTypes,
+                        initialIdentifierMode = identifierMode,
                         onExit = { showSetupWizard = false },
                         onFinished = {
                             showSetupWizard = false

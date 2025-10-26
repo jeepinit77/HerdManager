@@ -8,6 +8,7 @@ import com.jumblemint.cows.data.export.DataExporter
 import com.jumblemint.cows.data.import.DataImporter
 import com.jumblemint.cows.data.import.ImportResult
 import com.jumblemint.cows.data.import.ConflictResolution
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -47,17 +48,32 @@ class SettingsViewModel(
                 val tagColors = repository.getAllTagColors().first().map { it.name }
                 val activityTypes = repository.getAllActivityTypes().first().map { it.displayName }
                 val isSampleDataInstalled = repository.isSampleDataInstalled()
+                val identifierMode = repository.getAnimalIdentifierMode()
 
                 _uiState.value = _uiState.value.copy(
                     tagColors = tagColors,
                     activityTypes = activityTypes,
                     isSampleDataInstalled = isSampleDataInstalled,
+                    identifierMode = identifierMode,
                     isLoading = false // Settings loaded
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
                     error = "Failed to load settings: ${e.message}",
                     isLoading = false
+                )
+            }
+        }
+    }
+
+    fun updateAnimalIdentifierMode(mode: AnimalIdentifierMode) {
+        viewModelScope.launch {
+            try {
+                repository.setAnimalIdentifierMode(mode)
+                _uiState.value = _uiState.value.copy(identifierMode = mode)
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    error = "Failed to update identification preference: ${e.message}"
                 )
             }
         }
@@ -319,6 +335,7 @@ data class SettingsUiState(
     val activityTypes: List<String> = emptyList(),
     val defaultCalfPasture: String? = null,
     val isSampleDataInstalled: Boolean = false,
+    val identifierMode: AnimalIdentifierMode = AnimalIdentifierMode.BOTH,
     val appVersion: String = "",
     val lastSyncTime: String? = null,
     val isLoading: Boolean = true,

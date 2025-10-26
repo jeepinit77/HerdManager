@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.model.Cow
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
@@ -31,6 +32,8 @@ import com.jumblemint.cows.ui.components.AnimalFilterState
 import com.jumblemint.cows.ui.viewmodel.WorkingListUiState
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModel
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModelFactory
+import com.jumblemint.cows.util.primaryIdentifier
+import com.jumblemint.cows.util.usesTags
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -65,6 +68,7 @@ fun WorkingListScreen(
     var showFilterScreen by remember { mutableStateOf(false) }
 
     val tagColorMap = rememberTagColorMap(repository)
+    val identifierMode by repository.getAnimalIdentifierModeFlow().collectAsState(initial = AnimalIdentifierMode.BOTH)
 
     if (showFilterScreen) {
         AnimalFilterScreen(
@@ -169,7 +173,8 @@ fun WorkingListScreen(
                         }
                     },
                     resolvedTagColor = resolveTagColor(cow.tagColor, tagColorMap),
-                    onCowClick = { onCowClick(cow.id) }
+                    onCowClick = { onCowClick(cow.id) },
+                    identifierMode = identifierMode
                 )
             }
         }
@@ -207,9 +212,12 @@ fun WorkingListItem(
     isChecked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     onCowClick: (Long) -> Unit,
+    identifierMode: AnimalIdentifierMode,
     resolvedTagColor: Color? = null,
     modifier: Modifier = Modifier
 ) {
+    val displayIdentifier = identifierMode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "Unknown")
+    val showTagBadge = identifierMode.usesTags() && !cow.tagNumber.isNullOrBlank() && resolvedTagColor != null
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -243,7 +251,7 @@ fun WorkingListItem(
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = cow.name ?: cow.tagNumber ?: "Unknown",
+                    text = displayIdentifier,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = if (isChecked) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -258,8 +266,8 @@ fun WorkingListItem(
                 }
                 // TODO: Display pasture information (cow.pastureId) here when ready.
             }
-            if (!cow.tagNumber.isNullOrBlank() && resolvedTagColor != null) {
-                val tagBackgroundColor: androidx.compose.ui.graphics.Color = resolvedTagColor // Explicit non-null type
+            if (showTagBadge) {
+                val tagBackgroundColor: androidx.compose.ui.graphics.Color = resolvedTagColor!! // Explicit non-null type
                 Spacer(modifier = Modifier.width(8.dp))
                 Box(
                     modifier = Modifier

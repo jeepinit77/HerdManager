@@ -10,8 +10,10 @@ import com.jumblemint.cows.data.model.Cow
 import com.jumblemint.cows.data.model.Gender
 import com.jumblemint.cows.data.model.Pasture
 import com.jumblemint.cows.data.model.Status
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.sync.SyncService
+import com.jumblemint.cows.util.primaryIdentifier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,6 +49,7 @@ class AddBirthViewModel(
                 val pastures = repository.getAllPastures().first()
                 val recentSires = repository.getRecentSires()
                     .filter { sire -> fathers.any { it.id == sire.id } }
+                val identifierMode = repository.getAnimalIdentifierMode()
 
                 setState(
                     _uiState.value.copy(
@@ -55,6 +58,7 @@ class AddBirthViewModel(
                         availableFathers = fathers,
                         availablePastures = pastures,
                         recentSires = recentSires,
+                        identifierMode = identifierMode,
                         isLoading = false,
                         isSaved = false,
                         error = null
@@ -79,7 +83,7 @@ class AddBirthViewModel(
         val newCalfName = if (updatedState.calfName.isBlank() && updatedState.motherId != null) {
             val mother = updatedState.availableMothers.find { it.id == updatedState.motherId }
             mother?.let {
-                val motherIdentifier = it.name?.takeIf { name -> name.isNotBlank() } ?: it.tagNumber ?: ""
+                val motherIdentifier = state.identifierMode.primaryIdentifier(it.name, it.tagNumber, fallback = "")
                 if (motherIdentifier.isNotBlank()) {
                     val birthYear = updatedState.birthDate?.year?.toString() ?: LocalDate.now().year.toString()
                     "$motherIdentifier $birthYear"
@@ -99,7 +103,7 @@ class AddBirthViewModel(
         val mother = state.availableMothers.find { it.id == motherId }
         val newCalfName = if (state.calfName.isBlank()) {
             if (mother != null) {
-                val motherIdentifier = mother.name?.takeIf { it.isNotBlank() } ?: mother.tagNumber ?: ""
+                val motherIdentifier = state.identifierMode.primaryIdentifier(mother.name, mother.tagNumber, fallback = "")
                 if (motherIdentifier.isNotBlank()) {
                     val birthYear = state.birthDate?.year?.toString() ?: LocalDate.now().year.toString()
                     "$motherIdentifier $birthYear"
@@ -304,6 +308,7 @@ data class AddBirthUiState(
     val availablePastures: List<Pasture> = emptyList(),
     val calfPastureId: String? = null,
     val recentSires: List<Cow> = emptyList(),
+    val identifierMode: AnimalIdentifierMode = AnimalIdentifierMode.BOTH,
     val isLoading: Boolean = true,
     val isSaved: Boolean = false,
     val error: String? = null,

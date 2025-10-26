@@ -30,6 +30,10 @@ import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.ui.theme.getCardBackgroundColor
 import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.util.primaryIdentifier
+import com.jumblemint.cows.util.secondaryIdentifier
+import com.jumblemint.cows.util.usesNames
+import com.jumblemint.cows.util.usesTags
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -84,7 +88,7 @@ fun AddActivityScreen(
         uiState.availableActivityTypes.map { it.displayName }
     }
 
-    val filteredCows = remember(uiState.availableCows, filterState, searchQuery) {
+    val filteredCows = remember(uiState.availableCows, filterState, searchQuery, uiState.identifierMode) {
         uiState.availableCows.filter { cow ->
             val matchesGender = filterState.genders.isEmpty() || cow.gender in filterState.genders
             val matchesClassification = filterState.classifications.isEmpty() || cow.classification in filterState.classifications
@@ -94,9 +98,14 @@ fun AddActivityScreen(
             val matchesBreed = filterState.breeds.isEmpty() || (cow.breed != null && cow.breed in filterState.breeds)
             val matchesTagColor = filterState.tagColors.isEmpty() || (cow.tagColor != null && cow.tagColor in filterState.tagColors)
             val matchesWatched = filterState.isWatched?.let { cow.isWatched == it } ?: true
-            val matchesSearch = searchQuery.isBlank() ||
-                cow.name?.contains(searchQuery, ignoreCase = true) == true ||
-                cow.tagNumber?.contains(searchQuery, ignoreCase = true) == true
+            val matchesSearch = if (searchQuery.isBlank()) {
+                true
+            } else {
+                val query = searchQuery.lowercase()
+                val nameMatch = uiState.identifierMode.usesNames() && cow.name?.lowercase()?.contains(query) == true
+                val tagMatch = uiState.identifierMode.usesTags() && cow.tagNumber?.lowercase()?.contains(query) == true
+                nameMatch || tagMatch
+            }
             matchesGender && matchesClassification && matchesPasture &&
                 matchesBreed && matchesTagColor && matchesWatched && matchesSearch
         }
@@ -456,6 +465,7 @@ fun AddActivityScreen(
                         CowSelectionCard(
                             cow = cow,
                             isSelected = cow.id in uiState.selectedCows,
+                            identifierMode = uiState.identifierMode,
                             onSelectionChanged = { isSelected ->
                                 if (isSelected) {
                                     viewModel.selectCow(cow.id)
@@ -503,6 +513,7 @@ private fun getActiveFilterCount(filterState: AnimalFilterState): Int {
 fun CowSelectionCard(
     cow: Cow,
     isSelected: Boolean,
+    identifierMode: AnimalIdentifierMode,
     onSelectionChanged: (Boolean) -> Unit
 ) {
     Card(
@@ -530,8 +541,10 @@ fun CowSelectionCard(
             )
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
+                val displayIdentifier = identifierMode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "Unnamed Animal")
+                val secondaryIdentifier = identifierMode.secondaryIdentifier(cow.name, cow.tagNumber)
                 Text(
-                    text = cow.name ?: cow.tagNumber ?: "Unnamed Animal",
+                    text = displayIdentifier,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Medium,
                     color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
@@ -540,7 +553,9 @@ fun CowSelectionCard(
                 val details = mutableListOf<String>()
                 details.add(cow.gender.name.lowercase().replaceFirstChar { it.uppercase() })
                 details.add(cow.classification.name.lowercase().replaceFirstChar { it.uppercase() })
-                if (cow.tagNumber != null && cow.tagNumber != cow.name) details.add("Tag: ${cow.tagNumber}")
+                if (identifierMode.usesTags() && identifierMode.usesNames() && secondaryIdentifier != null) {
+                    details.add("Tag: $secondaryIdentifier")
+                }
                 Text(
                     text = details.joinToString(" • "),
                     style = MaterialTheme.typography.bodyMedium,

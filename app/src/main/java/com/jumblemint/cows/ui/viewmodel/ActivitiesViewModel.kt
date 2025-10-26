@@ -6,10 +6,14 @@ import androidx.lifecycle.viewModelScope
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.model.Activity
 import com.jumblemint.cows.data.model.ActivityType
-import com.jumblemint.cows.data.model.Status
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.model.Classification
 import com.jumblemint.cows.data.model.Gender
+import com.jumblemint.cows.data.model.Status
 import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.util.primaryIdentifier
+import com.jumblemint.cows.util.usesNames
+import com.jumblemint.cows.util.usesTags
 import java.time.LocalDate
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,8 +39,9 @@ class ActivitiesViewModel(
             combine(
                 repository.getAllActivities(),
                 repository.getAllCows(),
-                repository.getAllPastures()
-            ) { activities, allCows, pastures ->
+                repository.getAllPastures(),
+                repository.getAnimalIdentifierModeFlow()
+            ) { activities, allCows, pastures, identifierMode ->
                 val currentState = _uiState.value
                 val pastureNames = pastures.map { it.name }
 
@@ -48,6 +53,11 @@ class ActivitiesViewModel(
                 // Filter activities based on search and filters
                 val filteredActivities = activitiesInRange.filter { activity ->
                     val cow = allCows.find { it.id == activity.cowId }
+                    val associatedCows = if (activity.cowIds.isNotEmpty()) {
+                        activity.cowIds.mapNotNull { cowId -> allCows.find { it.id == cowId } }
+                    } else {
+                        listOfNotNull(cow)
+                    }
 
                     // Search filter
                     val searchMatch = if (currentState.searchQuery.isBlank()) {
@@ -56,11 +66,14 @@ class ActivitiesViewModel(
                         val query = currentState.searchQuery.lowercase()
                         activity.activityType.displayName.lowercase().contains(query) ||
                             activity.notes?.lowercase()?.contains(query) == true ||
-                            cow?.name?.lowercase()?.contains(query) == true ||
-                            cow?.tagNumber?.toString()?.contains(query) == true
+                            associatedCows.any { matchesIdentifierQuery(it, query, identifierMode) } ||
+                            associatedCows.any { it.classification.name.lowercase().contains(query) } ||
+                            associatedCows.any { it.gender.name.lowercase().contains(query) } ||
+                            associatedCows.any { it.breed?.lowercase()?.contains(query) == true } ||
+                            associatedCows.any { it.tagColor?.lowercase()?.contains(query) == true }
                     }
 
-                    cow?.let { c ->
+                    associatedCows.firstOrNull()?.let { c ->
                         // Status filter
                         val statusMatch = currentState.selectedStatuses.isEmpty() ||
                             currentState.selectedStatuses.contains(c.status)
@@ -100,12 +113,21 @@ class ActivitiesViewModel(
                 val grouped = groups.map { (groupId, acts) ->
                     // representative activity (first) for metadata/id when editing a single instance
                     val sample = acts.first()
-                    val cowNames = acts.map { it.cowId }.map { id -> allCows.find { cow -> cow.id == id }?.name }
+                    val identifiers = acts.flatMap { act ->
+                        when {
+                            act.cowIds.isNotEmpty() -> act.cowIds.mapNotNull { id ->
+                                allCows.find { cow -> cow.id == id }
+                            }
+                            act.cowId != 0L -> listOfNotNull(allCows.find { cow -> cow.id == act.cowId })
+                            else -> emptyList()
+                        }
+                    }.distinctBy { it.id }
+                        .map { cow -> identifierMode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "Unnamed Animal") }
                     ActivityGroup(
                         groupId = groupId,
                         sample = sample,
                         activities = acts,
-                        cowNames = cowNames
+                        cowIdentifiers = identifiers
                     )
                 }
 
@@ -115,10 +137,21 @@ class ActivitiesViewModel(
                     activityGroups = grouped.sortedWith(compareByDescending<ActivityGroup> { it.sample.date }.thenByDescending { it.sample.id }),
                     availablePastures = pastureNames,
                     usedActivityTypes = usedTypes,
+                    identifierMode = identifierMode,
                     isLoading = false
                 )
             }.collect { }
         }
+    }
+
+    private fun matchesIdentifierQuery(cow: com.jumblemint.cows.data.model.Cow, query: String, identifierMode: AnimalIdentifierMode): Boolean {
+        val identifiers = when {
+            identifierMode.usesNames() && identifierMode.usesTags() -> listOfNotNull(cow.name, cow.tagNumber)
+            identifierMode.usesNames() -> listOfNotNull(cow.name)
+            identifierMode.usesTags() -> listOfNotNull(cow.tagNumber)
+            else -> emptyList()
+        }
+        return identifiers.any { it.lowercase().contains(query) }
     }
     
     fun toggleStatusFilter(status: Status) {
@@ -319,12 +352,13 @@ data class ActivitiesUiState(
     val usedActivityTypes: List<ActivityType> = emptyList(),
     val searchQuery: String = "",
     val isLoading: Boolean = true,
-    val error: String? = null
+    val error: String? = null,
+    val identifierMode: AnimalIdentifierMode = AnimalIdentifierMode.BOTH
 )
 
 data class ActivityGroup(
     val groupId: String,
     val sample: Activity,
     val activities: List<Activity>,
-    val cowNames: List<String?>
+    val cowIdentifiers: List<String>
 )

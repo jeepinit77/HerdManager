@@ -16,6 +16,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import com.jumblemint.cows.data.model.Cow
+import com.jumblemint.cows.data.model.AnimalIdentifierMode
+import com.jumblemint.cows.util.primaryIdentifier
+import com.jumblemint.cows.util.secondaryIdentifier
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 
 @Composable
@@ -61,13 +64,13 @@ private fun DropdownIcon() {
     )
 }
 
-fun formatParentDisplay(cow: Cow): String {
-    val name = cow.name?.takeIf { it.isNotBlank() }
-    val tag = cow.tagNumber?.takeIf { it.isNotBlank() }
+fun formatParentDisplay(cow: Cow, mode: AnimalIdentifierMode = AnimalIdentifierMode.BOTH): String {
+    val primary = mode.primaryIdentifier(cow.name, cow.tagNumber, fallback = "")
+    val secondary = mode.secondaryIdentifier(cow.name, cow.tagNumber)
     return when {
-        name != null && tag != null -> "$name ($tag)"
-        name != null -> name
-        tag != null -> tag
+        primary.isNotBlank() && secondary != null -> "$primary ($secondary)"
+        primary.isNotBlank() -> primary
+        secondary != null -> secondary
         else -> ""
     }
 }

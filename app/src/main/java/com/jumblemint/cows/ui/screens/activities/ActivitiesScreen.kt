@@ -179,7 +179,7 @@ fun ActivitiesScreen(
                             items(uiState.activityGroups, key = { it.sample.id }) { group ->
                                 ActivityCard(
                                     activity = group.sample,
-                                    cowNames = group.cowNames.filterNotNull(),
+                                    cowIdentifiers = group.cowIdentifiers,
                                     onClick = { onActivityClick(group.sample.id) },
                                     onEdit = { onEditActivityClick(group.sample) },
                                     onDelete = {
@@ -702,7 +702,7 @@ private fun DateSelectorButton(
 @Composable
 fun ActivityCard(
     activity: Activity,
-    cowNames: List<String>,
+    cowIdentifiers: List<String>,
     onClick: () -> Unit,
     onEdit: (() -> Unit)? = null,
     onDelete: (() -> Unit)? = null
@@ -726,9 +726,9 @@ fun ActivityCard(
                         fontWeight = FontWeight.Bold,
                         backgroundColor = MaterialTheme.colorScheme.surfaceVariant
                     )
-                    if (cowNames.isNotEmpty()) {
+                    if (cowIdentifiers.isNotEmpty()) {
                         SmartText(
-                            text = cowNames.joinToString(", "),
+                            text = cowIdentifiers.joinToString(", "),
                             style = MaterialTheme.typography.bodyMedium,
                             backgroundColor = MaterialTheme.colorScheme.surfaceVariant
                         )
