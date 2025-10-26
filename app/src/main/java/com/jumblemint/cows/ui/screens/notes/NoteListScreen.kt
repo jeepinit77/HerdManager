@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +53,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.model.Note
+import com.jumblemint.cows.ui.components.AppAlertDialog
 import com.jumblemint.cows.ui.components.DatePickerField
 import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
@@ -150,7 +150,7 @@ fun NotesScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 88.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(uiState.filteredNotes, key = { it.id }) { note ->
@@ -418,7 +418,7 @@ private fun NoteFiltersDialog(
     var endDate by remember(initialEndDate) { mutableStateOf(initialEndDate?.let { Instant.ofEpochMilli(it).atZone(zoneId).toLocalDate() }) }
     var todoFilter by remember(initialTodoFilter) { mutableStateOf(initialTodoFilter) }
 
-    AlertDialog(
+    AppAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = {

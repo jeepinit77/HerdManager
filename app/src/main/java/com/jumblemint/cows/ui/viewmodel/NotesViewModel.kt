@@ -13,10 +13,8 @@ import java.util.Date
 import java.util.Locale
 
 class NotesViewModel(application: Application) : AndroidViewModel(application) {
-    // Corrected: Single argument for getDatabase and explicit type for database
     private val database: CattleDatabase = CattleDatabase.getDatabase(application)
-    // This should now resolve if CattleDatabase has noteDao()
-    private val noteDao = database.noteDao() 
+    private val noteDao = database.noteDao()
     
     private val _uiState = MutableStateFlow(NotesUiState())
     val uiState: StateFlow<NotesUiState> = _uiState.asStateFlow()
@@ -28,11 +26,9 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadNotes() {
         viewModelScope.launch {
             noteDao.getAllNotes()
-                // Corrected: Explicit type for e
-                .catch { e: Throwable -> 
+                .catch { e: Throwable ->
                     _uiState.value = _uiState.value.copy(error = e.message)
                 }
-                // Corrected: Explicit type for notes
                 .collect { notes: List<Note> ->
                     _uiState.update { current ->
                         val updated = current.copy(
@@ -187,7 +183,7 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                     timestamp = Date().time
                 )
                 noteDao.insert(incompleteNote)
-                
+
                 // Sync the updated note immediately if user is signed in
                 val application = getApplication<CattleApplication>()
                 application.authService.currentUser.first()?.let { currentUser ->
@@ -200,7 +196,6 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-}
 
     fun updateSearchQuery(query: String) {
         _uiState.update { current ->
@@ -240,7 +235,11 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
     fun updateEndDate(millis: Long?) {
         _uiState.update { current ->
             val newEnd = millis
-            val finalStart = if (newEnd != null && current.startDateMillis != null && newEnd < current.startDateMillis) newEnd else current.startDateMillis
+            val finalStart = if (newEnd != null && current.startDateMillis != null && newEnd < current.startDateMillis) {
+                newEnd
+            } else {
+                current.startDateMillis
+            }
             current.copy(
                 startDateMillis = finalStart,
                 endDateMillis = newEnd,
@@ -307,8 +306,16 @@ class NotesViewModel(application: Application) : AndroidViewModel(application) {
                 } else {
                     val titleMatch = note.title.lowercase(Locale.getDefault()).contains(query)
                     val textMatch = note.text.lowercase(Locale.getDefault()).contains(query)
-                    val timestampMatch = timestampFormatter.format(Date(note.timestamp)).lowercase(Locale.getDefault()).contains(query)
-                    val dueDateMatch = note.dueDate?.let { dateFormatter.format(Date(it)).lowercase(Locale.getDefault()).contains(query) } ?: false
+                    val timestampMatch = timestampFormatter
+                        .format(Date(note.timestamp))
+                        .lowercase(Locale.getDefault())
+                        .contains(query)
+                    val dueDateMatch = note.dueDate?.let {
+                        dateFormatter
+                            .format(Date(it))
+                            .lowercase(Locale.getDefault())
+                            .contains(query)
+                    } ?: false
                     titleMatch || textMatch || timestampMatch || dueDateMatch
                 }
 
