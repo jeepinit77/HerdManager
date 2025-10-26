@@ -8,8 +8,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,13 +45,13 @@ fun UnsavedChangesDialog(
             Text("You have unsaved changes. What would you like to do?")
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FilledTonalButton(onClick = onDismiss) {
                 Text("Resume Editing")
             }
         },
         confirmButton = {
             Row {
-                TextButton(onClick = onDiscard) {
+                FilledTonalButton(onClick = onDiscard) {
                     Text("Discard")
                 }
                 Spacer(modifier = Modifier.width(8.dp))

@@ -626,7 +626,7 @@ private fun <T> MultiSelectDropdownDialog(
             Button(onClick = onDismiss) { Text("Done") }
         },
         dismissButton = {
-            TextButton(onClick = { 
+            FilledTonalButton(onClick = {
                 onSelectionChanged(emptyList())
             }) { Text("Clear Selected") }
         }

@@ -11,13 +11,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -73,12 +72,12 @@ fun TipOverlay(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    SecondaryButton(
+                    FilledTonalButton(
                         onClick = {
                             onClosed()
                         },
                         modifier = Modifier
-                            .weight(1f) 
+                            .weight(1f)
                             .defaultMinSize(minHeight = ButtonDefaults.MinHeight)
                     ) {
                         Text("Keep This Tip", textAlign = TextAlign.Center)
@@ -92,7 +91,7 @@ fun TipOverlay(
                             }
                         },
                         modifier = Modifier
-                            .weight(1f) 
+                            .weight(1f)
                             .defaultMinSize(minHeight = ButtonDefaults.MinHeight)
                     ) {
                         Text("Hide This Tip", textAlign = TextAlign.Center)
@@ -101,7 +100,7 @@ fun TipOverlay(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                SecondaryButton(
+                FilledTonalButton(
                     onClick = {
                         scope.launch {
                             tipsManager.hideAllTips()
@@ -109,7 +108,7 @@ fun TipOverlay(
                         }
                     },
                     modifier = Modifier
-                        .fillMaxWidth() 
+                        .fillMaxWidth()
                         .defaultMinSize(minHeight = ButtonDefaults.MinHeight)
                 ) {
                     Text("Hide All Tips", textAlign = TextAlign.Center)

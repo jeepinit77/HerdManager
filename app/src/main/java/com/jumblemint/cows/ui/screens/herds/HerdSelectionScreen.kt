@@ -279,7 +279,7 @@ private fun CreateHerdDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            Button(
                 onClick = { onConfirm(name, description) },
                 enabled = name.isNotBlank()
             ) {
@@ -287,7 +287,7 @@ private fun CreateHerdDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FilledTonalButton(onClick = onDismiss) {
                 Text("Cancel")
             }
         }

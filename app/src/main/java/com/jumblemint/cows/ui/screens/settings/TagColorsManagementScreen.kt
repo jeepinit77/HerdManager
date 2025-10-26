@@ -396,7 +396,7 @@ fun TagColorDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FilledTonalButton(onClick = onDismiss) {
                 Text("Cancel")
             }
         }

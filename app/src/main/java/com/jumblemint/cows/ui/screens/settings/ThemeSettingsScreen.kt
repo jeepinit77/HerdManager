@@ -513,7 +513,7 @@ private fun GenderColorPickerDialog(
             Button(onClick = { onConfirm(selectedColor) }) { Text("Apply") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            FilledTonalButton(onClick = onDismiss) { Text("Cancel") }
         }
     )
 }

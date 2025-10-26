@@ -41,7 +41,6 @@ import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.theme.SmartText
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Added/Ensured import
-import com.jumblemint.cows.ui.components.SecondaryButton
 import com.jumblemint.cows.data.model.ActivityTypeConfig
 import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.model.Breed
@@ -479,7 +478,7 @@ fun SettingsScreen(
                 }
             },
             dismissButton = {
-                SecondaryButton(onClick = { showSetupWizardConfirmation = false }) {
+                FilledTonalButton(onClick = { showSetupWizardConfirmation = false }) {
                     Text("Cancel")
                 }
             }
@@ -622,7 +621,7 @@ fun SettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(
+                Button(
                     onClick = {
                         viewModel.updateAnimalIdentifierMode(pendingMode)
                         showIdentifierModeDialog = false
@@ -630,7 +629,7 @@ fun SettingsScreen(
                 ) { Text("Save") }
             },
             dismissButton = {
-                TextButton(onClick = { showIdentifierModeDialog = false }) { Text("Cancel") }
+                FilledTonalButton(onClick = { showIdentifierModeDialog = false }) { Text("Cancel") }
             }
         )
     }
@@ -1078,7 +1077,7 @@ fun ConflictResolutionDialog(
                     Text("Update Existing Records")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                SecondaryButton(
+                FilledTonalButton(
                     onClick = { onResolve(ConflictResolution.KEEP_EXISTING) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
@@ -1087,7 +1086,7 @@ fun ConflictResolutionDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            FilledTonalButton(onClick = onDismiss) {
                 Text("Cancel")
             }
         }

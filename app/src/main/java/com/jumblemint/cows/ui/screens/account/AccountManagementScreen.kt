@@ -196,7 +196,7 @@ fun AccountManagementScreen(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
+                FilledTonalButton(onClick = { showSignOutDialog = false }) { Text("Cancel") }
             }
         )
     }
