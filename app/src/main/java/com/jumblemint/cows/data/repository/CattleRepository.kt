@@ -908,6 +908,7 @@ class CattleRepository(
     suspend fun getAllActivitiesSync(): List<Activity> { return try { getAllActivities().first() } catch (e: Exception) { emptyList() } }
     suspend fun getAllPasturesSync(): List<Pasture> { return try { getAllPastures().first() } catch (e: Exception) { emptyList() } }
     suspend fun getAllNotesSync(): List<Note> { return try { noteDao?.getAllNotes()?.first() ?: emptyList() } catch (e: Exception) { emptyList() } }
+    suspend fun getAllBreedsSync(): List<Breed> { return try { getAllBreeds().first() } catch (e: Exception) { emptyList() } }
     
     suspend fun insertNote(note: Note) = noteDao?.insert(note)
     suspend fun updateNote(note: Note) = noteDao?.update(note)

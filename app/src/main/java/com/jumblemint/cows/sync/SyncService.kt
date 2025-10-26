@@ -965,8 +965,10 @@ class SyncService(
                     val remoteData = remoteSettingsMap[firestoreId]
                     val settingData = setting.toFirestoreMap(userId)
                     val localUpdatedAt = settingData["updatedAt"] as? Long ?: (setting.updatedAt ?: System.currentTimeMillis())
+                    val hasUnsyncedChanges = (setting.lastSyncAt ?: 0L) < setting.updatedAt
 
                     val shouldUpload = when {
+                        !hasUnsyncedChanges -> false
                         setting.firestoreId == null -> true
                         remoteData == null -> true
                         else -> {
@@ -986,9 +988,10 @@ class SyncService(
                 } catch (e: Exception) { println("Error uploading setting ${setting.key}: ${e.message}") }
             }
 
+            val currentLocalSettings = repository.getAllSettings().first()
             remoteSettingsMap.forEach { (firestoreId, data) ->
                 try {
-                    val localSetting = localSettings.find { it.firestoreId == firestoreId || it.key == firestoreId }
+                    val localSetting = currentLocalSettings.find { it.firestoreId == firestoreId || it.key == firestoreId }
                     val remoteUpdatedAt = data["updatedAt"] as? Long ?: 0L
 
                     val shouldProcess = when {
