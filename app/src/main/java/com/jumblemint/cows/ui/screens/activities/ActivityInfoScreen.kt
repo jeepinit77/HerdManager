@@ -16,7 +16,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -28,6 +27,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.ui.screens.activities.ActivityInfoUiState
 import com.jumblemint.cows.ui.components.CowCard
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 import com.jumblemint.cows.ui.viewmodel.ActivityInfoViewModel
 import com.jumblemint.cows.ui.viewmodel.ActivityInfoViewModelFactory
 import java.time.format.DateTimeFormatter
@@ -47,6 +47,13 @@ fun ActivityInfoScreen(
         factory = ActivityInfoViewModelFactory(application.repository, activityId)
     )
     val uiState: ActivityInfoUiState by viewModel.uiState.collectAsState()
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "ActivityInfo:$activityId",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     Column(modifier = modifier.padding(PaddingValues(16.dp))) {
         if (uiState.isLoading) {

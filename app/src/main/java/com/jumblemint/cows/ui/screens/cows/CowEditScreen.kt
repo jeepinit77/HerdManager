@@ -45,6 +45,7 @@ import com.jumblemint.cows.ui.components.ParentSelectionField
 import com.jumblemint.cows.ui.components.formatParentDisplay
 import com.jumblemint.cows.ui.components.rememberTagColorMap
 import com.jumblemint.cows.ui.components.resolveTagColor
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 import com.jumblemint.cows.ui.theme.getGenderColor
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import com.jumblemint.cows.ui.viewmodel.CowDetailViewModel
@@ -86,6 +87,13 @@ fun CowEditScreen(
 
     val uiState by viewModel.uiState.collectAsState()
     val tagColorMap: Map<String, Color> = rememberTagColorMap(repository)
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "CowEdit:$cowId",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
     var saveAttempted by remember { mutableStateOf(false) }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
 

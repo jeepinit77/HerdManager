@@ -11,11 +11,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.data.model.Note
 import com.jumblemint.cows.ui.viewmodel.NotesViewModel
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -27,9 +30,17 @@ fun NoteDetailScreen(
     viewModel: NotesViewModel = viewModel(),
     modifier: Modifier = Modifier
 ) {
+    val application = LocalContext.current.applicationContext as CattleApplication
     val uiState by viewModel.uiState.collectAsState()
     val note = uiState.allNotes.find { it.id == noteId }
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "NoteDetail:$noteId",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     if (uiState.isLoading) {
         Box(

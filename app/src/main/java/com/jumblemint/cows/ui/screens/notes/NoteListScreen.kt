@@ -53,6 +53,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -66,6 +67,8 @@ import com.jumblemint.cows.ui.viewmodel.NotesUiState
 import com.jumblemint.cows.ui.viewmodel.NotesViewModel
 import com.jumblemint.cows.ui.viewmodel.TodoCompletionFilter
 import com.jumblemint.cows.ui.viewmodel.TodoStatusFilter
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.ZoneId
@@ -83,6 +86,7 @@ fun NotesScreen(
     onNavigateBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
+    val application = LocalContext.current.applicationContext as CattleApplication
     val uiState by viewModel.uiState.collectAsState()
     val dateFormat = remember { SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()) }
 
@@ -92,6 +96,13 @@ fun NotesScreen(
 
     val hasNotes = uiState.allNotes.isNotEmpty()
     val hasFilters = hasActiveFilters(uiState)
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "Notes",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.fillMaxSize()) {

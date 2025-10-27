@@ -49,6 +49,7 @@ import com.jumblemint.cows.data.model.SettingsKeys
 import com.jumblemint.cows.data.model.TagColor
 import com.jumblemint.cows.ui.components.SetupWizardDialog
 import android.text.format.DateUtils
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 // Helper data class for quadruple values
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
@@ -119,6 +120,13 @@ fun SettingsScreen(
     val defaultBreeds = remember { Breed.getDefaultBreeds() }
     val wizardTagColors = remember { TagColor.getWizardColorOptions() }
     val defaultActivityTypes = remember { ActivityTypeConfig.getDefaultActivityTypes() }
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "Settings",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
     
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()

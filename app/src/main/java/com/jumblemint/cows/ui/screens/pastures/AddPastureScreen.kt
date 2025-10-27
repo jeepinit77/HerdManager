@@ -20,10 +20,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.jumblemint.cows.data.model.Pasture
 import com.jumblemint.cows.ui.components.UnsavedChangesDialog
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @Composable
 fun PastureDetailScreen(
@@ -37,11 +40,19 @@ fun PastureDetailScreen(
     backPressed: Boolean = false,
     onBackHandled: () -> Unit = {}
 ) {
+    val application = LocalContext.current.applicationContext as CattleApplication
     var name by remember { mutableStateOf("") }
     var sizeAcres by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var nameError by remember { mutableStateOf<String?>(null) }
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "AddPasture",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     // Track initial values to detect changes
     val initialName = remember(editPasture) { editPasture?.name ?: "" }

@@ -1,6 +1,5 @@
 package com.jumblemint.cows.ui.screens.activities
 
-import android.app.Application
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -34,6 +33,8 @@ import com.jumblemint.cows.util.primaryIdentifier
 import com.jumblemint.cows.util.secondaryIdentifier
 import com.jumblemint.cows.util.usesNames
 import com.jumblemint.cows.util.usesTags
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,7 +50,7 @@ fun AddActivityScreen(
     onBackHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val application = context.applicationContext as Application
+    val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val repository = remember {
         CattleRepository(
@@ -87,6 +88,13 @@ fun AddActivityScreen(
     val activityTypeOptions = remember(uiState.availableActivityTypes) {
         uiState.availableActivityTypes.map { it.displayName }
     }
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "AddActivity",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     val filteredCows = remember(uiState.availableCows, filterState, searchQuery, uiState.identifierMode) {
         uiState.availableCows.filter { cow ->

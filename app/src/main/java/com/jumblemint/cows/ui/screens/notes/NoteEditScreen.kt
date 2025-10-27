@@ -25,6 +25,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.ui.components.DatePickerField
 import com.jumblemint.cows.ui.components.UnsavedChangesDialog
@@ -32,6 +33,8 @@ import com.jumblemint.cows.ui.viewmodel.NotesViewModel
 import java.time.LocalDate
 import java.time.ZoneId
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @Composable
 fun NoteEditScreen(
@@ -46,6 +49,7 @@ fun NoteEditScreen(
     modifier: Modifier = Modifier,
     defaultIsTodo: Boolean = false
 ) {
+    val application = LocalContext.current.applicationContext as CattleApplication
     val uiState by viewModel.uiState.collectAsState()
     val note = if (noteId == 0L) null else uiState.allNotes.find { it.id == noteId }
 
@@ -55,6 +59,13 @@ fun NoteEditScreen(
     var isCompleted by remember(noteId) { mutableStateOf(false) }
     var dueDate by remember(noteId) { mutableStateOf<LocalDate?>(null) }
     var titleError by remember { mutableStateOf<String?>(null) }
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "NoteEdit:$noteId",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     val originalTitle = remember(note) { note?.title ?: "" }
     val originalText = remember(note) { note?.text ?: "" }

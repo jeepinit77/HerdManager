@@ -1,6 +1,5 @@
 package com.jumblemint.cows.ui.screens.activities
 
-import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -52,6 +51,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.HorizontalDivider
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 private enum class DateFilterType { PRESET, CUSTOM, ALL_DATES }
 
@@ -64,6 +65,7 @@ fun ActivitiesScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val repository = remember {
         CattleRepository(
@@ -81,12 +83,19 @@ fun ActivitiesScreen(
         )
     }
     val viewModel: ActivitiesViewModel = viewModel(
-        factory = ActivitiesViewModelFactory(context.applicationContext as Application, repository)
+        factory = ActivitiesViewModelFactory(application, repository)
     )
 
     val uiState by viewModel.uiState.collectAsState()
     val globalSnackbarState = com.jumblemint.cows.ui.components.LocalGlobalSnackbarState.current
     val scope = rememberCoroutineScope()
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "Activities",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     // dialog open/close
     var showFilterDialog by remember { mutableStateOf(false) }

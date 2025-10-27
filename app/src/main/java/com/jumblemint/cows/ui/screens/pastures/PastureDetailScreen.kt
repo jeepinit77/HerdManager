@@ -61,6 +61,13 @@ fun PastureDetailScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "PastureDetail:$pastureId",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
+
     Box(modifier = modifier) {
         SnackbarHost(
             hostState = snackbarHostState,

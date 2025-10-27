@@ -34,6 +34,8 @@ import com.jumblemint.cows.ui.viewmodel.WorkingListViewModel
 import com.jumblemint.cows.ui.viewmodel.WorkingListViewModelFactory
 import com.jumblemint.cows.util.primaryIdentifier
 import com.jumblemint.cows.util.usesTags
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -43,6 +45,7 @@ fun WorkingListScreen(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
     val repository = remember {
         CattleRepository(
@@ -69,6 +72,13 @@ fun WorkingListScreen(
 
     val tagColorMap = rememberTagColorMap(repository)
     val identifierMode by repository.getAnimalIdentifierModeFlow().collectAsState(initial = AnimalIdentifierMode.BOTH)
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "WorkingList",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     if (showFilterScreen) {
         AnimalFilterScreen(

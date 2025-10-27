@@ -27,6 +27,7 @@ import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import com.jumblemint.cows.ui.viewmodel.BreedsViewModel
 import com.jumblemint.cows.ui.viewmodel.BreedsViewModelFactory
 import kotlinx.coroutines.launch
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +64,13 @@ fun BreedsManagementScreen(
     val scope = rememberCoroutineScope()
     val globalSnackbarState = LocalGlobalSnackbarState.current
     var showResetConfirm by remember { mutableStateOf(false) }
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "Breeds",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
     
     LaunchedEffect(resetTriggered) {
         if (resetTriggered) {

@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
@@ -25,6 +26,8 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -35,6 +38,7 @@ fun TodoListScreen(
     modifier: Modifier = Modifier,
     viewModel: NotesViewModel = viewModel()
 ) {
+    val application = LocalContext.current.applicationContext as CattleApplication
     val todoNotes by viewModel.getTodoNotes().collectAsState(initial = emptyList())
     val completedNotes by viewModel.getCompletedTodos().collectAsState(initial = emptyList())
     
@@ -43,6 +47,13 @@ fun TodoListScreen(
     
     val snackbarHostState = remember { SnackbarHostState() }
     var recentlyCompleted by remember { mutableStateOf<Note?>(null) }
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "Todos",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
     
     LaunchedEffect(recentlyCompleted) {
         recentlyCompleted?.let { note ->

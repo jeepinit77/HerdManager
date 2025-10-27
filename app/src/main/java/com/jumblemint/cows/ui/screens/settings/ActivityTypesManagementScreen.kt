@@ -34,6 +34,7 @@ import kotlinx.coroutines.launch
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import com.jumblemint.cows.ui.components.LocalGlobalSnackbarState
 import com.jumblemint.cows.ui.theme.contrastingTextColor
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,6 +72,13 @@ fun ActivityTypesManagementScreen(
     var showResetConfirm by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val globalSnackbarState = LocalGlobalSnackbarState.current
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "ActivityTypes",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
     
     LaunchedEffect(resetTriggered) {
         if (resetTriggered) {

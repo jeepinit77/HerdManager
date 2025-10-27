@@ -28,6 +28,7 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.theme.contrastingTextColor
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +65,13 @@ fun PasturesScreen(
     val uiState by pasturesViewModel.uiState.collectAsState()
     val globalSnackbarState = com.jumblemint.cows.ui.components.LocalGlobalSnackbarState.current
     val coroutineScope = rememberCoroutineScope()
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "Pastures",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     LaunchedEffect(uiState.error) {
         uiState.error?.let {

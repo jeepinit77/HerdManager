@@ -7,6 +7,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier // Ensure Modifier is imported
 import androidx.compose.ui.platform.LocalContext
@@ -16,6 +17,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.sync.SyncStatus
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 import android.text.format.DateUtils
 // Consider adding a proper date/time formatting utility if more detailed time is needed
 
@@ -41,6 +43,13 @@ fun AccountManagementScreen(
     val currentUser by application.authService.currentUser.collectAsState(initial = null)
     val syncStatus by application.syncService.syncStatus.collectAsState(initial = SyncStatus.IDLE)
     val lastSyncTimestamp by application.syncService.lastSyncTime.collectAsState(initial = null)
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "AccountManagement",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     var showSignOutDialog by remember { mutableStateOf(false) }
 

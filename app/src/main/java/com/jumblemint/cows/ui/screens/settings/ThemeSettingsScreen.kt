@@ -51,6 +51,8 @@ import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.theme.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +61,7 @@ fun ThemeSettingsScreen(
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val application = context.applicationContext as CattleApplication
     val db = CattleDatabase.getDatabase(context)
     val repository = remember {
         CattleRepository(
@@ -70,6 +73,13 @@ fun ThemeSettingsScreen(
     val themeManager = remember { ThemeManager(repository) }
     val themeSettings by themeManager.getThemeSettingsFlow().collectAsState(initial = ThemeSettings())
     val scope = rememberCoroutineScope()
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "ThemeSettings",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     val systemDark = isSystemInDarkTheme()
     var currentMode by remember { mutableStateOf(ThemeMode.SYSTEM) }

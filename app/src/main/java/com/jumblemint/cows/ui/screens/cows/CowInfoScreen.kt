@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.luminance
 import java.time.LocalDate
 import java.time.Period
 import java.time.format.DateTimeFormatter
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,6 +77,13 @@ fun CowInfoScreen(
     val uiState by viewModel.uiState.collectAsState()
     val identifierMode = uiState.identifierMode
     val tagColorMap = rememberTagColorMap(repository)
+
+    FocusAwareLiveSync(
+        orchestrator = (context.applicationContext as CattleApplication).syncOrchestrator,
+        screenKey = "CowInfo:$cowId",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     Column(
         modifier = modifier

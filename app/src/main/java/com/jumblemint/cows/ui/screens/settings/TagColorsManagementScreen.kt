@@ -35,6 +35,7 @@ import com.github.skydoves.colorpicker.compose.*
 import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import kotlinx.coroutines.launch
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +73,13 @@ fun TagColorsManagementScreen(
     val scope = rememberCoroutineScope()
     val globalSnackbarState = LocalGlobalSnackbarState.current
     var showResetConfirm by remember { mutableStateOf(false) }
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "TagColors",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
     
     LaunchedEffect(resetTriggered) {
         if (resetTriggered) {

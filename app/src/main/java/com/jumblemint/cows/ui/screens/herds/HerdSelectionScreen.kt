@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -19,6 +20,8 @@ import com.jumblemint.cows.data.model.Herd
 import com.jumblemint.cows.data.model.HerdRole
 import com.jumblemint.cows.ui.viewmodel.HerdViewModel
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,8 +32,16 @@ fun HerdSelectionScreen(
     onCowClick: (Long) -> Unit, // Added new parameter
     herdViewModel: HerdViewModel = viewModel()
 ) {
+    val application = LocalContext.current.applicationContext as CattleApplication
     val uiState by herdViewModel.uiState.collectAsState()
     var showCreateDialog by remember { mutableStateOf(false) }
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "HerdSelection",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
     
     Column(
         modifier = Modifier

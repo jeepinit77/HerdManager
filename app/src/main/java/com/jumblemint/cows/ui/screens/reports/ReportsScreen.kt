@@ -1,6 +1,5 @@
 package com.jumblemint.cows.ui.screens.reports
 
-import android.app.Application // Required for ViewModelFactory
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,6 +26,8 @@ import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.theme.SmartText
 import com.jumblemint.cows.ui.theme.contrastingTextColor
 import com.jumblemint.cows.util.AgeRangeKeys // Import the centralized keys
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +38,7 @@ fun ReportsScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val application = context.applicationContext as Application // Get Application instance
+    val application = context.applicationContext as CattleApplication // Get Application instance
 
     // ViewModel initialization
     val database = CattleDatabase.getDatabase(context)
@@ -55,15 +56,21 @@ fun ReportsScreen(
             database.activityTypeConfigDao()
         )
     }
-    val cattleApplication = context.applicationContext as com.jumblemint.cows.CattleApplication
     val viewModel: ReportsViewModel = viewModel(
-        factory = ReportsViewModelFactory(application, repository, cattleApplication.authService)
+        factory = ReportsViewModelFactory(application, repository, application.authService)
     )
 
     val uiState by viewModel.uiState.collectAsState()
     val pasturesFlow = remember { repository.getAllPastures() }
     val pastures by pasturesFlow.collectAsState(initial = emptyList())
     val pastureIdByName = remember(pastures) { pastures.associate { it.name to it.id } }
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "Reports",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     if (uiState.isLoading) {
         Box(

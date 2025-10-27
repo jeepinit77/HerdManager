@@ -32,6 +32,8 @@ import com.jumblemint.cows.ui.components.WobblingLightbulbIcon
 import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import com.jumblemint.cows.ui.theme.getCardColors
 import com.jumblemint.cows.ui.viewmodel.AddBirthViewModel
+import com.jumblemint.cows.CattleApplication
+import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 import kotlin.collections.buildMap
 
 // Removed @OptIn(ExperimentalMaterial3Api::class) if TopAppBar is removed, 
@@ -49,11 +51,19 @@ fun AddBirthScreen(
     onBackHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current // Still needed for TipsManager, etc.
-    // application, database, repository, and local viewModel instantiation removed if 
+    val application = context.applicationContext as CattleApplication
+    // application, database, repository, and local viewModel instantiation removed if
     // viewModel is hoisted. If not, they would remain for local instantiation.
     // Assuming viewModel is now passed as a parameter for parent to access recordBirth().
 
     val uiState by viewModel.uiState.collectAsState()
+
+    FocusAwareLiveSync(
+        orchestrator = application.syncOrchestrator,
+        screenKey = "AddBirth",
+        intervalMs = 20_000L,
+        leadingRun = true
+    )
 
     var showMotherPicker by remember { mutableStateOf(false) }
     var showFatherPicker by remember { mutableStateOf(false) }
