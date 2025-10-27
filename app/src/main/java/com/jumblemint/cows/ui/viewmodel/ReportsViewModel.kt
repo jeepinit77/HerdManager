@@ -87,12 +87,17 @@ class ReportsViewModel(
                 }
 
                 // Pasture breakdown computed from cows and pastures snapshot
+                val validPastureIds = pastures.map { it.id }.toSet()
                 val pastureNameById = pastures.associate { it.id to it.name }
-                val cowsByPastureId = activeCows.groupBy { it.pastureId }
                 val pastureBreakdown = mutableMapOf<String, Int>()
-                cowsByPastureId.forEach { (pastureId, cowsInPasture) ->
-                    val name = pastureId?.let { pastureNameById[it] } ?: "Unassigned"
-                    pastureBreakdown[name] = cowsInPasture.size
+                activeCows.forEach { cow ->
+                    val pastureId = cow.pastureId
+                    val displayName = when {
+                        pastureId.isNullOrBlank() -> "Unassigned"
+                        pastureId !in validPastureIds -> "Unassigned"
+                        else -> pastureNameById[pastureId] ?: "Unassigned"
+                    }
+                    pastureBreakdown[displayName] = pastureBreakdown.getOrDefault(displayName, 0) + 1
                 }
 
                 // Breeding: cows with calves (not sold or weaned)
