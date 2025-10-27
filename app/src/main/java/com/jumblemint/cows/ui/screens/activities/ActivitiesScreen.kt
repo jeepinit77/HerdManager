@@ -1,5 +1,6 @@
 package com.jumblemint.cows.ui.screens.activities
 
+import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
