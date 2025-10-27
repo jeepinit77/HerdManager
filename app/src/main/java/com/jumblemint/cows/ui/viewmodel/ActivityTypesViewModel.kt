@@ -82,52 +82,12 @@ class ActivityTypesViewModel(
     fun restoreDefaults() {
         viewModelScope.launch {
             val userId = getUserId()
-            val existingTypes = repository.getAllActivityTypesSync()
-            
-            // Create a map of existing types by name for quick lookup
-            val existingByName = existingTypes.associateBy { it.name }
-
-            // Soft delete all custom (non-default) activity types
-            existingTypes.filter { !it.isDefault }.forEach { customType ->
-                if (!customType.isDeleted) {
-                    val deletedCustomType = customType.copy(
-                        isDeleted = true,
-                        updatedAt = System.currentTimeMillis(),
-                        updatedBy = userId
-                    )
-                    repository.upsertActivityType(deletedCustomType)
-                    syncService.syncItemImmediately(userId, deletedCustomType)
-                }
-            }
-
-            // Get the standard default types
-            val defaultTypes = ActivityTypeConfig.getDefaultActivityTypes()
-            defaultTypes.forEach { defaultType ->
-                // Check if this default type already exists by name
-                val existing = existingByName[defaultType.name]
-                val typeToUpsert = if (existing != null) {
-                    // Update existing record to ensure it has current default properties
-                    existing.copy(
-                        displayName = defaultType.displayName,
-                        iconName = defaultType.iconName,
-                        description = defaultType.description,
-                        isDeleted = false,
-                        isActive = true,
-                        isDefault = true,
-                        updatedAt = System.currentTimeMillis(),
-                        updatedBy = userId
-                    )
-                } else {
-                    // Create new default with unique ID
-                    defaultType.copy(
-                        id = UUID.randomUUID().toString(),
-                        updatedAt = System.currentTimeMillis(),
-                        updatedBy = userId,
-                        isDeleted = false
-                    )
-                }
-                repository.upsertActivityType(typeToUpsert)
-                syncService.syncItemImmediately(userId, typeToUpsert)
+            val changeTimestamp = System.currentTimeMillis()
+            repository.restoreDefaultActivityTypes()
+            val updatedTypes = repository.getAllActivityTypesSync()
+                .filter { it.updatedAt >= changeTimestamp }
+            updatedTypes.forEach { type ->
+                syncService.syncItemImmediately(userId, type)
             }
         }
     }

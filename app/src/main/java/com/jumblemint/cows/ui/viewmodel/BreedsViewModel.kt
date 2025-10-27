@@ -47,7 +47,14 @@ class BreedsViewModel(
 
     fun restoreBreed(breed: Breed) {
         viewModelScope.launch {
-            repository.insertBreed(breed)
+            repository.updateBreed(
+                breed.copy(
+                    isDeleted = false,
+                    isActive = true,
+                    updatedAt = System.currentTimeMillis(),
+                    updatedBy = getUserId()
+                )
+            )
         }
     }
 

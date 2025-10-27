@@ -12,6 +12,9 @@ interface BreedDao {
     @Query("SELECT * FROM breeds WHERE id = :id")
     suspend fun getBreedById(id: String): Breed?
 
+    @Query("SELECT * FROM breeds")
+    suspend fun getAllBreedsIncludingDeleted(): List<Breed>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertBreed(breed: Breed)
 

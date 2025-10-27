@@ -3,7 +3,8 @@ package com.jumblemint.cows.data.model
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import java.util.*
+import java.util.Locale
+import java.util.UUID
 
 @Entity(
     tableName = "activity_type_configs",
@@ -59,26 +60,47 @@ data class ActivityTypeConfig(
             )
         }
 
+        private data class ActivityTypeTemplate(
+            val name: String,
+            val displayName: String,
+            val iconName: String
+        )
+
+        private val DEFAULT_ACTIVITY_TYPE_TEMPLATES = listOf(
+            ActivityTypeTemplate("MOVED", "Moved", "DriveFileMove"),
+            ActivityTypeTemplate("WEANED", "Weaned", "ChildCare"),
+            ActivityTypeTemplate("SOLD", "Sold", "Sell"),
+            ActivityTypeTemplate("DECEASED", "Deceased", "Dangerous"),
+            ActivityTypeTemplate("WORKED", "Worked", "Handyman"),
+            ActivityTypeTemplate("CASTRATED", "Castrated", "MedicalServices"),
+            ActivityTypeTemplate("BRED", "Bred", "Favorite"),
+            ActivityTypeTemplate("CALVED", "Calved", "BabyChangingStation"),
+            ActivityTypeTemplate("VACCINATED", "Vaccinated", "Vaccines"),
+            ActivityTypeTemplate("TREATED", "Treated", "LocalHospital"),
+            ActivityTypeTemplate("WEIGHED", "Weighed", "Scale"),
+            ActivityTypeTemplate("PURCHASED", "Purchased", "Pets"),
+            ActivityTypeTemplate("HEALTH_CHECK", "Health Check", "Healing"),
+            ActivityTypeTemplate("TAGGED", "Tagged", "ContentCut"),
+            ActivityTypeTemplate("NOTE", "Note", "EditNote"),
+            ActivityTypeTemplate("OTHER", "Other", "Assignment")
+        )
+
         // Default activity types
         fun getDefaultActivityTypes(): List<ActivityTypeConfig> {
-            return listOf(
-                ActivityTypeConfig(name = "MOVED", displayName = "Moved", isDefault = true, iconName = "DriveFileMove"),
-                ActivityTypeConfig(name = "WEANED", displayName = "Weaned", isDefault = true, iconName = "ChildCare"),
-                ActivityTypeConfig(name = "SOLD", displayName = "Sold", isDefault = true, iconName = "Sell"),
-                ActivityTypeConfig(name = "DECEASED", displayName = "Deceased", isDefault = true, iconName = "Dangerous"),
-                ActivityTypeConfig(name = "WORKED", displayName = "Worked", isDefault = true, iconName = "Handyman"),
-                ActivityTypeConfig(name = "CASTRATED", displayName = "Castrated", isDefault = true, iconName = "MedicalServices"),
-                ActivityTypeConfig(name = "BRED", displayName = "Bred", isDefault = true, iconName = "Favorite"),
-                ActivityTypeConfig(name = "CALVED", displayName = "Calved", isDefault = true, iconName = "BabyChangingStation"),
-                ActivityTypeConfig(name = "VACCINATED", displayName = "Vaccinated", isDefault = true, iconName = "Vaccines"),
-                ActivityTypeConfig(name = "TREATED", displayName = "Treated", isDefault = true, iconName = "LocalHospital"),
-                ActivityTypeConfig(name = "WEIGHED", displayName = "Weighed", isDefault = true, iconName = "Scale"),
-                ActivityTypeConfig(name = "PURCHASED", displayName = "Purchased", isDefault = true, iconName = "Pets"),
-                ActivityTypeConfig(name = "HEALTH_CHECK", displayName = "Health Check", isDefault = true, iconName = "Healing"),
-                ActivityTypeConfig(name = "TAGGED", displayName = "Tagged", isDefault = true, iconName = "ContentCut"),
-                ActivityTypeConfig(name = "NOTE", displayName = "Note", isDefault = true, iconName = "EditNote"),
-                ActivityTypeConfig(name = "OTHER", displayName = "Other", isDefault = true, iconName = "Assignment") // Default icon for OTHER
-            )
+            return DEFAULT_ACTIVITY_TYPE_TEMPLATES.map { template ->
+                ActivityTypeConfig(
+                    id = getDefaultActivityTypeId(template.name),
+                    name = template.name,
+                    displayName = template.displayName,
+                    iconName = template.iconName,
+                    isDefault = true
+                )
+            }
+        }
+
+        fun getDefaultActivityTypeId(name: String): String {
+            val normalized = name.trim().lowercase(Locale.US)
+            return UUID.nameUUIDFromBytes(normalized.toByteArray()).toString()
         }
     }
 }

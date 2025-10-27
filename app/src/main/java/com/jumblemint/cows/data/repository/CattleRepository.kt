@@ -358,6 +358,7 @@ class CattleRepository(
 
     suspend fun initializeDefaultData() {
         ensureDefaultBreedsConsistency()
+        ensureDefaultActivityTypesConsistency()
 
         // Only initialize if this is truly the first install (no data at all)
         val hasAnyExistingData = getAllCows().first().isNotEmpty() ||
@@ -374,13 +375,15 @@ class CattleRepository(
             }
             
             if (activityTypeConfigDao != null && getAllActivityTypes().first().isEmpty()) {
+                ensureDefaultActivityTypesConsistency()
                 val defaultActivityTypes = com.jumblemint.cows.data.model.ActivityTypeConfig.getDefaultActivityTypes()
                 defaultActivityTypes.forEach { activityType ->
                     insertActivityType(activityType)
                 }
             }
-            
+
             if (breedDao != null && getAllBreeds().first().isEmpty()) {
+                ensureDefaultBreedsConsistency()
                 val defaultBreeds = com.jumblemint.cows.data.model.Breed.getDefaultBreeds()
                 defaultBreeds.forEach { breed ->
                     insertBreed(breed)
@@ -878,7 +881,20 @@ class CattleRepository(
         }
     }
     suspend fun deleteAllActivityTypeConfigs() { activityTypeConfigDao?.deleteAllActivityTypes() }
-    suspend fun deleteAllBreeds() = breedDao?.deleteAllBreeds()
+    suspend fun deleteAllBreeds() {
+        val dao = breedDao ?: return
+        val now = System.currentTimeMillis()
+        dao.getAllBreedsIncludingDeleted().forEach { breed ->
+            dao.updateBreed(
+                breed.copy(
+                    firestoreId = breed.firestoreId ?: breed.id,
+                    isActive = false,
+                    isDeleted = true,
+                    updatedAt = now
+                )
+            )
+        }
+    }
     suspend fun deleteAllSettings() { settingsDao?.let { dao -> val settings = dao.getAllSettings().first(); for (s in settings) dao.deleteSetting(s) } }
 
     // User operations
@@ -957,19 +973,44 @@ class CattleRepository(
     suspend fun upsertActivityType(activityType: ActivityTypeConfig) = activityTypeConfigDao?.upsert(activityType)
     suspend fun upsertActivityTypes(activityTypes: List<ActivityTypeConfig>) = activityTypeConfigDao?.upsertAll(activityTypes)
     suspend fun updateActivityType(activityType: ActivityTypeConfig) = activityTypeConfigDao?.updateActivityType(activityType)
-    suspend fun deleteActivityType(activityType: ActivityTypeConfig) = activityTypeConfigDao?.deleteActivityType(activityType)
+    suspend fun deleteActivityType(activityType: ActivityTypeConfig) {
+        val dao = activityTypeConfigDao ?: return
+        val now = System.currentTimeMillis()
+        dao.updateActivityType(
+            activityType.copy(
+                firestoreId = activityType.firestoreId ?: activityType.id,
+                isActive = false,
+                isDeleted = true,
+                updatedAt = now
+            )
+        )
+    }
     suspend fun updateActivityTypeActiveStatus(id: String, isActive: Boolean) = activityTypeConfigDao?.updateActivityTypeActiveStatus(id, isActive)
     suspend fun ensureDefaultActivityTypesExist() {
+        ensureDefaultActivityTypesConsistency()
         val existing = activityTypeConfigDao?.getAllActivityTypesSync() ?: emptyList()
-        val existingNames = existing.map { it.name.lowercase() }.toSet()
+        val existingNames = existing.filter { !it.isDeleted }.map { it.name.lowercase(Locale.US) }.toSet()
         val defaults = ActivityTypeConfig.getDefaultActivityTypes()
-        val missing = defaults.filter { it.name.lowercase() !in existingNames }
+        val missing = defaults.filter { it.name.lowercase(Locale.US) !in existingNames }
         if (missing.isNotEmpty()) { insertActivityTypes(missing) }
     }
-    
+
     suspend fun restoreDefaultActivityTypes() {
-        activityTypeConfigDao?.deleteAllActivityTypes()
-        insertActivityTypes(ActivityTypeConfig.getDefaultActivityTypes())
+        val dao = activityTypeConfigDao ?: return
+        val now = System.currentTimeMillis()
+        val existing = dao.getAllActivityTypesSync()
+        existing.forEach { activityType ->
+            dao.updateActivityType(
+                activityType.copy(
+                    firestoreId = activityType.firestoreId ?: activityType.id,
+                    isActive = false,
+                    isDeleted = true,
+                    updatedAt = now
+                )
+            )
+        }
+        dao.insertActivityTypes(ActivityTypeConfig.getDefaultActivityTypes())
+        ensureDefaultActivityTypesConsistency()
     }
     
     // Breed operations
@@ -978,10 +1019,34 @@ class CattleRepository(
     suspend fun insertBreed(breed: Breed) = breedDao?.insertBreed(breed)
     suspend fun insertBreeds(breeds: List<Breed>) = breedDao?.insertBreeds(breeds)
     suspend fun updateBreed(breed: Breed) = breedDao?.updateBreed(breed)
-    suspend fun deleteBreed(breed: Breed) = breedDao?.deleteBreed(breed)
+    suspend fun deleteBreed(breed: Breed) {
+        val dao = breedDao ?: return
+        val now = System.currentTimeMillis()
+        dao.updateBreed(
+            breed.copy(
+                firestoreId = breed.firestoreId ?: breed.id,
+                isActive = false,
+                isDeleted = true,
+                updatedAt = now
+            )
+        )
+    }
     suspend fun restoreDefaultBreeds() {
-        breedDao?.deleteAllBreeds()
-        insertBreeds(Breed.getDefaultBreeds())
+        val dao = breedDao ?: return
+        val now = System.currentTimeMillis()
+        val existing = dao.getAllBreedsIncludingDeleted()
+        existing.forEach { breed ->
+            dao.updateBreed(
+                breed.copy(
+                    firestoreId = breed.firestoreId ?: breed.id,
+                    isActive = false,
+                    isDeleted = true,
+                    updatedAt = now
+                )
+            )
+        }
+        dao.insertBreeds(Breed.getDefaultBreeds())
+        ensureDefaultBreedsConsistency()
     }
 
     private suspend fun ensureDefaultBreedsConsistency() {
@@ -1041,6 +1106,66 @@ class CattleRepository(
 
         if (breedsToInsert.isNotEmpty()) {
             dao.insertBreeds(breedsToInsert)
+        }
+    }
+
+    private suspend fun ensureDefaultActivityTypesConsistency() {
+        val dao = activityTypeConfigDao ?: return
+        val existingActivityTypes = dao.getAllActivityTypesSync()
+        if (existingActivityTypes.isEmpty()) return
+
+        val defaults = ActivityTypeConfig.getDefaultActivityTypes()
+        val defaultsByName = defaults.associateBy { it.name.lowercase(Locale.US) }
+        val existingByName = existingActivityTypes.groupBy { it.name.lowercase(Locale.US) }
+
+        val now = System.currentTimeMillis()
+        val activityTypesToSoftDelete = mutableListOf<ActivityTypeConfig>()
+        val activityTypesToInsert = mutableListOf<ActivityTypeConfig>()
+
+        defaultsByName.forEach { (name, canonicalDefault) ->
+            val entries = existingByName[name].orEmpty()
+            val defaultEntries = entries.filter { it.isDefault && !it.isDeleted }
+
+            defaultEntries
+                .filter { it.id != canonicalDefault.id }
+                .forEach { duplicate ->
+                    activityTypesToSoftDelete.add(
+                        duplicate.copy(
+                            firestoreId = duplicate.firestoreId ?: duplicate.id,
+                            isActive = false,
+                            isDeleted = true,
+                            updatedAt = now
+                        )
+                    )
+                }
+
+            val hasCanonicalDefault = defaultEntries.any { it.id == canonicalDefault.id }
+            if (!hasCanonicalDefault) {
+                activityTypesToInsert.add(canonicalDefault)
+            }
+        }
+
+        val legacyDefaults = existingActivityTypes
+            .filter { it.isDefault && !it.isDeleted }
+            .filter { it.name.lowercase(Locale.US) !in defaultsByName.keys }
+
+        legacyDefaults.forEach { legacy ->
+            activityTypesToSoftDelete.add(
+                legacy.copy(
+                    firestoreId = legacy.firestoreId ?: legacy.id,
+                    isActive = false,
+                    isDeleted = true,
+                    updatedAt = now
+                )
+            )
+        }
+
+        if (activityTypesToSoftDelete.isNotEmpty()) {
+            activityTypesToSoftDelete.forEach { dao.updateActivityType(it) }
+        }
+
+        if (activityTypesToInsert.isNotEmpty()) {
+            dao.insertActivityTypes(activityTypesToInsert)
         }
     }
 }
