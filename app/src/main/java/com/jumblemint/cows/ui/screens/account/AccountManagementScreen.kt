@@ -16,7 +16,18 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.sync.SyncStatus
+import android.text.format.DateUtils
 // Consider adding a proper date/time formatting utility if more detailed time is needed
+
+private fun formatRelativeSyncDescription(timestamp: Long?): String {
+    if (timestamp == null || timestamp <= 0L) return "Never"
+    return DateUtils.getRelativeTimeSpanString(
+        timestamp,
+        System.currentTimeMillis(),
+        DateUtils.MINUTE_IN_MILLIS,
+        DateUtils.FORMAT_ABBREV_RELATIVE
+    ).toString()
+}
 
 @Composable
 fun AccountManagementScreen(
@@ -29,15 +40,18 @@ fun AccountManagementScreen(
 
     val currentUser by application.authService.currentUser.collectAsState(initial = null)
     val syncStatus by application.syncService.syncStatus.collectAsState(initial = SyncStatus.IDLE)
+    val lastSyncTimestamp by application.syncService.lastSyncTime.collectAsState(initial = null)
 
     var showSignOutDialog by remember { mutableStateOf(false) }
 
-    val lastSyncTimeText = remember(currentUser?.lastSyncAt, currentUser?.isLocalUser, syncStatus) {
+    val lastSyncTimeText = remember(currentUser?.lastSyncAt, currentUser?.isLocalUser, syncStatus, lastSyncTimestamp) {
         when {
             currentUser?.isLocalUser == true -> "Not applicable"
             syncStatus == SyncStatus.SYNCING -> "Syncing..."
-            currentUser?.lastSyncAt == 0L || currentUser?.lastSyncAt == null -> "Never"
-            else -> "Recently"
+            else -> {
+                val effectiveTimestamp = lastSyncTimestamp ?: currentUser?.lastSyncAt
+                formatRelativeSyncDescription(effectiveTimestamp)
+            }
         }
     }
 

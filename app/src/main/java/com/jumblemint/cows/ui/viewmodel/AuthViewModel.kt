@@ -88,7 +88,7 @@ class AuthViewModel(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
             try {
-                authService.signInAsDemoGoogleUser(repository)
+                authService.signInAsDemoGoogleUser()
                 _uiState.value = _uiState.value.copy(isLoading = false, error = null)
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(

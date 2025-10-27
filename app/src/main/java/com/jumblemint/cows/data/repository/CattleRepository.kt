@@ -884,6 +884,7 @@ class CattleRepository(
     fun getUserByIdFlow(uid: String): Flow<User?> = userDao?.getUserByIdFlow(uid) ?: kotlinx.coroutines.flow.flowOf(null)
     fun getAllUsers(): Flow<List<User>> = userDao?.getAllUsers() ?: kotlinx.coroutines.flow.flowOf(emptyList())
     suspend fun updateUser(user: User) = userDao?.updateUser(user)
+    suspend fun updateUserLastSync(uid: String, syncTime: Long) = userDao?.updateLastSync(uid, syncTime)
     suspend fun deleteUser(user: User) = userDao?.deleteUser(user)
 
     // Herd operations

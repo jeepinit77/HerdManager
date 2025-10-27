@@ -9,12 +9,14 @@ import com.jumblemint.cows.data.import.DataImporter
 import com.jumblemint.cows.data.import.ImportResult
 import com.jumblemint.cows.data.import.ConflictResolution
 import com.jumblemint.cows.data.model.AnimalIdentifierMode
+import com.jumblemint.cows.data.model.SettingsKeys
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import android.text.format.DateUtils
 
 class SettingsViewModel(
     private val application: Application, // <<< ADD Application context
@@ -38,9 +40,9 @@ class SettingsViewModel(
                 _uiState.value = _uiState.value.copy(appVersion = "N/A") // Fallback
             }
 
-            // TODO: Replace with actual logic to get last sync time from SyncService or Repository
-            // For now, using a placeholder. This might come from an observable flow.
-            _uiState.value = _uiState.value.copy(lastSyncTime = "Sync status unavailable")
+            val lastSyncSetting = repository.getSettingByKey(SettingsKeys.LAST_SYNC_TIMESTAMP)
+            val lastSyncTime = lastSyncSetting?.value?.toLongOrNull()
+            _uiState.value = _uiState.value.copy(lastSyncTime = formatLastSyncTime(lastSyncTime))
 
 
             // Load other settings
@@ -64,6 +66,17 @@ class SettingsViewModel(
                 )
             }
         }
+    }
+
+    private fun formatLastSyncTime(timestamp: Long?): String? {
+        if (timestamp == null || timestamp <= 0L) return null
+        val now = System.currentTimeMillis()
+        return DateUtils.getRelativeTimeSpanString(
+            timestamp,
+            now,
+            DateUtils.MINUTE_IN_MILLIS,
+            DateUtils.FORMAT_ABBREV_RELATIVE
+        ).toString()
     }
 
     fun updateAnimalIdentifierMode(mode: AnimalIdentifierMode) {

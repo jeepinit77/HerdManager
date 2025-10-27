@@ -48,11 +48,22 @@ import com.jumblemint.cows.data.model.Settings
 import com.jumblemint.cows.data.model.SettingsKeys
 import com.jumblemint.cows.data.model.TagColor
 import com.jumblemint.cows.ui.components.SetupWizardDialog
+import android.text.format.DateUtils
 
 // Helper data class for quadruple values
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
 
 // Removed local PulsingLightbulbIcon definition
+
+private fun formatRelativeSyncTime(timestamp: Long?): String? {
+    if (timestamp == null || timestamp <= 0L) return null
+    return DateUtils.getRelativeTimeSpanString(
+        timestamp,
+        System.currentTimeMillis(),
+        DateUtils.MINUTE_IN_MILLIS,
+        DateUtils.FORMAT_ABBREV_RELATIVE
+    ).toString()
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,6 +104,7 @@ fun SettingsScreen(
     val currentUser by application.authService.currentUser.collectAsState(initial = null)
     val isSignedIn by application.authService.isSignedIn.collectAsState(initial = false)
     val syncStatus by application.syncService.syncStatus.collectAsState(initial = SyncStatus.IDLE)
+    val lastSyncTimestamp by application.syncService.lastSyncTime.collectAsState(initial = null)
 
     val uiState by viewModel.uiState.collectAsState()
     var showExportDialog by remember { mutableStateOf(false) }
@@ -257,11 +269,14 @@ fun SettingsScreen(
             item {
                 val (title, subtitle, icon, onClickAction) = when {
                     currentUser?.isLocalUser == false -> {
+                        val lastSyncDisplay = remember(lastSyncTimestamp, uiState.lastSyncTime) {
+                            formatRelativeSyncTime(lastSyncTimestamp) ?: uiState.lastSyncTime
+                        }
                         val syncStatusText = when (syncStatus) {
                             SyncStatus.SYNCING -> "Syncing..."
-                            SyncStatus.SUCCESS -> "Last synced: ${uiState.lastSyncTime ?: "Recently"}"
+                            SyncStatus.SUCCESS -> "Last synced: ${lastSyncDisplay ?: "Just now"}"
                             SyncStatus.ERROR -> "Sync error occurred"
-                            else -> uiState.lastSyncTime?.let { "Last synced: $it" } ?: "Sync enabled"
+                            else -> lastSyncDisplay?.let { "Last synced: $it" } ?: "Sync enabled"
                         }
                         Quadruple(
                             "Account: ${currentUser?.displayName ?: currentUser?.email ?: "Signed In"}",

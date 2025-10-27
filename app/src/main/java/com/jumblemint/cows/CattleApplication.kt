@@ -36,7 +36,7 @@ class CattleApplication : Application() {
     }
     
     // Auth Service
-    val authService by lazy { AuthService(this) }
+    val authService by lazy { AuthService(this, repository) }
     
     // Sync Service
     val syncService by lazy { SyncService(repository) }

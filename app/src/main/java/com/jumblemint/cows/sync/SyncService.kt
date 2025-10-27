@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.util.*
 import kotlinx.coroutines.delay
@@ -20,14 +21,60 @@ class SyncService(
     private val repository: CattleRepository,
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
-    
+
+    private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private val _syncStatus = MutableStateFlow(SyncStatus.IDLE)
     val syncStatus: Flow<SyncStatus> = _syncStatus.asStateFlow()
-    
+
     private val _itemSyncStatus = MutableStateFlow(ItemSyncStatus.IDLE)
     val itemSyncStatus: Flow<ItemSyncStatus> = _itemSyncStatus.asStateFlow()
-    
+
+    private val _lastSyncTime = MutableStateFlow<Long?>(null)
+    val lastSyncTime: Flow<Long?> = _lastSyncTime.asStateFlow()
+
     private var activeListeners = mutableMapOf<String, ListenerRegistration>()
+
+    init {
+        serviceScope.launch {
+            val stored = repository.getSettingByKey(SettingsKeys.LAST_SYNC_TIMESTAMP)?.value?.toLongOrNull()
+            _lastSyncTime.value = stored
+        }
+    }
+
+    private suspend fun recordSyncSuccess(userId: String) {
+        val now = System.currentTimeMillis()
+        _lastSyncTime.value = now
+
+        try {
+            val existing = repository.getSettingByKey(SettingsKeys.LAST_SYNC_TIMESTAMP)
+            val setting = existing?.copy(
+                value = now.toString(),
+                updatedAt = now,
+                lastSyncAt = now,
+                updatedBy = userId
+            ) ?: Settings(
+                key = SettingsKeys.LAST_SYNC_TIMESTAMP,
+                value = now.toString(),
+                createdAt = now,
+                updatedAt = now,
+                lastSyncAt = now,
+                updatedBy = userId
+            )
+
+            repository.insertOrUpdateSetting(setting)
+        } catch (e: Exception) {
+            println("Failed to persist last sync setting for user $userId: ${e.message}")
+            e.printStackTrace()
+        }
+
+        try {
+            repository.updateUserLastSync(userId, now)
+        } catch (e: Exception) {
+            println("Failed to update user last sync for $userId: ${e.message}")
+            e.printStackTrace()
+        }
+    }
 
     suspend fun checkServerDataExists(userId: String): Boolean {
         println("Checking for server data for user ID: $userId")
@@ -243,11 +290,12 @@ class SyncService(
 
             println("Force upload of all local data completed for user ID: $userId")
             _syncStatus.value = SyncStatus.SUCCESS
+            recordSyncSuccess(userId)
         } catch (e: Exception) {
             println("Error during force upload of all local data for user $userId: ${e.message}")
             e.printStackTrace()
             _syncStatus.value = SyncStatus.ERROR
-            throw e 
+            throw e
         } finally {
             if (_syncStatus.value != SyncStatus.IDLE) {
                 delay(1000) 
@@ -284,6 +332,7 @@ class SyncService(
             
             println("Sync completed successfully for user: $userId")
             _syncStatus.value = SyncStatus.SUCCESS
+            recordSyncSuccess(userId)
             Result.success(Unit)
         } catch (e: Exception) {
             _syncStatus.value = SyncStatus.ERROR
