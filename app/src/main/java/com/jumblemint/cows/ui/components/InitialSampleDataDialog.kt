@@ -814,7 +814,7 @@ private fun BreedSelectionStep(
         HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Default Breeds", style = MaterialTheme.typography.titleSmall)
+            Text("Common Breeds", style = MaterialTheme.typography.titleSmall)
             if (defaultBreeds.isNotEmpty()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -990,7 +990,7 @@ private fun ActivitySelectionStep(
         HorizontalDivider(Modifier, DividerDefaults.Thickness, DividerDefaults.color)
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Default Activity Types", style = MaterialTheme.typography.titleSmall)
+            Text("Suggested Activity Types", style = MaterialTheme.typography.titleSmall)
             if (defaultActivities.isNotEmpty()) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),

@@ -49,18 +49,19 @@ data class Breed(
         fun getDefaultBreeds(): List<Breed> {
             return listOf(
                 Breed(name = "Angus", isDefault = true),
-                Breed(name = "Hereford", isDefault = true),
-                Breed(name = "Holstein", isDefault = true),
-                Breed(name = "Charolais", isDefault = true),
-                Breed(name = "Simmental", isDefault = true),
-                Breed(name = "Limousin", isDefault = true),
+                Breed(name = "Beefmaster", isDefault = true),
                 Breed(name = "Brahman", isDefault = true),
-                Breed(name = "Shorthorn", isDefault = true),
+                Breed(name = "Brown Swiss", isDefault = true),
+                Breed(name = "Charolais", isDefault = true),
+                Breed(name = "Dexter", isDefault = true),
+                Breed(name = "Gelbvieh", isDefault = true),
+                Breed(name = "Hereford", isDefault = true),
+                Breed(name = "Highland", isDefault = true),
+                Breed(name = "Holstein", isDefault = true),
                 Breed(name = "Jersey", isDefault = true),
-                Breed(name = "Guernsey", isDefault = true),
-                Breed(name = "Texas Longhorn", isDefault = true),
-                Breed(name = "Wagyu", isDefault = true),
-                Breed(name = "Crossbred", isDefault = true)
+                Breed(name = "Limousin", isDefault = true),
+                Breed(name = "Shorthorn", isDefault = true),
+                Breed(name = "Simmental", isDefault = true)
             )
         }
     }
