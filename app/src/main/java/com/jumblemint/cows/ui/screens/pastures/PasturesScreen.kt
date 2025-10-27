@@ -110,31 +110,6 @@ fun PasturesScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    if (uiState.unassignedCowCount > 0) {
-                        Card(
-                            onClick = { onNavigateToUnassignedList() },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = getCardColors()
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Unassigned",
-                                        style = MaterialTheme.typography.titleMedium,
-                                    )
-                                    Text(
-                                        text = "Total Head: ${uiState.unassignedCowCount}",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                    )
-                                }
-                            }
-                        }
-                    }
                     Text(text = "Nothing here yet", style = MaterialTheme.typography.headlineSmall)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(text = "Add fields using the + button to get started", style = MaterialTheme.typography.bodyMedium)
