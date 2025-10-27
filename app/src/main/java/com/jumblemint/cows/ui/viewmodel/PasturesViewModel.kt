@@ -40,14 +40,19 @@ class PasturesViewModel(
             try {
                 combine(
                     cattleRepository.getPasturesWithCowCount(),
-                    cattleRepository.getCowsByStatus(com.jumblemint.cows.data.model.Status.ACTIVE),
-                    cattleRepository.getUnassignedCowCount()
-                ) { pasturesWithCounts: List<PastureWithCowCount>, activeCows: List<com.jumblemint.cows.data.model.Cow>, unassignedCount: Int ->
+                    cattleRepository.getCowsByStatus(com.jumblemint.cows.data.model.Status.ACTIVE)
+                ) { pasturesWithCounts: List<PastureWithCowCount>, activeCows: List<com.jumblemint.cows.data.model.Cow> ->
+                    val validPastureIds = pasturesWithCounts.map { it.pasture.id }.toSet()
+                    val unassignedCount = activeCows.count { cow ->
+                        val pastureId = cow.pastureId
+                        pastureId.isNullOrBlank() || pastureId !in validPastureIds
+                    }
+
                     val pasturesWithDetails = pasturesWithCounts.map { pastureWithCount ->
                         val cowsInPasture = activeCows.filter { it.pastureId == pastureWithCount.pasture.id }
                         val classificationBreakdown = cowsInPasture.groupBy { it.classification }
                             .mapValues { it.value.size }
-                        
+
                         PastureWithDetails(
                             pastureWithCount = pastureWithCount,
                             classificationBreakdown = classificationBreakdown

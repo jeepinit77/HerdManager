@@ -47,10 +47,6 @@ interface PastureDao {
     """)
     fun getAllPasturesWithCowCounts(): Flow<List<PastureWithCowCount>>
 
-    @Query("SELECT COUNT(*) FROM cows WHERE pastureId IS NULL AND status = 'ACTIVE'")
-    fun getUnassignedCowCount(): Flow<Int>
-
-
     @Query("SELECT * FROM pastures WHERE id = :id AND isDeleted = 0")
     fun getPastureById(id: String): Flow<Pasture?>
 

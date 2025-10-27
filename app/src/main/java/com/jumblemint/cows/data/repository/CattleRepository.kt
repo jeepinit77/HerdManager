@@ -104,7 +104,6 @@ class CattleRepository(
     suspend fun updatePasture(pasture: Pasture) = pastureDao.update(pasture)
     suspend fun deletePasture(pasture: Pasture) = pastureDao.delete(pasture)
     fun getPasturesWithCowCount(): Flow<List<PastureWithCowCount>> = pastureDao.getAllPasturesWithCowCounts()
-    fun getUnassignedCowCount(): Flow<Int> = pastureDao.getUnassignedCowCount()
 
     // Activity operations
     fun getAllActivities(): Flow<List<Activity>> = activityDao.getAllActivities()

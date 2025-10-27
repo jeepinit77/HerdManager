@@ -87,6 +87,9 @@ fun CowListScreen(
 
     val cowsFlow by remember { mutableStateOf(repository.getAllCows()) }
     val allCows by cowsFlow.collectAsState(initial = emptyList())
+    val pasturesFlow by remember { mutableStateOf(repository.getAllPastures()) }
+    val allPastures by pasturesFlow.collectAsState(initial = emptyList())
+    val validPastureIds = remember(allPastures) { allPastures.map { it.id }.toSet() }
     val tagColorMap = rememberTagColorMap(repository)
     val identifierModeFlow by repository.getAnimalIdentifierModeFlow().collectAsState(initial = AnimalIdentifierMode.BOTH)
     val identifierMode = cowsUiState?.value?.identifierMode ?: identifierModeFlow
@@ -107,9 +110,13 @@ fun CowListScreen(
     val list: List<Cow> = if (showSearchAndFilters) {
         cowsUiState?.value?.cows ?: emptyList()
     } else {
-        remember(allCows, type, value) {
+        remember(allCows, type, value, validPastureIds) {
             val active = allCows.filter { it.status == Status.ACTIVE }
             val today = LocalDate.now()
+            val isCowUnassigned: (Cow) -> Boolean = { cow ->
+                val pastureId = cow.pastureId
+                pastureId.isNullOrBlank() || pastureId !in validPastureIds
+            }
             when (type) {
                 "status" -> {
                     when (value) {
@@ -124,12 +131,12 @@ fun CowListScreen(
                 "pasture" -> active.filter { it.pastureId == value }
                 "pastureName" -> {
                     if (value == "Unassigned") {
-                        active.filter { it.pastureId == null }
+                        active.filter(isCowUnassigned)
                     } else {
                         active
                     }
                 }
-                "unassigned" -> active.filter { it.pastureId == null }
+                "unassigned" -> active.filter(isCowUnassigned)
                 "notCalved" -> {
                     val nineMonthsAgo = LocalDate.now().minusMonths(9)
                     val female = active.filter { it.gender == Gender.FEMALE && it.classification in listOf(Classification.COW, Classification.HEIFER) }
