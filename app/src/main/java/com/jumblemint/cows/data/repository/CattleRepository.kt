@@ -993,7 +993,8 @@ class CattleRepository(
         val defaultsByName = defaults.associateBy { it.name.lowercase(Locale.US) }
         val existingByName = existingBreeds.groupBy { it.name.lowercase(Locale.US) }
 
-        val breedsToDelete = mutableListOf<Breed>()
+        val now = System.currentTimeMillis()
+        val breedsToSoftDelete = mutableListOf<Breed>()
         val breedsToInsert = mutableListOf<Breed>()
 
         defaultsByName.forEach { (name, canonicalDefault) ->
@@ -1002,7 +1003,16 @@ class CattleRepository(
 
             defaultEntries
                 .filter { it.id != canonicalDefault.id }
-                .forEach { breedsToDelete.add(it) }
+                .forEach { duplicate ->
+                    breedsToSoftDelete.add(
+                        duplicate.copy(
+                            firestoreId = duplicate.firestoreId ?: duplicate.id,
+                            isActive = false,
+                            isDeleted = true,
+                            updatedAt = now
+                        )
+                    )
+                }
 
             val hasCanonicalDefault = defaultEntries.any { it.id == canonicalDefault.id }
             if (!hasCanonicalDefault) {
@@ -1010,8 +1020,23 @@ class CattleRepository(
             }
         }
 
-        if (breedsToDelete.isNotEmpty()) {
-            breedsToDelete.forEach { dao.deleteBreed(it) }
+        val legacyDefaults = existingBreeds
+            .filter { it.isDefault && !it.isDeleted }
+            .filter { it.name.lowercase(Locale.US) !in defaultsByName.keys }
+
+        legacyDefaults.forEach { legacy ->
+            breedsToSoftDelete.add(
+                legacy.copy(
+                    firestoreId = legacy.firestoreId ?: legacy.id,
+                    isActive = false,
+                    isDeleted = true,
+                    updatedAt = now
+                )
+            )
+        }
+
+        if (breedsToSoftDelete.isNotEmpty()) {
+            breedsToSoftDelete.forEach { dao.updateBreed(it) }
         }
 
         if (breedsToInsert.isNotEmpty()) {
