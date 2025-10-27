@@ -2,7 +2,8 @@ package com.jumblemint.cows.data.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.*
+import java.util.Locale
+import java.util.UUID
 
 @Entity(tableName = "breeds")
 data class Breed(
@@ -46,23 +47,36 @@ data class Breed(
             )
         }
 
+        private val DEFAULT_BREED_NAMES = listOf(
+            "Angus",
+            "Beefmaster",
+            "Brahman",
+            "Brown Swiss",
+            "Charolais",
+            "Dexter",
+            "Gelbvieh",
+            "Hereford",
+            "Highland",
+            "Holstein",
+            "Jersey",
+            "Limousin",
+            "Shorthorn",
+            "Simmental"
+        )
+
         fun getDefaultBreeds(): List<Breed> {
-            return listOf(
-                Breed(name = "Angus", isDefault = true),
-                Breed(name = "Beefmaster", isDefault = true),
-                Breed(name = "Brahman", isDefault = true),
-                Breed(name = "Brown Swiss", isDefault = true),
-                Breed(name = "Charolais", isDefault = true),
-                Breed(name = "Dexter", isDefault = true),
-                Breed(name = "Gelbvieh", isDefault = true),
-                Breed(name = "Hereford", isDefault = true),
-                Breed(name = "Highland", isDefault = true),
-                Breed(name = "Holstein", isDefault = true),
-                Breed(name = "Jersey", isDefault = true),
-                Breed(name = "Limousin", isDefault = true),
-                Breed(name = "Shorthorn", isDefault = true),
-                Breed(name = "Simmental", isDefault = true)
-            )
+            return DEFAULT_BREED_NAMES.map { name ->
+                Breed(
+                    id = getDefaultBreedId(name),
+                    name = name,
+                    isDefault = true
+                )
+            }
+        }
+
+        fun getDefaultBreedId(name: String): String {
+            val normalized = name.trim().lowercase(Locale.US)
+            return UUID.nameUUIDFromBytes(normalized.toByteArray()).toString()
         }
     }
 }

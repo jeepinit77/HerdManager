@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.util.LinkedHashSet
+import java.util.Locale
 import java.util.UUID
 
 class CattleRepository(
@@ -356,8 +357,10 @@ class CattleRepository(
     fun getAllNotes(): Flow<List<Note>> = noteDao?.getAllNotes() ?: kotlinx.coroutines.flow.flowOf(emptyList())
 
     suspend fun initializeDefaultData() {
+        ensureDefaultBreedsConsistency()
+
         // Only initialize if this is truly the first install (no data at all)
-        val hasAnyExistingData = getAllCows().first().isNotEmpty() || 
+        val hasAnyExistingData = getAllCows().first().isNotEmpty() ||
                                  getAllPastures().first().isNotEmpty() ||
                                  getAllActivities().first().isNotEmpty()
         
@@ -979,6 +982,41 @@ class CattleRepository(
     suspend fun restoreDefaultBreeds() {
         breedDao?.deleteAllBreeds()
         insertBreeds(Breed.getDefaultBreeds())
+    }
+
+    private suspend fun ensureDefaultBreedsConsistency() {
+        val dao = breedDao ?: return
+        val existingBreeds = getAllBreedsSync()
+        if (existingBreeds.isEmpty()) return
+
+        val defaults = Breed.getDefaultBreeds()
+        val defaultsByName = defaults.associateBy { it.name.lowercase(Locale.US) }
+        val existingByName = existingBreeds.groupBy { it.name.lowercase(Locale.US) }
+
+        val breedsToDelete = mutableListOf<Breed>()
+        val breedsToInsert = mutableListOf<Breed>()
+
+        defaultsByName.forEach { (name, canonicalDefault) ->
+            val entries = existingByName[name].orEmpty()
+            val defaultEntries = entries.filter { it.isDefault && !it.isDeleted }
+
+            defaultEntries
+                .filter { it.id != canonicalDefault.id }
+                .forEach { breedsToDelete.add(it) }
+
+            val hasCanonicalDefault = defaultEntries.any { it.id == canonicalDefault.id }
+            if (!hasCanonicalDefault) {
+                breedsToInsert.add(canonicalDefault)
+            }
+        }
+
+        if (breedsToDelete.isNotEmpty()) {
+            breedsToDelete.forEach { dao.deleteBreed(it) }
+        }
+
+        if (breedsToInsert.isNotEmpty()) {
+            dao.insertBreeds(breedsToInsert)
+        }
     }
 }
 
