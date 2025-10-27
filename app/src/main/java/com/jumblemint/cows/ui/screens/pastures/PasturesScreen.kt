@@ -96,14 +96,45 @@ fun PasturesScreen(
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) { CircularProgressIndicator() }
-        } else if (uiState.pastures.isEmpty() && uiState.unassignedCowCount == 0) {
+        } else if (uiState.pastures.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(paddingValues),
                 contentAlignment = Alignment.Center
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    if (uiState.unassignedCowCount > 0) {
+                        Card(
+                            onClick = { onNavigateToUnassignedList() },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = getCardColors()
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "Unassigned",
+                                        style = MaterialTheme.typography.titleMedium,
+                                    )
+                                    Text(
+                                        text = "Total Head: ${uiState.unassignedCowCount}",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                    )
+                                }
+                            }
+                        }
+                    }
                     Text(text = "Nothing here yet", style = MaterialTheme.typography.headlineSmall)
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(text = "Add fields using the + button to get started", style = MaterialTheme.typography.bodyMedium)
@@ -117,8 +148,8 @@ fun PasturesScreen(
                 contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Show Unassigned card only if there are unassigned cows AND at least one actual pasture exists
-                if (uiState.unassignedCowCount > 0 && uiState.pastures.isNotEmpty()) {
+                // Show Unassigned card when there are animals without a pasture assignment
+                if (uiState.unassignedCowCount > 0) {
                     item {
                         Card(
                             onClick = { onNavigateToUnassignedList() }, // Made card tappable
