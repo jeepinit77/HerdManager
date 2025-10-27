@@ -161,8 +161,12 @@ fun ClickableStatItem(label: String, count: Int, color: androidx.compose.ui.grap
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ClassificationBreakdownCard(classifications: Map<String, Int>, onRowClick: (String) -> Unit) {
-    Card(colors = getCardColors()) {
+fun ClassificationBreakdownCard(
+    classifications: Map<String, Int>,
+    onRowClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(modifier = modifier.fillMaxWidth(), colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Category, contentDescription = null, tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor())
@@ -186,8 +190,12 @@ fun ClassificationBreakdownCard(classifications: Map<String, Int>, onRowClick: (
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PastureBreakdownCard(pastures: Map<String, Int>, onRowClick: (String) -> Unit) {
-    Card(colors = getCardColors()) {
+fun PastureBreakdownCard(
+    pastures: Map<String, Int>,
+    onRowClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(modifier = modifier.fillMaxWidth(), colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Landscape, contentDescription = null, tint = MaterialTheme.colorScheme.surfaceVariant.contrastingTextColor())
