@@ -42,6 +42,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import com.jumblemint.cows.ui.components.SecondaryButton
 import androidx.compose.runtime.getValue
@@ -395,6 +396,12 @@ fun SetupWizardDialog(
                                         if (contains(breedId)) remove(breedId) else add(breedId)
                                     }
                                 },
+                                onSelectAllDefaults = {
+                                    selectedDefaultBreedIds = defaultBreeds.map { it.id }.toSet()
+                                },
+                                onClearAllDefaults = {
+                                    selectedDefaultBreedIds = emptySet()
+                                },
                                 onCustomValueChanged = { id, value ->
                                     customBreedFields = customBreedFields.map { field ->
                                         if (field.id == id) field.copy(value = value) else field
@@ -475,6 +482,12 @@ fun SetupWizardDialog(
                                     selectedDefaultActivityIds = selectedDefaultActivityIds.toMutableSet().apply {
                                         if (contains(activityId)) remove(activityId) else add(activityId)
                                     }
+                                },
+                                onSelectAllDefaults = {
+                                    selectedDefaultActivityIds = defaultActivityTypes.map { it.id }.toSet()
+                                },
+                                onClearAllDefaults = {
+                                    selectedDefaultActivityIds = emptySet()
                                 },
                                 onCustomValueChanged = { id, value ->
                                     customActivityFields = customActivityFields.map { field ->
@@ -752,6 +765,8 @@ private fun BreedSelectionStep(
     selectedDefaultIds: Set<String>,
     customFields: List<CustomBreedField>,
     onToggleDefault: (String) -> Unit,
+    onSelectAllDefaults: () -> Unit,
+    onClearAllDefaults: () -> Unit,
     onCustomValueChanged: (String, String) -> Unit,
     onRemoveCustomField: (String) -> Unit
 ) {
@@ -800,6 +815,26 @@ private fun BreedSelectionStep(
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Default Breeds", style = MaterialTheme.typography.titleSmall)
+            if (defaultBreeds.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = onSelectAllDefaults,
+                        enabled = selectedDefaultIds.size != defaultBreeds.size
+                    ) {
+                        Text("Select all")
+                    }
+                    TextButton(
+                        onClick = onClearAllDefaults,
+                        enabled = selectedDefaultIds.isNotEmpty()
+                    ) {
+                        Text("Deselect all")
+                    }
+                }
+            }
             defaultBreeds.sortedBy { it.name }.forEach { breed ->
                 Row(
                     modifier = Modifier
@@ -906,6 +941,8 @@ private fun ActivitySelectionStep(
     selectedDefaultIds: Set<String>,
     customFields: List<CustomActivityField>,
     onToggleDefault: (String) -> Unit,
+    onSelectAllDefaults: () -> Unit,
+    onClearAllDefaults: () -> Unit,
     onCustomValueChanged: (String, String) -> Unit,
     onRemoveCustomField: (String) -> Unit
 ) {
@@ -954,6 +991,26 @@ private fun ActivitySelectionStep(
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Default Activity Types", style = MaterialTheme.typography.titleSmall)
+            if (defaultActivities.isNotEmpty()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = onSelectAllDefaults,
+                        enabled = selectedDefaultIds.size != defaultActivities.size
+                    ) {
+                        Text("Select all")
+                    }
+                    TextButton(
+                        onClick = onClearAllDefaults,
+                        enabled = selectedDefaultIds.isNotEmpty()
+                    ) {
+                        Text("Deselect all")
+                    }
+                }
+            }
             defaultActivities.sortedBy { it.displayName.uppercase(Locale.US) }.forEach { activity ->
                 val isSelected = selectedDefaultIds.contains(activity.id)
                 Row(
