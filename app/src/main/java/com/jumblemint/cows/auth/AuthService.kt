@@ -48,6 +48,7 @@ class AuthService(private val context: Context) {
             auth.addAuthStateListener { firebaseAuth ->
                 val firebaseUser = firebaseAuth.currentUser
                 if (firebaseUser != null) {
+                    clearLocalUser()
                     _currentUser.value = firebaseUser.toUser()
                     _isSignedIn.value = true
                 } else {
@@ -65,7 +66,8 @@ class AuthService(private val context: Context) {
             val credential = GoogleAuthProvider.getCredential(account.idToken, null)
             val result = auth.signInWithCredential(credential).await()
             val firebaseUser = result.user ?: throw Exception("Firebase user is null")
-            
+
+            clearLocalUser()
             val user = firebaseUser.toUser()
             _currentUser.value = user
             _isSignedIn.value = true
