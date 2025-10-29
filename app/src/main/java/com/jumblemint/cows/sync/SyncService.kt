@@ -250,7 +250,7 @@ class SyncService(
                 println("Force uploaded tag color: ${tagColor.name} (FS ID: $firestoreId)")
             }
 
-            val localBreeds = repository.getAllBreedsSync()
+            val localBreeds = repository.getAllBreedsIncludingDeletedSync()
             println("Found ${localBreeds.size} local breeds to force upload.")
             for (breed in localBreeds) {
                 val firestoreId = breed.firestoreId ?: breed.id
@@ -1191,12 +1191,24 @@ class SyncService(
                 }
             }
 
-            val currentLocalBreeds = repository.getAllBreedsSync()
+            val currentLocalBreeds = repository.getAllBreedsIncludingDeletedSync()
             remoteBreedsMap.forEach { (firestoreId, data) ->
                 try {
                     val localBreed = currentLocalBreeds.find { it.firestoreId == firestoreId || it.id == firestoreId }
                     val remoteUpdatedAt = data["updatedAt"] as? Long ?: 0L
                     val isRemoteDeleted = data["isDeleted"] as? Boolean ?: false
+
+                    if (localBreed?.isDeleted == true) {
+                        if (!isRemoteDeleted) {
+                            try {
+                                firestore.collection("users").document(userId).collection("breeds").document(firestoreId).delete().await()
+                                println("Confirmed remote deletion for breed: ${localBreed.name}")
+                            } catch (deleteError: Exception) {
+                                println("Error confirming remote deletion for breed ${localBreed.name}: ${deleteError.message}")
+                            }
+                        }
+                        return@forEach
+                    }
 
                     val shouldProcess = when {
                         isRemoteDeleted -> {
@@ -1295,8 +1307,36 @@ class SyncService(
                 try {
                     val localActivityType = localActivityTypes.find { it.firestoreId == firestoreId || it.id == firestoreId }
                     val remoteUpdatedAt = data["updatedAt"] as? Long ?: 0L
+                    val isRemoteDeleted = data["isDeleted"] as? Boolean ?: false
+
+                    if (localActivityType?.isDeleted == true) {
+                        if (!isRemoteDeleted) {
+                            try {
+                                firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).delete().await()
+                                println("Confirmed remote deletion for activity type: ${localActivityType.name}")
+                            } catch (deleteError: Exception) {
+                                println("Error confirming remote deletion for activity type ${localActivityType.name}: ${deleteError.message}")
+                            }
+                        }
+                        return@forEach
+                    }
 
                     val shouldProcess = when {
+                        isRemoteDeleted -> {
+                            localActivityType?.let {
+                                if (!it.isDeleted) {
+                                    repository.updateActivityType(
+                                        it.copy(
+                                            isActive = false,
+                                            isDeleted = true,
+                                            lastSyncAt = remoteUpdatedAt,
+                                            updatedBy = data["updatedBy"] as? String
+                                        )
+                                    )
+                                }
+                            }
+                            false
+                        }
                         localActivityType == null -> true
                         else -> remoteUpdatedAt > (localActivityType.lastSyncAt ?: 0L)
                     }
