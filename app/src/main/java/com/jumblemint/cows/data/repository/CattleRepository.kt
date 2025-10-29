@@ -980,8 +980,13 @@ class CattleRepository(
         val existingBreeds = getAllBreedsSync()
         val timestamp = System.currentTimeMillis()
 
+        val defaultBlueprint = Breed.getDefaultBreeds(timestamp)
+        val defaultIds = defaultBlueprint.map { it.id }.toSet()
+
         val deletedBreeds = existingBreeds
-            .filter { !it.isDeleted && !it.isDefault }
+            .filter { existing ->
+                !existing.isDeleted && (existing.id !in defaultIds || !existing.isDefault)
+            }
             .map { breed ->
                 val deleted = breed.copy(
                     isActive = false,
@@ -995,14 +1000,18 @@ class CattleRepository(
                 deleted
             }
 
-        val defaultBreeds = Breed.getDefaultBreeds(timestamp).map { default ->
-            val normalized = default.copy(
-                createdAt = default.createdAt,
-                updatedAt = timestamp,
-                lastSyncAt = null,
-                updatedBy = updatedBy,
+        val defaultBreeds = defaultBlueprint.map { default ->
+            val existing = existingBreeds.firstOrNull { it.id == default.id }
+            val normalized = (existing ?: default).copy(
+                name = default.name,
+                isDefault = true,
+                isActive = true,
                 isDeleted = false,
-                isActive = true
+                createdAt = existing?.createdAt ?: default.createdAt,
+                updatedAt = timestamp,
+                firestoreId = default.id,
+                lastSyncAt = null,
+                updatedBy = updatedBy
             )
             breedDao?.insertBreed(normalized)
             normalized
