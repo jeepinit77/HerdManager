@@ -257,11 +257,7 @@ class SyncService(
                 val breedData = breed.toFirestoreMap(userId)
                 val updatedTimestamp = breedData["updatedAt"] as? Long ?: System.currentTimeMillis()
                 val collection = firestore.collection("users").document(userId).collection("breeds").document(firestoreId)
-                if (breed.isDeleted) {
-                    collection.delete().await()
-                } else {
-                    collection.set(breedData).await()
-                }
+                collection.set(breedData).await()
                 repository.updateBreed(
                     breed.copy(
                         firestoreId = firestoreId,
@@ -269,7 +265,8 @@ class SyncService(
                         updatedBy = userId
                     )
                 )
-                println("Force uploaded breed: ${breed.name} (FS ID: $firestoreId)")
+                val stateDescription = if (breed.isDeleted) " (marked deleted)" else ""
+                println("Force uploaded breed: ${breed.name}$stateDescription (FS ID: $firestoreId)")
             }
 
             // Force upload activity types
@@ -512,11 +509,10 @@ class SyncService(
                     )
 
                     val docRef = firestore.collection("users").document(userId).collection("breeds").document(firestoreId)
+                    docRef.set(breedData).await()
                     if (item.isDeleted) {
-                        docRef.delete().await()
-                        println("Immediately deleted breed: ${item.name} with FS ID: $firestoreId")
+                        println("Immediately marked breed as deleted: ${item.name} with FS ID: $firestoreId")
                     } else {
-                        docRef.set(breedData).await()
                         println("Immediately synced breed: ${item.name} with FS ID: $firestoreId")
                     }
                 }
@@ -625,6 +621,40 @@ class SyncService(
             delay(2000)
             _itemSyncStatus.value = ItemSyncStatus.IDLE
             Result.failure(e)
+        }
+    }
+
+    suspend fun markRemoteBreedsDeletedExcept(userId: String, breedIdsToKeep: Set<String>) {
+        try {
+            val snapshot = firestore.collection("users").document(userId).collection("breeds").get().await()
+            if (snapshot.isEmpty) {
+                return
+            }
+
+            val timestamp = System.currentTimeMillis()
+            snapshot.documents.forEach { document ->
+                val firestoreId = document.id
+                if (firestoreId in breedIdsToKeep) {
+                    return@forEach
+                }
+
+                val data = document.data ?: emptyMap<String, Any>()
+                val alreadyDeleted = data["isDeleted"] as? Boolean ?: false
+                if (!alreadyDeleted) {
+                    val updates = mapOf(
+                        "isDeleted" to true,
+                        "isActive" to false,
+                        "updatedAt" to timestamp,
+                        "updatedBy" to userId
+                    )
+                    document.reference.update(updates).await()
+                    println("Marked remote breed '$firestoreId' as deleted during default reset.")
+                }
+            }
+        } catch (e: Exception) {
+            println("Failed to mark remote breeds as deleted for user $userId: ${e.message}")
+            e.printStackTrace()
+            throw e
         }
     }
     
@@ -1172,11 +1202,7 @@ class SyncService(
 
                     if (shouldUpload) {
                         val docRef = firestore.collection("users").document(userId).collection("breeds").document(firestoreId)
-                        if (breed.isDeleted) {
-                            docRef.delete().await()
-                        } else {
-                            docRef.set(breedData).await()
-                        }
+                        docRef.set(breedData).await()
                         repository.updateBreed(
                             breed.copy(
                                 firestoreId = firestoreId,

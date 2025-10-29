@@ -88,6 +88,8 @@ class BreedsViewModel(
             val (deletedBreeds, defaultBreeds) = repository.restoreDefaultBreeds(updatedBy = userId)
             deletedBreeds.forEach { syncService.syncItemImmediately(userId, it) }
             defaultBreeds.forEach { syncService.syncItemImmediately(userId, it) }
+            val idsToKeep = defaultBreeds.mapNotNull { it.firestoreId ?: it.id }.toSet()
+            syncService.markRemoteBreedsDeletedExcept(userId, idsToKeep)
         }
     }
 }
