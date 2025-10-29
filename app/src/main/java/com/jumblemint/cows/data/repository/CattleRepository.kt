@@ -976,9 +976,96 @@ class CattleRepository(
     suspend fun insertBreeds(breeds: List<Breed>) = breedDao?.insertBreeds(breeds)
     suspend fun updateBreed(breed: Breed) = breedDao?.updateBreed(breed)
     suspend fun deleteBreed(breed: Breed) = breedDao?.deleteBreed(breed)
-    suspend fun restoreDefaultBreeds() {
-        breedDao?.deleteAllBreeds()
-        insertBreeds(Breed.getDefaultBreeds())
+    suspend fun replaceBreeds(
+        breedsToKeep: List<Breed>,
+        updatedBy: String? = null
+    ): Pair<List<Breed>, List<Breed>> {
+        val existingBreeds = getAllBreedsSync().toMutableList()
+        val timestamp = System.currentTimeMillis()
+
+        fun Breed.syncIdentifier(): String = (firestoreId ?: id).ifBlank { id }
+
+        val savedBreeds = breedsToKeep.map { incoming ->
+            val normalizedName = incoming.name.trim()
+            val incomingSyncId = incoming.syncIdentifier()
+
+            val matchIndex = existingBreeds.indexOfFirst { existing ->
+                existing.syncIdentifier() == incomingSyncId
+            }.takeIf { it >= 0 } ?: existingBreeds.indexOfFirst { existing ->
+                existing.name.equals(normalizedName, ignoreCase = true)
+            }
+
+            val matched = if (matchIndex != -1) existingBreeds.removeAt(matchIndex) else null
+            val baseId = matched?.id ?: incoming.id
+            val baseFirestoreId = matched?.firestoreId ?: incoming.firestoreId ?: baseId
+            val createdAt = matched?.createdAt ?: incoming.createdAt
+
+            val normalized = (matched ?: incoming).copy(
+                id = baseId,
+                name = normalizedName,
+                isDefault = incoming.isDefault,
+                isActive = true,
+                isDeleted = false,
+                createdAt = createdAt,
+                updatedAt = timestamp,
+                firestoreId = baseFirestoreId,
+                lastSyncAt = null,
+                updatedBy = updatedBy
+            )
+
+            breedDao?.insertBreed(normalized)
+            normalized
+        }
+
+        val deletedBreeds = existingBreeds.map { breed ->
+            val firestoreId = breed.firestoreId ?: breed.id
+            val deleted = breed.copy(
+                isActive = false,
+                isDeleted = true,
+                updatedAt = timestamp,
+                firestoreId = firestoreId,
+                lastSyncAt = null,
+                updatedBy = updatedBy
+            )
+            breedDao?.insertBreed(deleted)
+            deleted
+        }
+
+        return Pair(deletedBreeds, savedBreeds)
+    }
+    suspend fun restoreDefaultBreeds(updatedBy: String? = null): Pair<List<Breed>, List<Breed>> {
+        val existingBreeds = getAllBreedsSync()
+        val timestamp = System.currentTimeMillis()
+
+        val deletedBreeds = existingBreeds
+            .filter { !it.isDeleted && !it.isDefault }
+            .map { breed ->
+                val deleted = breed.copy(
+                    isActive = false,
+                    isDeleted = true,
+                    updatedAt = timestamp,
+                    firestoreId = breed.firestoreId ?: breed.id,
+                    lastSyncAt = null,
+                    updatedBy = updatedBy
+                )
+                breedDao?.insertBreed(deleted)
+                deleted
+            }
+
+        val defaultBreeds = Breed.getDefaultBreeds(timestamp).map { default ->
+            val normalized = default.copy(
+                createdAt = default.createdAt,
+                updatedAt = timestamp,
+                lastSyncAt = null,
+                updatedBy = updatedBy,
+                isDeleted = false,
+                isActive = true
+            )
+            breedDao?.insertBreed(normalized)
+            normalized
+        }
+
+        return Pair(deletedBreeds, defaultBreeds)
     }
 }
 

@@ -87,6 +87,7 @@ class MainActivity : ComponentActivity() {
             var showSetupWizard by remember { mutableStateOf(false) }
 
             val coroutineScope = rememberCoroutineScope()
+            val currentUser by application.authService.currentUser.collectAsState(initial = null)
 
             LaunchedEffect(Unit) {
                 val hasData = repository.hasAnyData()
@@ -153,9 +154,19 @@ class MainActivity : ComponentActivity() {
                             repository.setAnimalIdentifierMode(mode)
                         },
                         onSaveBreeds = { breeds ->
-                            repository.deleteAllBreeds()
-                            if (breeds.isNotEmpty()) {
-                                repository.insertBreeds(breeds)
+                            val user = currentUser
+                            val (deletedBreeds, savedBreeds) = repository.replaceBreeds(breeds, updatedBy = user?.uid)
+
+                            if (user != null && !user.isLocalUser) {
+                                val userId = user.uid
+                                deletedBreeds.forEach { breed ->
+                                    application.syncService.syncItemImmediately(userId, breed).getOrThrow()
+                                }
+                                savedBreeds.forEach { breed ->
+                                    application.syncService.syncItemImmediately(userId, breed).getOrThrow()
+                                }
+                                val idsToKeep = savedBreeds.mapNotNull { it.firestoreId ?: it.id }.toSet()
+                                application.syncService.markRemoteBreedsDeletedExcept(userId, idsToKeep)
                             }
                         },
                         onSaveTagColors = { colors ->
