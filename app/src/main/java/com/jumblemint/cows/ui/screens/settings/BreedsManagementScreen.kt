@@ -53,6 +53,7 @@ fun BreedsManagementScreen(
     val viewModel: BreedsViewModel = viewModel(
         factory = BreedsViewModelFactory(
             repository = repository,
+            syncService = application.syncService,
             getUserId = { currentUser?.uid ?: "" }
         )
     )

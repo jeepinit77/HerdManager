@@ -976,9 +976,39 @@ class CattleRepository(
     suspend fun insertBreeds(breeds: List<Breed>) = breedDao?.insertBreeds(breeds)
     suspend fun updateBreed(breed: Breed) = breedDao?.updateBreed(breed)
     suspend fun deleteBreed(breed: Breed) = breedDao?.deleteBreed(breed)
-    suspend fun restoreDefaultBreeds() {
-        breedDao?.deleteAllBreeds()
-        insertBreeds(Breed.getDefaultBreeds())
+    suspend fun restoreDefaultBreeds(updatedBy: String? = null): Pair<List<Breed>, List<Breed>> {
+        val existingBreeds = getAllBreedsSync()
+        val timestamp = System.currentTimeMillis()
+
+        val deletedBreeds = existingBreeds
+            .filter { !it.isDeleted && !it.isDefault }
+            .map { breed ->
+                val deleted = breed.copy(
+                    isActive = false,
+                    isDeleted = true,
+                    updatedAt = timestamp,
+                    firestoreId = breed.firestoreId ?: breed.id,
+                    lastSyncAt = null,
+                    updatedBy = updatedBy
+                )
+                breedDao?.insertBreed(deleted)
+                deleted
+            }
+
+        val defaultBreeds = Breed.getDefaultBreeds(timestamp).map { default ->
+            val normalized = default.copy(
+                createdAt = default.createdAt,
+                updatedAt = timestamp,
+                lastSyncAt = null,
+                updatedBy = updatedBy,
+                isDeleted = false,
+                isActive = true
+            )
+            breedDao?.insertBreed(normalized)
+            normalized
+        }
+
+        return Pair(deletedBreeds, defaultBreeds)
     }
 }
 

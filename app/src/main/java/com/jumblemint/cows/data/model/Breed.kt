@@ -31,6 +31,11 @@ data class Breed(
     }
 
     companion object {
+        private fun stableIdForName(name: String): String {
+            val normalized = name.trim().lowercase()
+            return UUID.nameUUIDFromBytes("breed::$normalized".toByteArray()).toString()
+        }
+
         fun fromFirestoreMap(id: String, data: Map<String, Any>): Breed {
             return Breed(
                 id = id,
@@ -46,22 +51,35 @@ data class Breed(
             )
         }
 
-        fun getDefaultBreeds(): List<Breed> {
-            return listOf(
-                Breed(name = "Angus", isDefault = true),
-                Breed(name = "Hereford", isDefault = true),
-                Breed(name = "Holstein", isDefault = true),
-                Breed(name = "Charolais", isDefault = true),
-                Breed(name = "Simmental", isDefault = true),
-                Breed(name = "Limousin", isDefault = true),
-                Breed(name = "Brahman", isDefault = true),
-                Breed(name = "Shorthorn", isDefault = true),
-                Breed(name = "Jersey", isDefault = true),
-                Breed(name = "Guernsey", isDefault = true),
-                Breed(name = "Texas Longhorn", isDefault = true),
-                Breed(name = "Wagyu", isDefault = true),
-                Breed(name = "Crossbred", isDefault = true)
+        fun getDefaultBreeds(timestamp: Long = System.currentTimeMillis()): List<Breed> {
+            val defaultNames = listOf(
+                "Angus",
+                "Hereford",
+                "Holstein",
+                "Charolais",
+                "Simmental",
+                "Limousin",
+                "Brahman",
+                "Shorthorn",
+                "Jersey",
+                "Guernsey",
+                "Texas Longhorn",
+                "Wagyu",
+                "Crossbred"
             )
+
+            return defaultNames.map { name ->
+                val id = stableIdForName(name)
+                Breed(
+                    id = id,
+                    name = name,
+                    isDefault = true,
+                    createdAt = timestamp,
+                    updatedAt = timestamp,
+                    firestoreId = id,
+                    isDeleted = false
+                )
+            }
         }
     }
 }
