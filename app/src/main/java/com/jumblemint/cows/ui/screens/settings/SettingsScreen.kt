@@ -77,6 +77,7 @@ fun SettingsScreen(
     onNavigateToActivityTypes: (() -> Unit)? = null,
     onNavigateToBreeds: (() -> Unit)? = null,
     onNavigateToThemeSettings: (() -> Unit)? = null,
+    onNavigateToBulkAdd: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -255,6 +256,12 @@ fun SettingsScreen(
                         subtitle = "Reset breeds, pastures, tag colors, and activities",
                         icon = Icons.Filled.AutoAwesome,
                         onClick = { showSetupWizardConfirmation = true }
+                    )
+                    SettingsRow(
+                        title = "Bulk Add Animals",
+                        subtitle = "Quickly enter multiple animals",
+                        icon = Icons.Filled.LibraryAdd,
+                        onClick = { onNavigateToBulkAdd?.invoke() }
                     )
                     SettingsRow(
                         title = "Theme Settings",
@@ -562,6 +569,10 @@ fun SettingsScreen(
                 if (pastures.isNotEmpty()) {
                     pastures.forEach { repository.insertPasture(it) }
                 }
+            },
+            onLaunchBulkAdd = {
+                showSetupWizard = false
+                onNavigateToBulkAdd?.invoke()
             }
         )
     }

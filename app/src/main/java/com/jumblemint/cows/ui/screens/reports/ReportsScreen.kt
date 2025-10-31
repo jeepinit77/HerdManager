@@ -35,6 +35,7 @@ fun ReportsScreen(
     onShowList: (type: String, value: String?) -> Unit,
     onNavigateToAddBirth: () -> Unit,
     onNavigateToTodoList: () -> Unit = {},
+    onNavigateToBulkAdd: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -86,7 +87,14 @@ fun ReportsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item { HerdOverviewCard(uiState.totalCows, uiState.watchedCowsCount, { type -> onShowList("status", type) }, { onShowList("watching", null) }) }
-            item { ToolsCard(onNavigateToAddBirth, { onShowList("workingList", null) }, onNavigateToTodoList) }
+            item {
+                ToolsCard(
+                    onAddCalfClick = onNavigateToAddBirth,
+                    onWorkingListClick = { onShowList("workingList", null) },
+                    onTodoListClick = onNavigateToTodoList,
+                    onBulkAddClick = onNavigateToBulkAdd
+                )
+            }
             item {
                 ClassificationBreakdownCard(
                     uiState.classificationBreakdown,
@@ -114,7 +122,12 @@ fun ReportsScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ToolsCard(onAddCalfClick: () -> Unit, onWorkingListClick: () -> Unit, onTodoListClick: () -> Unit) {
+fun ToolsCard(
+    onAddCalfClick: () -> Unit,
+    onWorkingListClick: () -> Unit,
+    onTodoListClick: () -> Unit,
+    onBulkAddClick: () -> Unit
+) {
     Card(colors = getCardColors()) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -123,10 +136,34 @@ fun ToolsCard(onAddCalfClick: () -> Unit, onWorkingListClick: () -> Unit, onTodo
                 Text("Tools", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(modifier = Modifier.height(12.dp))
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                ToolItem(Icons.Default.Add, "Add Calf", onAddCalfClick)
-                ToolItem(Icons.Default.List, "Working List", onWorkingListClick)
-                ToolItem(Icons.Default.CheckCircle, "ToDo List", onTodoListClick)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                ToolItem(
+                    icon = Icons.Default.Add,
+                    label = "Add Calf",
+                    onClick = onAddCalfClick,
+                    modifier = Modifier.weight(1f)
+                )
+                ToolItem(
+                    icon = Icons.Default.List,
+                    label = "Working List",
+                    onClick = onWorkingListClick,
+                    modifier = Modifier.weight(1f)
+                )
+                ToolItem(
+                    icon = Icons.Default.CheckCircle,
+                    label = "ToDo List",
+                    onClick = onTodoListClick,
+                    modifier = Modifier.weight(1f)
+                )
+                ToolItem(
+                    icon = Icons.Default.LibraryAdd,
+                    label = "Bulk Add",
+                    onClick = onBulkAddClick,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -134,9 +171,24 @@ fun ToolsCard(onAddCalfClick: () -> Unit, onWorkingListClick: () -> Unit, onTodo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ToolItem(icon: androidx.compose.ui.graphics.vector.ImageVector, label: String, onClick: () -> Unit) {
-    Card(onClick = onClick, colors = getCardColors(), elevation = CardDefaults.cardElevation(defaultElevation = 0.dp), border = null) {
-        Column(modifier = Modifier.padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+fun ToolItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        onClick = onClick,
+        colors = getCardColors(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = null,
+        modifier = modifier
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Icon(icon, contentDescription = label, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
             Spacer(modifier = Modifier.height(6.dp))
             Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)

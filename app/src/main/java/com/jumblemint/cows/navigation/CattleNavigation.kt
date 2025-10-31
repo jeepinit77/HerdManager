@@ -111,7 +111,8 @@ fun MainScreensViewPager(
                         }
                     },
                     onNavigateToAddBirth = { navController.navigate(Screen.AddBirth.route) },
-                    onNavigateToTodoList = { navController.navigate(Screen.TodoList.route) }
+                    onNavigateToTodoList = { navController.navigate(Screen.TodoList.route) },
+                    onNavigateToBulkAdd = { navController.navigate(Screen.QuickAddCattle.route) }
                 )
             }
             COWS_PAGE_INDEX -> CowListScreen(
@@ -119,7 +120,7 @@ fun MainScreensViewPager(
                 pastureId = null,
                 onCowClick = { cowId: Long -> navController.navigate(Screen.CowInfo.createRoute(cowId = cowId, returnToRoute = mainPagerRoute(COWS_PAGE_INDEX))) },
                 onCowEdit = { cowId: Long -> navController.navigate(Screen.CowDetail.createRoute(cowId)) },
-                onAddCowClick = { navController.navigate(Screen.QuickAddCattle.route) },
+                onAddCowClick = { navController.navigate(Screen.CowDetail.createRoute(0L)) },
                 showSearchAndFilters = true,
                 showFab = true
             )
@@ -164,7 +165,8 @@ fun MainScreensViewPager(
                 onNavigateToTagColors = { navController.navigate(Screen.TagColorsManagement.route) },
                 onNavigateToActivityTypes = { navController.navigate(Screen.ActivityTypesManagement.route) },
                 onNavigateToBreeds = { navController.navigate(Screen.BreedsManagement.route) },
-                onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) }
+                onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) },
+                onNavigateToBulkAdd = { navController.navigate(Screen.QuickAddCattle.route) }
             )
             else -> Text("Unknown Page")
         }
@@ -412,7 +414,8 @@ fun CattleNavigation(
                 onNavigateToTagColors = { navController.navigate(Screen.TagColorsManagement.route) },
                 onNavigateToActivityTypes = { navController.navigate(Screen.ActivityTypesManagement.route) },
                 onNavigateToBreeds = { navController.navigate(Screen.BreedsManagement.route) },
-                onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) }
+                onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) },
+                onNavigateToBulkAdd = { navController.navigate(Screen.QuickAddCattle.route) }
             )
         }
 

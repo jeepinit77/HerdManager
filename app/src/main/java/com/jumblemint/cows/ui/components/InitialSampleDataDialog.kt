@@ -98,6 +98,10 @@ enum class SetupWizardStep(val title: String, val description: String) {
     PASTURES(
         title = "Add Pastures",
         description = "Add pasture names now. You can add acres and descriptions later in Settings."
+    ),
+    BULK_ADD(
+        title = "Add Your Animals",
+        description = "You're ready to add cattle. Quickly bulk add them now or finish to do it later."
     )
 }
 
@@ -245,7 +249,8 @@ fun SetupWizardDialog(
     onSaveBreeds: suspend (List<Breed>) -> Unit,
     onSaveTagColors: suspend (List<TagColor>) -> Unit,
     onSaveActivities: suspend (List<ActivityTypeConfig>) -> Unit,
-    onSavePastures: suspend (List<Pasture>) -> Unit
+    onSavePastures: suspend (List<Pasture>) -> Unit,
+    onLaunchBulkAdd: () -> Unit
 ) {
     Dialog(
         onDismissRequest = onExit,
@@ -523,6 +528,15 @@ fun SetupWizardDialog(
                                 }
                             )
                         }
+
+                        SetupWizardStep.BULK_ADD -> {
+                            BulkAddPromptStep(
+                                onBulkAdd = {
+                                    onFinished()
+                                    onLaunchBulkAdd()
+                                }
+                            )
+                        }
                     }
                 }
 
@@ -703,6 +717,10 @@ fun SetupWizardDialog(
                                                 isSaving = false
                                             }
                                         }
+                                    }
+
+                                    SetupWizardStep.BULK_ADD -> {
+                                        moveToNextStep()
                                     }
                                 }
                             },
@@ -1085,5 +1103,28 @@ private fun PastureSetupStep(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun BulkAddPromptStep(onBulkAdd: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            text = "Do you want to bulk add animals right now?",
+            style = MaterialTheme.typography.titleSmall
+        )
+        Text(
+            text = "You'll head to the bulk add screen where each group is ready to fill out. You can always come back later from the Cattle tab.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Button(onClick = onBulkAdd) {
+            Text("Open Bulk Add")
+        }
+        Text(
+            text = "Tap Save & Finish if you'd rather start adding animals individually or continue setup elsewhere.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }

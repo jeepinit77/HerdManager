@@ -85,6 +85,7 @@ class MainActivity : ComponentActivity() {
 
             var showInitialSetup by remember { mutableStateOf(false) }
             var showSetupWizard by remember { mutableStateOf(false) }
+            var pendingBulkAddNavigation by remember { mutableStateOf(false) }
 
             val coroutineScope = rememberCoroutineScope()
 
@@ -97,7 +98,10 @@ class MainActivity : ComponentActivity() {
             }
 
             CowsTheme {
-                CattleManagerApp()
+                CattleManagerApp(
+                    shouldNavigateToQuickAdd = pendingBulkAddNavigation,
+                    onQuickAddNavigationConsumed = { pendingBulkAddNavigation = false }
+                )
 
                 if (showInitialSetup && !showSetupWizard) {
                     InitialSetupLandingDialog(
@@ -183,6 +187,9 @@ class MainActivity : ComponentActivity() {
                             if (pastures.isNotEmpty()) {
                                 pastures.forEach { repository.insertPasture(it) }
                             }
+                        },
+                        onLaunchBulkAdd = {
+                            pendingBulkAddNavigation = true
                         }
                     )
                 }
@@ -222,7 +229,10 @@ fun isMainTabScreen(screen: Screen?): Boolean {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun CattleManagerApp() {
+fun CattleManagerApp(
+    shouldNavigateToQuickAdd: Boolean = false,
+    onQuickAddNavigationConsumed: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRouteFromNav = navBackStackEntry?.destination?.route
@@ -235,6 +245,7 @@ fun CattleManagerApp() {
     var hasUnsavedChanges by remember { mutableStateOf(false) }
     var backPressed by remember { mutableStateOf(false) }
     var resetTriggered by remember { mutableStateOf(false) }
+    var showSwitchToBulkDialog by remember { mutableStateOf(false) }
 
     // Double back to exit functionality
     var backPressedTime by remember { mutableStateOf(0L) }
@@ -258,6 +269,15 @@ fun CattleManagerApp() {
         lastPagerPage.value = pagerState.currentPage
     }
 
+    LaunchedEffect(shouldNavigateToQuickAdd) {
+        if (shouldNavigateToQuickAdd) {
+            navController.navigate(Screen.QuickAddCattle.route) {
+                launchSingleTop = true
+            }
+            onQuickAddNavigationConsumed()
+        }
+    }
+
     val currentScreenForUI = if (currentScreenFromNav == Screen.MainPager) {
         getScreenForPageIndex(pagerState.currentPage)
     } else {
@@ -274,6 +294,35 @@ fun CattleManagerApp() {
     )
 
     CompositionLocalProvider(LocalGlobalSnackbarState provides globalSnackbarState) {
+        if (showSwitchToBulkDialog) {
+            AlertDialog(
+                onDismissRequest = { showSwitchToBulkDialog = false },
+                title = { Text("Switch to bulk add?") },
+                text = {
+                    Text("You'll leave the single animal form and open the bulk add screen. Continue?")
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showSwitchToBulkDialog = false
+                            hasUnsavedChanges = false
+                            navController.popBackStack()
+                            navController.navigate(Screen.QuickAddCattle.route) {
+                                launchSingleTop = true
+                            }
+                        }
+                    ) {
+                        Text("Switch")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSwitchToBulkDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             snackbarHost = {
@@ -307,9 +356,10 @@ fun CattleManagerApp() {
                     currentScreenForUI == Screen.AddActivityWithId ||
                     currentScreenForUI == Screen.AddBirth
                 ) {
+                    val cowIdArg = navBackStackEntry?.arguments?.getLong("cowId")
                     val detailTitle: String? = when (currentScreenForUI) {
                         Screen.CowDetail -> {
-                            val cowId = navBackStackEntry?.arguments?.getLong("cowId") ?: 0L
+                            val cowId = cowIdArg ?: 0L
                             val contextLocal = LocalContext.current
                             val application = contextLocal.applicationContext as CattleApplication
                             val database = CattleDatabase.getDatabase(contextLocal)
@@ -342,6 +392,8 @@ fun CattleManagerApp() {
                         else -> "Details"
                     }
 
+                    val isAddAnimalScreen = currentScreenForUI == Screen.CowDetail && (cowIdArg ?: 0L) == 0L
+
                     AppTopBar(
                         title = detailTitle,
                         navigationIcon = {
@@ -350,9 +402,16 @@ fun CattleManagerApp() {
                             }
                         },
                         actions = {
-                            if (hasUnsavedChanges) {
-                                IconButton(onClick = { saveTriggered = true }) {
-                                    Icon(Icons.Filled.Done, contentDescription = "Save", tint = MaterialTheme.colorScheme.onSurface)
+                            when {
+                                hasUnsavedChanges -> {
+                                    IconButton(onClick = { saveTriggered = true }) {
+                                        Icon(Icons.Filled.Done, contentDescription = "Save", tint = MaterialTheme.colorScheme.onSurface)
+                                    }
+                                }
+                                isAddAnimalScreen -> {
+                                    IconButton(onClick = { showSwitchToBulkDialog = true }) {
+                                        Icon(Icons.Filled.LibraryAdd, contentDescription = "Switch to bulk add")
+                                    }
                                 }
                             }
                         }
