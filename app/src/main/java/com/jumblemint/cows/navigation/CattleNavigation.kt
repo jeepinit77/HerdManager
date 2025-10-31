@@ -38,6 +38,7 @@ import com.jumblemint.cows.ui.screens.cows.CowEditScreen
 import com.jumblemint.cows.ui.screens.splash.SplashScreen
 import com.jumblemint.cows.ui.screens.cows.CowInfoScreen
 import com.jumblemint.cows.ui.screens.cows.CowListScreen
+import com.jumblemint.cows.ui.screens.cows.QuickAddCattleScreen
 
 import com.jumblemint.cows.ui.screens.herds.HerdSelectionScreen // सुनिश्चित किया गया आयात
 import com.jumblemint.cows.ui.screens.notes.NotesScreen
@@ -118,7 +119,7 @@ fun MainScreensViewPager(
                 pastureId = null,
                 onCowClick = { cowId: Long -> navController.navigate(Screen.CowInfo.createRoute(cowId = cowId, returnToRoute = mainPagerRoute(COWS_PAGE_INDEX))) },
                 onCowEdit = { cowId: Long -> navController.navigate(Screen.CowDetail.createRoute(cowId)) },
-                onAddCowClick = { navController.navigate(Screen.CowDetail.createRoute(0L)) },
+                onAddCowClick = { navController.navigate(Screen.QuickAddCattle.route) },
                 showSearchAndFilters = true,
                 showFab = true
             )
@@ -309,9 +310,21 @@ fun CattleNavigation(
             )
         }
 
+        composable(Screen.QuickAddCattle.route) {
+            QuickAddCattleScreen(
+                modifier = screenModifierWithPadding,
+                onNavigateBack = { navController.popBackStack() },
+                saveTriggered = saveTriggered,
+                onSaveHandled = onSaveHandled,
+                onUnsavedChangesChanged = onUnsavedChangesChanged,
+                backPressed = backPressed,
+                onBackHandled = onBackHandled
+            )
+        }
+
         composable(Screen.AddActivity.route) {
             var hasUnsavedChanges by remember { mutableStateOf(false) }
-            
+
             LaunchedEffect(hasUnsavedChanges) {
                 onUnsavedChangesChanged(hasUnsavedChanges)
             }

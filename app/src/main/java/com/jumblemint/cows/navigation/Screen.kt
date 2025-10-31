@@ -27,6 +27,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
     data object CowDetail : Screen("cow_detail_route/{cowId}", "Cow Details", false) {
         fun createRoute(cowId: Long): String = route.replace("{cowId}", cowId.toString())
     }
+    data object QuickAddCattle : Screen("quick_add_cattle_route", "Quick Add", false)
     data object AddActivity : Screen("add_activity_route", "Add Activity", false) { // For navigating to add (no ID)
          fun createRoute(): String = route // No ID needed for initial navigation
     }
@@ -100,7 +101,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
                 Splash, SignIn, MainPager, Dashboard, Cows, Pastures, Activities, Notes,
                 CowInfo, CowDetail, AddActivity, AddActivityWithId, ActivityInfo, // Added ActivityInfo here
                 CowList, Settings, PastureDetail,
-                AddPasture, EditPasture, AddBirth, AccountManagement, TagColorsManagement, ActivityTypesManagement,
+                QuickAddCattle, AddPasture, EditPasture, AddBirth, AccountManagement, TagColorsManagement, ActivityTypesManagement,
                 BreedsManagement, ThemeSettings, Sync, WorkingList, HerdSelection, NoteDetail, NoteInfo, TodoList
             ).distinct() // Ensure no duplicates if some routes are similar (e.g. AddActivity vs AddActivityWithId for fromRoute)
         }

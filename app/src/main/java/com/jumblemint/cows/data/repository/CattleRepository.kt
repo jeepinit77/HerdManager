@@ -91,6 +91,8 @@ class CattleRepository(
     fun getWatchedCows(): Flow<List<Cow>> = cowDao.getWatchedCows()
 
     suspend fun insertCow(cow: Cow): Long = cowDao.insertCow(cow)
+
+    suspend fun insertCows(cows: List<Cow>): List<Long> = cowDao.insertCows(cows)
     suspend fun updateCow(cow: Cow) = cowDao.updateCow(cow)
     suspend fun deleteCow(cow: Cow) = cowDao.deleteCow(cow)
     suspend fun updateCowWatchStatus(cowId: Long, isWatched: Boolean) = cowDao.updateCowWatchStatus(cowId, isWatched)

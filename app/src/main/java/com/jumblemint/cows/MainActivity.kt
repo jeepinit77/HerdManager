@@ -301,6 +301,7 @@ fun CattleManagerApp() {
                     )
                 } else if (
                     currentScreenForUI == Screen.CowDetail ||
+                    currentScreenForUI == Screen.QuickAddCattle ||
                     currentScreenForUI == Screen.NoteDetail ||
                     currentScreenForUI == Screen.AddActivity ||
                     currentScreenForUI == Screen.AddActivityWithId ||
@@ -337,6 +338,7 @@ fun CattleManagerApp() {
                         Screen.AddActivity -> "Add Activity"
                         Screen.AddActivityWithId -> "Edit Activity"
                         Screen.AddBirth -> Screen.AddBirth.title
+                        Screen.QuickAddCattle -> Screen.QuickAddCattle.title
                         else -> "Details"
                     }
 

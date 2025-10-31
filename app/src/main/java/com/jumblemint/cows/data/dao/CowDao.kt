@@ -11,6 +11,9 @@ interface CowDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCow(cow: Cow): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCows(cows: List<Cow>): List<Long>
+
     @Update
     suspend fun updateCow(cow: Cow)
 
