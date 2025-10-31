@@ -1328,22 +1328,26 @@ class SyncService(
                         remoteData == null -> true
                         else -> {
                             val remoteUpdatedAt = remoteData["updatedAt"] as? Long ?: 0L
-                            localUpdatedAt > remoteUpdatedAt
+                            val remoteDeleted = remoteData["isDeleted"] as? Boolean ?: false
+                            (localUpdatedAt > remoteUpdatedAt) || (activityType.isDeleted && !remoteDeleted)
                         }
                     }
+
                     if (shouldUpload) {
-                        if (activityType.isDeleted) {
-                            // If local is deleted, delete from server
-                            firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).delete().await()
-                        } else {
-                            // Otherwise upload the data
-                            firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).set(activityTypeData).await()
-                        }
-                        repository.updateActivityType(activityType.copy(
-                            firestoreId = firestoreId,
-                            lastSyncAt = localUpdatedAt,
-                            updatedBy = userId
-                        ))
+                        firestore.collection("users").document(userId)
+                            .collection("activityTypes")
+                            .document(firestoreId)
+                            .set(activityTypeData)
+                            .await()
+
+                        repository.updateActivityType(
+                            activityType.copy(
+                                firestoreId = firestoreId,
+                                lastSyncAt = localUpdatedAt,
+                                updatedBy = userId
+                            )
+                        )
+
                         println("Uploaded activity type: ${activityType.name}${if (activityType.isDeleted) " (deleted)" else ""}")
                     }
                 } catch (e: Exception) { println("Error uploading activity type ${activityType.name}: ${e.message}") }
@@ -1353,10 +1357,26 @@ class SyncService(
                 try {
                     val localActivityType = localActivityTypes.find { it.firestoreId == firestoreId || it.id == firestoreId }
                     val remoteUpdatedAt = data["updatedAt"] as? Long ?: 0L
+                    val isRemoteDeleted = data["isDeleted"] as? Boolean ?: false
 
                     val shouldProcess = when {
+                        isRemoteDeleted -> {
+                            localActivityType?.let {
+                                if (!it.isDeleted) {
+                                    repository.updateActivityType(
+                                        it.copy(
+                                            isActive = false,
+                                            isDeleted = true,
+                                            lastSyncAt = remoteUpdatedAt,
+                                            updatedBy = data["updatedBy"] as? String
+                                        )
+                                    )
+                                }
+                            }
+                            false
+                        }
                         localActivityType == null -> true
-                        else -> remoteUpdatedAt > (localActivityType.lastSyncAt ?: 0L)
+                        else -> remoteUpdatedAt > (localActivityType.lastSyncAt ?: 0L) && !localActivityType.isDeleted
                     }
 
                     if (shouldProcess) {
@@ -1373,7 +1393,7 @@ class SyncService(
                             firestoreId = firestoreId,
                             lastSyncAt = remoteUpdatedAt,
                             updatedBy = data["updatedBy"] as? String,
-                            isDeleted = data["isDeleted"] as? Boolean ?: false
+                            isDeleted = false
                         )
                         if (localActivityType == null) repository.insertActivityType(remoteActivityType)
                         else repository.updateActivityType(remoteActivityType)
@@ -1964,19 +1984,24 @@ class SyncService(
             when (change.type) {
                 DocumentChange.Type.ADDED, DocumentChange.Type.MODIFIED -> {
                     val existingLocalActivityType = repository.getAllActivityTypesSync().find { it.firestoreId == firestoreId || it.id == firestoreId }
-                    
+
                     if (remoteActivityType.isDeleted) {
-                        // Handle soft deletion from remote
                         existingLocalActivityType?.let {
-                            if (!it.isDefault) { // Don't delete default activity types
-                                repository.deleteActivityType(it)
-                                println("Real-time ${change.type}: Deleted activity type '${it.name}' (marked as deleted remotely)")
-                            } else {
+                            if (!it.isDefault && !it.isDeleted) {
+                                repository.updateActivityType(
+                                    it.copy(
+                                        isActive = false,
+                                        isDeleted = true,
+                                        lastSyncAt = remoteActivityType.lastSyncAt,
+                                        updatedBy = remoteActivityType.updatedBy
+                                    )
+                                )
+                                println("Real-time ${change.type}: Marked activity type '${it.name}' as deleted (remote)")
+                            } else if (it.isDefault) {
                                 println("Real-time ${change.type}: Skipped deletion of default activity type '${it.name}'")
                             }
                         }
                     } else {
-                        // Handle normal add/update
                         if (existingLocalActivityType == null) {
                             repository.insertActivityType(remoteActivityType)
                             println("Real-time ${change.type}: Inserted activity type '${remoteActivityType.name}'")
@@ -1989,10 +2014,17 @@ class SyncService(
                 DocumentChange.Type.REMOVED -> {
                     val existingLocalActivityType = repository.getAllActivityTypesSync().find { it.firestoreId == firestoreId }
                     existingLocalActivityType?.let {
-                        if (!it.isDefault) { // Don't delete default activity types
-                            repository.deleteActivityType(it)
-                            println("Real-time REMOVED: Deleted activity type '${it.name}'")
-                        } else {
+                        if (!it.isDefault && !it.isDeleted) {
+                            repository.updateActivityType(
+                                it.copy(
+                                    isActive = false,
+                                    isDeleted = true,
+                                    lastSyncAt = System.currentTimeMillis(),
+                                    updatedBy = remoteActivityType.updatedBy ?: userId
+                                )
+                            )
+                            println("Real-time REMOVED: Marked activity type '${it.name}' as deleted.")
+                        } else if (it.isDefault) {
                             println("Real-time REMOVED: Skipped deletion of default activity type '${it.name}'")
                         }
                     }
