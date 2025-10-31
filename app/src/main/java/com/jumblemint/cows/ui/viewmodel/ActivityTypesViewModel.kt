@@ -24,111 +24,82 @@ class ActivityTypesViewModel(
         name: String,
         displayName: String,
         description: String? = null,
-        iconName: String? = null // <<< ADDED iconName parameter
+        iconName: String? = null
     ) {
         viewModelScope.launch {
+            val userId = getUserId()
+            val timestamp = System.currentTimeMillis()
+            val id = UUID.randomUUID().toString()
             val activityType = ActivityTypeConfig(
-                id = UUID.randomUUID().toString(), // Ensure new ID for brand new types
+                id = id,
                 name = name,
                 displayName = displayName,
                 description = description,
-                iconName = iconName, // <<< USE iconName
+                iconName = iconName,
                 isActive = true,
                 isDefault = false,
-                updatedAt = System.currentTimeMillis(),
-                updatedBy = getUserId() // Set who created/updated it
+                createdAt = timestamp,
+                updatedAt = timestamp,
+                firestoreId = id,
+                updatedBy = userId
             )
-            repository.upsertActivityType(activityType)
-            syncService.syncItemImmediately(getUserId(), activityType)
+            repository.insertActivityType(activityType)
+            syncService.syncItemImmediately(userId, activityType)
         }
     }
 
     fun updateActivityType(activityType: ActivityTypeConfig) {
         viewModelScope.launch {
+            val userId = getUserId()
             val updated = activityType.copy(
                 updatedAt = System.currentTimeMillis(),
-                updatedBy = getUserId() // Set who updated it
+                updatedBy = userId,
+                isDeleted = false,
+                isActive = true
             )
-            repository.upsertActivityType(updated)
-            syncService.syncItemImmediately(getUserId(), updated)
+            repository.insertActivityType(updated)
+            syncService.syncItemImmediately(userId, updated)
         }
     }
 
     fun deleteActivityType(activityType: ActivityTypeConfig) {
         viewModelScope.launch {
+            if (activityType.isDeleted) return@launch
+            val userId = getUserId()
             val deletedType = activityType.copy(
                 isDeleted = true,
+                isActive = false,
                 updatedAt = System.currentTimeMillis(),
-                updatedBy = getUserId()
+                firestoreId = activityType.firestoreId ?: activityType.id,
+                updatedBy = userId
             )
-            repository.upsertActivityType(deletedType) // <<< USE UPSERT FOR SOFT DELETE
-            syncService.syncItemImmediately(getUserId(), deletedType)
+            repository.insertActivityType(deletedType)
+            syncService.syncItemImmediately(userId, deletedType)
         }
     }
 
-    // <<< NEW METHOD TO RESTORE (UNDO DELETE)
     fun restoreDeletedActivityType(activityTypeConfig: ActivityTypeConfig) {
         viewModelScope.launch {
+            val userId = getUserId()
             val restoredType = activityTypeConfig.copy(
-                isDeleted = false, // Unmark as deleted
+                isDeleted = false,
+                isActive = true,
                 updatedAt = System.currentTimeMillis(),
-                updatedBy = getUserId()
+                updatedBy = userId
             )
-            repository.upsertActivityType(restoredType)
-            syncService.syncItemImmediately(getUserId(), restoredType)
+            repository.insertActivityType(restoredType)
+            syncService.syncItemImmediately(userId, restoredType)
         }
     }
 
     fun restoreDefaults() {
         viewModelScope.launch {
             val userId = getUserId()
-            val existingTypes = repository.getAllActivityTypesSync()
-            
-            // Create a map of existing types by name for quick lookup
-            val existingByName = existingTypes.associateBy { it.name }
-
-            // Soft delete all custom (non-default) activity types
-            existingTypes.filter { !it.isDefault }.forEach { customType ->
-                if (!customType.isDeleted) {
-                    val deletedCustomType = customType.copy(
-                        isDeleted = true,
-                        updatedAt = System.currentTimeMillis(),
-                        updatedBy = userId
-                    )
-                    repository.upsertActivityType(deletedCustomType)
-                    syncService.syncItemImmediately(userId, deletedCustomType)
-                }
-            }
-
-            // Get the standard default types
-            val defaultTypes = ActivityTypeConfig.getDefaultActivityTypes()
-            defaultTypes.forEach { defaultType ->
-                // Check if this default type already exists by name
-                val existing = existingByName[defaultType.name]
-                val typeToUpsert = if (existing != null) {
-                    // Update existing record to ensure it has current default properties
-                    existing.copy(
-                        displayName = defaultType.displayName,
-                        iconName = defaultType.iconName,
-                        description = defaultType.description,
-                        isDeleted = false,
-                        isActive = true,
-                        isDefault = true,
-                        updatedAt = System.currentTimeMillis(),
-                        updatedBy = userId
-                    )
-                } else {
-                    // Create new default with unique ID
-                    defaultType.copy(
-                        id = UUID.randomUUID().toString(),
-                        updatedAt = System.currentTimeMillis(),
-                        updatedBy = userId,
-                        isDeleted = false
-                    )
-                }
-                repository.upsertActivityType(typeToUpsert)
-                syncService.syncItemImmediately(userId, typeToUpsert)
-            }
+            val (deletedTypes, defaultTypes) = repository.restoreDefaultActivityTypes(updatedBy = userId)
+            deletedTypes.forEach { syncService.syncItemImmediately(userId, it) }
+            defaultTypes.forEach { syncService.syncItemImmediately(userId, it) }
+            val idsToKeep = defaultTypes.mapNotNull { it.firestoreId ?: it.id }.toSet()
+            syncService.markRemoteActivityTypesDeletedExcept(userId, idsToKeep)
         }
     }
 }

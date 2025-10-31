@@ -3,7 +3,7 @@ package com.jumblemint.cows.data.model
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import java.util.*
+import java.util.UUID
 
 @Entity(
     tableName = "activity_type_configs",
@@ -41,6 +41,11 @@ data class ActivityTypeConfig(
     }
 
     companion object {
+        private fun stableIdForName(name: String): String {
+            val normalized = name.trim().lowercase()
+            return UUID.nameUUIDFromBytes("activityType::$normalized".toByteArray()).toString()
+        }
+
         fun fromFirestoreMap(id: String, data: Map<String, Any?>): ActivityTypeConfig {
             return ActivityTypeConfig(
                 id = id,
@@ -60,24 +65,36 @@ data class ActivityTypeConfig(
         }
 
         // Default activity types
-        fun getDefaultActivityTypes(): List<ActivityTypeConfig> {
+        fun getDefaultActivityTypes(timestamp: Long = System.currentTimeMillis()): List<ActivityTypeConfig> {
+            fun default(name: String, displayName: String, iconName: String) = ActivityTypeConfig(
+                id = stableIdForName(name),
+                name = name,
+                displayName = displayName,
+                iconName = iconName,
+                isDefault = true,
+                createdAt = timestamp,
+                updatedAt = timestamp,
+                firestoreId = stableIdForName(name),
+                isDeleted = false
+            )
+
             return listOf(
-                ActivityTypeConfig(name = "MOVED", displayName = "Moved", isDefault = true, iconName = "DriveFileMove"),
-                ActivityTypeConfig(name = "WEANED", displayName = "Weaned", isDefault = true, iconName = "ChildCare"),
-                ActivityTypeConfig(name = "SOLD", displayName = "Sold", isDefault = true, iconName = "Sell"),
-                ActivityTypeConfig(name = "DECEASED", displayName = "Deceased", isDefault = true, iconName = "Dangerous"),
-                ActivityTypeConfig(name = "WORKED", displayName = "Worked", isDefault = true, iconName = "Handyman"),
-                ActivityTypeConfig(name = "CASTRATED", displayName = "Castrated", isDefault = true, iconName = "MedicalServices"),
-                ActivityTypeConfig(name = "BRED", displayName = "Bred", isDefault = true, iconName = "Favorite"),
-                ActivityTypeConfig(name = "CALVED", displayName = "Calved", isDefault = true, iconName = "BabyChangingStation"),
-                ActivityTypeConfig(name = "VACCINATED", displayName = "Vaccinated", isDefault = true, iconName = "Vaccines"),
-                ActivityTypeConfig(name = "TREATED", displayName = "Treated", isDefault = true, iconName = "LocalHospital"),
-                ActivityTypeConfig(name = "WEIGHED", displayName = "Weighed", isDefault = true, iconName = "Scale"),
-                ActivityTypeConfig(name = "PURCHASED", displayName = "Purchased", isDefault = true, iconName = "Pets"),
-                ActivityTypeConfig(name = "HEALTH_CHECK", displayName = "Health Check", isDefault = true, iconName = "Healing"),
-                ActivityTypeConfig(name = "TAGGED", displayName = "Tagged", isDefault = true, iconName = "ContentCut"),
-                ActivityTypeConfig(name = "NOTE", displayName = "Note", isDefault = true, iconName = "EditNote"),
-                ActivityTypeConfig(name = "OTHER", displayName = "Other", isDefault = true, iconName = "Assignment") // Default icon for OTHER
+                default("MOVED", "Moved", "DriveFileMove"),
+                default("WEANED", "Weaned", "ChildCare"),
+                default("SOLD", "Sold", "Sell"),
+                default("DECEASED", "Deceased", "Dangerous"),
+                default("WORKED", "Worked", "Handyman"),
+                default("CASTRATED", "Castrated", "MedicalServices"),
+                default("BRED", "Bred", "Favorite"),
+                default("CALVED", "Calved", "BabyChangingStation"),
+                default("VACCINATED", "Vaccinated", "Vaccines"),
+                default("TREATED", "Treated", "LocalHospital"),
+                default("WEIGHED", "Weighed", "Scale"),
+                default("PURCHASED", "Purchased", "Pets"),
+                default("HEALTH_CHECK", "Health Check", "Healing"),
+                default("TAGGED", "Tagged", "ContentCut"),
+                default("NOTE", "Note", "EditNote"),
+                default("OTHER", "Other", "Assignment")
             )
         }
     }

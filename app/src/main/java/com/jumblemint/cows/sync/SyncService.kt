@@ -528,13 +528,11 @@ class SyncService(
                         updatedBy = userId
                     ))
 
+                    val docRef = firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId)
+                    docRef.set(activityTypeData).await()
                     if (item.isDeleted) {
-                        // Delete from server if item is marked as deleted
-                        firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).delete().await()
-                        println("Immediately deleted activity type: ${item.name} with FS ID: $firestoreId")
+                        println("Immediately marked activity type as deleted: ${item.name} with FS ID: $firestoreId")
                     } else {
-                        // Otherwise upload the data
-                        firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).set(activityTypeData).await()
                         println("Immediately synced activity type: ${item.name} with FS ID: $firestoreId")
                     }
                 }
@@ -653,6 +651,40 @@ class SyncService(
             }
         } catch (e: Exception) {
             println("Failed to mark remote breeds as deleted for user $userId: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
+    }
+
+    suspend fun markRemoteActivityTypesDeletedExcept(userId: String, activityTypeIdsToKeep: Set<String>) {
+        try {
+            val snapshot = firestore.collection("users").document(userId).collection("activityTypes").get().await()
+            if (snapshot.isEmpty) {
+                return
+            }
+
+            val timestamp = System.currentTimeMillis()
+            snapshot.documents.forEach { document ->
+                val firestoreId = document.id
+                if (firestoreId in activityTypeIdsToKeep) {
+                    return@forEach
+                }
+
+                val data = document.data ?: emptyMap<String, Any?>()
+                val alreadyDeleted = data["isDeleted"] as? Boolean ?: false
+                if (!alreadyDeleted) {
+                    val updates = mapOf(
+                        "isDeleted" to true,
+                        "isActive" to false,
+                        "updatedAt" to timestamp,
+                        "updatedBy" to userId
+                    )
+                    document.reference.update(updates).await()
+                    println("Marked remote activity type '$firestoreId' as deleted during replacement.")
+                }
+            }
+        } catch (e: Exception) {
+            println("Failed to mark remote activity types as deleted for user $userId: ${e.message}")
             e.printStackTrace()
             throw e
         }

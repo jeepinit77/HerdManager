@@ -963,10 +963,72 @@ class CattleRepository(
         val missing = defaults.filter { it.name.lowercase() !in existingNames }
         if (missing.isNotEmpty()) { insertActivityTypes(missing) }
     }
-    
-    suspend fun restoreDefaultActivityTypes() {
-        activityTypeConfigDao?.deleteAllActivityTypes()
-        insertActivityTypes(ActivityTypeConfig.getDefaultActivityTypes())
+
+    suspend fun replaceActivityTypes(
+        activityTypesToKeep: List<ActivityTypeConfig>,
+        updatedBy: String? = null
+    ): Pair<List<ActivityTypeConfig>, List<ActivityTypeConfig>> {
+        val existingActivityTypes = getAllActivityTypesSync().toMutableList()
+        val timestamp = System.currentTimeMillis()
+
+        fun ActivityTypeConfig.syncIdentifier(): String = (firestoreId ?: id).ifBlank { id }
+
+        val savedActivityTypes = activityTypesToKeep.map { incoming ->
+            val normalizedName = incoming.name.trim()
+            val incomingSyncId = incoming.syncIdentifier()
+
+            val matchIndex = existingActivityTypes.indexOfFirst { existing ->
+                existing.syncIdentifier() == incomingSyncId
+            }.takeIf { it >= 0 } ?: existingActivityTypes.indexOfFirst { existing ->
+                existing.name.equals(normalizedName, ignoreCase = true)
+            }
+
+            val matched = if (matchIndex != -1) existingActivityTypes.removeAt(matchIndex) else null
+            val baseId = matched?.id ?: incoming.id
+            val baseFirestoreId = matched?.firestoreId ?: incoming.firestoreId ?: baseId
+            val createdAt = matched?.createdAt ?: incoming.createdAt
+
+            val normalized = (matched ?: incoming).copy(
+                id = baseId,
+                name = normalizedName,
+                displayName = incoming.displayName,
+                description = incoming.description,
+                iconName = incoming.iconName,
+                isDefault = incoming.isDefault,
+                isActive = true,
+                isDeleted = false,
+                createdAt = createdAt,
+                updatedAt = timestamp,
+                firestoreId = baseFirestoreId,
+                lastSyncAt = null,
+                updatedBy = updatedBy
+            )
+
+            activityTypeConfigDao?.insertActivityType(normalized)
+            normalized
+        }
+
+        val deletedActivityTypes = existingActivityTypes.map { activityType ->
+            val firestoreId = activityType.firestoreId ?: activityType.id
+            val deleted = activityType.copy(
+                isActive = false,
+                isDeleted = true,
+                updatedAt = timestamp,
+                firestoreId = firestoreId,
+                lastSyncAt = null,
+                updatedBy = updatedBy
+            )
+            activityTypeConfigDao?.insertActivityType(deleted)
+            deleted
+        }
+
+        return Pair(deletedActivityTypes, savedActivityTypes)
+    }
+
+    suspend fun restoreDefaultActivityTypes(updatedBy: String? = null): Pair<List<ActivityTypeConfig>, List<ActivityTypeConfig>> {
+        val timestamp = System.currentTimeMillis()
+        val defaultActivityTypes = ActivityTypeConfig.getDefaultActivityTypes(timestamp)
+        return replaceActivityTypes(defaultActivityTypes, updatedBy)
     }
     
     // Breed operations

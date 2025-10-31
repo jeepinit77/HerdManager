@@ -562,9 +562,22 @@ fun SettingsScreen(
                 }
             },
             onSaveActivities = { activityTypes ->
-                repository.deleteAllActivityTypeConfigs()
-                if (activityTypes.isNotEmpty()) {
-                    repository.insertActivityTypes(activityTypes)
+                val user = currentUser
+                val (deletedActivityTypes, savedActivityTypes) = repository.replaceActivityTypes(
+                    activityTypes,
+                    updatedBy = user?.uid
+                )
+
+                if (user != null && !user.isLocalUser) {
+                    val userId = user.uid
+                    deletedActivityTypes.forEach { type ->
+                        application.syncService.syncItemImmediately(userId, type).getOrThrow()
+                    }
+                    savedActivityTypes.forEach { type ->
+                        application.syncService.syncItemImmediately(userId, type).getOrThrow()
+                    }
+                    val idsToKeep = savedActivityTypes.mapNotNull { it.firestoreId ?: it.id }.toSet()
+                    application.syncService.markRemoteActivityTypesDeletedExcept(userId, idsToKeep)
                 }
             },
             onSavePastures = { pastures ->
