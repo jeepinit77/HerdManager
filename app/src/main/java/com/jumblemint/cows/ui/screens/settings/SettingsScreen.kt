@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,9 +51,21 @@ import com.jumblemint.cows.data.model.TagColor
 import com.jumblemint.cows.ui.components.SetupWizardDialog
 import android.text.format.DateUtils
 import com.jumblemint.cows.ui.components.FocusAwareLiveSync
+import com.jumblemint.cows.data.preferences.TipsManager
 
-// Helper data class for quadruple values
-data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
+private data class SettingsSectionModel(
+    val title: String,
+    val rows: List<SettingsRowModel>
+)
+
+private data class SettingsRowModel(
+    val title: String,
+    val subtitle: String,
+    val icon: ImageVector? = null,
+    val customIconContent: (@Composable () -> Unit)? = null,
+    val onClick: () -> Unit,
+    val enabled: Boolean = true
+)
 
 // Removed local PulsingLightbulbIcon definition
 
@@ -117,10 +130,12 @@ fun SettingsScreen(
     var showSetupWizard by remember { mutableStateOf(false) }
     var showIdentifierModeDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
 
     val defaultBreeds = remember { Breed.getDefaultBreeds() }
     val wizardTagColors = remember { TagColor.getWizardColorOptions() }
     val defaultActivityTypes = remember { ActivityTypeConfig.getDefaultActivityTypes() }
+    val tipsManager = remember { TipsManager(context) }
 
     FocusAwareLiveSync(
         orchestrator = application.syncOrchestrator,
@@ -202,227 +217,273 @@ fun SettingsScreen(
     Column(
         modifier = modifier
     ) {
-        LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                Text(
-                    text = "Customization",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 8.dp)
-                )
-            }
-            item {
-                SettingsGroup {
-                    val identifierSummary = when (uiState.identifierMode) {
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            label = { Text("Search settings") },
+            leadingIcon = { Icon(imageVector = Icons.Filled.Search, contentDescription = null) },
+            singleLine = true
+        )
+
+        val lastSyncDisplay = remember(lastSyncTimestamp, uiState.lastSyncTime) {
+            formatRelativeSyncTime(lastSyncTimestamp) ?: uiState.lastSyncTime
+        }
+
+        val customizationSection = SettingsSectionModel(
+            title = "Customization",
+            rows = listOf(
+                SettingsRowModel(
+                    title = "Animal Identification",
+                    subtitle = when (uiState.identifierMode) {
                         AnimalIdentifierMode.NAMES -> "Use animal names"
                         AnimalIdentifierMode.TAG_NUMBERS -> "Use tag numbers"
                         AnimalIdentifierMode.BOTH -> "Use both names and tags"
-                    }
-                    SettingsRow(
-                        title = "Animal Identification",
-                        subtitle = identifierSummary,
-                        icon = Icons.Filled.Label,
-                        onClick = { showIdentifierModeDialog = true }
-                    )
-                    HorizontalDivider(
-                        Modifier.padding(horizontal = 16.dp),
-                        DividerDefaults.Thickness,
-                        color = MaterialTheme.colorScheme.outlineVariant
-                    )
-                    val isNamesOnly = uiState.identifierMode == AnimalIdentifierMode.NAMES
-                    SettingsRow(
-                        title = if (isNamesOnly) "Tagging Colors" else "Tag Colors",
-                        subtitle = if (isNamesOnly) "Edit colors you use" else "Manage available tag colors",
-                        icon = Icons.Filled.ColorLens,
-                        onClick = { onNavigateToTagColors?.invoke() }
-                    )
-                    SettingsRow(
-                        title = "Activity Types",
-                        subtitle = "Manage activity types and fields",
-                        icon = Icons.Filled.Assignment,
-                        onClick = { onNavigateToActivityTypes?.invoke() }
-                    )
-                    SettingsRow(
-                        title = "Breeds",
-                        subtitle = "Manage available cattle breeds",
-                        icon = Icons.Filled.Pets,
-                        onClick = { onNavigateToBreeds?.invoke() }
-                    )
-                    SettingsRow(
-                        title = "Run Setup Wizard",
-                        subtitle = "Reset breeds, pastures, tag colors, and activities",
-                        icon = Icons.Filled.AutoAwesome,
-                        onClick = { showSetupWizardConfirmation = true }
-                    )
-                    SettingsRow(
-                        title = "Bulk Add Animals",
-                        subtitle = "Quickly enter multiple animals",
-                        icon = Icons.Filled.LibraryAdd,
-                        onClick = { onNavigateToBulkAdd?.invoke() }
-                    )
-                    SettingsRow(
-                        title = "Theme Settings",
-                        subtitle = "Customize app colors and appearance",
-                        icon = Icons.Filled.Palette,
-                        onClick = { onNavigateToThemeSettings?.invoke() },
-                        isLast = true
-                    )
-                }
-            }
-
-            item {
-                Text(
-                    text = "Account & Sync",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
+                    },
+                    icon = Icons.Filled.Label,
+                    onClick = { showIdentifierModeDialog = true }
+                ),
+                SettingsRowModel(
+                    title = if (uiState.identifierMode == AnimalIdentifierMode.NAMES) "Tagging Colors" else "Tag Colors",
+                    subtitle = if (uiState.identifierMode == AnimalIdentifierMode.NAMES) "Edit colors you use" else "Manage available tag colors",
+                    icon = Icons.Filled.ColorLens,
+                    onClick = { onNavigateToTagColors?.invoke() }
+                ),
+                SettingsRowModel(
+                    title = "Activity Types",
+                    subtitle = "Manage activity types and fields",
+                    icon = Icons.Filled.Assignment,
+                    onClick = { onNavigateToActivityTypes?.invoke() }
+                ),
+                SettingsRowModel(
+                    title = "Breeds",
+                    subtitle = "Manage available cattle breeds",
+                    icon = Icons.Filled.Pets,
+                    onClick = { onNavigateToBreeds?.invoke() }
+                ),
+                SettingsRowModel(
+                    title = "Run Setup Wizard",
+                    subtitle = "Reset breeds, pastures, tag colors, and activities",
+                    icon = Icons.Filled.AutoAwesome,
+                    onClick = { showSetupWizardConfirmation = true }
+                ),
+                SettingsRowModel(
+                    title = "Bulk Add Animals",
+                    subtitle = "Quickly enter multiple animals",
+                    icon = Icons.Filled.LibraryAdd,
+                    onClick = { onNavigateToBulkAdd?.invoke() }
+                ),
+                SettingsRowModel(
+                    title = "Theme Settings",
+                    subtitle = "Customize app colors and appearance",
+                    icon = Icons.Filled.Palette,
+                    onClick = { onNavigateToThemeSettings?.invoke() }
                 )
-            }
-            item {
-                val (title, subtitle, icon, onClickAction) = when {
-                    currentUser?.isLocalUser == false -> {
-                        val lastSyncDisplay = remember(lastSyncTimestamp, uiState.lastSyncTime) {
-                            formatRelativeSyncTime(lastSyncTimestamp) ?: uiState.lastSyncTime
-                        }
-                        val syncStatusText = when (syncStatus) {
-                            SyncStatus.SYNCING -> "Syncing..."
-                            SyncStatus.SUCCESS -> "Last synced: ${lastSyncDisplay ?: "Just now"}"
-                            SyncStatus.ERROR -> "Sync error occurred"
-                            else -> lastSyncDisplay?.let { "Last synced: $it" } ?: "Sync enabled"
-                        }
-                        Quadruple(
-                            "Account: ${currentUser?.displayName ?: currentUser?.email ?: "Signed In"}",
-                            "$syncStatusText • Tap to manage",
-                            Icons.Filled.CloudSync as ImageVector?,
-                            { onNavigateToAccountManagement?.invoke() }
-                        )
+            )
+        )
+
+        val accountSectionRows = buildList {
+            when {
+                currentUser?.isLocalUser == false -> {
+                    val syncStatusText = when (syncStatus) {
+                        SyncStatus.SYNCING -> "Syncing..."
+                        SyncStatus.SUCCESS -> "Last synced: ${lastSyncDisplay ?: "Just now"}"
+                        SyncStatus.ERROR -> "Sync error occurred"
+                        else -> lastSyncDisplay?.let { "Last synced: $it" } ?: "Sync enabled"
                     }
-                    currentUser?.isLocalUser == true -> Quadruple(
-                        "Sign In & Sync",
-                        "Currently using local storage only",
-                        Icons.Filled.CloudOff as ImageVector?,
-                        { onNavigateToSignIn?.invoke() }
+                    add(
+                        SettingsRowModel(
+                            title = "Account: ${currentUser?.displayName ?: currentUser?.email ?: "Signed In"}",
+                            subtitle = "$syncStatusText • Tap to manage",
+                            icon = Icons.Filled.CloudSync,
+                            onClick = { onNavigateToAccountManagement?.invoke() }
+                        )
                     )
-                    else -> Quadruple(
-                        "Sign In & Sync",
-                        "Sync data across devices and collaborate",
-                        Icons.Filled.CloudUpload as ImageVector?,
-                        { onNavigateToSignIn?.invoke() }
-                    )
-                }
-                
-                SettingsGroup {
-                    SettingsRow(title = title, subtitle = subtitle, icon = icon, onClick = { onClickAction?.invoke() })
-                    
-                    if (isSignedIn && currentUser?.isLocalUser == false) {
-                        SettingsRow(
-                            title = "Sync Now",
-                            subtitle = when (syncStatus) {
-                                SyncStatus.SYNCING -> "Syncing in progress..."
-                                SyncStatus.SUCCESS -> "Last sync successful"
-                                SyncStatus.ERROR -> "Last sync failed - tap to retry"
-                                else -> "Manually sync your data"
-                            },
-                            icon = when (syncStatus) {
-                                SyncStatus.SYNCING -> Icons.Filled.CloudSync
-                                SyncStatus.ERROR -> Icons.Filled.CloudOff
-                                else -> Icons.Filled.Refresh
-                            },
-                            onClick = {
-                                if (syncStatus != SyncStatus.SYNCING) {
-                                    coroutineScope.launch {
-                                        application.authService.startUserSync(application.syncService)
+                    if (isSignedIn) {
+                        add(
+                            SettingsRowModel(
+                                title = "Sync Now",
+                                subtitle = when (syncStatus) {
+                                    SyncStatus.SYNCING -> "Syncing in progress..."
+                                    SyncStatus.SUCCESS -> "Last sync successful"
+                                    SyncStatus.ERROR -> "Last sync failed - tap to retry"
+                                    else -> "Manually sync your data"
+                                },
+                                icon = when (syncStatus) {
+                                    SyncStatus.SYNCING -> Icons.Filled.CloudSync
+                                    SyncStatus.ERROR -> Icons.Filled.CloudOff
+                                    else -> Icons.Filled.Refresh
+                                },
+                                onClick = {
+                                    if (syncStatus != SyncStatus.SYNCING) {
+                                        coroutineScope.launch {
+                                            application.authService.startUserSync(application.syncService)
+                                        }
                                     }
                                 }
-                            },
-                            isLast = true
+                            )
                         )
                     }
                 }
-            }
-
-            item {
-                Text(
-                    text = "Data Management",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
-                )
-            }
-            item {
-                SettingsGroup {
-                    SettingsRow(
-                        title = "Export Data",
-                        subtitle = "Export your cattle data (CSV, JSON)",
-                        icon = Icons.Filled.Download,
-                        onClick = { showExportDialog = true }
+                currentUser?.isLocalUser == true -> {
+                    add(
+                        SettingsRowModel(
+                            title = "Sign In & Sync",
+                            subtitle = "Currently using local storage only",
+                            icon = Icons.Filled.CloudOff,
+                            onClick = { onNavigateToSignIn?.invoke() }
+                        )
                     )
-                    SettingsRow(
-                        title = "Import Data",
-                        subtitle = "Import cattle data from file",
-                        icon = Icons.Filled.Upload,
-                        onClick = { showImportDialog = true }
-                    )
-                    SettingsRow(
-                        title = if (uiState.isSampleDataInstalled) "Remove Sample Data" else "Add Sample Data",
-                        subtitle = if (uiState.isSampleDataInstalled) "Delete sample cattle and pastures" else "Add sample data for testing",
-                        icon = if (uiState.isSampleDataInstalled) Icons.Filled.DeleteSweep else Icons.Filled.PlaylistAdd,
-                        onClick = { showSampleDataDialog = true }
-                    )
-                    SettingsRow(
-                        title = "Delete Data",
-                        subtitle = "Selectively delete local and server data",
-                        icon = Icons.Filled.WarningAmber,
-                        onClick = { showDeleteDataDialog = true },
-                        isLast = true
+                }
+                else -> {
+                    add(
+                        SettingsRowModel(
+                            title = "Sign In & Sync",
+                            subtitle = "Sync data across devices and collaborate",
+                            icon = Icons.Filled.CloudUpload,
+                            onClick = { onNavigateToSignIn?.invoke() }
+                        )
                     )
                 }
             }
+        }
 
-            item {
-                Text(
-                    text = "Tips & App Information",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
+        val dataManagementSection = SettingsSectionModel(
+            title = "Data Management",
+            rows = listOf(
+                SettingsRowModel(
+                    title = "Export Data",
+                    subtitle = "Export your cattle data (CSV, JSON)",
+                    icon = Icons.Filled.Download,
+                    onClick = { showExportDialog = true }
+                ),
+                SettingsRowModel(
+                    title = "Import Data",
+                    subtitle = "Import cattle data from file",
+                    icon = Icons.Filled.Upload,
+                    onClick = { showImportDialog = true }
+                ),
+                SettingsRowModel(
+                    title = if (uiState.isSampleDataInstalled) "Remove Sample Data" else "Add Sample Data",
+                    subtitle = if (uiState.isSampleDataInstalled) "Delete sample cattle and pastures" else "Add sample data for testing",
+                    icon = if (uiState.isSampleDataInstalled) Icons.Filled.DeleteSweep else Icons.Filled.PlaylistAdd,
+                    onClick = { showSampleDataDialog = true }
+                ),
+                SettingsRowModel(
+                    title = "Delete Data",
+                    subtitle = "Selectively delete local and server data",
+                    icon = Icons.Filled.WarningAmber,
+                    onClick = { showDeleteDataDialog = true }
                 )
+            )
+        )
+
+        val tipsSection = SettingsSectionModel(
+            title = "Tips & App Information",
+            rows = listOf(
+                SettingsRowModel(
+                    title = "Reset Tips",
+                    subtitle = "Show all coach marks and tips again",
+                    customIconContent = { WobblingLightbulbIcon() },
+                    onClick = {
+                        coroutineScope.launch {
+                            tipsManager.enableAllTips()
+                            snackbarHostState.showSnackbar("Tips have been reset")
+                        }
+                    }
+                ),
+                SettingsRowModel(
+                    title = "Version",
+                    subtitle = uiState.appVersion,
+                    icon = Icons.Outlined.Info,
+                    onClick = {}
+                ),
+                SettingsRowModel(
+                    title = "About Cattle Manager",
+                    subtitle = "Learn more about the app",
+                    icon = Icons.Outlined.HelpOutline,
+                    onClick = {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("About screen coming soon!")
+                        }
+                    }
+                )
+            )
+        )
+
+        val allSections = listOf(
+            customizationSection,
+            SettingsSectionModel("Account & Sync", accountSectionRows),
+            dataManagementSection,
+            tipsSection
+        )
+
+        val trimmedQuery = searchQuery.trim()
+        val visibleSections = if (trimmedQuery.isBlank()) {
+            allSections
+        } else {
+            allSections.mapNotNull { section ->
+                val matchingRows = section.rows.filter { row ->
+                    row.title.contains(trimmedQuery, ignoreCase = true) ||
+                        row.subtitle.contains(trimmedQuery, ignoreCase = true)
+                }
+                if (matchingRows.isNotEmpty()) {
+                    section.copy(rows = matchingRows)
+                } else {
+                    null
+                }
             }
-            item {
-                val context = LocalContext.current
-                val tipsManager = remember { com.jumblemint.cows.data.preferences.TipsManager(context) }
-                SettingsGroup {
-                    SettingsRow(
-                        title = "Reset Tips",
-                        subtitle = "Show all coach marks and tips again",
-                        customIconContent = { WobblingLightbulbIcon() },
-                        icon = null,
-                        onClick = {
-                            coroutineScope.launch {
-                                tipsManager.enableAllTips()
-                                snackbarHostState.showSnackbar("Tips have been reset")
+        }
+        val hasResults = visibleSections.any { it.rows.isNotEmpty() }
+
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            if (trimmedQuery.isNotBlank() && !hasResults) {
+                item {
+                    Text(
+                        text = "No results",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 24.dp)
+                    )
+                }
+            } else {
+                visibleSections.forEachIndexed { index, section ->
+                    item(key = "section-title-$index") {
+                        Text(
+                            text = section.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .padding(bottom = 4.dp, top = if (index == 0) 8.dp else 16.dp)
+                        )
+                    }
+                    if (section.rows.isNotEmpty()) {
+                        item(key = "section-content-$index") {
+                            SettingsGroup {
+                                section.rows.forEachIndexed { rowIndex, row ->
+                                    SettingsRow(
+                                        title = row.title,
+                                        subtitle = row.subtitle,
+                                        icon = row.icon,
+                                        customIconContent = row.customIconContent,
+                                        onClick = row.onClick,
+                                        enabled = row.enabled,
+                                        isLast = rowIndex == section.rows.lastIndex
+                                    )
+                                }
                             }
                         }
-                    )
-                    SettingsRow(
-                        title = "Version",
-                        subtitle = uiState.appVersion,
-                        icon = Icons.Outlined.Info,
-                        onClick = { /* No action needed or show app details dialog */ }
-                    )
-                    SettingsRow(
-                        title = "About Cattle Manager",
-                        subtitle = "Learn more about the app",
-                        icon = Icons.Outlined.HelpOutline,
-                        onClick = {
-                             coroutineScope.launch {
-                                snackbarHostState.showSnackbar("About screen coming soon!")
-                            }
-                        },
-                        isLast = true
-                    )
+                    }
                 }
             }
         }
@@ -430,7 +491,7 @@ fun SettingsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .clickable(enabled = false, onClick = {}) 
+                    .clickable(enabled = false, onClick = {})
                     .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f)),
                 contentAlignment = Alignment.Center
             ) {
