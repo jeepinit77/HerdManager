@@ -121,6 +121,7 @@ fun SettingsScreen(
     val defaultBreeds = remember { Breed.getDefaultBreeds() }
     val wizardTagColors = remember { TagColor.getWizardColorOptions() }
     val defaultActivityTypes = remember { ActivityTypeConfig.getDefaultActivityTypes() }
+    val tipsManager = remember { com.jumblemint.cows.data.preferences.TipsManager(context) }
 
     FocusAwareLiveSync(
         orchestrator = application.syncOrchestrator,
@@ -206,9 +207,16 @@ fun SettingsScreen(
             modifier = Modifier.weight(1f).fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            val identifierSummary = when (uiState.identifierMode) {
+                AnimalIdentifierMode.NAMES -> "Use animal names"
+                AnimalIdentifierMode.TAG_NUMBERS -> "Use tag numbers"
+                AnimalIdentifierMode.BOTH -> "Use both names and tags"
+            }
+            val isNamesOnly = uiState.identifierMode == AnimalIdentifierMode.NAMES
+
             item {
                 Text(
-                    text = "Customization",
+                    text = "App Preferences",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 8.dp)
@@ -216,23 +224,56 @@ fun SettingsScreen(
             }
             item {
                 SettingsGroup {
-                    val identifierSummary = when (uiState.identifierMode) {
-                        AnimalIdentifierMode.NAMES -> "Use animal names"
-                        AnimalIdentifierMode.TAG_NUMBERS -> "Use tag numbers"
-                        AnimalIdentifierMode.BOTH -> "Use both names and tags"
-                    }
                     SettingsRow(
                         title = "Animal Identification",
                         subtitle = identifierSummary,
                         icon = Icons.Filled.Label,
                         onClick = { showIdentifierModeDialog = true }
                     )
-                    HorizontalDivider(
-                        Modifier.padding(horizontal = 16.dp),
-                        DividerDefaults.Thickness,
-                        color = MaterialTheme.colorScheme.outlineVariant
+                    SettingsRow(
+                        title = "Theme Settings",
+                        subtitle = "Customize app colors and appearance",
+                        icon = Icons.Filled.Palette,
+                        onClick = { onNavigateToThemeSettings?.invoke() }
                     )
-                    val isNamesOnly = uiState.identifierMode == AnimalIdentifierMode.NAMES
+                    SettingsRow(
+                        title = "Reset Tips",
+                        subtitle = "Show all coach marks and tips again",
+                        customIconContent = { WobblingLightbulbIcon() },
+                        icon = null,
+                        onClick = {
+                            coroutineScope.launch {
+                                tipsManager.enableAllTips()
+                                snackbarHostState.showSnackbar("Tips have been reset")
+                            }
+                        },
+                        isLast = true
+                    )
+                }
+            }
+
+            item {
+                Text(
+                    text = "Herd Setup & Tools",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
+                )
+            }
+            item {
+                SettingsGroup {
+                    SettingsRow(
+                        title = "Run Setup Wizard",
+                        subtitle = "Reset breeds, pastures, tag colors, and activities",
+                        icon = Icons.Filled.AutoAwesome,
+                        onClick = { showSetupWizardConfirmation = true }
+                    )
+                    SettingsRow(
+                        title = "Bulk Add Animals",
+                        subtitle = "Quickly enter multiple animals",
+                        icon = Icons.Filled.LibraryAdd,
+                        onClick = { onNavigateToBulkAdd?.invoke() }
+                    )
                     SettingsRow(
                         title = if (isNamesOnly) "Tagging Colors" else "Tag Colors",
                         subtitle = if (isNamesOnly) "Edit colors you use" else "Manage available tag colors",
@@ -249,25 +290,7 @@ fun SettingsScreen(
                         title = "Breeds",
                         subtitle = "Manage available cattle breeds",
                         icon = Icons.Filled.Pets,
-                        onClick = { onNavigateToBreeds?.invoke() }
-                    )
-                    SettingsRow(
-                        title = "Run Setup Wizard",
-                        subtitle = "Reset breeds, pastures, tag colors, and activities",
-                        icon = Icons.Filled.AutoAwesome,
-                        onClick = { showSetupWizardConfirmation = true }
-                    )
-                    SettingsRow(
-                        title = "Bulk Add Animals",
-                        subtitle = "Quickly enter multiple animals",
-                        icon = Icons.Filled.LibraryAdd,
-                        onClick = { onNavigateToBulkAdd?.invoke() }
-                    )
-                    SettingsRow(
-                        title = "Theme Settings",
-                        subtitle = "Customize app colors and appearance",
-                        icon = Icons.Filled.Palette,
-                        onClick = { onNavigateToThemeSettings?.invoke() },
+                        onClick = { onNavigateToBreeds?.invoke() },
                         isLast = true
                     )
                 }
@@ -384,34 +407,14 @@ fun SettingsScreen(
 
             item {
                 Text(
-                    text = "Tips & App Information",
+                    text = "Support & Info",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
                 )
             }
             item {
-                val context = LocalContext.current
-                val tipsManager = remember { com.jumblemint.cows.data.preferences.TipsManager(context) }
                 SettingsGroup {
-                    SettingsRow(
-                        title = "Reset Tips",
-                        subtitle = "Show all coach marks and tips again",
-                        customIconContent = { WobblingLightbulbIcon() },
-                        icon = null,
-                        onClick = {
-                            coroutineScope.launch {
-                                tipsManager.enableAllTips()
-                                snackbarHostState.showSnackbar("Tips have been reset")
-                            }
-                        }
-                    )
-                    SettingsRow(
-                        title = "Version",
-                        subtitle = uiState.appVersion,
-                        icon = Icons.Outlined.Info,
-                        onClick = { /* No action needed or show app details dialog */ }
-                    )
                     SettingsRow(
                         title = "About Cattle Manager",
                         subtitle = "Learn more about the app",
@@ -420,7 +423,13 @@ fun SettingsScreen(
                              coroutineScope.launch {
                                 snackbarHostState.showSnackbar("About screen coming soon!")
                             }
-                        },
+                        }
+                    )
+                    SettingsRow(
+                        title = "Version",
+                        subtitle = uiState.appVersion,
+                        icon = Icons.Outlined.Info,
+                        onClick = { /* No action needed or show app details dialog */ },
                         isLast = true
                     )
                 }
