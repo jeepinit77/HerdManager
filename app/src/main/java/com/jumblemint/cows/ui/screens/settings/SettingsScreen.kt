@@ -8,7 +8,8 @@ package com.jumblemint.cows.ui.screens.settings
 // import androidx.compose.animation.core.tween // Removed
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.documentfile.provider.DocumentFile
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +20,7 @@ import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -204,8 +206,11 @@ fun SettingsScreen(
         modifier = modifier
     ) {
         LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
         ) {
             val identifierSummary = when (uiState.identifierMode) {
                 AnimalIdentifierMode.NAMES -> "Use animal names"
@@ -215,21 +220,10 @@ fun SettingsScreen(
             val isNamesOnly = uiState.identifierMode == AnimalIdentifierMode.NAMES
 
             item {
-                Text(
-                    text = "App Preferences",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 8.dp)
-                )
-            }
-            item {
-                SettingsGroup {
-                    SettingsRow(
-                        title = "Animal Identification",
-                        subtitle = identifierSummary,
-                        icon = Icons.Filled.Label,
-                        onClick = { showIdentifierModeDialog = true }
-                    )
+                ExpandableSettingsSection(
+                    title = "App Preferences",
+                    initiallyExpanded = true
+                ) {
                     SettingsRow(
                         title = "Theme Settings",
                         subtitle = "Customize app colors and appearance",
@@ -253,15 +247,16 @@ fun SettingsScreen(
             }
 
             item {
-                Text(
-                    text = "Herd Setup & Tools",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
-                )
-            }
-            item {
-                SettingsGroup {
+                ExpandableSettingsSection(
+                    title = "Herd Setup & Tools",
+                    initiallyExpanded = true
+                ) {
+                    SettingsRow(
+                        title = "Animal Identification",
+                        subtitle = identifierSummary,
+                        icon = Icons.Filled.Label,
+                        onClick = { showIdentifierModeDialog = true }
+                    )
                     SettingsRow(
                         title = "Run Setup Wizard",
                         subtitle = "Reset breeds, pastures, tag colors, and activities",
@@ -297,19 +292,15 @@ fun SettingsScreen(
             }
 
             item {
-                Text(
-                    text = "Account & Sync",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
-                )
-            }
-            item {
-                val (title, subtitle, icon, onClickAction) = when {
-                    currentUser?.isLocalUser == false -> {
-                        val lastSyncDisplay = remember(lastSyncTimestamp, uiState.lastSyncTime) {
-                            formatRelativeSyncTime(lastSyncTimestamp) ?: uiState.lastSyncTime
-                        }
+                ExpandableSettingsSection(
+                    title = "Account & Sync",
+                    initiallyExpanded = false
+                ) {
+                    val (title, subtitle, icon, onClickAction) = when {
+                        currentUser?.isLocalUser == false -> {
+                            val lastSyncDisplay = remember(lastSyncTimestamp, uiState.lastSyncTime) {
+                                formatRelativeSyncTime(lastSyncTimestamp) ?: uiState.lastSyncTime
+                            }
                         val syncStatusText = when (syncStatus) {
                             SyncStatus.SYNCING -> "Syncing..."
                             SyncStatus.SUCCESS -> "Last synced: ${lastSyncDisplay ?: "Just now"}"
@@ -337,46 +328,47 @@ fun SettingsScreen(
                     )
                 }
                 
-                SettingsGroup {
-                    SettingsRow(title = title, subtitle = subtitle, icon = icon, onClick = { onClickAction?.invoke() })
-                    
-                    if (isSignedIn && currentUser?.isLocalUser == false) {
-                        SettingsRow(
-                            title = "Sync Now",
-                            subtitle = when (syncStatus) {
-                                SyncStatus.SYNCING -> "Syncing in progress..."
-                                SyncStatus.SUCCESS -> "Last sync successful"
-                                SyncStatus.ERROR -> "Last sync failed - tap to retry"
-                                else -> "Manually sync your data"
-                            },
-                            icon = when (syncStatus) {
-                                SyncStatus.SYNCING -> Icons.Filled.CloudSync
-                                SyncStatus.ERROR -> Icons.Filled.CloudOff
-                                else -> Icons.Filled.Refresh
-                            },
-                            onClick = {
-                                if (syncStatus != SyncStatus.SYNCING) {
-                                    coroutineScope.launch {
-                                        application.authService.startUserSync(application.syncService)
-                                    }
+                val showSyncNow = isSignedIn && currentUser?.isLocalUser == false
+
+                SettingsRow(
+                    title = title,
+                    subtitle = subtitle,
+                    icon = icon,
+                    onClick = { onClickAction?.invoke() },
+                    isLast = !showSyncNow
+                )
+
+                if (showSyncNow) {
+                    SettingsRow(
+                        title = "Sync Now",
+                        subtitle = when (syncStatus) {
+                            SyncStatus.SYNCING -> "Syncing in progress..."
+                            SyncStatus.SUCCESS -> "Last sync successful"
+                            SyncStatus.ERROR -> "Last sync failed - tap to retry"
+                            else -> "Manually sync your data"
+                        },
+                        icon = when (syncStatus) {
+                            SyncStatus.SYNCING -> Icons.Filled.CloudSync
+                            SyncStatus.ERROR -> Icons.Filled.CloudOff
+                            else -> Icons.Filled.Refresh
+                        },
+                        onClick = {
+                            if (syncStatus != SyncStatus.SYNCING) {
+                                coroutineScope.launch {
+                                    application.authService.startUserSync(application.syncService)
                                 }
-                            },
-                            isLast = true
-                        )
-                    }
+                            }
+                        },
+                        isLast = true
+                    )
                 }
             }
 
             item {
-                Text(
-                    text = "Data Management",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
-                )
-            }
-            item {
-                SettingsGroup {
+                ExpandableSettingsSection(
+                    title = "Data Management",
+                    initiallyExpanded = false
+                ) {
                     SettingsRow(
                         title = "Export Data",
                         subtitle = "Export your cattle data (CSV, JSON)",
@@ -406,15 +398,10 @@ fun SettingsScreen(
             }
 
             item {
-                Text(
-                    text = "Support & Info",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 4.dp, top = 16.dp)
-                )
-            }
-            item {
-                SettingsGroup {
+                ExpandableSettingsSection(
+                    title = "Support & Info",
+                    initiallyExpanded = false
+                ) {
                     SettingsRow(
                         title = "About Cattle Manager",
                         subtitle = "Learn more about the app",
@@ -688,20 +675,53 @@ fun SettingsScreen(
 }
 
 @Composable
-fun SettingsGroup(
+fun ExpandableSettingsSection(
+    title: String,
+    initiallyExpanded: Boolean,
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
+
     Card(
         modifier = modifier
-            .fillMaxWidth(),
+            .fillMaxWidth()
+            .animateContentSize(),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         shape = RoundedCornerShape(12.dp),
         colors = getCardColors(),
         border = null
     ) {
         Column {
-            content()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded }
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                Icon(
+                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    HorizontalDivider(
+                        thickness = 1.dp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.2f)
+                    )
+                    content()
+                }
+            }
         }
     }
 }
