@@ -5,7 +5,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -14,14 +13,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
@@ -32,13 +30,14 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.Switch
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -47,6 +46,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -59,12 +59,13 @@ import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.UnsavedChangesDialog
 import com.jumblemint.cows.ui.theme.contrastingTextColor
-import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.ui.theme.SmartText
 import com.jumblemint.cows.ui.viewmodel.QuickAddCattleViewModel
 import com.jumblemint.cows.ui.viewmodel.QuickAddCattleViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.QuickAddEntry
 import com.jumblemint.cows.ui.viewmodel.QuickAddSection
-import kotlinx.coroutines.delay
+import androidx.compose.material3.surfaceColorAtElevation
+import kotlinx.coroutines.launch
 
 @Composable
 fun QuickAddCattleScreen(
@@ -174,92 +175,117 @@ fun QuickAddCattleScreen(
 
     val listState = rememberLazyListState()
 
-    Column(modifier = modifier.fillMaxSize()) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .imePadding()
+    ) {
+        val bannerColor = MaterialTheme.colorScheme.primaryContainer
         Surface(
             tonalElevation = 0.dp,
-            color = MaterialTheme.colorScheme.secondaryContainer
+            color = bannerColor
         ) {
-            Text(
+            SmartText(
                 text = if (unsavedCount == 1) {
                     "1 animal not yet saved"
                 } else {
                     "$unsavedCount animals not yet saved"
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
+                backgroundColor = bannerColor,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             )
         }
 
-        Row(
+        val coroutineScope = rememberCoroutineScope()
+        val toggleBackground = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+        val toggleContentColor = toggleBackground.contrastingTextColor()
+
+        LazyColumn(
+            state = listState,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .weight(1f)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            Text(
-                text = "Limit Tag IDs to Numeric",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.weight(1f)
-            )
-            IconButton(
-                onClick = { showHelpDialog = true },
-                colors = IconButtonDefaults.iconButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurface
-                )
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.HelpOutline,
-                    contentDescription = "How to use quick add"
-                )
+            item {
+                Surface(
+                    tonalElevation = 2.dp,
+                    color = toggleBackground,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SmartText(
+                            text = "Limit Tag IDs to Numeric",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                            backgroundColor = toggleBackground
+                        )
+                        IconButton(
+                            onClick = { showHelpDialog = true },
+                            colors = IconButtonDefaults.iconButtonColors(
+                                contentColor = toggleContentColor
+                            )
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.HelpOutline,
+                                contentDescription = "How to use quick add"
+                            )
+                        }
+                        Switch(
+                            checked = uiState.limitTagIdsToNumeric,
+                            onCheckedChange = { viewModel.setLimitTagIdsToNumeric(it) },
+                            enabled = !uiState.isSaving,
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                checkedBorderColor = MaterialTheme.colorScheme.primary,
+                                uncheckedThumbColor = toggleContentColor,
+                                uncheckedTrackColor = toggleContentColor.copy(alpha = 0.4f),
+                                uncheckedBorderColor = toggleContentColor.copy(alpha = 0.6f)
+                            )
+                        )
+                    }
+                }
             }
-            Switch(
-                checked = uiState.limitTagIdsToNumeric,
-                onCheckedChange = { viewModel.setLimitTagIdsToNumeric(it) },
-                enabled = !uiState.isSaving,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                )
-            )
-        }
 
-        if (uiState.errorMessage != null) {
-            Text(
-                text = uiState.errorMessage,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            )
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Box(modifier = Modifier.weight(1f)) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                items(QuickAddSection.entries, key = { it.name }) { section ->
-                    QuickAddSectionCard(
-                        section = section,
-                        entries = uiState.sections[section].orEmpty(),
-                        expanded = uiState.expandedSection == section,
-                        enabled = !uiState.isSaving,
-                        numericOnly = uiState.limitTagIdsToNumeric,
-                        onHeaderClick = { viewModel.setExpandedSection(section) },
-                        onNameChanged = { entryId, value -> viewModel.updateName(section, entryId, value) },
-                        onTagChanged = { entryId, value -> viewModel.updateTag(section, entryId, value) },
-                        onRemoveEntry = { entryId -> viewModel.removeEntry(section, entryId) }
+            if (uiState.errorMessage != null) {
+                item {
+                    Text(
+                        text = uiState.errorMessage,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
+            }
+
+            items(QuickAddSection.entries, key = { it.name }) { section ->
+                QuickAddSectionCard(
+                    section = section,
+                    entries = uiState.sections[section].orEmpty(),
+                    expanded = uiState.expandedSection == section,
+                    enabled = !uiState.isSaving,
+                    numericOnly = uiState.limitTagIdsToNumeric,
+                    onHeaderClick = { viewModel.setExpandedSection(section) },
+                    onNameChanged = { entryId, value -> viewModel.updateName(section, entryId, value) },
+                    onTagChanged = { entryId, value -> viewModel.updateTag(section, entryId, value) },
+                    onRemoveEntry = { entryId -> viewModel.removeEntry(section, entryId) },
+                    onEnsureLastEntryVisible = {
+                        coroutineScope.launch {
+                            listState.animateScrollBy(200f)
+                        }
+                    }
+                )
             }
         }
 
@@ -321,15 +347,25 @@ private fun QuickAddSectionCard(
     onHeaderClick: () -> Unit,
     onNameChanged: (Long, String) -> Unit,
     onTagChanged: (Long, String) -> Unit,
-    onRemoveEntry: (Long) -> Unit
+    onRemoveEntry: (Long) -> Unit,
+    onEnsureLastEntryVisible: () -> Unit
 ) {
-    val bringIntoViewRequester = remember { BringIntoViewRequester() }
-
-    LaunchedEffect(entries.size, expanded) {
-        if (expanded) {
-            delay(120)
-            bringIntoViewRequester.bringIntoView()
+    var previousExpanded by remember { mutableStateOf(expanded) }
+    LaunchedEffect(expanded) {
+        if (expanded && !previousExpanded) {
+            onEnsureLastEntryVisible()
         }
+        previousExpanded = expanded
+    }
+
+    var previousLastEntryId by remember { mutableStateOf(entries.lastOrNull()?.id) }
+    LaunchedEffect(entries.lastOrNull()?.id) {
+        val currentLast = entries.lastOrNull()
+        val currentLastId = currentLast?.id
+        if (expanded && currentLastId != null && currentLastId != previousLastEntryId && currentLast?.hasContent() == false) {
+            onEnsureLastEntryVisible()
+        }
+        previousLastEntryId = currentLastId
     }
 
     Surface(
@@ -369,19 +405,14 @@ private fun QuickAddSectionCard(
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    entries.forEachIndexed { index, entry ->
+                    entries.forEach { entry ->
                         QuickAddRow(
                             entry = entry,
                             enabled = enabled,
                             numericOnly = numericOnly,
                             onNameChanged = { onNameChanged(entry.id, it) },
                             onTagChanged = { onTagChanged(entry.id, it) },
-                            onRemove = { onRemoveEntry(entry.id) },
-                            modifier = if (index == entries.lastIndex) {
-                                Modifier.bringIntoViewRequester(bringIntoViewRequester)
-                            } else {
-                                Modifier
-                            }
+                            onRemove = { onRemoveEntry(entry.id) }
                         )
                     }
                 }
@@ -397,10 +428,24 @@ private fun QuickAddRow(
     numericOnly: Boolean,
     onNameChanged: (String) -> Unit,
     onTagChanged: (String) -> Unit,
-    onRemove: () -> Unit,
-    modifier: Modifier = Modifier
+    onRemove: () -> Unit
 ) {
-    val placeholderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.4f)
+    val fieldContainerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+    val fieldTextColor = fieldContainerColor.contrastingTextColor()
+    val placeholderColor = fieldTextColor.copy(alpha = 0.6f)
+    val textFieldColors = OutlinedTextFieldDefaults.colors(
+        focusedContainerColor = fieldContainerColor,
+        unfocusedContainerColor = fieldContainerColor,
+        focusedBorderColor = MaterialTheme.colorScheme.primary,
+        unfocusedBorderColor = fieldTextColor.copy(alpha = 0.4f),
+        focusedLabelColor = MaterialTheme.colorScheme.primary,
+        unfocusedLabelColor = fieldTextColor.copy(alpha = 0.8f),
+        focusedTextColor = fieldTextColor,
+        unfocusedTextColor = fieldTextColor,
+        cursorColor = MaterialTheme.colorScheme.primary,
+        focusedPlaceholderColor = placeholderColor,
+        unfocusedPlaceholderColor = placeholderColor
+    )
     val keyboardOptions = if (numericOnly) {
         KeyboardOptions(keyboardType = KeyboardType.Number)
     } else {
@@ -408,7 +453,7 @@ private fun QuickAddRow(
     }
 
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -423,7 +468,7 @@ private fun QuickAddRow(
             enabled = enabled,
             label = { Text("Name") },
             placeholder = { Text("Name", color = placeholderColor, maxLines = 1) },
-            colors = defaultOutlinedTextFieldColors()
+            colors = textFieldColors
         )
         OutlinedTextField(
             value = entry.tagNumber,
@@ -436,7 +481,7 @@ private fun QuickAddRow(
             enabled = enabled,
             label = { Text("Tag ID") },
             placeholder = { Text("Tag ID", color = placeholderColor, maxLines = 1) },
-            colors = defaultOutlinedTextFieldColors(),
+            colors = textFieldColors,
             keyboardOptions = keyboardOptions
         )
         if (entry.hasContent()) {
