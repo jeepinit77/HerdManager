@@ -42,7 +42,14 @@ class QuickAddCattleViewModel(
 
     fun setExpandedSection(section: QuickAddSection) {
         _uiState.update { current ->
-            if (current.expandedSection == section) current else current.copy(expandedSection = section)
+            val newExpanded = if (current.expandedSection == section) null else section
+            current.copy(expandedSection = newExpanded)
+        }
+    }
+
+    fun setLimitTagIdsToNumeric(enabled: Boolean) {
+        _uiState.update { current ->
+            current.copy(limitTagIdsToNumeric = enabled)
         }
     }
 
@@ -199,7 +206,8 @@ class QuickAddCattleViewModel(
 
 data class QuickAddCattleUiState(
     val sections: Map<QuickAddSection, List<QuickAddEntry>>,
-    val expandedSection: QuickAddSection,
+    val expandedSection: QuickAddSection? = QuickAddSection.COWS,
+    val limitTagIdsToNumeric: Boolean = false,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,
     val errorMessage: String? = null

@@ -26,14 +26,20 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -44,6 +50,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jumblemint.cows.CattleApplication
@@ -118,6 +126,7 @@ fun QuickAddCattleScreen(
     val unsavedCount = uiState.totalAnimals
 
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
+    var showHelpDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.hasUnsavedChanges) {
         onUnsavedChangesChanged(uiState.hasUnsavedChanges)
@@ -168,7 +177,7 @@ fun QuickAddCattleScreen(
     Column(modifier = modifier.fillMaxSize()) {
         Surface(
             tonalElevation = 0.dp,
-            color = MaterialTheme.colorScheme.tertiaryContainer
+            color = MaterialTheme.colorScheme.secondaryContainer
         ) {
             Text(
                 text = if (unsavedCount == 1) {
@@ -177,10 +186,45 @@ fun QuickAddCattleScreen(
                     "$unsavedCount animals not yet saved"
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.tertiaryContainer.contrastingTextColor(),
+                color = MaterialTheme.colorScheme.secondaryContainer.contrastingTextColor(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Limit Tag IDs to Numeric",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(
+                onClick = { showHelpDialog = true },
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.HelpOutline,
+                    contentDescription = "How to use quick add"
+                )
+            }
+            Switch(
+                checked = uiState.limitTagIdsToNumeric,
+                onCheckedChange = { viewModel.setLimitTagIdsToNumeric(it) },
+                enabled = !uiState.isSaving,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                    uncheckedThumbColor = MaterialTheme.colorScheme.onSurface,
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
             )
         }
 
@@ -193,9 +237,8 @@ fun QuickAddCattleScreen(
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             )
-        } else {
-            Spacer(modifier = Modifier.height(12.dp))
         }
+        Spacer(modifier = Modifier.height(12.dp))
 
         Box(modifier = Modifier.weight(1f)) {
             LazyColumn(
@@ -210,6 +253,7 @@ fun QuickAddCattleScreen(
                         entries = uiState.sections[section].orEmpty(),
                         expanded = uiState.expandedSection == section,
                         enabled = !uiState.isSaving,
+                        numericOnly = uiState.limitTagIdsToNumeric,
                         onHeaderClick = { viewModel.setExpandedSection(section) },
                         onNameChanged = { entryId, value -> viewModel.updateName(section, entryId, value) },
                         onTagChanged = { entryId, value -> viewModel.updateTag(section, entryId, value) },
@@ -248,6 +292,23 @@ fun QuickAddCattleScreen(
             }
         }
     }
+
+    if (showHelpDialog) {
+        AlertDialog(
+            onDismissRequest = { showHelpDialog = false },
+            confirmButton = {
+                TextButton(onClick = { showHelpDialog = false }) {
+                    Text("Got it")
+                }
+            },
+            title = { Text("Quick Add Help") },
+            text = {
+                Text(
+                    "Expand a section to add animals of that type. Each row accepts a name, a Tag ID, or both—add at least one value before saving. New rows appear automatically after you start typing, and the delete button lets you remove an entry. Use the numeric toggle to open a number keypad for Tag IDs."
+                )
+            }
+        )
+    }
 }
 
 @Composable
@@ -256,6 +317,7 @@ private fun QuickAddSectionCard(
     entries: List<QuickAddEntry>,
     expanded: Boolean,
     enabled: Boolean,
+    numericOnly: Boolean,
     onHeaderClick: () -> Unit,
     onNameChanged: (Long, String) -> Unit,
     onTagChanged: (Long, String) -> Unit,
@@ -276,6 +338,8 @@ private fun QuickAddSectionCard(
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
+            val enteredCount = entries.count { it.hasContent() }
+
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -284,7 +348,7 @@ private fun QuickAddSectionCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = section.displayName,
+                    text = "${section.displayName} ($enteredCount)",
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f)
                 )
@@ -309,6 +373,7 @@ private fun QuickAddSectionCard(
                         QuickAddRow(
                             entry = entry,
                             enabled = enabled,
+                            numericOnly = numericOnly,
                             onNameChanged = { onNameChanged(entry.id, it) },
                             onTagChanged = { onTagChanged(entry.id, it) },
                             onRemove = { onRemoveEntry(entry.id) },
@@ -329,11 +394,19 @@ private fun QuickAddSectionCard(
 private fun QuickAddRow(
     entry: QuickAddEntry,
     enabled: Boolean,
+    numericOnly: Boolean,
     onNameChanged: (String) -> Unit,
     onTagChanged: (String) -> Unit,
     onRemove: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val placeholderColor = MaterialTheme.colorScheme.background.contrastingTextColor().copy(alpha = 0.4f)
+    val keyboardOptions = if (numericOnly) {
+        KeyboardOptions(keyboardType = KeyboardType.Number)
+    } else {
+        KeyboardOptions.Default
+    }
+
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -346,8 +419,10 @@ private fun QuickAddRow(
                 .weight(1f)
                 .heightIn(min = 56.dp),
             singleLine = true,
+            maxLines = 1,
             enabled = enabled,
             label = { Text("Name") },
+            placeholder = { Text("Name", color = placeholderColor, maxLines = 1) },
             colors = defaultOutlinedTextFieldColors()
         )
         OutlinedTextField(
@@ -357,14 +432,20 @@ private fun QuickAddRow(
                 .weight(1f)
                 .heightIn(min = 56.dp),
             singleLine = true,
+            maxLines = 1,
             enabled = enabled,
-            label = { Text("Tag number") },
-            colors = defaultOutlinedTextFieldColors()
+            label = { Text("Tag ID") },
+            placeholder = { Text("Tag ID", color = placeholderColor, maxLines = 1) },
+            colors = defaultOutlinedTextFieldColors(),
+            keyboardOptions = keyboardOptions
         )
         if (entry.hasContent()) {
             IconButton(
                 onClick = onRemove,
-                enabled = enabled
+                enabled = enabled,
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
             ) {
                 Icon(Icons.Filled.Delete, contentDescription = "Remove animal")
             }

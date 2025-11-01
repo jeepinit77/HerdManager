@@ -410,7 +410,11 @@ fun CattleManagerApp(
                                 }
                                 isAddAnimalScreen -> {
                                     IconButton(onClick = { showSwitchToBulkDialog = true }) {
-                                        Icon(Icons.Filled.LibraryAdd, contentDescription = "Switch to bulk add")
+                                        Icon(
+                                            imageVector = Icons.Filled.LibraryAdd,
+                                            contentDescription = "Switch to bulk add",
+                                            tint = MaterialTheme.colorScheme.onSurface
+                                        )
                                     }
                                 }
                             }
