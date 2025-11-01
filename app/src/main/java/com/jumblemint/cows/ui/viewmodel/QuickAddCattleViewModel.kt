@@ -35,7 +35,7 @@ class QuickAddCattleViewModel(
     private val _uiState = MutableStateFlow(
         QuickAddCattleUiState(
             sections = initialSections(),
-            expandedSection = QuickAddSection.COWS
+            expandedSection = null
         )
     )
     val uiState: StateFlow<QuickAddCattleUiState> = _uiState.asStateFlow()
@@ -154,7 +154,7 @@ class QuickAddCattleViewModel(
                 _uiState.update {
                     it.copy(
                         sections = initialSections(),
-                        expandedSection = QuickAddSection.COWS,
+                        expandedSection = null,
                         isSaving = false,
                         isSaved = true,
                         errorMessage = null
@@ -206,7 +206,7 @@ class QuickAddCattleViewModel(
 
 data class QuickAddCattleUiState(
     val sections: Map<QuickAddSection, List<QuickAddEntry>>,
-    val expandedSection: QuickAddSection? = QuickAddSection.COWS,
+    val expandedSection: QuickAddSection? = null,
     val limitTagIdsToNumeric: Boolean = false,
     val isSaving: Boolean = false,
     val isSaved: Boolean = false,

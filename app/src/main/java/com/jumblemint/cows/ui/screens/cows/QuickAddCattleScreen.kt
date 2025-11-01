@@ -144,6 +144,7 @@ fun QuickAddCattleScreen(
     val focusManager = LocalFocusManager.current
     val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
     val isImeVisible = imeBottom > 0
+    var imeWasVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.sections) {
         val existingIds = uiState.sections.values.flatten().map { it.id }.toSet()
@@ -162,9 +163,10 @@ fun QuickAddCattleScreen(
     }
 
     LaunchedEffect(isImeVisible, focusedEntryIds) {
-        if (!isImeVisible && focusedEntryIds.isNotEmpty()) {
+        if (!isImeVisible && imeWasVisible && focusedEntryIds.isNotEmpty()) {
             focusManager.clearFocus(force = false)
         }
+        imeWasVisible = isImeVisible
     }
 
     LaunchedEffect(uiState.isSaved) {
