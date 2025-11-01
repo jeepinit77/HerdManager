@@ -232,6 +232,16 @@ fun SettingsScreen(
                 .padding(vertical = 8.dp),
             label = { Text("Search settings") },
             leadingIcon = { Icon(imageVector = Icons.Filled.Search, contentDescription = null) },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(onClick = { searchQuery = "" }) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Clear search"
+                        )
+                    }
+                }
+            },
             singleLine = true,
             colors = defaultOutlinedTextFieldColors()
         )
