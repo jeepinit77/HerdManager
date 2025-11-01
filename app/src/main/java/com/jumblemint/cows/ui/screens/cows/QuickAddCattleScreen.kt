@@ -35,7 +35,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -64,6 +63,7 @@ import com.jumblemint.cows.ui.components.UnsavedChangesDialog
 import com.jumblemint.cows.ui.theme.BackgroundColorProvider
 import com.jumblemint.cows.ui.theme.SmartText
 import com.jumblemint.cows.ui.theme.contrastingTextColor
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
 import com.jumblemint.cows.ui.theme.getCardBackgroundColor
 import com.jumblemint.cows.ui.viewmodel.QuickAddCattleViewModel
 import com.jumblemint.cows.ui.viewmodel.QuickAddCattleViewModelFactory
@@ -455,22 +455,7 @@ private fun QuickAddRow(
     onTagChanged: (String) -> Unit,
     onRemove: () -> Unit
 ) {
-    val fieldContainerColor = MaterialTheme.colorScheme.surface
-    val fieldTextColor = fieldContainerColor.contrastingTextColor()
-    val placeholderColor = fieldTextColor.copy(alpha = 0.6f)
-    val textFieldColors = OutlinedTextFieldDefaults.colors(
-        focusedContainerColor = fieldContainerColor,
-        unfocusedContainerColor = fieldContainerColor,
-        focusedBorderColor = MaterialTheme.colorScheme.primary,
-        unfocusedBorderColor = fieldTextColor.copy(alpha = 0.4f),
-        focusedLabelColor = MaterialTheme.colorScheme.primary,
-        unfocusedLabelColor = fieldTextColor.copy(alpha = 0.8f),
-        focusedTextColor = fieldTextColor,
-        unfocusedTextColor = fieldTextColor,
-        cursorColor = MaterialTheme.colorScheme.primary,
-        focusedPlaceholderColor = placeholderColor,
-        unfocusedPlaceholderColor = placeholderColor
-    )
+    val textFieldColors = defaultOutlinedTextFieldColors()
     val keyboardOptions = if (numericOnly) {
         KeyboardOptions(keyboardType = KeyboardType.Number)
     } else {
@@ -492,7 +477,7 @@ private fun QuickAddRow(
             maxLines = 1,
             enabled = enabled,
             label = { Text("Name") },
-            placeholder = { Text("Name", color = placeholderColor, maxLines = 1) },
+            placeholder = { Text("Name") },
             colors = textFieldColors
         )
         OutlinedTextField(
@@ -505,7 +490,7 @@ private fun QuickAddRow(
             maxLines = 1,
             enabled = enabled,
             label = { Text("Tag ID") },
-            placeholder = { Text("Tag ID", color = placeholderColor, maxLines = 1) },
+            placeholder = { Text("Tag ID") },
             colors = textFieldColors,
             keyboardOptions = keyboardOptions
         )
