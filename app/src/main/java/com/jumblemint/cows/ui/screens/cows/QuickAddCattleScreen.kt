@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
@@ -47,10 +46,13 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -132,6 +134,13 @@ fun QuickAddCattleScreen(
 
     var showUnsavedChangesDialog by remember { mutableStateOf(false) }
     var showHelpDialog by remember { mutableStateOf(false) }
+    var focusRequestSection by remember { mutableStateOf<QuickAddSection?>(null) }
+    var focusedEntryIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+
+    LaunchedEffect(uiState.sections) {
+        val existingIds = uiState.sections.values.flatten().map { it.id }.toSet()
+        focusedEntryIds = focusedEntryIds.filter { it in existingIds }.toSet()
+    }
 
     LaunchedEffect(uiState.hasUnsavedChanges) {
         onUnsavedChangesChanged(uiState.hasUnsavedChanges)
@@ -289,7 +298,29 @@ fun QuickAddCattleScreen(
                     numericOnly = uiState.limitTagIdsToNumeric,
                     backgroundColor = cardBackground,
                     contentColor = cardContentColor,
-                    onHeaderClick = { viewModel.setExpandedSection(section) },
+                    shouldRequestFocus = focusRequestSection == section,
+                    onFocusRequestHandled = {
+                        if (focusRequestSection == section) {
+                            focusRequestSection = null
+                        }
+                    },
+                    onRowFocusChanged = { entryId, hasFocus ->
+                        focusedEntryIds = if (hasFocus) {
+                            focusedEntryIds + entryId
+                        } else {
+                            focusedEntryIds - entryId
+                        }
+                    },
+                    onHeaderClick = {
+                        val hadFocus = focusedEntryIds.isNotEmpty()
+                        val isExpandingNewSection = uiState.expandedSection != section
+                        viewModel.setExpandedSection(section)
+                        if (hadFocus && isExpandingNewSection) {
+                            focusRequestSection = section
+                        } else if (!hadFocus || !isExpandingNewSection) {
+                            focusRequestSection = null
+                        }
+                    },
                     onNameChanged = { entryId, value -> viewModel.updateName(section, entryId, value) },
                     onTagChanged = { entryId, value -> viewModel.updateTag(section, entryId, value) },
                     onRemoveEntry = { entryId -> viewModel.removeEntry(section, entryId) },
@@ -359,6 +390,9 @@ private fun QuickAddSectionCard(
     numericOnly: Boolean,
     backgroundColor: Color,
     contentColor: Color,
+    shouldRequestFocus: Boolean,
+    onFocusRequestHandled: () -> Unit,
+    onRowFocusChanged: (Long, Boolean) -> Unit,
     onHeaderClick: () -> Unit,
     onNameChanged: (Long, String) -> Unit,
     onTagChanged: (Long, String) -> Unit,
@@ -427,12 +461,15 @@ private fun QuickAddSectionCard(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        entries.forEach { entry ->
+                        entries.forEachIndexed { index, entry ->
                             QuickAddRow(
                                 entry = entry,
                                 enabled = enabled,
                                 numericOnly = numericOnly,
                                 contentColor = contentColor,
+                                requestFocus = shouldRequestFocus && index == 0,
+                                onFocusRequestHandled = onFocusRequestHandled,
+                                onFocusChanged = { hasFocus -> onRowFocusChanged(entry.id, hasFocus) },
                                 onNameChanged = { onNameChanged(entry.id, it) },
                                 onTagChanged = { onTagChanged(entry.id, it) },
                                 onRemove = { onRemoveEntry(entry.id) }
@@ -451,6 +488,9 @@ private fun QuickAddRow(
     enabled: Boolean,
     numericOnly: Boolean,
     contentColor: Color,
+    requestFocus: Boolean,
+    onFocusRequestHandled: () -> Unit,
+    onFocusChanged: (Boolean) -> Unit,
     onNameChanged: (String) -> Unit,
     onTagChanged: (String) -> Unit,
     onRemove: () -> Unit
@@ -460,6 +500,20 @@ private fun QuickAddRow(
         KeyboardOptions(keyboardType = KeyboardType.Number)
     } else {
         KeyboardOptions.Default
+    }
+
+    val focusRequester = remember { FocusRequester() }
+    LaunchedEffect(requestFocus) {
+        if (requestFocus) {
+            focusRequester.requestFocus()
+            onFocusRequestHandled()
+        }
+    }
+
+    var nameFocused by remember { mutableStateOf(false) }
+    var tagFocused by remember { mutableStateOf(false) }
+    LaunchedEffect(nameFocused, tagFocused) {
+        onFocusChanged(nameFocused || tagFocused)
     }
 
     Row(
@@ -472,7 +526,11 @@ private fun QuickAddRow(
             onValueChange = onNameChanged,
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 56.dp),
+                .heightIn(min = 56.dp)
+                .focusRequester(focusRequester)
+                .onFocusChanged { focusState ->
+                    nameFocused = focusState.isFocused || focusState.hasFocus
+                },
             singleLine = true,
             maxLines = 1,
             enabled = enabled,
@@ -485,7 +543,10 @@ private fun QuickAddRow(
             onValueChange = onTagChanged,
             modifier = Modifier
                 .weight(1f)
-                .heightIn(min = 56.dp),
+                .heightIn(min = 56.dp)
+                .onFocusChanged { focusState ->
+                    tagFocused = focusState.isFocused || focusState.hasFocus
+                },
             singleLine = true,
             maxLines = 1,
             enabled = enabled,
