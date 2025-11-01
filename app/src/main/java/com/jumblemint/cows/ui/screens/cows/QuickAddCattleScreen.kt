@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -55,6 +57,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -137,6 +141,10 @@ fun QuickAddCattleScreen(
     var focusRequestSection by remember { mutableStateOf<QuickAddSection?>(null) }
     var focusedEntryIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
 
+    val focusManager = LocalFocusManager.current
+    val imeBottom = WindowInsets.ime.getBottom(LocalDensity.current)
+    val isImeVisible = imeBottom > 0
+
     LaunchedEffect(uiState.sections) {
         val existingIds = uiState.sections.values.flatten().map { it.id }.toSet()
         focusedEntryIds = focusedEntryIds.filter { it in existingIds }.toSet()
@@ -150,6 +158,12 @@ fun QuickAddCattleScreen(
         if (saveTriggered) {
             viewModel.saveAnimals()
             onSaveHandled()
+        }
+    }
+
+    LaunchedEffect(isImeVisible, focusedEntryIds) {
+        if (!isImeVisible && focusedEntryIds.isNotEmpty()) {
+            focusManager.clearFocus(force = false)
         }
     }
 
