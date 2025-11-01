@@ -1905,18 +1905,22 @@ class SyncService(
 
             when (change.type) {
                 DocumentChange.Type.ADDED, DocumentChange.Type.MODIFIED -> {
-                    val existingLocalActivityType = repository.getAllActivityTypesSync().find { it.firestoreId == firestoreId || it.id == firestoreId }
-                    
+                    val existingLocalActivityType = repository.getAllActivityTypesSync()
+                        .find { it.firestoreId == firestoreId || it.id == firestoreId }
+
                     if (remoteActivityType.isDeleted) {
-                        // Handle soft deletion from remote
-                        existingLocalActivityType?.let {
-                            if (!it.isDefault) { // Don't delete default activity types
-                                repository.deleteActivityType(it)
-                                println("Real-time ${change.type}: Deleted activity type '${it.name}' (marked as deleted remotely)")
-                            } else {
-                                println("Real-time ${change.type}: Skipped deletion of default activity type '${it.name}'")
-                            }
-                        }
+                        // Mirror remote soft deletions locally instead of hard deleting.
+                        val deletedCopy = (existingLocalActivityType ?: remoteActivityType).copy(
+                            id = existingLocalActivityType?.id ?: remoteActivityType.id,
+                            firestoreId = firestoreId,
+                            isDeleted = true,
+                            isActive = false,
+                            lastSyncAt = remoteActivityType.lastSyncAt ?: remoteActivityType.updatedAt,
+                            updatedAt = remoteActivityType.updatedAt,
+                            updatedBy = remoteActivityType.updatedBy ?: userId
+                        )
+                        repository.upsertActivityType(deletedCopy)
+                        println("Real-time ${change.type}: Marked activity type '${deletedCopy.name}' as deleted")
                     } else {
                         // Handle normal add/update
                         if (existingLocalActivityType == null) {
@@ -1929,14 +1933,19 @@ class SyncService(
                     }
                 }
                 DocumentChange.Type.REMOVED -> {
-                    val existingLocalActivityType = repository.getAllActivityTypesSync().find { it.firestoreId == firestoreId }
+                    val existingLocalActivityType = repository.getAllActivityTypesSync()
+                        .find { it.firestoreId == firestoreId || it.id == firestoreId }
                     existingLocalActivityType?.let {
-                        if (!it.isDefault) { // Don't delete default activity types
-                            repository.deleteActivityType(it)
-                            println("Real-time REMOVED: Deleted activity type '${it.name}'")
-                        } else {
-                            println("Real-time REMOVED: Skipped deletion of default activity type '${it.name}'")
-                        }
+                        val deletedCopy = it.copy(
+                            firestoreId = it.firestoreId ?: firestoreId,
+                            isDeleted = true,
+                            isActive = false,
+                            lastSyncAt = System.currentTimeMillis(),
+                            updatedAt = System.currentTimeMillis(),
+                            updatedBy = userId
+                        )
+                        repository.upsertActivityType(deletedCopy)
+                        println("Real-time REMOVED: Marked activity type '${it.name}' as deleted")
                     }
                 }
             }
