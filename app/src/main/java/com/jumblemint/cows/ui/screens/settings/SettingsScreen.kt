@@ -301,66 +301,66 @@ fun SettingsScreen(
                             val lastSyncDisplay = remember(lastSyncTimestamp, uiState.lastSyncTime) {
                                 formatRelativeSyncTime(lastSyncTimestamp) ?: uiState.lastSyncTime
                             }
-                        val syncStatusText = when (syncStatus) {
-                            SyncStatus.SYNCING -> "Syncing..."
-                            SyncStatus.SUCCESS -> "Last synced: ${lastSyncDisplay ?: "Just now"}"
-                            SyncStatus.ERROR -> "Sync error occurred"
-                            else -> lastSyncDisplay?.let { "Last synced: $it" } ?: "Sync enabled"
+                            val syncStatusText = when (syncStatus) {
+                                SyncStatus.SYNCING -> "Syncing..."
+                                SyncStatus.SUCCESS -> "Last synced: ${lastSyncDisplay ?: "Just now"}"
+                                SyncStatus.ERROR -> "Sync error occurred"
+                                else -> lastSyncDisplay?.let { "Last synced: $it" } ?: "Sync enabled"
+                            }
+                            Quadruple(
+                                "Account: ${currentUser?.displayName ?: currentUser?.email ?: "Signed In"}",
+                                "$syncStatusText • Tap to manage",
+                                Icons.Filled.CloudSync as ImageVector?,
+                                { onNavigateToAccountManagement?.invoke() }
+                            )
                         }
-                        Quadruple(
-                            "Account: ${currentUser?.displayName ?: currentUser?.email ?: "Signed In"}",
-                            "$syncStatusText • Tap to manage",
-                            Icons.Filled.CloudSync as ImageVector?,
-                            { onNavigateToAccountManagement?.invoke() }
+                        currentUser?.isLocalUser == true -> Quadruple(
+                            "Sign In & Sync",
+                            "Currently using local storage only",
+                            Icons.Filled.CloudOff as ImageVector?,
+                            { onNavigateToSignIn?.invoke() }
+                        )
+                        else -> Quadruple(
+                            "Sign In & Sync",
+                            "Sync data across devices and collaborate",
+                            Icons.Filled.CloudUpload as ImageVector?,
+                            { onNavigateToSignIn?.invoke() }
                         )
                     }
-                    currentUser?.isLocalUser == true -> Quadruple(
-                        "Sign In & Sync",
-                        "Currently using local storage only",
-                        Icons.Filled.CloudOff as ImageVector?,
-                        { onNavigateToSignIn?.invoke() }
-                    )
-                    else -> Quadruple(
-                        "Sign In & Sync",
-                        "Sync data across devices and collaborate",
-                        Icons.Filled.CloudUpload as ImageVector?,
-                        { onNavigateToSignIn?.invoke() }
-                    )
-                }
-                
-                val showSyncNow = isSignedIn && currentUser?.isLocalUser == false
+                    val showSyncNow = isSignedIn && currentUser?.isLocalUser == false
 
-                SettingsRow(
-                    title = title,
-                    subtitle = subtitle,
-                    icon = icon,
-                    onClick = { onClickAction?.invoke() },
-                    isLast = !showSyncNow
-                )
-
-                if (showSyncNow) {
                     SettingsRow(
-                        title = "Sync Now",
-                        subtitle = when (syncStatus) {
-                            SyncStatus.SYNCING -> "Syncing in progress..."
-                            SyncStatus.SUCCESS -> "Last sync successful"
-                            SyncStatus.ERROR -> "Last sync failed - tap to retry"
-                            else -> "Manually sync your data"
-                        },
-                        icon = when (syncStatus) {
-                            SyncStatus.SYNCING -> Icons.Filled.CloudSync
-                            SyncStatus.ERROR -> Icons.Filled.CloudOff
-                            else -> Icons.Filled.Refresh
-                        },
-                        onClick = {
-                            if (syncStatus != SyncStatus.SYNCING) {
-                                coroutineScope.launch {
-                                    application.authService.startUserSync(application.syncService)
-                                }
-                            }
-                        },
-                        isLast = true
+                        title = title,
+                        subtitle = subtitle,
+                        icon = icon,
+                        onClick = { onClickAction?.invoke() },
+                        isLast = !showSyncNow
                     )
+
+                    if (showSyncNow) {
+                        SettingsRow(
+                            title = "Sync Now",
+                            subtitle = when (syncStatus) {
+                                SyncStatus.SYNCING -> "Syncing in progress..."
+                                SyncStatus.SUCCESS -> "Last sync successful"
+                                SyncStatus.ERROR -> "Last sync failed - tap to retry"
+                                else -> "Manually sync your data"
+                            },
+                            icon = when (syncStatus) {
+                                SyncStatus.SYNCING -> Icons.Filled.CloudSync
+                                SyncStatus.ERROR -> Icons.Filled.CloudOff
+                                else -> Icons.Filled.Refresh
+                            },
+                            onClick = {
+                                if (syncStatus != SyncStatus.SYNCING) {
+                                    coroutineScope.launch {
+                                        application.authService.startUserSync(application.syncService)
+                                    }
+                                }
+                            },
+                            isLast = true
+                        )
+                    }
                 }
             }
 
