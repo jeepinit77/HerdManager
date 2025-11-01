@@ -26,12 +26,13 @@ data class ActivityTypeConfig(
     val isDeleted: Boolean = false // Soft delete flag for sync
 ) {
     fun toFirestoreMap(userId: String): Map<String, Any?> {
+        val effectiveIsActive = if (isDeleted) false else isActive
         return mapOf(
             "name" to name,
             "displayName" to displayName,
             "description" to description,
             "iconName" to iconName, // <<< ADDED TO MAP
-            "isActive" to isActive,
+            "isActive" to effectiveIsActive,
             "isDefault" to isDefault,
             "createdAt" to createdAt,
             "updatedAt" to updatedAt,

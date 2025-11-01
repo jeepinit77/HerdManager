@@ -57,6 +57,7 @@ class ActivityTypesViewModel(
     fun deleteActivityType(activityType: ActivityTypeConfig) {
         viewModelScope.launch {
             val deletedType = activityType.copy(
+                isActive = false,
                 isDeleted = true,
                 updatedAt = System.currentTimeMillis(),
                 updatedBy = getUserId()
@@ -70,6 +71,7 @@ class ActivityTypesViewModel(
     fun restoreDeletedActivityType(activityTypeConfig: ActivityTypeConfig) {
         viewModelScope.launch {
             val restoredType = activityTypeConfig.copy(
+                isActive = true,
                 isDeleted = false, // Unmark as deleted
                 updatedAt = System.currentTimeMillis(),
                 updatedBy = getUserId()
@@ -91,6 +93,7 @@ class ActivityTypesViewModel(
             existingTypes.filter { !it.isDefault }.forEach { customType ->
                 if (!customType.isDeleted) {
                     val deletedCustomType = customType.copy(
+                        isActive = false,
                         isDeleted = true,
                         updatedAt = System.currentTimeMillis(),
                         updatedBy = userId

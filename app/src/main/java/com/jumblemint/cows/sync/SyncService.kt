@@ -532,13 +532,23 @@ class SyncService(
                         updatedBy = userId
                     ))
 
+                    val payload = activityTypeData.toMutableMap().apply {
+                        if (item.isDeleted) {
+                            this["isActive"] = false
+                            this["isDeleted"] = true
+                        }
+                    }
+
+                    firestore.collection("users")
+                        .document(userId)
+                        .collection("activityTypes")
+                        .document(firestoreId)
+                        .set(payload)
+                        .await()
+
                     if (item.isDeleted) {
-                        // Delete from server if item is marked as deleted
-                        firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).delete().await()
-                        println("Immediately deleted activity type: ${item.name} with FS ID: $firestoreId")
+                        println("Immediately recorded deletion for activity type: ${item.name} with FS ID: $firestoreId")
                     } else {
-                        // Otherwise upload the data
-                        firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).set(activityTypeData).await()
                         println("Immediately synced activity type: ${item.name} with FS ID: $firestoreId")
                     }
                 }
@@ -1274,13 +1284,18 @@ class SyncService(
                         }
                     }
                     if (shouldUpload) {
-                        if (activityType.isDeleted) {
-                            // If local is deleted, delete from server
-                            firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).delete().await()
-                        } else {
-                            // Otherwise upload the data
-                            firestore.collection("users").document(userId).collection("activityTypes").document(firestoreId).set(activityTypeData).await()
+                        val payload = activityTypeData.toMutableMap().apply {
+                            if (activityType.isDeleted) {
+                                this["isActive"] = false
+                                this["isDeleted"] = true
+                            }
                         }
+                        firestore.collection("users")
+                            .document(userId)
+                            .collection("activityTypes")
+                            .document(firestoreId)
+                            .set(payload)
+                            .await()
                         repository.updateActivityType(activityType.copy(
                             firestoreId = firestoreId,
                             lastSyncAt = localUpdatedAt,
@@ -1301,14 +1316,30 @@ class SyncService(
                     val remoteUpdatedAt = data["updatedAt"] as? Long ?: 0L
 
                     if (canonicalLocal?.isDeleted == true) {
+                        val tombstone = canonicalLocal.copy(
+                            firestoreId = firestoreId,
+                            isActive = false,
+                            isDeleted = true,
+                            lastSyncAt = maxOf(canonicalLocal.lastSyncAt ?: 0L, remoteUpdatedAt),
+                            updatedAt = maxOf(canonicalLocal.updatedAt, remoteUpdatedAt),
+                            updatedBy = canonicalLocal.updatedBy ?: data["updatedBy"] as? String ?: userId
+                        )
+                        repository.upsertActivityType(tombstone)
+                        val tombstonePayload = tombstone
+                            .toFirestoreMap(tombstone.updatedBy ?: userId)
+                            .toMutableMap()
+                            .apply {
+                                this["isActive"] = false
+                                this["isDeleted"] = true
+                            }
+                        firestore.collection("users")
+                            .document(userId)
+                            .collection("activityTypes")
+                            .document(firestoreId)
+                            .set(tombstonePayload)
+                            .await()
                         if (!isRemoteDeleted) {
-                            firestore.collection("users")
-                                .document(userId)
-                                .collection("activityTypes")
-                                .document(firestoreId)
-                                .delete()
-                                .await()
-                            println("Skipped remote resurrection of activity type '${canonicalLocal.name}', deleted remote copy.")
+                            println("Skipped remote resurrection of activity type '${tombstone.name}', rewrote remote tombstone.")
                         }
                         return@forEach
                     }
@@ -1337,28 +1368,20 @@ class SyncService(
                     )
 
                     if (isRemoteDeleted) {
-                        canonicalLocal?.let { existing ->
-                            if (!existing.isDeleted) {
-                                repository.updateActivityType(
-                                    existing.copy(
-                                        firestoreId = existing.firestoreId ?: firestoreId,
-                                        isDeleted = true,
-                                        isActive = false,
-                                        lastSyncAt = remoteUpdatedAt,
-                                        updatedAt = remoteActivityType.updatedAt,
-                                        updatedBy = remoteActivityType.updatedBy ?: userId
-                                    )
-                                )
-                                println("Downloaded activity type deletion: ${existing.name}")
-                            }
-                        } ?: run {
-                            repository.insertActivityType(
-                                remoteActivityType.copy(
-                                    isDeleted = true,
-                                    isActive = false
-                                )
-                            )
-                            println("Persisted remote activity type tombstone: ${remoteActivityType.name}")
+                        val tombstone = (canonicalLocal ?: remoteActivityType).copy(
+                            id = canonicalLocal?.id ?: remoteActivityType.id,
+                            firestoreId = firestoreId,
+                            isDeleted = true,
+                            isActive = false,
+                            lastSyncAt = remoteUpdatedAt,
+                            updatedAt = remoteActivityType.updatedAt,
+                            updatedBy = remoteActivityType.updatedBy ?: canonicalLocal?.updatedBy ?: userId
+                        )
+                        repository.upsertActivityType(tombstone)
+                        if (canonicalLocal != null) {
+                            println("Downloaded activity type deletion: ${tombstone.name}")
+                        } else {
+                            println("Persisted remote activity type tombstone: ${tombstone.name}")
                         }
                     } else {
                         if (canonicalLocal == null) {
@@ -1985,7 +2008,7 @@ class SyncService(
 
                     if (canonicalLocal?.isDeleted == true) {
                         val tombstone = canonicalLocal.copy(
-                            firestoreId = canonicalLocal.firestoreId ?: firestoreId,
+                            firestoreId = firestoreId,
                             isDeleted = true,
                             isActive = false,
                             lastSyncAt = remoteActivityType.lastSyncAt ?: remoteActivityType.updatedAt,
@@ -1993,13 +2016,20 @@ class SyncService(
                             updatedBy = canonicalLocal.updatedBy ?: remoteActivityType.updatedBy ?: userId
                         )
                         repository.upsertActivityType(tombstone)
+                        val tombstonePayload = tombstone
+                            .toFirestoreMap(tombstone.updatedBy ?: userId)
+                            .toMutableMap()
+                            .apply {
+                                this["isActive"] = false
+                                this["isDeleted"] = true
+                            }
                         firestore.collection("users")
                             .document(userId)
                             .collection("activityTypes")
                             .document(firestoreId)
-                            .delete()
+                            .set(tombstonePayload)
                             .await()
-                        println("Real-time ${change.type}: Ignored remote resurrection of '${tombstone.name}' and re-deleted remote copy.")
+                        println("Real-time ${change.type}: Ignored remote resurrection of '${tombstone.name}' and re-tombstoned remote copy.")
                     } else if (canonicalLocal == null) {
                         repository.insertActivityType(remoteActivityType)
                         println("Real-time ${change.type}: Inserted activity type '${remoteActivityType.name}'")
@@ -2179,12 +2209,13 @@ private fun TagColor.toFirestoreMap(userId: String): Map<String, Any?> {
 
 private fun ActivityTypeConfig.toFirestoreMap(userId: String): Map<String, Any?> {
     val effectiveUpdatedAt = if (updatedAt > 0L) updatedAt else System.currentTimeMillis()
+    val effectiveIsActive = if (isDeleted) false else isActive
     return mapOf(
         "name" to name,
         "displayName" to displayName,
         "description" to description,
         "iconName" to iconName,
-        "isActive" to isActive,
+        "isActive" to effectiveIsActive,
         "isDefault" to isDefault,
         "createdAt" to createdAt,
         "updatedBy" to userId,
