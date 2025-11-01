@@ -210,7 +210,7 @@ fun SettingsScreen(
                 .weight(1f)
                 .fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp)
+            contentPadding = PaddingValues(vertical = 16.dp)
         ) {
             val identifierSummary = when (uiState.identifierMode) {
                 AnimalIdentifierMode.NAMES -> "Use animal names"

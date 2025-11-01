@@ -406,7 +406,7 @@ fun CattleNavigation(
 
         composable(Screen.Settings.route) {
             SettingsScreen(
-                modifier = screenModifierWithPadding,
+                modifier = screenModifierWithPadding.padding(horizontal = 16.dp),
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToSignIn = { navController.navigate(Screen.SignIn.route) },
                 onNavigateToHerds = { navController.navigate(Screen.HerdSelection.route) },
