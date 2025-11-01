@@ -26,7 +26,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -36,7 +39,6 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
@@ -50,6 +52,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -58,13 +61,14 @@ import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.ui.components.UnsavedChangesDialog
-import com.jumblemint.cows.ui.theme.contrastingTextColor
+import com.jumblemint.cows.ui.theme.BackgroundColorProvider
 import com.jumblemint.cows.ui.theme.SmartText
+import com.jumblemint.cows.ui.theme.contrastingTextColor
+import com.jumblemint.cows.ui.theme.getCardBackgroundColor
 import com.jumblemint.cows.ui.viewmodel.QuickAddCattleViewModel
 import com.jumblemint.cows.ui.viewmodel.QuickAddCattleViewModelFactory
 import com.jumblemint.cows.ui.viewmodel.QuickAddEntry
 import com.jumblemint.cows.ui.viewmodel.QuickAddSection
-import androidx.compose.material3.surfaceColorAtElevation
 import kotlinx.coroutines.launch
 
 @Composable
@@ -174,6 +178,8 @@ fun QuickAddCattleScreen(
     }
 
     val listState = rememberLazyListState()
+    val cardBackground = getCardBackgroundColor()
+    val cardContentColor = cardBackground.contrastingTextColor()
 
     Column(
         modifier = modifier
@@ -200,8 +206,8 @@ fun QuickAddCattleScreen(
         }
 
         val coroutineScope = rememberCoroutineScope()
-        val toggleBackground = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
-        val toggleContentColor = toggleBackground.contrastingTextColor()
+        val toggleBackground = cardBackground
+        val toggleContentColor = cardContentColor
 
         LazyColumn(
             state = listState,
@@ -212,48 +218,53 @@ fun QuickAddCattleScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Surface(
-                    tonalElevation = 2.dp,
-                    color = toggleBackground,
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = toggleBackground,
+                        contentColor = toggleContentColor
+                    ),
                     shape = MaterialTheme.shapes.medium,
-                    modifier = Modifier.fillMaxWidth()
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        SmartText(
-                            text = "Limit Tag IDs to Numeric",
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                            backgroundColor = toggleBackground
-                        )
-                        IconButton(
-                            onClick = { showHelpDialog = true },
-                            colors = IconButtonDefaults.iconButtonColors(
-                                contentColor = toggleContentColor
-                            )
+                    BackgroundColorProvider(backgroundColor = toggleBackground) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Filled.HelpOutline,
-                                contentDescription = "How to use quick add"
+                            SmartText(
+                                text = "Limit Tag IDs to Numeric",
+                                style = MaterialTheme.typography.bodyMedium,
+                                modifier = Modifier.weight(1f),
+                                backgroundColor = toggleBackground
+                            )
+                            IconButton(
+                                onClick = { showHelpDialog = true },
+                                colors = IconButtonDefaults.iconButtonColors(
+                                    contentColor = toggleContentColor
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.HelpOutline,
+                                    contentDescription = "How to use quick add"
+                                )
+                            }
+                            Switch(
+                                checked = uiState.limitTagIdsToNumeric,
+                                onCheckedChange = { viewModel.setLimitTagIdsToNumeric(it) },
+                                enabled = !uiState.isSaving,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                    checkedBorderColor = MaterialTheme.colorScheme.primary,
+                                    uncheckedThumbColor = toggleContentColor,
+                                    uncheckedTrackColor = toggleContentColor.copy(alpha = 0.4f),
+                                    uncheckedBorderColor = toggleContentColor.copy(alpha = 0.6f)
+                                )
                             )
                         }
-                        Switch(
-                            checked = uiState.limitTagIdsToNumeric,
-                            onCheckedChange = { viewModel.setLimitTagIdsToNumeric(it) },
-                            enabled = !uiState.isSaving,
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                checkedBorderColor = MaterialTheme.colorScheme.primary,
-                                uncheckedThumbColor = toggleContentColor,
-                                uncheckedTrackColor = toggleContentColor.copy(alpha = 0.4f),
-                                uncheckedBorderColor = toggleContentColor.copy(alpha = 0.6f)
-                            )
-                        )
                     }
                 }
             }
@@ -276,6 +287,8 @@ fun QuickAddCattleScreen(
                     expanded = uiState.expandedSection == section,
                     enabled = !uiState.isSaving,
                     numericOnly = uiState.limitTagIdsToNumeric,
+                    backgroundColor = cardBackground,
+                    contentColor = cardContentColor,
                     onHeaderClick = { viewModel.setExpandedSection(section) },
                     onNameChanged = { entryId, value -> viewModel.updateName(section, entryId, value) },
                     onTagChanged = { entryId, value -> viewModel.updateTag(section, entryId, value) },
@@ -344,6 +357,8 @@ private fun QuickAddSectionCard(
     expanded: Boolean,
     enabled: Boolean,
     numericOnly: Boolean,
+    backgroundColor: Color,
+    contentColor: Color,
     onHeaderClick: () -> Unit,
     onNameChanged: (Long, String) -> Unit,
     onTagChanged: (Long, String) -> Unit,
@@ -368,52 +383,61 @@ private fun QuickAddSectionCard(
         previousLastEntryId = currentLastId
     }
 
-    Surface(
-        tonalElevation = if (expanded) 2.dp else 0.dp,
+    Card(
         shape = MaterialTheme.shapes.medium,
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundColor,
+            contentColor = contentColor
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (expanded) 2.dp else 0.dp)
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            val enteredCount = entries.count { it.hasContent() }
+        BackgroundColorProvider(backgroundColor = backgroundColor) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                val enteredCount = entries.count { it.hasContent() }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
-                    .clickable(enabled = enabled, onClick = onHeaderClick),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "${section.displayName} ($enteredCount)",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f)
-                )
-                Icon(
-                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Collapse" else "Expand"
-                )
-            }
-
-            AnimatedVisibility(
-                visible = expanded,
-                enter = expandVertically(),
-                exit = shrinkVertically()
-            ) {
-                Column(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
+                        .clickable(enabled = enabled, onClick = onHeaderClick),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    entries.forEach { entry ->
-                        QuickAddRow(
-                            entry = entry,
-                            enabled = enabled,
-                            numericOnly = numericOnly,
-                            onNameChanged = { onNameChanged(entry.id, it) },
-                            onTagChanged = { onTagChanged(entry.id, it) },
-                            onRemove = { onRemoveEntry(entry.id) }
-                        )
+                    SmartText(
+                        text = "${section.displayName} ($enteredCount)",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f),
+                        backgroundColor = backgroundColor
+                    )
+                    Icon(
+                        imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = if (expanded) "Collapse" else "Expand",
+                        tint = contentColor
+                    )
+                }
+
+                AnimatedVisibility(
+                    visible = expanded,
+                    enter = expandVertically(),
+                    exit = shrinkVertically()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        entries.forEach { entry ->
+                            QuickAddRow(
+                                entry = entry,
+                                enabled = enabled,
+                                numericOnly = numericOnly,
+                                contentColor = contentColor,
+                                onNameChanged = { onNameChanged(entry.id, it) },
+                                onTagChanged = { onTagChanged(entry.id, it) },
+                                onRemove = { onRemoveEntry(entry.id) }
+                            )
+                        }
                     }
                 }
             }
@@ -426,11 +450,12 @@ private fun QuickAddRow(
     entry: QuickAddEntry,
     enabled: Boolean,
     numericOnly: Boolean,
+    contentColor: Color,
     onNameChanged: (String) -> Unit,
     onTagChanged: (String) -> Unit,
     onRemove: () -> Unit
 ) {
-    val fieldContainerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+    val fieldContainerColor = MaterialTheme.colorScheme.surface
     val fieldTextColor = fieldContainerColor.contrastingTextColor()
     val placeholderColor = fieldTextColor.copy(alpha = 0.6f)
     val textFieldColors = OutlinedTextFieldDefaults.colors(
@@ -489,7 +514,7 @@ private fun QuickAddRow(
                 onClick = onRemove,
                 enabled = enabled,
                 colors = IconButtonDefaults.iconButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onSurface
+                    contentColor = contentColor
                 )
             ) {
                 Icon(Icons.Filled.Delete, contentDescription = "Remove animal")
