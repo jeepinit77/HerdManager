@@ -1291,35 +1291,93 @@ class SyncService(
                 } catch (e: Exception) { println("Error uploading activity type ${activityType.name}: ${e.message}") }
             }
 
+            val localActivityTypesByName = localActivityTypes.associateBy { it.name.lowercase() }
             remoteActivityTypesMap.forEach { (firestoreId, data) ->
                 try {
+                    val remoteNameKey = (data["name"] as? String)?.lowercase() ?: firestoreId.lowercase()
                     val localActivityType = localActivityTypes.find { it.firestoreId == firestoreId || it.id == firestoreId }
+                    val canonicalLocal = localActivityType ?: localActivityTypesByName[remoteNameKey]
+                    val isRemoteDeleted = data["isDeleted"] as? Boolean ?: false
                     val remoteUpdatedAt = data["updatedAt"] as? Long ?: 0L
 
-                    val shouldProcess = when {
-                        localActivityType == null -> true
-                        else -> remoteUpdatedAt > (localActivityType.lastSyncAt ?: 0L)
+                    if (canonicalLocal?.isDeleted == true) {
+                        if (!isRemoteDeleted) {
+                            firestore.collection("users")
+                                .document(userId)
+                                .collection("activityTypes")
+                                .document(firestoreId)
+                                .delete()
+                                .await()
+                            println("Skipped remote resurrection of activity type '${canonicalLocal.name}', deleted remote copy.")
+                        }
+                        return@forEach
                     }
 
-                    if (shouldProcess) {
-                        val remoteActivityType = ActivityTypeConfig(
-                            id = localActivityType?.id ?: firestoreId,
-                            name = data["name"] as? String ?: "",
-                            displayName = data["displayName"] as? String ?: "",
-                            description = data["description"] as? String,
-                            iconName = data["iconName"] as? String,
-                            isActive = data["isActive"] as? Boolean ?: true,
-                            isDefault = data["isDefault"] as? Boolean ?: false,
-                            createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
-                            updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
-                            firestoreId = firestoreId,
-                            lastSyncAt = remoteUpdatedAt,
-                            updatedBy = data["updatedBy"] as? String,
-                            isDeleted = data["isDeleted"] as? Boolean ?: false
-                        )
-                        if (localActivityType == null) repository.insertActivityType(remoteActivityType)
-                        else repository.updateActivityType(remoteActivityType)
-                        println("Downloaded activity type: ${remoteActivityType.name}")
+                    val shouldProcess = when {
+                        canonicalLocal == null -> true
+                        else -> remoteUpdatedAt > (canonicalLocal.lastSyncAt ?: 0L)
+                    }
+
+                    if (!shouldProcess) return@forEach
+
+                    val remoteActivityType = ActivityTypeConfig(
+                        id = canonicalLocal?.id ?: firestoreId,
+                        name = data["name"] as? String ?: "",
+                        displayName = data["displayName"] as? String ?: "",
+                        description = data["description"] as? String,
+                        iconName = data["iconName"] as? String,
+                        isActive = data["isActive"] as? Boolean ?: true,
+                        isDefault = data["isDefault"] as? Boolean ?: false,
+                        createdAt = data["createdAt"] as? Long ?: System.currentTimeMillis(),
+                        updatedAt = data["updatedAt"] as? Long ?: System.currentTimeMillis(),
+                        firestoreId = firestoreId,
+                        lastSyncAt = remoteUpdatedAt,
+                        updatedBy = data["updatedBy"] as? String,
+                        isDeleted = isRemoteDeleted
+                    )
+
+                    if (isRemoteDeleted) {
+                        canonicalLocal?.let { existing ->
+                            if (!existing.isDeleted) {
+                                repository.updateActivityType(
+                                    existing.copy(
+                                        firestoreId = existing.firestoreId ?: firestoreId,
+                                        isDeleted = true,
+                                        isActive = false,
+                                        lastSyncAt = remoteUpdatedAt,
+                                        updatedAt = remoteActivityType.updatedAt,
+                                        updatedBy = remoteActivityType.updatedBy ?: userId
+                                    )
+                                )
+                                println("Downloaded activity type deletion: ${existing.name}")
+                            }
+                        } ?: run {
+                            repository.insertActivityType(
+                                remoteActivityType.copy(
+                                    isDeleted = true,
+                                    isActive = false
+                                )
+                            )
+                            println("Persisted remote activity type tombstone: ${remoteActivityType.name}")
+                        }
+                    } else {
+                        if (canonicalLocal == null) {
+                            repository.insertActivityType(remoteActivityType)
+                            println("Downloaded activity type: ${remoteActivityType.name}")
+                        } else {
+                            repository.updateActivityType(remoteActivityType.copy(id = canonicalLocal.id))
+                            if (canonicalLocal.firestoreId == null) {
+                                repository.updateActivityType(
+                                    canonicalLocal.copy(
+                                        firestoreId = firestoreId,
+                                        lastSyncAt = remoteUpdatedAt,
+                                        updatedAt = remoteActivityType.updatedAt,
+                                        updatedBy = remoteActivityType.updatedBy ?: userId
+                                    )
+                                )
+                            }
+                            println("Updated activity type from remote: ${remoteActivityType.name}")
+                        }
                     }
                 } catch (e: Exception) { println("Error downloading activity type $firestoreId: ${e.message}") }
             }
@@ -1905,14 +1963,15 @@ class SyncService(
 
             when (change.type) {
                 DocumentChange.Type.ADDED, DocumentChange.Type.MODIFIED -> {
-                    val existingLocalActivityType = repository.getAllActivityTypesSync()
-                        .find { it.firestoreId == firestoreId || it.id == firestoreId }
+                    val allLocalActivityTypes = repository.getAllActivityTypesSync()
+                    val existingLocalActivityType = allLocalActivityTypes.find { it.firestoreId == firestoreId || it.id == firestoreId }
+                    val existingByName = allLocalActivityTypes.find { it.name.equals(remoteActivityType.name, ignoreCase = true) }
+                    val canonicalLocal = existingLocalActivityType ?: existingByName
 
                     if (remoteActivityType.isDeleted) {
-                        // Mirror remote soft deletions locally instead of hard deleting.
-                        val deletedCopy = (existingLocalActivityType ?: remoteActivityType).copy(
-                            id = existingLocalActivityType?.id ?: remoteActivityType.id,
-                            firestoreId = firestoreId,
+                        val deletedCopy = (canonicalLocal ?: remoteActivityType).copy(
+                            id = canonicalLocal?.id ?: remoteActivityType.id,
+                            firestoreId = canonicalLocal?.firestoreId ?: firestoreId,
                             isDeleted = true,
                             isActive = false,
                             lastSyncAt = remoteActivityType.lastSyncAt ?: remoteActivityType.updatedAt,
@@ -1921,21 +1980,55 @@ class SyncService(
                         )
                         repository.upsertActivityType(deletedCopy)
                         println("Real-time ${change.type}: Marked activity type '${deletedCopy.name}' as deleted")
+                        return
+                    }
+
+                    if (canonicalLocal?.isDeleted == true) {
+                        val tombstone = canonicalLocal.copy(
+                            firestoreId = canonicalLocal.firestoreId ?: firestoreId,
+                            isDeleted = true,
+                            isActive = false,
+                            lastSyncAt = remoteActivityType.lastSyncAt ?: remoteActivityType.updatedAt,
+                            updatedAt = maxOf(canonicalLocal.updatedAt, remoteActivityType.updatedAt),
+                            updatedBy = canonicalLocal.updatedBy ?: remoteActivityType.updatedBy ?: userId
+                        )
+                        repository.upsertActivityType(tombstone)
+                        firestore.collection("users")
+                            .document(userId)
+                            .collection("activityTypes")
+                            .document(firestoreId)
+                            .delete()
+                            .await()
+                        println("Real-time ${change.type}: Ignored remote resurrection of '${tombstone.name}' and re-deleted remote copy.")
+                    } else if (canonicalLocal == null) {
+                        repository.insertActivityType(remoteActivityType)
+                        println("Real-time ${change.type}: Inserted activity type '${remoteActivityType.name}'")
                     } else {
-                        // Handle normal add/update
-                        if (existingLocalActivityType == null) {
-                            repository.insertActivityType(remoteActivityType)
-                            println("Real-time ${change.type}: Inserted activity type '${remoteActivityType.name}'")
-                        } else if ((existingLocalActivityType.lastSyncAt ?: 0L) < (remoteActivityType.lastSyncAt ?: 0L)) {
-                            repository.updateActivityType(remoteActivityType.copy(id = existingLocalActivityType.id))
+                        val remoteTimestamp = remoteActivityType.lastSyncAt ?: remoteActivityType.updatedAt
+                        val localTimestamp = canonicalLocal.lastSyncAt ?: 0L
+                        if (canonicalLocal.firestoreId == null) {
+                            repository.updateActivityType(
+                                canonicalLocal.copy(
+                                    firestoreId = firestoreId,
+                                    lastSyncAt = remoteTimestamp,
+                                    updatedAt = maxOf(canonicalLocal.updatedAt, remoteActivityType.updatedAt),
+                                    updatedBy = remoteActivityType.updatedBy ?: canonicalLocal.updatedBy ?: userId
+                                )
+                            )
+                        }
+                        if (remoteTimestamp > localTimestamp) {
+                            repository.updateActivityType(remoteActivityType.copy(id = canonicalLocal.id))
                             println("Real-time ${change.type}: Updated activity type '${remoteActivityType.name}'")
                         }
                     }
                 }
                 DocumentChange.Type.REMOVED -> {
-                    val existingLocalActivityType = repository.getAllActivityTypesSync()
-                        .find { it.firestoreId == firestoreId || it.id == firestoreId }
-                    existingLocalActivityType?.let {
+                    val allLocalActivityTypes = repository.getAllActivityTypesSync()
+                    val existingLocalActivityType = allLocalActivityTypes.find { it.firestoreId == firestoreId || it.id == firestoreId }
+                    val existingByName = allLocalActivityTypes.find { it.name.equals(remoteActivityType.name, ignoreCase = true) }
+                    val canonicalLocal = existingLocalActivityType ?: existingByName
+
+                    canonicalLocal?.let {
                         val deletedCopy = it.copy(
                             firestoreId = it.firestoreId ?: firestoreId,
                             isDeleted = true,
