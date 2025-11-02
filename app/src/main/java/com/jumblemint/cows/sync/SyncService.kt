@@ -24,13 +24,16 @@ enum class ReplaceServerProgressPhase {
 
 enum class ReplaceServerProgressStatus {
     STARTED,
+    IN_PROGRESS,
     COMPLETED
 }
 
 data class ReplaceServerProgressEvent(
     val phase: ReplaceServerProgressPhase,
     val target: String,
-    val status: ReplaceServerProgressStatus
+    val status: ReplaceServerProgressStatus,
+    val processedCount: Int? = null,
+    val totalCount: Int? = null
 )
 
 class SyncService(
@@ -176,12 +179,22 @@ class SyncService(
                 )
                 val collectionRef = firestore.collection("users").document(userId).collection(collectionName)
                 val snapshot = collectionRef.get().await()
-                if (snapshot.isEmpty) {
+                val totalDocs = snapshot.size()
+                if (totalDocs == 0) {
                     println("No documents found in '$collectionName' for user $userId to delete.")
                 } else {
                     val batch = firestore.batch()
-                    for (document in snapshot.documents) {
+                    snapshot.documents.forEachIndexed { index, document ->
                         batch.delete(document.reference)
+                        progressListener?.invoke(
+                            ReplaceServerProgressEvent(
+                                phase = ReplaceServerProgressPhase.CLEARING_COLLECTION,
+                                target = collectionName,
+                                status = ReplaceServerProgressStatus.IN_PROGRESS,
+                                processedCount = index + 1,
+                                totalCount = totalDocs
+                            )
+                        )
                     }
                     batch.commit().await()
                     println("Successfully deleted all documents from '$collectionName' for user $userId.")
@@ -190,7 +203,9 @@ class SyncService(
                     ReplaceServerProgressEvent(
                         phase = ReplaceServerProgressPhase.CLEARING_COLLECTION,
                         target = collectionName,
-                        status = ReplaceServerProgressStatus.COMPLETED
+                        status = ReplaceServerProgressStatus.COMPLETED,
+                        processedCount = totalDocs,
+                        totalCount = totalDocs
                     )
                 )
             }
@@ -207,19 +222,31 @@ class SyncService(
     ) {
         println("Starting force upload of all local data for user ID: $userId")
         _syncStatus.value = SyncStatus.SYNCING
-        try {
+        fun emitUploadEvent(
+            target: String,
+            status: ReplaceServerProgressStatus,
+            processed: Int? = null,
+            total: Int? = null
+        ) {
             progressListener?.invoke(
                 ReplaceServerProgressEvent(
                     phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
-                    target = "cows",
-                    status = ReplaceServerProgressStatus.STARTED
+                    target = target,
+                    status = status,
+                    processedCount = processed,
+                    totalCount = total
                 )
             )
+        }
+        try {
+            // Force upload cows
             val localCows = repository.getAllCowsSync()
+            val totalCows = localCows.size
+            emitUploadEvent("cows", ReplaceServerProgressStatus.STARTED, total = totalCows)
             println("Found ${localCows.size} local cows to force upload.")
-            for (cow in localCows) {
+            for ((index, cow) in localCows.withIndex()) {
                 val firestoreId = cow.firestoreId ?: UUID.randomUUID().toString()
-                val cowData = cow.toFirestoreMap(userId, repository) 
+                val cowData = cow.toFirestoreMap(userId, repository)
                 val updatedTimestamp = cowData["updatedAt"] as? Long ?: System.currentTimeMillis()
                 firestore.collection("users").document(userId).collection("cows").document(firestoreId).set(cowData).await()
                 repository.updateCow(cow.copy(
@@ -228,25 +255,21 @@ class SyncService(
                     updatedBy = userId
                 ))
                 println("Force uploaded cow: ${cow.name} (FS ID: $firestoreId)")
-            }
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                emitUploadEvent(
                     target = "cows",
-                    status = ReplaceServerProgressStatus.COMPLETED
+                    status = ReplaceServerProgressStatus.IN_PROGRESS,
+                    processed = index + 1,
+                    total = totalCows
                 )
-            )
+            }
+            emitUploadEvent("cows", ReplaceServerProgressStatus.COMPLETED, processed = totalCows, total = totalCows)
 
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
-                    target = "pastures",
-                    status = ReplaceServerProgressStatus.STARTED
-                )
-            )
+            // Force upload pastures
             val localPastures = repository.getAllPasturesSync()
+            val totalPastures = localPastures.size
+            emitUploadEvent("pastures", ReplaceServerProgressStatus.STARTED, total = totalPastures)
             println("Found ${localPastures.size} local pastures to force upload.")
-            for (pasture in localPastures) {
+            for ((index, pasture) in localPastures.withIndex()) {
                 val firestoreId = pasture.firestoreId ?: pasture.id.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
                 val pastureData = pasture.toFirestoreMap(userId)
                 val updatedTimestamp = pastureData["updatedAt"] as? Long ?: System.currentTimeMillis()
@@ -261,25 +284,21 @@ class SyncService(
                 )
                 repository.updatePasture(normalizedPasture)
                 println("Force uploaded pasture: ${pasture.name} (FS ID: $firestoreId)")
-            }
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                emitUploadEvent(
                     target = "pastures",
-                    status = ReplaceServerProgressStatus.COMPLETED
+                    status = ReplaceServerProgressStatus.IN_PROGRESS,
+                    processed = index + 1,
+                    total = totalPastures
                 )
-            )
+            }
+            emitUploadEvent("pastures", ReplaceServerProgressStatus.COMPLETED, processed = totalPastures, total = totalPastures)
 
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
-                    target = "activities",
-                    status = ReplaceServerProgressStatus.STARTED
-                )
-            )
+            // Force upload activities
             val localActivities = repository.getAllActivitiesSync()
+            val totalActivities = localActivities.size
+            emitUploadEvent("activities", ReplaceServerProgressStatus.STARTED, total = totalActivities)
             println("Found ${localActivities.size} local activities to force upload.")
-            for (activity in localActivities) {
+            for ((index, activity) in localActivities.withIndex()) {
                 val firestoreId = activity.firestoreId ?: UUID.randomUUID().toString()
                 val activityData = activity.toFirestoreMap(userId, repository)
                 val updatedTimestamp = activityData["updatedAt"] as? Long ?: System.currentTimeMillis()
@@ -290,25 +309,21 @@ class SyncService(
                     updatedBy = userId
                 ))
                 println("Force uploaded activity: ${activity.activityType} (FS ID: $firestoreId)")
-            }
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                emitUploadEvent(
                     target = "activities",
-                    status = ReplaceServerProgressStatus.COMPLETED
+                    status = ReplaceServerProgressStatus.IN_PROGRESS,
+                    processed = index + 1,
+                    total = totalActivities
                 )
-            )
+            }
+            emitUploadEvent("activities", ReplaceServerProgressStatus.COMPLETED, processed = totalActivities, total = totalActivities)
 
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
-                    target = "notes",
-                    status = ReplaceServerProgressStatus.STARTED
-                )
-            )
+            // Force upload notes
             val localNotes = repository.getAllNotesSync()
+            val totalNotes = localNotes.size
+            emitUploadEvent("notes", ReplaceServerProgressStatus.STARTED, total = totalNotes)
             println("Found ${localNotes.size} local notes to force upload.")
-            for (note in localNotes) {
+            for ((index, note) in localNotes.withIndex()) {
                 val firestoreId = note.firestoreId ?: UUID.randomUUID().toString()
                 val noteData = note.toFirestoreMap(userId)
                 val updatedTimestamp = noteData["updatedAt"] as? Long ?: System.currentTimeMillis()
@@ -319,26 +334,21 @@ class SyncService(
                     updatedBy = userId
                 ))
                 println("Force uploaded note: ${note.title} (FS ID: $firestoreId)")
-            }
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                emitUploadEvent(
                     target = "notes",
-                    status = ReplaceServerProgressStatus.COMPLETED
+                    status = ReplaceServerProgressStatus.IN_PROGRESS,
+                    processed = index + 1,
+                    total = totalNotes
                 )
-            )
+            }
+            emitUploadEvent("notes", ReplaceServerProgressStatus.COMPLETED, processed = totalNotes, total = totalNotes)
 
             // Force upload settings
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
-                    target = "settings",
-                    status = ReplaceServerProgressStatus.STARTED
-                )
-            )
             val localSettings = repository.getAllSettings().first()
+            val totalSettings = localSettings.size
+            emitUploadEvent("settings", ReplaceServerProgressStatus.STARTED, total = totalSettings)
             println("Found ${localSettings.size} local settings to force upload.")
-            for (setting in localSettings) {
+            for ((index, setting) in localSettings.withIndex()) {
                 val firestoreId = setting.firestoreId ?: setting.key
                 val settingData = setting.toFirestoreMap(userId)
                 val updatedTimestamp = settingData["updatedAt"] as? Long ?: System.currentTimeMillis()
@@ -349,26 +359,21 @@ class SyncService(
                     updatedBy = userId
                 ))
                 println("Force uploaded setting: ${setting.key} (FS ID: $firestoreId)")
-            }
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                emitUploadEvent(
                     target = "settings",
-                    status = ReplaceServerProgressStatus.COMPLETED
+                    status = ReplaceServerProgressStatus.IN_PROGRESS,
+                    processed = index + 1,
+                    total = totalSettings
                 )
-            )
+            }
+            emitUploadEvent("settings", ReplaceServerProgressStatus.COMPLETED, processed = totalSettings, total = totalSettings)
 
             // Force upload tag colors
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
-                    target = "tagColors",
-                    status = ReplaceServerProgressStatus.STARTED
-                )
-            )
             val localTagColors = repository.getAllTagColorsSync()
+            val totalTagColors = localTagColors.size
+            emitUploadEvent("tagColors", ReplaceServerProgressStatus.STARTED, total = totalTagColors)
             println("Found ${localTagColors.size} local tag colors to force upload.")
-            for (tagColor in localTagColors) {
+            for ((index, tagColor) in localTagColors.withIndex()) {
                 val firestoreId = tagColor.firestoreId ?: tagColor.id
                 val tagColorData = tagColor.toFirestoreMap(userId)
                 val updatedTimestamp = tagColorData["updatedAt"] as? Long ?: System.currentTimeMillis()
@@ -379,25 +384,21 @@ class SyncService(
                     updatedBy = userId
                 ))
                 println("Force uploaded tag color: ${tagColor.name} (FS ID: $firestoreId)")
-            }
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                emitUploadEvent(
                     target = "tagColors",
-                    status = ReplaceServerProgressStatus.COMPLETED
+                    status = ReplaceServerProgressStatus.IN_PROGRESS,
+                    processed = index + 1,
+                    total = totalTagColors
                 )
-            )
+            }
+            emitUploadEvent("tagColors", ReplaceServerProgressStatus.COMPLETED, processed = totalTagColors, total = totalTagColors)
 
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
-                    target = "breeds",
-                    status = ReplaceServerProgressStatus.STARTED
-                )
-            )
+            // Force upload breeds
             val localBreeds = repository.getAllBreedsSync()
+            val totalBreeds = localBreeds.size
+            emitUploadEvent("breeds", ReplaceServerProgressStatus.STARTED, total = totalBreeds)
             println("Found ${localBreeds.size} local breeds to force upload.")
-            for (breed in localBreeds) {
+            for ((index, breed) in localBreeds.withIndex()) {
                 val firestoreId = breed.firestoreId ?: breed.id
                 val breedData = breed.toFirestoreMap(userId)
                 val updatedTimestamp = breedData["updatedAt"] as? Long ?: System.currentTimeMillis()
@@ -415,26 +416,21 @@ class SyncService(
                     )
                 )
                 println("Force uploaded breed: ${breed.name} (FS ID: $firestoreId)")
-            }
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                emitUploadEvent(
                     target = "breeds",
-                    status = ReplaceServerProgressStatus.COMPLETED
+                    status = ReplaceServerProgressStatus.IN_PROGRESS,
+                    processed = index + 1,
+                    total = totalBreeds
                 )
-            )
+            }
+            emitUploadEvent("breeds", ReplaceServerProgressStatus.COMPLETED, processed = totalBreeds, total = totalBreeds)
 
             // Force upload activity types
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
-                    target = "activityTypes",
-                    status = ReplaceServerProgressStatus.STARTED
-                )
-            )
             val localActivityTypes = repository.getAllActivityTypesSync()
+            val totalActivityTypes = localActivityTypes.size
+            emitUploadEvent("activityTypes", ReplaceServerProgressStatus.STARTED, total = totalActivityTypes)
             println("Found ${localActivityTypes.size} local activity types to force upload.")
-            for (activityType in localActivityTypes) {
+            for ((index, activityType) in localActivityTypes.withIndex()) {
                 val firestoreId = activityType.firestoreId ?: activityType.id
                 val activityTypeData = activityType.toFirestoreMap(userId)
                 val updatedTimestamp = activityTypeData["updatedAt"] as? Long ?: System.currentTimeMillis()
@@ -445,14 +441,14 @@ class SyncService(
                     updatedBy = userId
                 ))
                 println("Force uploaded activity type: ${activityType.name} (FS ID: $firestoreId)")
-            }
-            progressListener?.invoke(
-                ReplaceServerProgressEvent(
-                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                emitUploadEvent(
                     target = "activityTypes",
-                    status = ReplaceServerProgressStatus.COMPLETED
+                    status = ReplaceServerProgressStatus.IN_PROGRESS,
+                    processed = index + 1,
+                    total = totalActivityTypes
                 )
-            )
+            }
+            emitUploadEvent("activityTypes", ReplaceServerProgressStatus.COMPLETED, processed = totalActivityTypes, total = totalActivityTypes)
 
             println("Force upload of all local data completed for user ID: $userId")
             _syncStatus.value = SyncStatus.SUCCESS

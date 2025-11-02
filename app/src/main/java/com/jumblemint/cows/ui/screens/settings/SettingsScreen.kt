@@ -21,6 +21,9 @@ import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.*
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.surfaceColorAtElevation
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -729,40 +732,45 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         showResetCloudDataDialog = false
-                        coroutineScope.launch {
-                            if (!isSignedIn || currentUser?.isLocalUser != false) {
+                        if (!isSignedIn || currentUser?.isLocalUser != false) {
+                            coroutineScope.launch {
                                 snackbarHostState.showSnackbar(
                                     "Sign in to a cloud account to reset your cloud data.",
                                     withDismissAction = true,
                                     duration = SnackbarDuration.Long
                                 )
-                                return@launch
                             }
-                            val uid = currentUser?.uid
-                            if (uid.isNullOrBlank()) {
+                            return@Button
+                        }
+                        val uid = currentUser?.uid
+                        if (uid.isNullOrBlank()) {
+                            coroutineScope.launch {
                                 snackbarHostState.showSnackbar(
                                     "Unable to reset cloud data: user ID missing.",
                                     withDismissAction = true,
                                     duration = SnackbarDuration.Long
                                 )
-                                return@launch
                             }
-                            val result = viewModel.replaceServerDataWithDeviceSnapshot(
-                                application.syncService,
-                                uid
-                            )
-                            result.onSuccess {
-                                snackbarHostState.showSnackbar(
-                                    "Cloud data replaced with this device's snapshot.",
-                                    withDismissAction = true,
-                                    duration = SnackbarDuration.Long
-                                )
-                            }.onFailure { error ->
-                                snackbarHostState.showSnackbar(
-                                    "Failed to reset cloud data: ${error.message ?: "Unknown error"}",
-                                    withDismissAction = true,
-                                    duration = SnackbarDuration.Long
-                                )
+                            return@Button
+                        }
+                        viewModel.replaceServerDataWithDeviceSnapshot(
+                            application.syncService,
+                            uid
+                        ) { result ->
+                            coroutineScope.launch {
+                                result.onSuccess {
+                                    snackbarHostState.showSnackbar(
+                                        "Cloud data replaced with this device's snapshot.",
+                                        withDismissAction = true,
+                                        duration = SnackbarDuration.Long
+                                    )
+                                }.onFailure { error ->
+                                    snackbarHostState.showSnackbar(
+                                        "Failed to reset cloud data: ${error.message ?: "Unknown error"}",
+                                        withDismissAction = true,
+                                        duration = SnackbarDuration.Long
+                                    )
+                                }
                             }
                         }
                     }
@@ -849,11 +857,15 @@ private fun ResetCloudDataProgressCard(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val normalizedProgress = if (progress.totalSteps == 0) {
-        0f
-    } else {
-        progress.completedSteps.coerceAtMost(progress.totalSteps).toFloat() / progress.totalSteps
+    val totalSteps = progress.totalSteps.coerceAtLeast(1)
+    val normalizedProgress = when (progress) {
+        is ResetCloudDataProgress.InProgress -> {
+            val partial = progress.currentStepProgress?.coerceIn(0f, 1f) ?: 0f
+            (progress.completedSteps.coerceAtMost(totalSteps).toFloat() + partial) / totalSteps
+        }
+        else -> progress.completedSteps.coerceAtMost(totalSteps).toFloat() / totalSteps
     }
+    val progressValue = normalizedProgress.coerceIn(0f, 1f)
 
     val (icon, tint) = when (progress) {
         is ResetCloudDataProgress.InProgress -> Icons.Filled.CloudUpload to MaterialTheme.colorScheme.primary
@@ -868,7 +880,15 @@ private fun ResetCloudDataProgressCard(
     }
 
     val supportingText = when (progress) {
-        is ResetCloudDataProgress.InProgress -> "${progress.completedSteps} of ${progress.totalSteps} steps completed"
+        is ResetCloudDataProgress.InProgress -> {
+            val activeStep = (progress.completedSteps + 1).coerceAtMost(progress.totalSteps)
+            buildString {
+                append("Step $activeStep of ${progress.totalSteps}")
+                progress.currentStepSummary?.let { summary ->
+                    append(" • $summary")
+                }
+            }
+        }
         is ResetCloudDataProgress.Success -> {
             val relativeTime = DateUtils.getRelativeTimeSpanString(
                 progress.finishedAt,
@@ -886,50 +906,56 @@ private fun ResetCloudDataProgressCard(
         else -> MaterialTheme.colorScheme.primary
     }
 
-    Card(
+    val containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(6.dp)
+    val contentColor = MaterialTheme.colorScheme.onSurface
+    ElevatedCard(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        )
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = tint,
-                modifier = Modifier.size(32.dp)
-            )
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = headline,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = supportingText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                LinearProgressIndicator(
-                    progress = normalizedProgress,
-                    color = indicatorColor,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-            IconButton(onClick = onDismiss) {
+        CompositionLocalProvider(LocalContentColor provides contentColor) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
-                    imageVector = Icons.Filled.Close,
-                    contentDescription = "Dismiss cloud reset status"
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = tint,
+                    modifier = Modifier.size(32.dp)
                 )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = headline,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = supportingText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        progress = progressValue,
+                        color = indicatorColor,
+                        trackColor = containerColor.copy(alpha = 0.35f),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Dismiss cloud reset status"
+                    )
+                }
             }
         }
     }

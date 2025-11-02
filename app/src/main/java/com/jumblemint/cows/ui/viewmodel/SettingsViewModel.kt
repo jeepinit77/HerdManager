@@ -11,11 +11,15 @@ import com.jumblemint.cows.data.import.ConflictResolution
 import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.model.SettingsKeys
 import com.jumblemint.cows.data.repository.CattleRepository
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import android.text.format.DateUtils
 import com.jumblemint.cows.sync.ReplaceServerProgressEvent
 import com.jumblemint.cows.sync.ReplaceServerProgressPhase
@@ -30,6 +34,8 @@ class SettingsViewModel(
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    private var resetJob: Job? = null
 
     init {
         loadInitialData()
@@ -300,107 +306,176 @@ class SettingsViewModel(
         _uiState.value = _uiState.value.copy(pendingExportFormat = format)
     }
 
-    suspend fun replaceServerDataWithDeviceSnapshot(
+    fun replaceServerDataWithDeviceSnapshot(
         syncService: SyncService,
-        userId: String
-    ): Result<Unit> {
-        val totalSteps = 1 + SyncService.CLOUD_COLLECTIONS.size + SyncService.FORCE_UPLOAD_COLLECTIONS.size
-        var completedSteps = 0
-        var currentMessage = "Pausing realtime sync…"
+        userId: String,
+        onResult: ((Result<Unit>) -> Unit)? = null
+    ) {
+        resetJob?.cancel()
+        resetJob = viewModelScope.launch {
+            val totalSteps = 1 + SyncService.CLOUD_COLLECTIONS.size + SyncService.FORCE_UPLOAD_COLLECTIONS.size
+            var completedSteps = 0
+            var currentMessage = "Pausing realtime sync…"
+            var currentStepFraction: Float? = null
+            var currentStepSummary: String? = null
 
-        fun publishProgress() {
-            _uiState.value = _uiState.value.copy(
-                resetCloudProgress = ResetCloudDataProgress.InProgress(
-                    message = currentMessage,
-                    completedSteps = completedSteps.coerceAtMost(totalSteps),
-                    totalSteps = totalSteps
-                )
-            )
-        }
-
-        _uiState.value = _uiState.value.copy(
-            message = null,
-            error = null,
-            resetCloudProgress = ResetCloudDataProgress.InProgress(
-                message = currentMessage,
-                completedSteps = completedSteps,
-                totalSteps = totalSteps
-            )
-        )
-
-        val handleProgress: (ReplaceServerProgressEvent) -> Unit = { event ->
-            val label = friendlyCollectionLabel(event.target)
-            when (event.phase) {
-                ReplaceServerProgressPhase.CLEARING_COLLECTION -> {
-                    if (event.status == ReplaceServerProgressStatus.STARTED) {
-                        currentMessage = "Clearing $label from the cloud…"
-                    } else {
-                        completedSteps++
-                        currentMessage = "${capitalizeLabel(label)} cleared from the cloud."
-                    }
-                }
-                ReplaceServerProgressPhase.UPLOADING_COLLECTION -> {
-                    if (event.status == ReplaceServerProgressStatus.STARTED) {
-                        currentMessage = "Uploading $label from this device…"
-                    } else {
-                        completedSteps++
-                        currentMessage = "${capitalizeLabel(label)} uploaded to the cloud."
-                    }
+            fun publishProgress() {
+                val normalizedFraction = currentStepFraction?.coerceIn(0f, 1f)
+                _uiState.update { state ->
+                    state.copy(
+                        resetCloudProgress = ResetCloudDataProgress.InProgress(
+                            message = currentMessage,
+                            completedSteps = completedSteps.coerceAtMost(totalSteps),
+                            totalSteps = totalSteps,
+                            currentStepProgress = normalizedFraction,
+                            currentStepSummary = currentStepSummary
+                        )
+                    )
                 }
             }
-            publishProgress()
-        }
 
-        runCatching { syncService.stopRealtimeSync(userId) }
-            .onFailure {
-                println("SettingsViewModel: Unable to stop realtime sync before replacing server data: ${it.message}")
-                completedSteps++
-                currentMessage = "Couldn't pause realtime sync: ${it.localizedMessage ?: "unknown error"}."
+            _uiState.update { state ->
+                state.copy(
+                    message = null,
+                    error = null,
+                    resetCloudProgress = ResetCloudDataProgress.InProgress(
+                        message = currentMessage,
+                        completedSteps = completedSteps,
+                        totalSteps = totalSteps,
+                        currentStepProgress = currentStepFraction,
+                        currentStepSummary = currentStepSummary
+                    )
+                )
+            }
+
+            val handleProgress: (ReplaceServerProgressEvent) -> Unit = { event ->
+                val label = friendlyCollectionLabel(event.target)
+                when (event.phase) {
+                    ReplaceServerProgressPhase.CLEARING_COLLECTION -> {
+                        when (event.status) {
+                            ReplaceServerProgressStatus.STARTED -> {
+                                currentStepFraction = 0f
+                                currentStepSummary = event.totalCount?.takeIf { it > 0 }?.let { "0 of $it" }
+                                currentMessage = "Clearing $label from the cloud…"
+                            }
+                            ReplaceServerProgressStatus.IN_PROGRESS -> {
+                                val processed = event.processedCount ?: 0
+                                val total = event.totalCount ?: 0
+                                if (total > 0) {
+                                    currentStepFraction = processed.toFloat() / total
+                                    currentStepSummary = "$processed of $total"
+                                    currentMessage = "Clearing $label from the cloud… ($processed of $total)"
+                                } else {
+                                    currentStepFraction = null
+                                    currentStepSummary = null
+                                    currentMessage = "Clearing $label from the cloud…"
+                                }
+                            }
+                            ReplaceServerProgressStatus.COMPLETED -> {
+                                completedSteps++
+                                currentStepFraction = null
+                                currentStepSummary = null
+                                currentMessage = "${capitalizeLabel(label)} cleared from the cloud."
+                            }
+                        }
+                    }
+
+                    ReplaceServerProgressPhase.UPLOADING_COLLECTION -> {
+                        when (event.status) {
+                            ReplaceServerProgressStatus.STARTED -> {
+                                currentStepFraction = 0f
+                                currentStepSummary = event.totalCount?.takeIf { it > 0 }?.let { "0 of $it" }
+                                currentMessage = "Uploading $label from this device…"
+                            }
+                            ReplaceServerProgressStatus.IN_PROGRESS -> {
+                                val processed = event.processedCount ?: 0
+                                val total = event.totalCount ?: 0
+                                if (total > 0) {
+                                    currentStepFraction = processed.toFloat() / total
+                                    currentStepSummary = "$processed of $total"
+                                    currentMessage = "Uploading $label from this device… ($processed of $total)"
+                                } else {
+                                    currentStepFraction = null
+                                    currentStepSummary = null
+                                    currentMessage = "Uploading $label from this device…"
+                                }
+                            }
+                            ReplaceServerProgressStatus.COMPLETED -> {
+                                completedSteps++
+                                currentStepFraction = null
+                                currentStepSummary = null
+                                currentMessage = "${capitalizeLabel(label)} uploaded to the cloud."
+                            }
+                        }
+                    }
+                }
                 publishProgress()
             }
-            .onSuccess {
+
+            val stopResult = runCatching {
+                withContext(Dispatchers.IO) { syncService.stopRealtimeSync(userId) }
+            }
+
+            stopResult.onFailure { throwable ->
+                println("SettingsViewModel: Unable to stop realtime sync before replacing server data: ${throwable.message}")
                 completedSteps++
+                currentStepFraction = null
+                currentStepSummary = null
+                currentMessage = "Couldn't pause realtime sync: ${throwable.localizedMessage ?: "unknown error"}."
+                publishProgress()
+            }.onSuccess {
+                completedSteps++
+                currentStepFraction = null
+                currentStepSummary = null
                 currentMessage = "Realtime sync paused."
                 publishProgress()
             }
 
-        val replaceResult = runCatching {
-            syncService.clearServerData(userId, handleProgress)
-            syncService.forceUploadAllData(userId, handleProgress)
-        }
+            val replaceResult = withContext(Dispatchers.IO) {
+                runCatching {
+                    syncService.clearServerData(userId, handleProgress)
+                    syncService.forceUploadAllData(userId, handleProgress)
+                }
+            }
 
-        val restartResult = runCatching { syncService.startRealtimeSync(userId) }
-            .onFailure {
+            val restartResult = runCatching {
+                withContext(Dispatchers.IO) { syncService.startRealtimeSync(userId) }
+            }.onFailure {
                 println("SettingsViewModel: Unable to restart realtime sync after replacing server data: ${it.message}")
             }
 
-        if (replaceResult.isSuccess) {
-            val summary = if (restartResult.isSuccess) {
-                "Cloud data replaced successfully."
+            if (replaceResult.isSuccess) {
+                val summary = if (restartResult.isSuccess) {
+                    "Cloud data replaced successfully."
+                } else {
+                    val reason = restartResult.exceptionOrNull()?.localizedMessage ?: "unknown error"
+                    "Cloud data replaced, but realtime sync may need attention: $reason"
+                }
+                _uiState.update { state ->
+                    state.copy(
+                        resetCloudProgress = ResetCloudDataProgress.Success(
+                            completedSteps = totalSteps,
+                            totalSteps = totalSteps,
+                            summary = summary,
+                            finishedAt = System.currentTimeMillis()
+                        )
+                    )
+                }
             } else {
-                val reason = restartResult.exceptionOrNull()?.localizedMessage ?: "unknown error"
-                "Cloud data replaced, but realtime sync may need attention: $reason"
+                val errorMessage = replaceResult.exceptionOrNull()?.localizedMessage ?: "Unknown error"
+                _uiState.update { state ->
+                    state.copy(
+                        resetCloudProgress = ResetCloudDataProgress.Error(
+                            completedSteps = completedSteps.coerceAtMost(totalSteps),
+                            totalSteps = totalSteps,
+                            errorMessage = errorMessage
+                        )
+                    )
+                }
             }
-            _uiState.value = _uiState.value.copy(
-                resetCloudProgress = ResetCloudDataProgress.Success(
-                    completedSteps = totalSteps,
-                    totalSteps = totalSteps,
-                    summary = summary,
-                    finishedAt = System.currentTimeMillis()
-                )
-            )
-        } else {
-            val errorMessage = replaceResult.exceptionOrNull()?.localizedMessage ?: "Unknown error"
-            _uiState.value = _uiState.value.copy(
-                resetCloudProgress = ResetCloudDataProgress.Error(
-                    completedSteps = completedSteps.coerceAtMost(totalSteps),
-                    totalSteps = totalSteps,
-                    errorMessage = errorMessage
-                )
-            )
-        }
 
-        return replaceResult
+            onResult?.invoke(replaceResult)
+        }
     }
 
     private fun friendlyCollectionLabel(collectionKey: String): String {
@@ -499,7 +574,9 @@ sealed interface ResetCloudDataProgress {
     data class InProgress(
         val message: String,
         override val completedSteps: Int,
-        override val totalSteps: Int
+        override val totalSteps: Int,
+        val currentStepProgress: Float? = null,
+        val currentStepSummary: String? = null
     ) : ResetCloudDataProgress
 
     data class Success(
