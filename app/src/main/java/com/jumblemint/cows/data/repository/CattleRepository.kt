@@ -905,6 +905,13 @@ class CattleRepository(
     suspend fun getMembership(herdId: String, userId: String): HerdMember? = herdMemberDao?.getMembership(herdId, userId)
     suspend fun removeMember(herdId: String, userId: String) = herdMemberDao?.removeMember(herdId, userId)
 
+    // Inclusive sync helpers (include soft-deleted records)
+    suspend fun getAllCowsForSync(): List<Cow> = cowDao.getAllCowsForSync()
+    suspend fun getAllActivitiesForSync(): List<Activity> = activityDao.getAllActivitiesForSync()
+    suspend fun getAllPasturesForSync(): List<Pasture> = pastureDao.getAllPasturesForSync()
+    suspend fun getAllNotesForSync(): List<Note> = noteDao?.getAllNotesForSync() ?: emptyList()
+    suspend fun getAllBreedsForSync(): List<Breed> = breedDao?.getAllBreedsForSync() ?: emptyList()
+
     // Simplified sync methods for single user
     suspend fun getAllCowsSync(): List<Cow> { return try { getAllCows().first() } catch (e: Exception) { emptyList() } }
     suspend fun getAllActivitiesSync(): List<Activity> { return try { getAllActivities().first() } catch (e: Exception) { emptyList() } }

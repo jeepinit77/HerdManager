@@ -14,13 +14,24 @@ data class Settings(
     val lastSyncAt: Long? = null,
     val updatedBy: String? = null
 ) {
-    fun toFirestoreMap(userId: String): Map<String, Any> {
+    fun toFirestoreMap(
+        userId: String,
+        firestoreIdOverride: String = firestoreId ?: key,
+        lastSyncAtOverride: Long? = lastSyncAt
+    ): Map<String, Any?> {
+        val syncTimestamp = maxOf(updatedAt, System.currentTimeMillis())
+        val resolvedLastSyncAt = lastSyncAtOverride?.let { maxOf(it, syncTimestamp) } ?: syncTimestamp
+        val resolvedUpdatedBy = updatedBy ?: userId
+
         return mapOf(
             "key" to key,
             "value" to value,
             "createdAt" to createdAt,
-            "updatedAt" to updatedAt,
-            "updatedBy" to userId
+            "updatedAt" to syncTimestamp,
+            "firestoreId" to firestoreIdOverride,
+            "lastSyncAt" to resolvedLastSyncAt,
+            "updatedBy" to resolvedUpdatedBy,
+            "createdBy" to userId
         )
     }
     

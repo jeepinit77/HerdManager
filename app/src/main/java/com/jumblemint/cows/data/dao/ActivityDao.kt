@@ -11,6 +11,9 @@ interface ActivityDao {
     
     @Query("SELECT * FROM activities WHERE isDeleted = 0 ORDER BY date DESC, id DESC")
     fun getAllActivities(): Flow<List<Activity>>
+
+    @Query("SELECT * FROM activities ORDER BY date DESC, id DESC")
+    suspend fun getAllActivitiesForSync(): List<Activity>
     
     @Query("SELECT * FROM activities WHERE cowId = :cowId AND isDeleted = 0 ORDER BY date DESC, id DESC")
     fun getActivitiesForCow(cowId: Long): Flow<List<Activity>>

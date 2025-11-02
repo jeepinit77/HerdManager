@@ -23,6 +23,9 @@ interface CowDao {
     @Query("SELECT * FROM cows WHERE isDeleted = 0 ORDER BY name ASC")
     fun getAllCows(): Flow<List<Cow>>
 
+    @Query("SELECT * FROM cows ORDER BY name ASC")
+    suspend fun getAllCowsForSync(): List<Cow>
+
     @Query("SELECT * FROM cows WHERE id = :id")
     suspend fun getCowById(id: Long): Cow?
     

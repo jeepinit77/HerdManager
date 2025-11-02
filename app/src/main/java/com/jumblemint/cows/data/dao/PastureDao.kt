@@ -53,6 +53,9 @@ interface PastureDao {
     @Query("SELECT * FROM pastures WHERE isDeleted = 0 ORDER BY name ASC")
     fun getAllPastures(): Flow<List<Pasture>>
 
+    @Query("SELECT * FROM pastures ORDER BY name ASC")
+    suspend fun getAllPasturesForSync(): List<Pasture>
+
     @Query("DELETE FROM pastures")
     suspend fun deleteAllPastures()
 

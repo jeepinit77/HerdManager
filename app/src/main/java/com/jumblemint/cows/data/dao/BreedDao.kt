@@ -9,6 +9,9 @@ interface BreedDao {
     @Query("SELECT * FROM breeds WHERE isActive = 1 AND isDeleted = 0 ORDER BY name ASC")
     fun getAllBreeds(): Flow<List<Breed>>
 
+    @Query("SELECT * FROM breeds ORDER BY name ASC")
+    suspend fun getAllBreedsForSync(): List<Breed>
+
     @Query("SELECT * FROM breeds WHERE id = :id")
     suspend fun getBreedById(id: String): Breed?
 

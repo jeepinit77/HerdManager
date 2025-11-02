@@ -23,15 +23,26 @@ data class TagColor(
 ) {
     fun toColor(): Color = Color(colorValue)
 
-    fun toFirestoreMap(userId: String): Map<String, Any> {
+    fun toFirestoreMap(
+        userId: String,
+        firestoreIdOverride: String = firestoreId ?: id,
+        lastSyncAtOverride: Long? = lastSyncAt
+    ): Map<String, Any?> {
+        val syncTimestamp = maxOf(updatedAt, System.currentTimeMillis())
+        val resolvedLastSyncAt = lastSyncAtOverride?.let { maxOf(it, syncTimestamp) } ?: syncTimestamp
+        val resolvedUpdatedBy = updatedBy ?: userId
+
         return mapOf(
+            "id" to id,
+            "firestoreId" to firestoreIdOverride,
             "name" to name,
             "colorValue" to colorValue,
             "isActive" to isActive,
             "isDefault" to isDefault,
             "createdAt" to createdAt,
-            "updatedAt" to updatedAt,
-            "updatedBy" to userId,
+            "updatedAt" to syncTimestamp,
+            "lastSyncAt" to resolvedLastSyncAt,
+            "updatedBy" to resolvedUpdatedBy,
             "isDeleted" to isDeleted
         )
     }
