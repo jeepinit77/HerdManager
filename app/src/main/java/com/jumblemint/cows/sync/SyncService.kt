@@ -17,10 +17,50 @@ import java.util.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 
+enum class ReplaceServerProgressPhase {
+    CLEARING_COLLECTION,
+    UPLOADING_COLLECTION
+}
+
+enum class ReplaceServerProgressStatus {
+    STARTED,
+    COMPLETED
+}
+
+data class ReplaceServerProgressEvent(
+    val phase: ReplaceServerProgressPhase,
+    val target: String,
+    val status: ReplaceServerProgressStatus
+)
+
 class SyncService(
     private val repository: CattleRepository,
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
+
+    companion object {
+        val CLOUD_COLLECTIONS = listOf(
+            "cows",
+            "pastures",
+            "activities",
+            "notes",
+            "settings",
+            "tagColors",
+            "activityTypes",
+            "breeds"
+        )
+
+        val FORCE_UPLOAD_COLLECTIONS = listOf(
+            "cows",
+            "pastures",
+            "activities",
+            "notes",
+            "settings",
+            "tagColors",
+            "breeds",
+            "activityTypes"
+        )
+    }
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -105,20 +145,13 @@ class SyncService(
         }
     }
 
-    suspend fun clearServerData(userId: String) {
+    suspend fun clearServerData(
+        userId: String,
+        progressListener: ((ReplaceServerProgressEvent) -> Unit)? = null
+    ) {
         println("Clearing all server data for user ID: $userId")
         try {
-            val collectionsToDelete = listOf(
-                "cows",
-                "pastures",
-                "activities",
-                "notes",
-                "settings",
-                "tagColors",
-                "activityTypes",
-                "breeds"
-            )
-            clearServerCollections(userId, collectionsToDelete)
+            clearServerCollections(userId, CLOUD_COLLECTIONS, progressListener)
             println("Successfully cleared all specified server data for user $userId.")
         } catch (e: Exception) {
             println("Error clearing server data for user $userId: ${e.message}")
@@ -127,21 +160,39 @@ class SyncService(
         }
     }
 
-    suspend fun clearServerCollections(userId: String, collections: List<String>) {
+    suspend fun clearServerCollections(
+        userId: String,
+        collections: List<String>,
+        progressListener: ((ReplaceServerProgressEvent) -> Unit)? = null
+    ) {
         try {
             for (collectionName in collections) {
+                progressListener?.invoke(
+                    ReplaceServerProgressEvent(
+                        phase = ReplaceServerProgressPhase.CLEARING_COLLECTION,
+                        target = collectionName,
+                        status = ReplaceServerProgressStatus.STARTED
+                    )
+                )
                 val collectionRef = firestore.collection("users").document(userId).collection(collectionName)
                 val snapshot = collectionRef.get().await()
                 if (snapshot.isEmpty) {
                     println("No documents found in '$collectionName' for user $userId to delete.")
-                    continue
+                } else {
+                    val batch = firestore.batch()
+                    for (document in snapshot.documents) {
+                        batch.delete(document.reference)
+                    }
+                    batch.commit().await()
+                    println("Successfully deleted all documents from '$collectionName' for user $userId.")
                 }
-                val batch = firestore.batch()
-                for (document in snapshot.documents) {
-                    batch.delete(document.reference)
-                }
-                batch.commit().await()
-                println("Successfully deleted all documents from '$collectionName' for user $userId.")
+                progressListener?.invoke(
+                    ReplaceServerProgressEvent(
+                        phase = ReplaceServerProgressPhase.CLEARING_COLLECTION,
+                        target = collectionName,
+                        status = ReplaceServerProgressStatus.COMPLETED
+                    )
+                )
             }
         } catch (e: Exception) {
             println("Error clearing some collections for user $userId: ${e.message}")
@@ -150,10 +201,20 @@ class SyncService(
         }
     }
 
-    suspend fun forceUploadAllData(userId: String) {
+    suspend fun forceUploadAllData(
+        userId: String,
+        progressListener: ((ReplaceServerProgressEvent) -> Unit)? = null
+    ) {
         println("Starting force upload of all local data for user ID: $userId")
-        _syncStatus.value = SyncStatus.SYNCING 
+        _syncStatus.value = SyncStatus.SYNCING
         try {
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "cows",
+                    status = ReplaceServerProgressStatus.STARTED
+                )
+            )
             val localCows = repository.getAllCowsSync()
             println("Found ${localCows.size} local cows to force upload.")
             for (cow in localCows) {
@@ -168,7 +229,21 @@ class SyncService(
                 ))
                 println("Force uploaded cow: ${cow.name} (FS ID: $firestoreId)")
             }
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "cows",
+                    status = ReplaceServerProgressStatus.COMPLETED
+                )
+            )
 
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "pastures",
+                    status = ReplaceServerProgressStatus.STARTED
+                )
+            )
             val localPastures = repository.getAllPasturesSync()
             println("Found ${localPastures.size} local pastures to force upload.")
             for (pasture in localPastures) {
@@ -187,7 +262,21 @@ class SyncService(
                 repository.updatePasture(normalizedPasture)
                 println("Force uploaded pasture: ${pasture.name} (FS ID: $firestoreId)")
             }
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "pastures",
+                    status = ReplaceServerProgressStatus.COMPLETED
+                )
+            )
 
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "activities",
+                    status = ReplaceServerProgressStatus.STARTED
+                )
+            )
             val localActivities = repository.getAllActivitiesSync()
             println("Found ${localActivities.size} local activities to force upload.")
             for (activity in localActivities) {
@@ -202,7 +291,21 @@ class SyncService(
                 ))
                 println("Force uploaded activity: ${activity.activityType} (FS ID: $firestoreId)")
             }
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "activities",
+                    status = ReplaceServerProgressStatus.COMPLETED
+                )
+            )
 
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "notes",
+                    status = ReplaceServerProgressStatus.STARTED
+                )
+            )
             val localNotes = repository.getAllNotesSync()
             println("Found ${localNotes.size} local notes to force upload.")
             for (note in localNotes) {
@@ -217,8 +320,22 @@ class SyncService(
                 ))
                 println("Force uploaded note: ${note.title} (FS ID: $firestoreId)")
             }
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "notes",
+                    status = ReplaceServerProgressStatus.COMPLETED
+                )
+            )
 
             // Force upload settings
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "settings",
+                    status = ReplaceServerProgressStatus.STARTED
+                )
+            )
             val localSettings = repository.getAllSettings().first()
             println("Found ${localSettings.size} local settings to force upload.")
             for (setting in localSettings) {
@@ -233,8 +350,22 @@ class SyncService(
                 ))
                 println("Force uploaded setting: ${setting.key} (FS ID: $firestoreId)")
             }
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "settings",
+                    status = ReplaceServerProgressStatus.COMPLETED
+                )
+            )
 
             // Force upload tag colors
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "tagColors",
+                    status = ReplaceServerProgressStatus.STARTED
+                )
+            )
             val localTagColors = repository.getAllTagColorsSync()
             println("Found ${localTagColors.size} local tag colors to force upload.")
             for (tagColor in localTagColors) {
@@ -249,7 +380,21 @@ class SyncService(
                 ))
                 println("Force uploaded tag color: ${tagColor.name} (FS ID: $firestoreId)")
             }
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "tagColors",
+                    status = ReplaceServerProgressStatus.COMPLETED
+                )
+            )
 
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "breeds",
+                    status = ReplaceServerProgressStatus.STARTED
+                )
+            )
             val localBreeds = repository.getAllBreedsSync()
             println("Found ${localBreeds.size} local breeds to force upload.")
             for (breed in localBreeds) {
@@ -271,8 +416,22 @@ class SyncService(
                 )
                 println("Force uploaded breed: ${breed.name} (FS ID: $firestoreId)")
             }
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "breeds",
+                    status = ReplaceServerProgressStatus.COMPLETED
+                )
+            )
 
             // Force upload activity types
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "activityTypes",
+                    status = ReplaceServerProgressStatus.STARTED
+                )
+            )
             val localActivityTypes = repository.getAllActivityTypesSync()
             println("Found ${localActivityTypes.size} local activity types to force upload.")
             for (activityType in localActivityTypes) {
@@ -287,6 +446,13 @@ class SyncService(
                 ))
                 println("Force uploaded activity type: ${activityType.name} (FS ID: $firestoreId)")
             }
+            progressListener?.invoke(
+                ReplaceServerProgressEvent(
+                    phase = ReplaceServerProgressPhase.UPLOADING_COLLECTION,
+                    target = "activityTypes",
+                    status = ReplaceServerProgressStatus.COMPLETED
+                )
+            )
 
             println("Force upload of all local data completed for user ID: $userId")
             _syncStatus.value = SyncStatus.SUCCESS

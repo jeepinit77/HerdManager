@@ -18,6 +18,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.*
@@ -33,6 +35,7 @@ import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
 import com.jumblemint.cows.data.repository.CattleRepository
 import com.jumblemint.cows.sync.SyncStatus
+import com.jumblemint.cows.ui.viewmodel.ResetCloudDataProgress
 import com.jumblemint.cows.ui.viewmodel.SettingsViewModel
 import com.jumblemint.cows.ui.viewmodel.SettingsViewModelFactory
 import com.jumblemint.cows.data.import.ConflictResolution
@@ -246,6 +249,14 @@ fun SettingsScreen(
             singleLine = true,
             colors = defaultOutlinedTextFieldColors()
         )
+
+        uiState.resetCloudProgress?.let { progress ->
+            Spacer(modifier = Modifier.height(8.dp))
+            ResetCloudDataProgressCard(
+                progress = progress,
+                onDismiss = { viewModel.clearResetCloudDataProgress() }
+            )
+        }
 
         val identifierSummary = when (uiState.identifierMode) {
             AnimalIdentifierMode.NAMES -> "Use animal names"
@@ -829,6 +840,98 @@ fun SettingsScreen(
                 FilledTonalButton(onClick = { showIdentifierModeDialog = false }) { Text("Cancel") }
             }
         )
+    }
+}
+
+@Composable
+private fun ResetCloudDataProgressCard(
+    progress: ResetCloudDataProgress,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val normalizedProgress = if (progress.totalSteps == 0) {
+        0f
+    } else {
+        progress.completedSteps.coerceAtMost(progress.totalSteps).toFloat() / progress.totalSteps
+    }
+
+    val (icon, tint) = when (progress) {
+        is ResetCloudDataProgress.InProgress -> Icons.Filled.CloudUpload to MaterialTheme.colorScheme.primary
+        is ResetCloudDataProgress.Success -> Icons.Outlined.CheckCircle to MaterialTheme.colorScheme.primary
+        is ResetCloudDataProgress.Error -> Icons.Outlined.ErrorOutline to MaterialTheme.colorScheme.error
+    }
+
+    val headline = when (progress) {
+        is ResetCloudDataProgress.InProgress -> progress.message
+        is ResetCloudDataProgress.Success -> progress.summary
+        is ResetCloudDataProgress.Error -> "Cloud reset failed: ${progress.errorMessage}"
+    }
+
+    val supportingText = when (progress) {
+        is ResetCloudDataProgress.InProgress -> "${progress.completedSteps} of ${progress.totalSteps} steps completed"
+        is ResetCloudDataProgress.Success -> {
+            val relativeTime = DateUtils.getRelativeTimeSpanString(
+                progress.finishedAt,
+                System.currentTimeMillis(),
+                DateUtils.MINUTE_IN_MILLIS,
+                DateUtils.FORMAT_ABBREV_RELATIVE
+            ).toString()
+            "${progress.totalSteps} steps finished • Completed $relativeTime"
+        }
+        is ResetCloudDataProgress.Error -> "${progress.completedSteps} of ${progress.totalSteps} steps finished before the error"
+    }
+
+    val indicatorColor = when (progress) {
+        is ResetCloudDataProgress.Error -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.primary
+    }
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = tint,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(modifier = Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = headline,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = supportingText,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                LinearProgressIndicator(
+                    progress = normalizedProgress,
+                    color = indicatorColor,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+            IconButton(onClick = onDismiss) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Dismiss cloud reset status"
+                )
+            }
+        }
     }
 }
 

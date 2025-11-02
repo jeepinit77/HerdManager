@@ -17,7 +17,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import android.text.format.DateUtils
+import com.jumblemint.cows.sync.ReplaceServerProgressEvent
+import com.jumblemint.cows.sync.ReplaceServerProgressPhase
+import com.jumblemint.cows.sync.ReplaceServerProgressStatus
 import com.jumblemint.cows.sync.SyncService
+import java.util.Locale
 
 class SettingsViewModel(
     private val application: Application, // <<< ADD Application context
@@ -288,6 +292,10 @@ class SettingsViewModel(
         _uiState.value = _uiState.value.copy(error = null)
     }
 
+    fun clearResetCloudDataProgress() {
+        _uiState.value = _uiState.value.copy(resetCloudProgress = null)
+    }
+
     fun setPendingExportFormat(format: String) {
         _uiState.value = _uiState.value.copy(pendingExportFormat = format)
     }
@@ -296,26 +304,127 @@ class SettingsViewModel(
         syncService: SyncService,
         userId: String
     ): Result<Unit> {
-        _uiState.value = _uiState.value.copy(message = null, error = null, isLoading = true)
+        val totalSteps = 1 + SyncService.CLOUD_COLLECTIONS.size + SyncService.FORCE_UPLOAD_COLLECTIONS.size
+        var completedSteps = 0
+        var currentMessage = "Pausing realtime sync…"
+
+        fun publishProgress() {
+            _uiState.value = _uiState.value.copy(
+                resetCloudProgress = ResetCloudDataProgress.InProgress(
+                    message = currentMessage,
+                    completedSteps = completedSteps.coerceAtMost(totalSteps),
+                    totalSteps = totalSteps
+                )
+            )
+        }
+
+        _uiState.value = _uiState.value.copy(
+            message = null,
+            error = null,
+            resetCloudProgress = ResetCloudDataProgress.InProgress(
+                message = currentMessage,
+                completedSteps = completedSteps,
+                totalSteps = totalSteps
+            )
+        )
+
+        val handleProgress: (ReplaceServerProgressEvent) -> Unit = { event ->
+            val label = friendlyCollectionLabel(event.target)
+            when (event.phase) {
+                ReplaceServerProgressPhase.CLEARING_COLLECTION -> {
+                    if (event.status == ReplaceServerProgressStatus.STARTED) {
+                        currentMessage = "Clearing $label from the cloud…"
+                    } else {
+                        completedSteps++
+                        currentMessage = "${capitalizeLabel(label)} cleared from the cloud."
+                    }
+                }
+                ReplaceServerProgressPhase.UPLOADING_COLLECTION -> {
+                    if (event.status == ReplaceServerProgressStatus.STARTED) {
+                        currentMessage = "Uploading $label from this device…"
+                    } else {
+                        completedSteps++
+                        currentMessage = "${capitalizeLabel(label)} uploaded to the cloud."
+                    }
+                }
+            }
+            publishProgress()
+        }
 
         runCatching { syncService.stopRealtimeSync(userId) }
             .onFailure {
                 println("SettingsViewModel: Unable to stop realtime sync before replacing server data: ${it.message}")
+                completedSteps++
+                currentMessage = "Couldn't pause realtime sync: ${it.localizedMessage ?: "unknown error"}."
+                publishProgress()
+            }
+            .onSuccess {
+                completedSteps++
+                currentMessage = "Realtime sync paused."
+                publishProgress()
             }
 
-        val result = runCatching {
-            syncService.clearServerData(userId)
-            syncService.forceUploadAllData(userId)
+        val replaceResult = runCatching {
+            syncService.clearServerData(userId, handleProgress)
+            syncService.forceUploadAllData(userId, handleProgress)
         }
 
-        runCatching { syncService.startRealtimeSync(userId) }
+        val restartResult = runCatching { syncService.startRealtimeSync(userId) }
             .onFailure {
                 println("SettingsViewModel: Unable to restart realtime sync after replacing server data: ${it.message}")
             }
 
-        _uiState.value = _uiState.value.copy(isLoading = false)
+        if (replaceResult.isSuccess) {
+            val summary = if (restartResult.isSuccess) {
+                "Cloud data replaced successfully."
+            } else {
+                val reason = restartResult.exceptionOrNull()?.localizedMessage ?: "unknown error"
+                "Cloud data replaced, but realtime sync may need attention: $reason"
+            }
+            _uiState.value = _uiState.value.copy(
+                resetCloudProgress = ResetCloudDataProgress.Success(
+                    completedSteps = totalSteps,
+                    totalSteps = totalSteps,
+                    summary = summary,
+                    finishedAt = System.currentTimeMillis()
+                )
+            )
+        } else {
+            val errorMessage = replaceResult.exceptionOrNull()?.localizedMessage ?: "Unknown error"
+            _uiState.value = _uiState.value.copy(
+                resetCloudProgress = ResetCloudDataProgress.Error(
+                    completedSteps = completedSteps.coerceAtMost(totalSteps),
+                    totalSteps = totalSteps,
+                    errorMessage = errorMessage
+                )
+            )
+        }
 
-        return result
+        return replaceResult
+    }
+
+    private fun friendlyCollectionLabel(collectionKey: String): String {
+        return when (collectionKey) {
+            "cows" -> "cow records"
+            "pastures" -> "pasture records"
+            "activities" -> "activity history"
+            "notes" -> "notes"
+            "settings" -> "settings"
+            "tagColors" -> "tag colors"
+            "activityTypes" -> "activity types"
+            "breeds" -> "breed library"
+            else -> collectionKey
+                .replace(Regex("([a-z])([A-Z])"), "$1 $2")
+                .replace('_', ' ')
+                .lowercase(Locale.getDefault())
+        }
+    }
+
+    private fun capitalizeLabel(label: String): String {
+        if (label.isEmpty()) return label
+        return label.replaceFirstChar { char ->
+            if (char.isLowerCase()) char.titlecase(Locale.getDefault()) else char.toString()
+        }
     }
 
     fun importData(uri: Uri, format: String, conflictResolution: ConflictResolution? = null) {
@@ -383,6 +492,30 @@ data class ConflictInfo(
     val totalRecords: Int
 )
 
+sealed interface ResetCloudDataProgress {
+    val completedSteps: Int
+    val totalSteps: Int
+
+    data class InProgress(
+        val message: String,
+        override val completedSteps: Int,
+        override val totalSteps: Int
+    ) : ResetCloudDataProgress
+
+    data class Success(
+        override val completedSteps: Int,
+        override val totalSteps: Int,
+        val summary: String,
+        val finishedAt: Long
+    ) : ResetCloudDataProgress
+
+    data class Error(
+        override val completedSteps: Int,
+        override val totalSteps: Int,
+        val errorMessage: String
+    ) : ResetCloudDataProgress
+}
+
 data class SettingsUiState(
     val tagColors: List<String> = emptyList(),
     val activityTypes: List<String> = emptyList(),
@@ -395,5 +528,6 @@ data class SettingsUiState(
     val error: String? = null,
     val message: String? = null,
     val pendingExportFormat: String? = null,
-    val conflictInfo: ConflictInfo? = null
+    val conflictInfo: ConflictInfo? = null,
+    val resetCloudProgress: ResetCloudDataProgress? = null
 )
