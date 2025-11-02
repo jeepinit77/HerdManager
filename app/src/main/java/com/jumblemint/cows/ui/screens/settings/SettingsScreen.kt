@@ -139,6 +139,7 @@ fun SettingsScreen(
     var showSampleDataDialog by remember { mutableStateOf(false) }
     var showDeleteDataDialog by remember { mutableStateOf(false) }
     var showResetCloudDataDialog by remember { mutableStateOf(false) }
+    var showPostResetOptionsDialog by remember { mutableStateOf(false) }
     var showSetupWizardConfirmation by remember { mutableStateOf(false) }
     var showSetupWizard by remember { mutableStateOf(false) }
     var showIdentifierModeDialog by remember { mutableStateOf(false) }
@@ -155,6 +156,10 @@ fun SettingsScreen(
         intervalMs = 20_000L,
         leadingRun = true
     )
+
+    LaunchedEffect(uiState.resetCloudProgress) {
+        showPostResetOptionsDialog = uiState.resetCloudProgress is ResetCloudDataProgress.Success
+    }
     
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -781,6 +786,65 @@ fun SettingsScreen(
             dismissButton = {
                 FilledTonalButton(onClick = { showResetCloudDataDialog = false }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showPostResetOptionsDialog) {
+        AppAlertDialog(
+            onDismissRequest = { showPostResetOptionsDialog = false },
+            title = { Text("Cloud reset complete") },
+            text = {
+                Text(
+                    "Would you like to sync this device's data to the cloud again now, or sign out of your account?"
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val uid = currentUser?.uid
+                        coroutineScope.launch {
+                            showPostResetOptionsDialog = false
+                            if (uid.isNullOrBlank()) {
+                                snackbarHostState.showSnackbar(
+                                    "Unable to sync: user ID missing.",
+                                    withDismissAction = true,
+                                    duration = SnackbarDuration.Long
+                                )
+                                return@launch
+                            }
+                            val syncResult = application.syncService.syncUserData(uid)
+                            if (syncResult.isSuccess) {
+                                snackbarHostState.showSnackbar(
+                                    "Cloud sync completed successfully.",
+                                    withDismissAction = true,
+                                    duration = SnackbarDuration.Long
+                                )
+                            } else {
+                                snackbarHostState.showSnackbar(
+                                    "Cloud sync failed: ${syncResult.exceptionOrNull()?.localizedMessage ?: "Unknown error"}",
+                                    withDismissAction = true,
+                                    duration = SnackbarDuration.Long
+                                )
+                            }
+                        }
+                    }
+                ) {
+                    Text("Sync Now")
+                }
+            },
+            dismissButton = {
+                FilledTonalButton(
+                    onClick = {
+                        coroutineScope.launch {
+                            showPostResetOptionsDialog = false
+                            runCatching { application.authService.signOut() }
+                            onNavigateToSignIn?.invoke()
+                        }
+                    }
+                ) {
+                    Text("Sign Out")
                 }
             }
         )
