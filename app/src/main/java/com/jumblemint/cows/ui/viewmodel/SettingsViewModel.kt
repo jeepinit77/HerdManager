@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import android.text.format.DateUtils
+import com.jumblemint.cows.sync.SyncService
 
 class SettingsViewModel(
     private val application: Application, // <<< ADD Application context
@@ -286,11 +287,37 @@ class SettingsViewModel(
     fun clearError() {
         _uiState.value = _uiState.value.copy(error = null)
     }
-    
+
     fun setPendingExportFormat(format: String) {
         _uiState.value = _uiState.value.copy(pendingExportFormat = format)
     }
-    
+
+    suspend fun replaceServerDataWithDeviceSnapshot(
+        syncService: SyncService,
+        userId: String
+    ): Result<Unit> {
+        _uiState.value = _uiState.value.copy(message = null, error = null, isLoading = true)
+
+        runCatching { syncService.stopRealtimeSync(userId) }
+            .onFailure {
+                println("SettingsViewModel: Unable to stop realtime sync before replacing server data: ${it.message}")
+            }
+
+        val result = runCatching {
+            syncService.clearServerData(userId)
+            syncService.forceUploadAllData(userId)
+        }
+
+        runCatching { syncService.startRealtimeSync(userId) }
+            .onFailure {
+                println("SettingsViewModel: Unable to restart realtime sync after replacing server data: ${it.message}")
+            }
+
+        _uiState.value = _uiState.value.copy(isLoading = false)
+
+        return result
+    }
+
     fun importData(uri: Uri, format: String, conflictResolution: ConflictResolution? = null) {
         viewModelScope.launch {
             try {

@@ -132,6 +132,7 @@ fun SettingsScreen(
     var showImportDialog by remember { mutableStateOf(false) }
     var showSampleDataDialog by remember { mutableStateOf(false) }
     var showDeleteDataDialog by remember { mutableStateOf(false) }
+    var showResetCloudDataDialog by remember { mutableStateOf(false) }
     var showSetupWizardConfirmation by remember { mutableStateOf(false) }
     var showSetupWizard by remember { mutableStateOf(false) }
     var showIdentifierModeDialog by remember { mutableStateOf(false) }
@@ -416,6 +417,13 @@ fun SettingsScreen(
                         onClick = { showSampleDataDialog = true }
                     ),
                     SettingsRowModel(
+                        title = "Reset Cloud Data from This Device",
+                        subtitle = "Replace your cloud backup with the data currently on this device",
+                        icon = Icons.Filled.CloudUpload,
+                        onClick = { showResetCloudDataDialog = true },
+                        enabled = isSignedIn && currentUser?.isLocalUser == false
+                    ),
+                    SettingsRowModel(
                         title = "Delete Data",
                         subtitle = "Selectively delete local and server data",
                         icon = Icons.Filled.WarningAmber,
@@ -692,6 +700,69 @@ fun SettingsScreen(
                     }
                 }
                 showDeleteDataDialog = false
+            }
+        )
+    }
+
+    if (showResetCloudDataDialog) {
+        AppAlertDialog(
+            onDismissRequest = { showResetCloudDataDialog = false },
+            title = { Text("Replace cloud data with this device?") },
+            text = {
+                Text(
+                    "We'll erase the existing cloud backup and replace it with the information stored on this device right now. " +
+                        "This can't be undone, so make sure everything looks correct before continuing."
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showResetCloudDataDialog = false
+                        coroutineScope.launch {
+                            if (!isSignedIn || currentUser?.isLocalUser != false) {
+                                snackbarHostState.showSnackbar(
+                                    "Sign in to a cloud account to reset your cloud data.",
+                                    withDismissAction = true,
+                                    duration = SnackbarDuration.Long
+                                )
+                                return@launch
+                            }
+                            val uid = currentUser?.uid
+                            if (uid.isNullOrBlank()) {
+                                snackbarHostState.showSnackbar(
+                                    "Unable to reset cloud data: user ID missing.",
+                                    withDismissAction = true,
+                                    duration = SnackbarDuration.Long
+                                )
+                                return@launch
+                            }
+                            val result = viewModel.replaceServerDataWithDeviceSnapshot(
+                                application.syncService,
+                                uid
+                            )
+                            result.onSuccess {
+                                snackbarHostState.showSnackbar(
+                                    "Cloud data replaced with this device's snapshot.",
+                                    withDismissAction = true,
+                                    duration = SnackbarDuration.Long
+                                )
+                            }.onFailure { error ->
+                                snackbarHostState.showSnackbar(
+                                    "Failed to reset cloud data: ${error.message ?: "Unknown error"}",
+                                    withDismissAction = true,
+                                    duration = SnackbarDuration.Long
+                                )
+                            }
+                        }
+                    }
+                ) {
+                    Text("Replace Cloud Data")
+                }
+            },
+            dismissButton = {
+                FilledTonalButton(onClick = { showResetCloudDataDialog = false }) {
+                    Text("Cancel")
+                }
             }
         )
     }
