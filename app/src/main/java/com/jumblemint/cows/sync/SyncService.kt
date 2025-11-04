@@ -1,12 +1,16 @@
 package com.jumblemint.cows.sync
 
+import com.google.firebase.firestore.DocumentChange
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.DocumentChange
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.CoroutineScope
@@ -32,6 +36,13 @@ class SyncService(
 
     private val _lastSyncTime = MutableStateFlow<Long?>(null)
     val lastSyncTime: Flow<Long?> = _lastSyncTime.asStateFlow()
+
+    private val _replaceServerProgressEvents = MutableSharedFlow<ReplaceServerProgressEvent>(
+        replay = 0,
+        extraBufferCapacity = 64
+    )
+    val replaceServerProgressEvents: SharedFlow<ReplaceServerProgressEvent> =
+        _replaceServerProgressEvents.asSharedFlow()
 
     private var activeListeners = mutableMapOf<String, ListenerRegistration>()
 
@@ -129,6 +140,9 @@ class SyncService(
 
     suspend fun clearServerCollections(userId: String, collections: List<String>) {
         try {
+            val collectionsWithDocs = mutableListOf<Pair<String, List<DocumentSnapshot>>>()
+            var totalDocuments = 0
+
             for (collectionName in collections) {
                 val collectionRef = firestore.collection("users").document(userId).collection(collectionName)
                 val snapshot = collectionRef.get().await()
@@ -136,11 +150,34 @@ class SyncService(
                     println("No documents found in '$collectionName' for user $userId to delete.")
                     continue
                 }
-                val batch = firestore.batch()
-                for (document in snapshot.documents) {
-                    batch.delete(document.reference)
+
+                val documents = snapshot.documents
+                totalDocuments += documents.size
+                collectionsWithDocs += collectionName to documents
+            }
+
+            if (totalDocuments == 0) {
+                return
+            }
+
+            var processedCount = 0
+            for ((collectionName, documents) in collectionsWithDocs) {
+                documents.chunked(500).forEach { chunk ->
+                    val batch = firestore.batch()
+                    chunk.forEach { document ->
+                        batch.delete(document.reference)
+                    }
+                    batch.commit().await()
+                    processedCount += chunk.size
+                    emitReplaceServerProgress(
+                        ReplaceServerProgressEvent(
+                            collection = collectionName,
+                            processedCount = processedCount,
+                            totalCount = totalDocuments
+                        )
+                    )
                 }
-                batch.commit().await()
+
                 println("Successfully deleted all documents from '$collectionName' for user $userId.")
             }
         } catch (e: Exception) {
@@ -148,6 +185,10 @@ class SyncService(
             e.printStackTrace()
             throw e
         }
+    }
+
+    private fun emitReplaceServerProgress(event: ReplaceServerProgressEvent) {
+        _replaceServerProgressEvents.tryEmit(event)
     }
 
     suspend fun forceUploadAllData(userId: String) {
@@ -1947,6 +1988,12 @@ class SyncService(
     }
 
 }
+
+data class ReplaceServerProgressEvent(
+    val collection: String,
+    val processedCount: Int,
+    val totalCount: Int
+)
 
 enum class SyncStatus {
     IDLE, SYNCING, SUCCESS, ERROR
