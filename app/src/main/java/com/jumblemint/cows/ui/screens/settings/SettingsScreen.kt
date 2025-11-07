@@ -21,7 +21,9 @@ import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.snapshots.SnapshotStateMap
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -465,6 +467,30 @@ fun SettingsScreen(
             }
         }
 
+        val sectionExpansionStates = rememberSaveable(
+            saver = Saver<SnapshotStateMap<String, Boolean>, Map<String, Boolean>>(
+                save = { stateMap -> stateMap.toMap() },
+                restore = { restored ->
+                    mutableStateMapOf<String, Boolean>().apply { putAll(restored) }
+                }
+            )
+        ) {
+            mutableStateMapOf<String, Boolean>().apply {
+                sections.forEach { section ->
+                    this[section.title] = section.initiallyExpanded
+                }
+            }
+        }
+
+        LaunchedEffect(sections) {
+            val titles = sections.map { it.title }.toSet()
+            sections.forEach { section ->
+                sectionExpansionStates.putIfAbsent(section.title, section.initiallyExpanded)
+            }
+            val removedTitles = sectionExpansionStates.keys - titles
+            removedTitles.forEach { sectionExpansionStates.remove(it) }
+        }
+
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -489,9 +515,13 @@ fun SettingsScreen(
                 }
             } else {
                 items(displayedSections) { section ->
+                    val isExpanded = sectionExpansionStates[section.title] ?: section.initiallyExpanded
                     ExpandableSettingsSection(
                         title = section.title,
-                        initiallyExpanded = section.initiallyExpanded,
+                        expanded = isExpanded,
+                        onExpandedChange = { expanded ->
+                            sectionExpansionStates[section.title] = expanded
+                        },
                         forceExpand = trimmedQuery.isNotBlank()
                     ) {
                         section.rows.forEachIndexed { index, row ->
@@ -764,18 +794,13 @@ fun SettingsScreen(
 @Composable
 fun ExpandableSettingsSection(
     title: String,
-    initiallyExpanded: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     forceExpand: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
-
-    LaunchedEffect(forceExpand) {
-        if (forceExpand) {
-            expanded = true
-        }
-    }
+    val actualExpanded = if (forceExpand) true else expanded
 
     Card(
         modifier = modifier
@@ -790,7 +815,9 @@ fun ExpandableSettingsSection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { expanded = !expanded }
+                    .clickable {
+                        onExpandedChange(!expanded)
+                    }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -801,13 +828,13 @@ fun ExpandableSettingsSection(
                     modifier = Modifier.weight(1f)
                 )
                 Icon(
-                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+                    imageVector = if (actualExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (actualExpanded) "Collapse $title" else "Expand $title",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            AnimatedVisibility(visible = expanded) {
+            AnimatedVisibility(visible = actualExpanded) {
                 Column {
                     HorizontalDivider(
                         thickness = 1.dp,
