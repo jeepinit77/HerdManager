@@ -58,7 +58,6 @@ import com.jumblemint.cows.ui.components.FocusAwareLiveSync
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.functions.FirebaseFunctions
-import kotlin.math.coerceIn
 
 // Helper data class for quadruple values
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
@@ -1237,16 +1236,21 @@ private fun extractCloudRepairProgress(value: Any?): Float? {
         is Number -> value.toDouble()
         is String -> value.toDoubleOrNull()
         is Map<*, *> -> {
-            extractCloudRepairProgress(value["value"]) ?: extractCloudRepairProgress(value["percent"]) ?: extractCloudRepairProgress(
-                value["progress"]
-            )
+            @Suppress("UNCHECKED_CAST")
+            val map = value as Map<String, Any?>
+            val nested = map["progress"] ?: map["percent"] ?: map["percentage"] ?: map["value"]
+            extractCloudRepairProgress(nested)?.toDouble()
         }
 
         else -> null
     } ?: return null
 
     val normalized = if (raw > 1.0) raw / 100.0 else raw
-    val clamped = normalized.coerceIn(0.0, 1.0)
+    val clamped = when {
+        normalized < 0.0 -> 0.0
+        normalized > 1.0 -> 1.0
+        else -> normalized
+    }
     return clamped.toFloat()
 }
 
