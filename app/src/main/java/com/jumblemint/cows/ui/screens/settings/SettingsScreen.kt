@@ -21,9 +21,7 @@ import androidx.compose.material.icons.outlined.HelpOutline
 import androidx.compose.material3.*
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.snapshots.SnapshotStateMap
 import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -467,28 +465,12 @@ fun SettingsScreen(
             }
         }
 
-        val sectionExpansionStates = rememberSaveable(
-            saver = Saver<SnapshotStateMap<String, Boolean>, Map<String, Boolean>>(
-                save = { stateMap -> stateMap.toMap() },
-                restore = { restored ->
-                    mutableStateMapOf<String, Boolean>().apply { putAll(restored) }
-                }
-            )
-        ) {
-            mutableStateMapOf<String, Boolean>().apply {
-                sections.forEach { section ->
-                    this[section.title] = section.initiallyExpanded
-                }
-            }
-        }
+        val sectionExpansionStates by viewModel.sectionExpansionStates.collectAsState()
 
         LaunchedEffect(sections) {
-            val titles = sections.map { it.title }.toSet()
-            sections.forEach { section ->
-                sectionExpansionStates.putIfAbsent(section.title, section.initiallyExpanded)
-            }
-            val removedTitles = sectionExpansionStates.keys - titles
-            removedTitles.forEach { sectionExpansionStates.remove(it) }
+            viewModel.syncSectionExpansionStates(
+                sections.associate { section -> section.title to section.initiallyExpanded }
+            )
         }
 
         LazyColumn(
@@ -520,7 +502,7 @@ fun SettingsScreen(
                         title = section.title,
                         expanded = isExpanded,
                         onExpandedChange = { expanded ->
-                            sectionExpansionStates[section.title] = expanded
+                            viewModel.setSectionExpanded(section.title, expanded)
                         },
                         forceExpand = trimmedQuery.isNotBlank()
                     ) {
