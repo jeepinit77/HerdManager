@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlin.math.min
 
 class SyncService(
     private val repository: CattleRepository,
@@ -148,10 +149,28 @@ class SyncService(
         debugPath: String = collection.path
     ) {
         try {
-            firestore.recursiveDelete(collection).await()
-            println("Recursively deleted collection '$debugPath'.")
+            val snapshot = collection.get().await()
+            if (snapshot.isEmpty) {
+                println("No documents to delete in '$debugPath'.")
+                return
+            }
+
+            val documents = snapshot.documents
+            var index = 0
+            val batchSize = 200
+            while (index < documents.size) {
+                val upperBound = min(index + batchSize, documents.size)
+                val batch = firestore.batch()
+                for (documentSnapshot in documents.subList(index, upperBound)) {
+                    batch.delete(documentSnapshot.reference)
+                }
+                batch.commit().await()
+                index = upperBound
+            }
+
+            println("Deleted ${documents.size} documents from '$debugPath'.")
         } catch (e: Exception) {
-            println("Failed to recursively delete '$debugPath': ${e.message}")
+            println("Failed to delete '$debugPath': ${e.message}")
             e.printStackTrace()
             throw e
         }
