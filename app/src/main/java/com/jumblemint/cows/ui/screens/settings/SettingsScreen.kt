@@ -6,58 +6,60 @@ package com.jumblemint.cows.ui.screens.settings
 // import androidx.compose.animation.core.infiniteRepeatable // Removed
 // import androidx.compose.animation.core.rememberInfiniteTransition // Removed
 // import androidx.compose.animation.core.tween // Removed
+import android.text.format.DateUtils
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.*
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import com.google.firebase.functions.FirebaseFunctions
 import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.database.CattleDatabase
-import com.jumblemint.cows.data.repository.CattleRepository
-import com.jumblemint.cows.sync.SyncStatus
-import com.jumblemint.cows.ui.viewmodel.SettingsViewModel
-import com.jumblemint.cows.ui.viewmodel.SettingsViewModelFactory
 import com.jumblemint.cows.data.import.ConflictResolution
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.background
-import androidx.compose.foundation.shape.RoundedCornerShape
-import com.jumblemint.cows.ui.components.AppAlertDialog
-import com.jumblemint.cows.ui.theme.getCardColors
-import com.jumblemint.cows.ui.theme.SmartText
-import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
-import androidx.compose.ui.graphics.vector.ImageVector
-import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Added/Ensured import
 import com.jumblemint.cows.data.model.ActivityTypeConfig
 import com.jumblemint.cows.data.model.AnimalIdentifierMode
 import com.jumblemint.cows.data.model.Breed
 import com.jumblemint.cows.data.model.Settings
 import com.jumblemint.cows.data.model.SettingsKeys
 import com.jumblemint.cows.data.model.TagColor
-import com.jumblemint.cows.ui.components.SetupWizardDialog
-import android.text.format.DateUtils
+import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.sync.SyncStatus
+import com.jumblemint.cows.ui.components.AppAlertDialog
 import com.jumblemint.cows.ui.components.FocusAwareLiveSync
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.functions.FirebaseFunctions
+import com.jumblemint.cows.ui.components.SetupWizardDialog
+import com.jumblemint.cows.ui.components.WobblingLightbulbIcon // Added/Ensured import
+import com.jumblemint.cows.ui.theme.SmartText
+import com.jumblemint.cows.ui.theme.defaultOutlinedTextFieldColors
+import com.jumblemint.cows.ui.theme.getCardColors
+import com.jumblemint.cows.ui.viewmodel.SettingsViewModel
+import com.jumblemint.cows.ui.viewmodel.SettingsViewModelFactory
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 // Helper data class for quadruple values
 data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
@@ -78,6 +80,8 @@ data class SettingsSectionModel(
     val initiallyExpanded: Boolean,
     val rows: List<SettingsRowModel>
 )
+
+private const val CLOUD_REPAIR_LOG_TAG = "SettingsCloudRepair"
 
 private fun formatRelativeSyncTime(timestamp: Long?): String? {
     if (timestamp == null || timestamp <= 0L) return null
@@ -107,6 +111,8 @@ fun SettingsScreen(
     val context = LocalContext.current
     val application = context.applicationContext as CattleApplication
     val database = CattleDatabase.getDatabase(context)
+    val syncOrchestrator = application.syncOrchestrator
+    val syncService = application.syncService
     val repository = remember {
         CattleRepository(
             database.cowDao(),
@@ -147,6 +153,8 @@ fun SettingsScreen(
     var cloudRepairFinalMessage by remember { mutableStateOf<String?>(null) }
     var cloudRepairErrorMessage by remember { mutableStateOf<String?>(null) }
     var cloudRepairListener by remember { mutableStateOf<ListenerRegistration?>(null) }
+    var cloudRepairJobId by remember { mutableStateOf<String?>(null) }
+    var cloudRepairSawProgress by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
     val firestore = remember { FirebaseFirestore.getInstance() }
@@ -157,12 +165,15 @@ fun SettingsScreen(
     val defaultActivityTypes = remember { ActivityTypeConfig.getDefaultActivityTypes() }
     val tipsManager = remember { com.jumblemint.cows.data.preferences.TipsManager(context) }
 
-    FocusAwareLiveSync(
-        orchestrator = application.syncOrchestrator,
-        screenKey = "Settings",
-        intervalMs = 20_000L,
-        leadingRun = true
-    )
+    val isCloudRepairFlowActive = showCloudRepairProgress || showCloudRepairCompletion
+    if (!isCloudRepairFlowActive) {
+        FocusAwareLiveSync(
+            orchestrator = syncOrchestrator,
+            screenKey = "Settings",
+            intervalMs = 20_000L,
+            leadingRun = true
+        )
+    }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -608,18 +619,47 @@ fun SettingsScreen(
                             cloudRepairFinalMessage = null
                             cloudRepairProgress = null
                             cloudRepairStatusMessage = "Starting cloud repair..."
-                            showCloudRepairProgress = true
+                            cloudRepairJobId = null
+                            cloudRepairSawProgress = false
                             try {
                                 cloudRepairListener?.remove()
                                 cloudRepairListener = null
 
-                                val result = functions
-                                    .getHttpsCallable("startCloudReset")
-                                    .call()
-                                    .await()
+                                syncOrchestrator.stopLive("Settings")
+                                syncService.stopAllRealtimeSync()
+
+                                val authUid = FirebaseAuth.getInstance().currentUser?.uid
+                                Log.i(
+                                    CLOUD_REPAIR_LOG_TAG,
+                                    "Invoking startCloudReset for uid=$authUid; listeners paused."
+                                )
+
+                                authUid?.let {
+                                    val previewUid = it.take(8)
+                                    cloudRepairStatusMessage = "Starting cloud repair for account $previewUid…"
+                                }
+
+                                showCloudRepairProgress = true
+
+                                val payload = mutableMapOf<String, Any>()
+                                authUid?.let { payload["uid"] = it }
+                                payload["trigger"] = "android_settings_repair"
+
+                                val callable = functions.getHttpsCallable("startCloudReset")
+                                val result = if (payload.isEmpty()) {
+                                    callable.call().await()
+                                } else {
+                                    callable.call(payload).await()
+                                }
 
                                 val jobId = extractCloudRepairJobId(result.data)
                                     ?: throw IllegalStateException("Cloud repair job ID missing.")
+
+                                cloudRepairJobId = jobId
+                                Log.i(
+                                    CLOUD_REPAIR_LOG_TAG,
+                                    "Cloud repair job started for uid=$authUid at jobs/$jobId"
+                                )
 
                                 cloudRepairStatusMessage = "Waiting for progress updates..."
 
@@ -639,6 +679,7 @@ fun SettingsScreen(
                                             }
 
                                             is CloudRepairUpdate.Running -> {
+                                                cloudRepairSawProgress = true
                                                 update.statusMessage?.let { message ->
                                                     cloudRepairStatusMessage = message
                                                 }
@@ -646,6 +687,7 @@ fun SettingsScreen(
                                             }
 
                                             is CloudRepairUpdate.Success -> {
+                                                cloudRepairSawProgress = true
                                                 cloudRepairListener?.remove()
                                                 cloudRepairListener = null
                                                 cloudRepairProgress = 1f
@@ -659,12 +701,37 @@ fun SettingsScreen(
                                             is CloudRepairUpdate.Failure -> {
                                                 cloudRepairListener?.remove()
                                                 cloudRepairListener = null
-                                                cloudRepairErrorMessage = update.errorMessage
-                                                cloudRepairStatusMessage = update.errorMessage
-                                                showCloudRepairProgress = false
-                                                showCloudRepairCompletion = true
-                                                coroutineScope.launch {
-                                                    snackbarHostState.showSnackbar(update.errorMessage)
+                                                val errorMessage = update.errorMessage
+                                                val permissionDenied = errorMessage.contains("PERMISSION_DENIED", ignoreCase = true)
+                                                if (permissionDenied && cloudRepairSawProgress) {
+                                                    val guidance = buildString {
+                                                        append("Cloud repair finished, but progress updates were blocked by Firestore permissions.")
+                                                        cloudRepairJobId?.let { append(" Verify rules for jobs/$it.") }
+                                                    }
+                                                    cloudRepairProgress = 1f
+                                                    cloudRepairFinalMessage = guidance
+                                                    cloudRepairErrorMessage = null
+                                                    cloudRepairStatusMessage = guidance
+                                                    showCloudRepairProgress = false
+                                                    showCloudRepairCompletion = true
+                                                    coroutineScope.launch {
+                                                        snackbarHostState.showSnackbar(guidance)
+                                                    }
+                                                } else {
+                                                    cloudRepairErrorMessage = errorMessage
+                                                    cloudRepairStatusMessage = errorMessage
+                                                    showCloudRepairProgress = false
+                                                    showCloudRepairCompletion = true
+                                                    coroutineScope.launch {
+                                                        snackbarHostState.showSnackbar(errorMessage)
+                                                    }
+                                                    if (permissionDenied) {
+                                                        Log.w(
+                                                            CLOUD_REPAIR_LOG_TAG,
+                                                            "Permission denied while reading jobs/${cloudRepairJobId ?: "unknown"} updates after no prior progress."
+                                                        )
+                                                    }
+                                                    application.authService.startUserSync(syncService)
                                                 }
                                             }
                                         }
@@ -672,10 +739,16 @@ fun SettingsScreen(
                             } catch (e: Exception) {
                                 cloudRepairListener?.remove()
                                 cloudRepairListener = null
+                                Log.e(
+                                    CLOUD_REPAIR_LOG_TAG,
+                                    "Failed to start cloud repair for ${cloudRepairJobId ?: currentUser?.uid}: ${e.message}",
+                                    e
+                                )
                                 val message = e.localizedMessage ?: "Unable to start cloud repair."
                                 cloudRepairErrorMessage = message
                                 showCloudRepairProgress = false
                                 showCloudRepairCompletion = true
+                                application.authService.startUserSync(syncService)
                                 coroutineScope.launch {
                                     snackbarHostState.showSnackbar(message)
                                 }

@@ -1,8 +1,9 @@
 package com.jumblemint.cows.sync
 
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.DocumentChange
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.Flow
@@ -108,7 +109,16 @@ class SyncService(
     suspend fun clearServerData(userId: String) {
         println("Clearing all server data for user ID: $userId")
         try {
-            val collectionsToDelete = listOf(
+            val userDocument = firestore.collection("users").document(userId)
+            val discoveredCollections = try {
+                userDocument.listCollections().await().map { it.id }
+            } catch (inner: Exception) {
+                println("Failed to enumerate collections for $userId: ${inner.message}")
+                inner.printStackTrace()
+                emptyList()
+            }
+
+            val canonicalCollections = listOf(
                 "cows",
                 "pastures",
                 "activities",
@@ -118,8 +128,10 @@ class SyncService(
                 "activityTypes",
                 "breeds"
             )
+
+            val collectionsToDelete = (discoveredCollections + canonicalCollections).toSet().toList()
             clearServerCollections(userId, collectionsToDelete)
-            println("Successfully cleared all specified server data for user $userId.")
+            println("Successfully cleared all collections for user $userId.")
         } catch (e: Exception) {
             println("Error clearing server data for user $userId: ${e.message}")
             e.printStackTrace()
@@ -129,25 +141,40 @@ class SyncService(
 
     suspend fun clearServerCollections(userId: String, collections: List<String>) {
         try {
-            for (collectionName in collections) {
-                val collectionRef = firestore.collection("users").document(userId).collection(collectionName)
-                val snapshot = collectionRef.get().await()
-                if (snapshot.isEmpty) {
-                    println("No documents found in '$collectionName' for user $userId to delete.")
-                    continue
-                }
-                val batch = firestore.batch()
-                for (document in snapshot.documents) {
-                    batch.delete(document.reference)
-                }
-                batch.commit().await()
-                println("Successfully deleted all documents from '$collectionName' for user $userId.")
+            val userDocument = firestore.collection("users").document(userId)
+            for (collectionName in collections.distinct()) {
+                if (collectionName.isBlank()) continue
+                val collectionRef = userDocument.collection(collectionName)
+                deleteCollectionRecursively(collectionRef, "users/$userId/$collectionName")
             }
         } catch (e: Exception) {
             println("Error clearing some collections for user $userId: ${e.message}")
             e.printStackTrace()
             throw e
         }
+    }
+
+    private suspend fun deleteCollectionRecursively(
+        collection: CollectionReference,
+        debugPath: String = collection.path
+    ) {
+        val snapshot = collection.get().await()
+        if (snapshot.isEmpty) {
+            println("No documents found in '$debugPath' to delete.")
+            return
+        }
+
+        for (document in snapshot.documents) {
+            val documentRef = document.reference
+            val subCollections = documentRef.listCollections().await()
+            for (subCollection in subCollections) {
+                deleteCollectionRecursively(subCollection, "${documentRef.path}/${subCollection.id}")
+            }
+            documentRef.delete().await()
+            println("Deleted document ${documentRef.path}")
+        }
+
+        println("Successfully deleted collection '$debugPath'.")
     }
 
     suspend fun forceUploadAllData(userId: String) {
