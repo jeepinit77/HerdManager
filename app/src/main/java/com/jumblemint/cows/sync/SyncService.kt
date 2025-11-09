@@ -109,15 +109,6 @@ class SyncService(
     suspend fun clearServerData(userId: String) {
         println("Clearing all server data for user ID: $userId")
         try {
-            val userDocument = firestore.collection("users").document(userId)
-            val discoveredCollections = try {
-                userDocument.listCollections().await().map { it.id }
-            } catch (inner: Exception) {
-                println("Failed to enumerate collections for $userId: ${inner.message}")
-                inner.printStackTrace()
-                emptyList()
-            }
-
             val canonicalCollections = listOf(
                 "cows",
                 "pastures",
@@ -129,8 +120,7 @@ class SyncService(
                 "breeds"
             )
 
-            val collectionsToDelete = (discoveredCollections + canonicalCollections).toSet().toList()
-            clearServerCollections(userId, collectionsToDelete)
+            clearServerCollections(userId, canonicalCollections)
             println("Successfully cleared all collections for user $userId.")
         } catch (e: Exception) {
             println("Error clearing server data for user $userId: ${e.message}")
@@ -142,8 +132,7 @@ class SyncService(
     suspend fun clearServerCollections(userId: String, collections: List<String>) {
         try {
             val userDocument = firestore.collection("users").document(userId)
-            for (collectionName in collections.distinct()) {
-                if (collectionName.isBlank()) continue
+            for (collectionName in collections.map { it.trim() }.filter { it.isNotEmpty() }.distinct()) {
                 val collectionRef = userDocument.collection(collectionName)
                 deleteCollectionRecursively(collectionRef, "users/$userId/$collectionName")
             }
@@ -158,23 +147,14 @@ class SyncService(
         collection: CollectionReference,
         debugPath: String = collection.path
     ) {
-        val snapshot = collection.get().await()
-        if (snapshot.isEmpty) {
-            println("No documents found in '$debugPath' to delete.")
-            return
+        try {
+            firestore.recursiveDelete(collection).await()
+            println("Recursively deleted collection '$debugPath'.")
+        } catch (e: Exception) {
+            println("Failed to recursively delete '$debugPath': ${e.message}")
+            e.printStackTrace()
+            throw e
         }
-
-        for (document in snapshot.documents) {
-            val documentRef = document.reference
-            val subCollections = documentRef.listCollections().await()
-            for (subCollection in subCollections) {
-                deleteCollectionRecursively(subCollection, "${documentRef.path}/${subCollection.id}")
-            }
-            documentRef.delete().await()
-            println("Deleted document ${documentRef.path}")
-        }
-
-        println("Successfully deleted collection '$debugPath'.")
     }
 
     suspend fun forceUploadAllData(userId: String) {

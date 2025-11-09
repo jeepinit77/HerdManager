@@ -731,7 +731,9 @@ fun SettingsScreen(
                                                             "Permission denied while reading jobs/${cloudRepairJobId ?: "unknown"} updates after no prior progress."
                                                         )
                                                     }
-                                                    application.authService.startUserSync(syncService)
+                                                    coroutineScope.launch {
+                                                        application.authService.startUserSync(syncService)
+                                                    }
                                                 }
                                             }
                                         }
@@ -748,7 +750,9 @@ fun SettingsScreen(
                                 cloudRepairErrorMessage = message
                                 showCloudRepairProgress = false
                                 showCloudRepairCompletion = true
-                                application.authService.startUserSync(syncService)
+                                coroutineScope.launch {
+                                    application.authService.startUserSync(syncService)
+                                }
                                 coroutineScope.launch {
                                     snackbarHostState.showSnackbar(message)
                                 }
