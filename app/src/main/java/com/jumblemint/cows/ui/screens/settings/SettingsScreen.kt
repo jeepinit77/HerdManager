@@ -508,6 +508,14 @@ fun SettingsScreen(
             }
         }
 
+        val sectionExpansionStates by viewModel.sectionExpansionStates.collectAsState()
+
+        LaunchedEffect(sections) {
+            viewModel.syncSectionExpansionStates(
+                sections.associate { section -> section.title to section.initiallyExpanded }
+            )
+        }
+
         LazyColumn(
             modifier = Modifier
                 .weight(1f)
@@ -532,9 +540,13 @@ fun SettingsScreen(
                 }
             } else {
                 items(displayedSections) { section ->
+                    val isExpanded = sectionExpansionStates[section.title] ?: section.initiallyExpanded
                     ExpandableSettingsSection(
                         title = section.title,
-                        initiallyExpanded = section.initiallyExpanded,
+                        expanded = isExpanded,
+                        onExpandedChange = { expanded ->
+                            viewModel.setSectionExpanded(section.title, expanded)
+                        },
                         forceExpand = trimmedQuery.isNotBlank()
                     ) {
                         section.rows.forEachIndexed { index, row ->
@@ -1074,18 +1086,13 @@ fun SettingsScreen(
 @Composable
 fun ExpandableSettingsSection(
     title: String,
-    initiallyExpanded: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
     forceExpand: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    var expanded by rememberSaveable(title) { mutableStateOf(initiallyExpanded) }
-
-    LaunchedEffect(forceExpand) {
-        if (forceExpand) {
-            expanded = true
-        }
-    }
+    val actualExpanded = if (forceExpand) true else expanded
 
     Card(
         modifier = modifier
@@ -1100,7 +1107,9 @@ fun ExpandableSettingsSection(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { expanded = !expanded }
+                    .clickable {
+                        onExpandedChange(!expanded)
+                    }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1111,13 +1120,13 @@ fun ExpandableSettingsSection(
                     modifier = Modifier.weight(1f)
                 )
                 Icon(
-                    imageVector = if (expanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
-                    contentDescription = if (expanded) "Collapse $title" else "Expand $title",
+                    imageVector = if (actualExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                    contentDescription = if (actualExpanded) "Collapse $title" else "Expand $title",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            AnimatedVisibility(visible = expanded) {
+            AnimatedVisibility(visible = actualExpanded) {
                 Column {
                     HorizontalDivider(
                         thickness = 1.dp,

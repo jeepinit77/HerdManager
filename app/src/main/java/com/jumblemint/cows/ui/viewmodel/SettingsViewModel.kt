@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import android.text.format.DateUtils
 
@@ -26,8 +27,42 @@ class SettingsViewModel(
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
+    private val _sectionExpansionStates = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+    val sectionExpansionStates: StateFlow<Map<String, Boolean>> = _sectionExpansionStates.asStateFlow()
+
     init {
         loadInitialData()
+    }
+
+    fun syncSectionExpansionStates(defaults: Map<String, Boolean>) {
+        _sectionExpansionStates.update { current ->
+            val updated = current.toMutableMap()
+            val validTitles = defaults.keys
+
+            defaults.forEach { (title, initiallyExpanded) ->
+                updated.putIfAbsent(title, initiallyExpanded)
+            }
+
+            val keyIterator = updated.keys.iterator()
+            while (keyIterator.hasNext()) {
+                val key = keyIterator.next()
+                if (key !in validTitles) {
+                    keyIterator.remove()
+                }
+            }
+
+            updated
+        }
+    }
+
+    fun setSectionExpanded(title: String, expanded: Boolean) {
+        _sectionExpansionStates.update { current ->
+            if (current[title] == expanded) {
+                current
+            } else {
+                current.toMutableMap().apply { this[title] = expanded }
+            }
+        }
     }
 
     private fun loadInitialData() {
