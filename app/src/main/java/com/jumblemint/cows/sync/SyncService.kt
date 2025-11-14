@@ -209,12 +209,17 @@ class SyncService(
                 val firestoreId = note.firestoreId ?: UUID.randomUUID().toString()
                 val noteData = note.toFirestoreMap(userId)
                 val updatedTimestamp = noteData["updatedAt"] as? Long ?: System.currentTimeMillis()
+
+                // Persist the firestoreId and sync metadata before writing to Firestore
+                repository.updateNote(
+                    note.copy(
+                        firestoreId = firestoreId,
+                        lastSyncAt = updatedTimestamp,
+                        updatedBy = userId
+                    )
+                )
+
                 firestore.collection("users").document(userId).collection("notes").document(firestoreId).set(noteData).await()
-                repository.updateNote(note.copy(
-                    firestoreId = firestoreId,
-                    lastSyncAt = updatedTimestamp,
-                    updatedBy = userId
-                ))
                 println("Force uploaded note: ${note.title} (FS ID: $firestoreId)")
             }
 
@@ -949,12 +954,15 @@ class SyncService(
                         }
                     }
                     if (shouldUpload) {
+                        repository.updateNote(
+                            note.copy(
+                                firestoreId = firestoreId,
+                                lastSyncAt = localUpdatedAt,
+                                updatedBy = userId
+                            )
+                        )
+
                         firestore.collection("users").document(userId).collection("notes").document(firestoreId).set(noteData).await()
-                        repository.updateNote(note.copy(
-                            firestoreId = firestoreId, 
-                            lastSyncAt = localUpdatedAt, 
-                            updatedBy = userId
-                        ))
                         println("Uploaded note: ${note.title}")
                     }
                 } catch (e: Exception) { println("Error uploading note ${note.title}: ${e.message}") }
