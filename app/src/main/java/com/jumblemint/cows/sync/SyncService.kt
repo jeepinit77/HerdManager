@@ -1,8 +1,9 @@
 package com.jumblemint.cows.sync
 
+import com.google.firebase.firestore.CollectionReference
+import com.google.firebase.firestore.DocumentChange
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.google.firebase.firestore.DocumentChange
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.repository.CattleRepository
 import kotlinx.coroutines.flow.Flow
@@ -16,6 +17,7 @@ import kotlinx.coroutines.launch
 import java.util.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlin.math.min
 
 class SyncService(
     private val repository: CattleRepository,
@@ -108,7 +110,7 @@ class SyncService(
     suspend fun clearServerData(userId: String) {
         println("Clearing all server data for user ID: $userId")
         try {
-            val collectionsToDelete = listOf(
+            val canonicalCollections = listOf(
                 "cows",
                 "pastures",
                 "activities",
@@ -118,8 +120,9 @@ class SyncService(
                 "activityTypes",
                 "breeds"
             )
-            clearServerCollections(userId, collectionsToDelete)
-            println("Successfully cleared all specified server data for user $userId.")
+
+            clearServerCollections(userId, canonicalCollections)
+            println("Successfully cleared all collections for user $userId.")
         } catch (e: Exception) {
             println("Error clearing server data for user $userId: ${e.message}")
             e.printStackTrace()
@@ -129,22 +132,45 @@ class SyncService(
 
     suspend fun clearServerCollections(userId: String, collections: List<String>) {
         try {
-            for (collectionName in collections) {
-                val collectionRef = firestore.collection("users").document(userId).collection(collectionName)
-                val snapshot = collectionRef.get().await()
-                if (snapshot.isEmpty) {
-                    println("No documents found in '$collectionName' for user $userId to delete.")
-                    continue
-                }
-                val batch = firestore.batch()
-                for (document in snapshot.documents) {
-                    batch.delete(document.reference)
-                }
-                batch.commit().await()
-                println("Successfully deleted all documents from '$collectionName' for user $userId.")
+            val userDocument = firestore.collection("users").document(userId)
+            for (collectionName in collections.map { it.trim() }.filter { it.isNotEmpty() }.distinct()) {
+                val collectionRef = userDocument.collection(collectionName)
+                deleteCollectionRecursively(collectionRef, "users/$userId/$collectionName")
             }
         } catch (e: Exception) {
             println("Error clearing some collections for user $userId: ${e.message}")
+            e.printStackTrace()
+            throw e
+        }
+    }
+
+    private suspend fun deleteCollectionRecursively(
+        collection: CollectionReference,
+        debugPath: String = collection.path
+    ) {
+        try {
+            val snapshot = collection.get().await()
+            if (snapshot.isEmpty) {
+                println("No documents to delete in '$debugPath'.")
+                return
+            }
+
+            val documents = snapshot.documents
+            var index = 0
+            val batchSize = 200
+            while (index < documents.size) {
+                val upperBound = min(index + batchSize, documents.size)
+                val batch = firestore.batch()
+                for (documentSnapshot in documents.subList(index, upperBound)) {
+                    batch.delete(documentSnapshot.reference)
+                }
+                batch.commit().await()
+                index = upperBound
+            }
+
+            println("Deleted ${documents.size} documents from '$debugPath'.")
+        } catch (e: Exception) {
+            println("Failed to delete '$debugPath': ${e.message}")
             e.printStackTrace()
             throw e
         }
