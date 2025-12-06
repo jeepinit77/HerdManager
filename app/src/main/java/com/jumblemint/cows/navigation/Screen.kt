@@ -79,6 +79,7 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
         fun createRoute(noteId: Long): String = route.replace("{noteId}", noteId.toString())
     }
     data object TodoList : Screen("todo_list_route", "ToDo List", false)
+    data object BackupRestore : Screen("backup_restore_route", "Backup & Restore", false)
 
     companion object {
         fun fromRoute(route: String?): Screen? {
@@ -102,7 +103,8 @@ sealed class Screen(val route: String, val title: String? = null, val hasOwnTopA
                 CowInfo, CowDetail, AddActivity, AddActivityWithId, ActivityInfo, // Added ActivityInfo here
                 CowList, Settings, PastureDetail,
                 QuickAddCattle, AddPasture, EditPasture, AddBirth, AccountManagement, TagColorsManagement, ActivityTypesManagement,
-                BreedsManagement, ThemeSettings, Sync, WorkingList, HerdSelection, NoteDetail, NoteInfo, TodoList
+                BreedsManagement, ThemeSettings, Sync, WorkingList, HerdSelection, NoteDetail, NoteInfo, TodoList,
+                BackupRestore
             ).distinct() // Ensure no duplicates if some routes are similar (e.g. AddActivity vs AddActivityWithId for fromRoute)
         }
     }

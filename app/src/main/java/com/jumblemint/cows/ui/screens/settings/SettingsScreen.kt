@@ -105,6 +105,7 @@ fun SettingsScreen(
     onNavigateToBreeds: (() -> Unit)? = null,
     onNavigateToThemeSettings: (() -> Unit)? = null,
     onNavigateToBulkAdd: (() -> Unit)? = null,
+    onNavigateToBackupRestore: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -429,6 +430,12 @@ fun SettingsScreen(
                 title = "Data Management",
                 initiallyExpanded = false,
                 rows = listOf(
+                    SettingsRowModel(
+                        title = "Backup & Restore",
+                        subtitle = "Manage local and Drive backups",
+                        icon = Icons.Filled.Save,
+                        onClick = { onNavigateToBackupRestore?.invoke() }
+                    ),
                     SettingsRowModel(
                         title = "Export Data",
                         subtitle = "Export your cattle data (CSV, JSON)",

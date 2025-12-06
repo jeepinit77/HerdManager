@@ -94,9 +94,10 @@ class AuthService(
                 _currentUser.value = null
                 _isSignedIn.value = false
             } else {
-                // Sign out from Firebase and Google
+                // Sign out from Firebase only
+                // We do NOT sign out from Google client here to avoid disrupting other features (like Drive Backup)
+                // that rely on Google Sign In but not Firebase.
                 auth.signOut()
-                googleSignInClient.signOut().await()
                 
                 // Automatically sign in as local user after signing out from Google
                 signInAsLocalUser()

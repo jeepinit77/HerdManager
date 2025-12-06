@@ -166,7 +166,8 @@ fun MainScreensViewPager(
                 onNavigateToActivityTypes = { navController.navigate(Screen.ActivityTypesManagement.route) },
                 onNavigateToBreeds = { navController.navigate(Screen.BreedsManagement.route) },
                 onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) },
-                onNavigateToBulkAdd = { navController.navigate(Screen.QuickAddCattle.route) }
+                onNavigateToBulkAdd = { navController.navigate(Screen.QuickAddCattle.route) },
+                onNavigateToBackupRestore = { navController.navigate(Screen.BackupRestore.route) }
             )
             else -> Text("Unknown Page")
         }
@@ -415,7 +416,8 @@ fun CattleNavigation(
                 onNavigateToActivityTypes = { navController.navigate(Screen.ActivityTypesManagement.route) },
                 onNavigateToBreeds = { navController.navigate(Screen.BreedsManagement.route) },
                 onNavigateToThemeSettings = { navController.navigate(Screen.ThemeSettings.route) },
-                onNavigateToBulkAdd = { navController.navigate(Screen.QuickAddCattle.route) }
+                onNavigateToBulkAdd = { navController.navigate(Screen.QuickAddCattle.route) },
+                onNavigateToBackupRestore = { navController.navigate(Screen.BackupRestore.route) }
             )
         }
 
@@ -728,6 +730,12 @@ fun CattleNavigation(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToDetail = { noteId -> navController.navigate(Screen.NoteInfo.createRoute(noteId)) },
                 onAddTodo = { navController.navigate(Screen.NoteDetail.createRoute(0L, isTodoDefault = true)) }
+            )
+        }
+
+        composable(Screen.BackupRestore.route) {
+            com.jumblemint.cows.ui.screens.BackupRestoreScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }
