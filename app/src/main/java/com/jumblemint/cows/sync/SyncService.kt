@@ -103,7 +103,7 @@ class SyncService(
         } catch (e: Exception) {
             println("Error checking for server data for user $userId: ${e.message}")
             e.printStackTrace()
-            return true 
+            return false
         }
     }
 
@@ -390,7 +390,8 @@ class SyncService(
                     return@addSnapshotListener
                 }
                 snapshot?.documentChanges?.forEach { change ->
-                    CoroutineScope(Dispatchers.IO).launch { handleRealtimePastureChange(change, userId) }
+                    if (shouldSkipLocalWrite(change)) return@forEach
+                    serviceScope.launch { handleRealtimePastureChange(change, userId) }
                 }
             }
         activeListeners["$userId-pastures"] = pastureListener
@@ -403,7 +404,8 @@ class SyncService(
                     return@addSnapshotListener
                 }
                 snapshot?.documentChanges?.forEach { change ->
-                    CoroutineScope(Dispatchers.IO).launch { handleRealtimeCowChange(change, userId) }
+                    if (shouldSkipLocalWrite(change)) return@forEach
+                    serviceScope.launch { handleRealtimeCowChange(change, userId) }
                 }
             }
         activeListeners["$userId-cows"] = cowListener
@@ -416,7 +418,8 @@ class SyncService(
                     return@addSnapshotListener
                 }
                 snapshot?.documentChanges?.forEach { change ->
-                    CoroutineScope(Dispatchers.IO).launch { handleRealtimeActivityChange(change, userId) }
+                    if (shouldSkipLocalWrite(change)) return@forEach
+                    serviceScope.launch { handleRealtimeActivityChange(change, userId) }
                 }
             }
         activeListeners["$userId-activities"] = activityListener
@@ -429,7 +432,8 @@ class SyncService(
                     return@addSnapshotListener
                 }
                 snapshot?.documentChanges?.forEach { change ->
-                     CoroutineScope(Dispatchers.IO).launch { handleRealtimeNoteChange(change, userId) }
+                    if (shouldSkipLocalWrite(change)) return@forEach
+                    serviceScope.launch { handleRealtimeNoteChange(change, userId) }
                 }
             }
         activeListeners["$userId-notes"] = noteListener
@@ -442,7 +446,8 @@ class SyncService(
                     return@addSnapshotListener
                 }
                 snapshot?.documentChanges?.forEach { change ->
-                    CoroutineScope(Dispatchers.IO).launch { handleRealtimeSettingsChange(change, userId) }
+                    if (shouldSkipLocalWrite(change)) return@forEach
+                    serviceScope.launch { handleRealtimeSettingsChange(change, userId) }
                 }
             }
         activeListeners["$userId-settings"] = settingsListener
@@ -455,7 +460,8 @@ class SyncService(
                     return@addSnapshotListener
                 }
                 snapshot?.documentChanges?.forEach { change ->
-                    CoroutineScope(Dispatchers.IO).launch { handleRealtimeTagColorChange(change, userId) }
+                    if (shouldSkipLocalWrite(change)) return@forEach
+                    serviceScope.launch { handleRealtimeTagColorChange(change, userId) }
                 }
             }
         activeListeners["$userId-tagColors"] = tagColorsListener
@@ -468,7 +474,8 @@ class SyncService(
                     return@addSnapshotListener
                 }
                 snapshot?.documentChanges?.forEach { change ->
-                    CoroutineScope(Dispatchers.IO).launch { handleRealtimeBreedChange(change, userId) }
+                    if (shouldSkipLocalWrite(change)) return@forEach
+                    serviceScope.launch { handleRealtimeBreedChange(change, userId) }
                 }
             }
         activeListeners["$userId-breeds"] = breedsListener
@@ -481,7 +488,8 @@ class SyncService(
                     return@addSnapshotListener
                 }
                 snapshot?.documentChanges?.forEach { change ->
-                    CoroutineScope(Dispatchers.IO).launch { handleRealtimeActivityTypeChange(change, userId) }
+                    if (shouldSkipLocalWrite(change)) return@forEach
+                    serviceScope.launch { handleRealtimeActivityTypeChange(change, userId) }
                 }
             }
         activeListeners["$userId-activityTypes"] = activityTypesListener
@@ -1368,6 +1376,10 @@ class SyncService(
             println("Activity types sync completed")
         } catch (e: Exception) { println("Error in syncUserActivityTypes: ${e.message}"); throw e }
     }
+
+    private fun shouldSkipLocalWrite(change: DocumentChange): Boolean {
+        return change.document.metadata.hasPendingWrites()
+    }
     
     private suspend fun handleRealtimeCowChange(change: DocumentChange, userId: String) {
         try {
@@ -1945,7 +1957,15 @@ class SyncService(
                         // Handle soft deletion from remote
                         existingLocalActivityType?.let {
                             if (!it.isDefault) { // Don't delete default activity types
-                                repository.deleteActivityType(it)
+                                repository.updateActivityType(
+                                    it.copy(
+                                        isActive = false,
+                                        isDeleted = true,
+                                        lastSyncAt = remoteActivityType.lastSyncAt,
+                                        updatedAt = remoteActivityType.updatedAt,
+                                        updatedBy = remoteActivityType.updatedBy
+                                    )
+                                )
                                 println("Real-time ${change.type}: Deleted activity type '${it.name}' (marked as deleted remotely)")
                             } else {
                                 println("Real-time ${change.type}: Skipped deletion of default activity type '${it.name}'")
@@ -1966,8 +1986,15 @@ class SyncService(
                     val existingLocalActivityType = repository.getAllActivityTypesSync().find { it.firestoreId == firestoreId }
                     existingLocalActivityType?.let {
                         if (!it.isDefault) { // Don't delete default activity types
-                            repository.deleteActivityType(it)
-                            println("Real-time REMOVED: Deleted activity type '${it.name}'")
+                            repository.updateActivityType(
+                                it.copy(
+                                    isActive = false,
+                                    isDeleted = true,
+                                    lastSyncAt = System.currentTimeMillis(),
+                                    updatedBy = remoteActivityType.updatedBy ?: userId
+                                )
+                            )
+                            println("Real-time REMOVED: Marked activity type '${it.name}' as deleted.")
                         } else {
                             println("Real-time REMOVED: Skipped deletion of default activity type '${it.name}'")
                         }
