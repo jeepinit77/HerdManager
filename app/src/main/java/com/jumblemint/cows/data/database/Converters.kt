@@ -66,12 +66,19 @@ class Converters {
     // For List<String>
     @TypeConverter
     fun fromStringList(value: List<String>): String {
-        return value.joinToString(",")
+        return Gson().toJson(value)
     }
 
     @TypeConverter
     fun toStringList(value: String): List<String> {
-        return if (value.isEmpty()) emptyList() else value.split(",")
+        if (value.isBlank()) return emptyList()
+
+        val listType = object : TypeToken<List<String>>() {}.type
+        return runCatching {
+            Gson().fromJson<List<String>>(value, listType) ?: emptyList()
+        }.getOrElse {
+            value.split(",")
+        }
     }
 
     // For Map<String, String> using Gson

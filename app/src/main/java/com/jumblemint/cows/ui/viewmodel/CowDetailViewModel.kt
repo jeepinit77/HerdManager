@@ -10,6 +10,7 @@ import com.jumblemint.cows.CattleApplication
 import com.jumblemint.cows.data.model.*
 import com.jumblemint.cows.data.preferences.tipsDataStore
 import com.jumblemint.cows.data.repository.CattleRepository
+import com.jumblemint.cows.data.storage.ImageUriPersistence
 import com.jumblemint.cows.util.identifierRequirementMessage
 import com.jumblemint.cows.util.isIdentifierSatisfied
 import com.jumblemint.cows.util.usesNames
@@ -17,6 +18,7 @@ import com.jumblemint.cows.util.usesTags
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.util.UUID
 
@@ -321,6 +323,10 @@ class CowDetailViewModel(
             }
             // Removed incorrect status == null check as status is non-nullable and defaults to ACTIVE
 
+            val persistedPhotos = withContext(Dispatchers.IO) {
+                ImageUriPersistence(application).persistForLongTermAccess(currentState.photos)
+            }
+
             val application = getApplication<CattleApplication>()
             val currentUser = application.authService.currentUser.first()
 
@@ -351,7 +357,7 @@ class CowDetailViewModel(
                     fatherId = currentState.fatherId,
                     status = currentState.status, // status is non-null
                     pastureId = currentState.pastureId,
-                    photos = currentState.photos,
+                    photos = persistedPhotos,
                     isWatched = currentState.isWatched,
                     firestoreId = newFirestoreId,
                     lastSyncAt = 0L,
@@ -382,7 +388,7 @@ class CowDetailViewModel(
                     fatherId = currentState.fatherId,
                     status = currentState.status, // status is non-null
                     pastureId = currentState.pastureId,
-                    photos = currentState.photos, 
+                    photos = persistedPhotos, 
                     isWatched = currentState.isWatched,
                     updatedAt = LocalDate.now(),
                     updatedBy = currentUserId,
