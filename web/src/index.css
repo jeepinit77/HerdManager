@@ -200,6 +200,10 @@ tr:hover td {
   background: rgba(255, 255, 255, 0.02);
 }
 
+.hover-bg:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
 /* Layout Utilities */
 .app-container {
   display: flex;
@@ -240,4 +244,13 @@ tr:hover td {
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
 }

@@ -18,12 +18,21 @@ interface DataGridEditorProps {
   isSaving: boolean;
   entityName: string;
   initialEntries?: any[];
+  onRowClick?: (entry: any) => void;
 }
 
-const DataGridEditor: React.FC<DataGridEditorProps> = ({ columns, onSave, isSaving, entityName, initialEntries }) => {
-  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(
-    columns.reduce((acc, col) => ({ ...acc, [col.key]: !col.hidden }), {})
-  );
+const DataGridEditor: React.FC<DataGridEditorProps> = ({ columns, onSave, isSaving, entityName, initialEntries, onRowClick }) => {
+  const storageKey = `columnVisibility_${entityName}`;
+  const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) return JSON.parse(saved);
+    return columns.reduce((acc, col) => ({ ...acc, [col.key]: !col.hidden }), {});
+  });
+
+  useEffect(() => {
+    localStorage.setItem(storageKey, JSON.stringify(columnVisibility));
+  }, [columnVisibility, storageKey]);
+
   const [showColumnToggle, setShowColumnToggle] = useState(false);
 
   const createEmptyRow = (lastRow?: any) => {
@@ -38,12 +47,27 @@ const DataGridEditor: React.FC<DataGridEditorProps> = ({ columns, onSave, isSavi
     return newRow;
   };
 
+  const isRowEmpty = (row: any) => {
+    return columns.every(col => {
+      const val = row[col.key];
+      return val === undefined || val === '' || val === col.default;
+    });
+  };
+
   const [entries, setEntries] = useState<any[]>(() => {
     if (initialEntries && initialEntries.length > 0) {
       return initialEntries;
     }
-    return [createEmptyRow(), createEmptyRow(), createEmptyRow()];
+    return [createEmptyRow()];
   });
+
+  useEffect(() => {
+    if (initialEntries && initialEntries.length > 0) {
+      setEntries(initialEntries);
+    } else if (initialEntries && initialEntries.length === 0) {
+      setEntries([createEmptyRow()]);
+    }
+  }, [initialEntries]);
 
   const addRow = () => {
     const lastRow = entries[entries.length - 1];
@@ -57,28 +81,38 @@ const DataGridEditor: React.FC<DataGridEditorProps> = ({ columns, onSave, isSavi
   };
 
   const updateEntry = (id: string, field: string, value: string) => {
-    setEntries(prevEntries => prevEntries.map(e => {
-      if (e.id !== id) return e;
+    setEntries(prevEntries => {
+      const newEntries = prevEntries.map(e => {
+        if (e.id !== id) return e;
 
-      const updated = { ...e, [field]: value };
+        const updated = { ...e, [field]: value };
 
-      // Validation Rule: Gender and Classification auto-correction
-      if (field === 'classification') {
-        if (['BULL', 'STEER'].includes(value)) {
-          updated.gender = 'MALE';
-        } else if (['COW', 'HEIFER'].includes(value)) {
-          updated.gender = 'FEMALE';
+        // Validation Rule: Gender and Classification auto-correction
+        if (field === 'classification') {
+          if (['BULL', 'STEER'].includes(value)) {
+            updated.gender = 'MALE';
+          } else if (['COW', 'HEIFER'].includes(value)) {
+            updated.gender = 'FEMALE';
+          }
+        } else if (field === 'gender') {
+          if (value === 'MALE' && ['COW', 'HEIFER'].includes(updated.classification)) {
+            updated.classification = 'BULL'; 
+          } else if (value === 'FEMALE' && ['BULL', 'STEER'].includes(updated.classification)) {
+            updated.classification = 'COW';
+          }
         }
-      } else if (field === 'gender') {
-        if (value === 'MALE' && ['COW', 'HEIFER'].includes(updated.classification)) {
-          updated.classification = 'BULL'; // default fallback
-        } else if (value === 'FEMALE' && ['BULL', 'STEER'].includes(updated.classification)) {
-          updated.classification = 'COW';
-        }
+
+        return updated;
+      });
+
+      // Auto-add row if editing the last row and it's not empty anymore
+      const editedRowIndex = newEntries.findIndex(e => e.id === id);
+      if (editedRowIndex === newEntries.length - 1 && !isRowEmpty(newEntries[editedRowIndex])) {
+        newEntries.push(createEmptyRow(newEntries[editedRowIndex]));
       }
 
-      return updated;
-    }));
+      return newEntries;
+    });
   };
 
   const toggleColumn = (key: string) => {
@@ -159,15 +193,18 @@ const DataGridEditor: React.FC<DataGridEditorProps> = ({ columns, onSave, isSavi
               {visibleColumns.map(col => (
                 <th key={col.key}>{col.label} {col.required && '*'}</th>
               ))}
-              <th style={{ width: '50px' }}></th>
+              <th style={{ width: '100px' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
             {entries.map((entry, index) => (
-              <tr key={entry.id}>
+              <tr key={entry.id} className={onRowClick ? 'hover-bg' : ''} style={{ cursor: onRowClick ? 'pointer' : 'default' }}>
                 <td style={{ color: 'var(--color-text-muted)', textAlign: 'center' }}>{index + 1}</td>
                 {visibleColumns.map(col => (
-                  <td key={col.key}>
+                  <td key={col.key} onClick={(e) => {
+                    // Don't trigger row click if clicking an input/select
+                    if (e.target === e.currentTarget) onRowClick?.(entry);
+                  }}>
                     {col.type === 'select' ? (
                       <select
                         value={entry[col.key]}
@@ -191,14 +228,26 @@ const DataGridEditor: React.FC<DataGridEditorProps> = ({ columns, onSave, isSavi
                   </td>
                 ))}
                 <td>
-                  <button 
-                    onClick={() => removeRow(entry.id)}
-                    className="btn btn-danger"
-                    style={{ padding: '0.5rem' }}
-                    title="Remove Row"
-                  >
-                    <Trash2 size={16} />
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    {onRowClick && (
+                      <button 
+                        onClick={() => onRowClick(entry)}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.5rem' }}
+                        title="View Details"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => removeRow(entry.id)}
+                      className="btn btn-danger"
+                      style={{ padding: '0.5rem' }}
+                      title="Remove Row"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

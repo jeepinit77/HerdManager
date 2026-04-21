@@ -4,13 +4,22 @@ import type { User } from 'firebase/auth';
 import { auth } from './firebase/config';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
+import HerdBrowse from './pages/HerdBrowse';
 import DataGrid from './pages/DataGrid';
 import Login from './pages/Login';
 
 const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState('data-grid');
+  const [currentTab, setCurrentTab] = useState('dashboard');
   const [user, setUser] = useState<User | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  
+  // Navigation & Filter state
+  const [activeFilters, setActiveFilters] = useState<any>({
+    classification: 'All',
+    gender: 'All',
+    status: 'ACTIVE',
+    pastureId: 'All'
+  });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -20,12 +29,42 @@ const App: React.FC = () => {
     return () => unsubscribe();
   }, []);
 
+  const navigateToHerd = (filters: any) => {
+    setActiveFilters((prev: any) => ({ ...prev, ...filters }));
+    setCurrentTab('herd');
+  };
+
+  const handleEditFromBrowse = (cowId: string) => {
+    if (cowId !== 'all') {
+      setActiveFilters((prev: any) => ({ ...prev, tagNumber: cowId }));
+    } else {
+      // If 'all', we keep current filters and just switch tabs
+      // The DataGrid will auto-load based on these filters
+      setActiveFilters((prev: any) => ({ ...prev, tagNumber: '' }));
+    }
+    setCurrentTab('data-grid');
+  };
+
   const renderContent = () => {
     switch (currentTab) {
       case 'dashboard':
-        return <Dashboard user={user} />;
+        return <Dashboard user={user} onNavigate={navigateToHerd} />;
+      case 'herd':
+        return (
+          <HerdBrowse 
+            user={user} 
+            initialFilters={activeFilters} 
+            onEdit={handleEditFromBrowse}
+          />
+        );
       case 'data-grid':
-        return <DataGrid user={user} />;
+        return (
+          <DataGrid 
+            user={user} 
+            initialFilters={activeFilters} 
+            onFiltersChange={setActiveFilters} 
+          />
+        );
       case 'settings':
         return (
           <div>
@@ -41,7 +80,7 @@ const App: React.FC = () => {
           </div>
         );
       default:
-        return <Dashboard />;
+        return <Dashboard user={user} onNavigate={navigateToHerd} />;
     }
   };
 
